@@ -1,0 +1,182 @@
+# P423 workspace step/payload guard
+novaic-cortex/tests/test_payload_inspection_api.py:39:async def _seed_payload(ws: Workspace, payload_ref: str, payload) -> None:
+novaic-cortex/tests/test_payload_inspection_api.py:47:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:48:        "step_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:53:            "payload_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:61:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:62:    await _seed_payload(ws, payload_ref, {"stdout": "alpha\nbeta\nFAILED final", "exit_code": 1})
+novaic-cortex/tests/test_payload_inspection_api.py:68:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:74:    assert result["payload_ref"] == payload_ref
+novaic-cortex/tests/test_payload_inspection_api.py:85:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:86:    await _seed_payload(ws, payload_ref, "one failed\nTWO FAILED\nthree")
+novaic-cortex/tests/test_payload_inspection_api.py:92:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:114:            payload_ref="missing",
+novaic-cortex/tests/test_payload_inspection_api.py:123:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:124:    await _seed_payload(ws, payload_ref, "payload")
+novaic-cortex/tests/test_payload_inspection_api.py:125:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_payload_inspection_api.py:133:            payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:138:    assert exc.value.detail["payload_ref"] == payload_ref
+novaic-cortex/tests/test_payload_inspection_api.py:139:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_payload_inspection_api.py:146:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:149:        payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:164:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:187:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:188:    await _seed_payload(ws, payload_ref, "alpha\nFAILED final")
+novaic-cortex/tests/test_payload_inspection_api.py:201:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:220:            payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:34:    def __init__(self, *, code: str, payload_ref: str, message: str) -> None:
+novaic-cortex/novaic_cortex/workspace.py:37:        self.payload_ref = payload_ref
+novaic-cortex/novaic_cortex/workspace.py:41:def _payload_filename(payload_ref: str) -> str:
+novaic-cortex/novaic_cortex/workspace.py:42:    digest = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/novaic_cortex/workspace.py:87:        payload_blob_client: PayloadBlobClient | None = None,
+novaic-cortex/novaic_cortex/workspace.py:88:        payload_blob_policy: BlobPayloadPolicy | None = None,
+novaic-cortex/novaic_cortex/workspace.py:96:        self._payload_blob_client = payload_blob_client
+novaic-cortex/novaic_cortex/workspace.py:97:        self._payload_blob_policy = payload_blob_policy or BlobPayloadPolicy()
+novaic-cortex/novaic_cortex/workspace.py:143:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:149:        manifest = operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/novaic_cortex/workspace.py:153:            payload_ref=manifest["payload_ref"],
+novaic-cortex/novaic_cortex/workspace.py:154:            source_payload_ref=manifest.get("source_payload_ref"),
+novaic-cortex/novaic_cortex/workspace.py:158:            blob_ref=manifest.get("blob_ref"),
+novaic-cortex/novaic_cortex/workspace.py:170:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:176:            payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:181:        return PayloadReadError(code=code, payload_ref=payload_ref, message=message)
+novaic-cortex/novaic_cortex/workspace.py:563:    async def write_payload(
+novaic-cortex/novaic_cortex/workspace.py:566:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:572:        if not payload_ref or not isinstance(payload_ref, str):
+novaic-cortex/novaic_cortex/workspace.py:573:            raise ValueError("payload_ref is required")
+novaic-cortex/novaic_cortex/workspace.py:576:        externalize = self._payload_blob_policy.should_externalize(len(encoded))
+novaic-cortex/novaic_cortex/workspace.py:577:        actual_payload_ref = payload_ref
+novaic-cortex/novaic_cortex/workspace.py:579:        if externalize:
+novaic-cortex/novaic_cortex/workspace.py:580:            if self._payload_blob_client is None:
+novaic-cortex/novaic_cortex/workspace.py:582:            actual_payload_ref = await self._payload_blob_client.put_payload(
+novaic-cortex/novaic_cortex/workspace.py:585:                source_payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:590:                "payload_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:591:                "source_payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:592:                "blob_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:599:                "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:605:        path = f"{scope_path.rstrip('/')}/payloads/{_payload_filename(actual_payload_ref)}"
+novaic-cortex/novaic_cortex/workspace.py:609:            payload_ref=actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:610:            source_payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:613:            step_ref=step_ref or payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:614:            blob_ref=actual_payload_ref if externalize else None,
+novaic-cortex/novaic_cortex/workspace.py:619:            retention_class="external_blob" if externalize else "scope_local",
+novaic-cortex/novaic_cortex/workspace.py:621:        return actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:623:    async def read_payload(self, scope_path: str, payload_ref: str) -> Any:
+novaic-cortex/novaic_cortex/workspace.py:625:        path = f"{scope_path.rstrip('/')}/payloads/{_payload_filename(payload_ref)}"
+novaic-cortex/novaic_cortex/workspace.py:630:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:633:                message=f"payload record not found for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:639:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:642:                message=f"payload record is not valid JSON for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:644:        if record.get("payload_ref") != payload_ref:
+novaic-cortex/novaic_cortex/workspace.py:646:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:647:                code="payload_ref_mismatch",
+novaic-cortex/novaic_cortex/workspace.py:649:                message=f"payload record ref mismatch for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:651:        if record.get("blob_ref"):
+novaic-cortex/novaic_cortex/workspace.py:652:            if self._payload_blob_client is None:
+novaic-cortex/novaic_cortex/workspace.py:654:                    payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:655:                    code="payload_blob_client_missing",
+novaic-cortex/novaic_cortex/workspace.py:660:                return await self._payload_blob_client.get_payload(
+novaic-cortex/novaic_cortex/workspace.py:662:                    blob_ref=str(record["blob_ref"]),
+novaic-cortex/novaic_cortex/workspace.py:666:                    payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:667:                    code="payload_blob_fetch_failed",
+novaic-cortex/novaic_cortex/workspace.py:669:                    message=f"failed to fetch external Cortex payload {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:703:        Normalization validates tool-step shape, externalizes any inline
+novaic-cortex/novaic_cortex/workspace.py:705:        ``payload_ref`` into the observation percept. The caller's input is not
+novaic-cortex/novaic_cortex/workspace.py:715:        if step_type == "tool" and "result" in normalized:
+novaic-cortex/novaic_cortex/workspace.py:716:            raise ValueError("tool steps must use payload/payload_ref, not inline result")
+novaic-cortex/novaic_cortex/workspace.py:721:            payload_ref = normalized.get("payload_ref")
+novaic-cortex/novaic_cortex/workspace.py:722:            if not payload_ref:
+novaic-cortex/novaic_cortex/workspace.py:723:                raise ValueError("payload_ref is required when writing payload")
+novaic-cortex/novaic_cortex/workspace.py:724:            stable_step_ref = str(normalized.get("step_ref") or payload_ref)
+novaic-cortex/novaic_cortex/workspace.py:725:            actual_payload_ref = await self.write_payload(
+novaic-cortex/novaic_cortex/workspace.py:727:                str(payload_ref),
+novaic-cortex/novaic_cortex/workspace.py:729:                step_ref=stable_step_ref,
+novaic-cortex/novaic_cortex/workspace.py:731:            normalized["step_ref"] = stable_step_ref
+novaic-cortex/novaic_cortex/workspace.py:732:            normalized["payload_ref"] = actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:734:                normalized["observation"]["payload_ref"] = actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:770:        if step.get("payload_ref"):
+novaic-cortex/novaic_cortex/workspace.py:771:            index_entry["payload_ref"] = step["payload_ref"]
+novaic-cortex/tests/test_workspace.py:66:        "payload_ref": "payload:tc_001",
+novaic-cortex/tests/test_workspace.py:87:        "payload": {}, "payload_ref": "step-ref:arch:note",
+novaic-cortex/tests/test_workspace.py:124:        "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_workspace.py:139:        "payload_ref": "step-ref:s1:tc_002",
+novaic-cortex/tests/test_workspace.py:172:        "status": "success", "payload": {}, "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_step_index_outcome.py:20:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_step_index_outcome.py:21:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:22:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_step_index_outcome.py:23:        return blob_ref
+novaic-cortex/tests/test_step_index_outcome.py:25:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_step_index_outcome.py:26:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_step_index_outcome.py:30:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_step_index_outcome.py:31:        raise KeyError(blob_ref)
+novaic-cortex/tests/test_step_index_outcome.py:86:async def test_normalize_step_externalizes_payload_without_mutating_input():
+novaic-cortex/tests/test_step_index_outcome.py:95:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:105:    assert normalized["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:106:    assert normalized["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:107:    assert await ws.read_payload(path, "step-ref:s1:round1:shell:0") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_step_index_outcome.py:108:    manifest = ws.operational_store.get_payload_manifest(payload_ref="step-ref:s1:round1:shell:0")
+novaic-cortex/tests/test_step_index_outcome.py:109:    assert manifest["source_payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:110:    assert manifest["blob_ref"] is None
+novaic-cortex/tests/test_step_index_outcome.py:118:async def test_write_step_externalizes_payload_and_indexes_payload_ref():
+novaic-cortex/tests/test_step_index_outcome.py:128:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:135:    assert index[0]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:141:    assert step["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:142:    assert step["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:143:    assert await ws.read_payload(path, "step-ref:s1:round1:shell:0") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_step_index_outcome.py:150:async def test_write_step_externalizes_large_payload_to_blob_ref():
+novaic-cortex/tests/test_step_index_outcome.py:154:        payload_blob_client=blob,
+novaic-cortex/tests/test_step_index_outcome.py:155:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_step_index_outcome.py:166:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:171:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:176:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:181:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:182:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:184:    assert await ws.read_payload(path, "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_step_index_outcome.py:185:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:186:    assert manifest["source_payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:187:    assert manifest["blob_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:196:async def test_read_payload_missing_record_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:200:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:207:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:208:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:211:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:215:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:217:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:224:async def test_read_payload_corrupt_record_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:228:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:235:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:236:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:239:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:243:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:245:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:252:async def test_read_payload_ref_mismatch_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:256:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:263:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:264:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:267:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:268:    await ws._sys_write_json(f"{path}/payloads/{payload_name}.json", {"payload_ref": "other"})
+novaic-cortex/tests/test_step_index_outcome.py:271:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:273:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:274:    assert exc.value.code == "payload_ref_mismatch"
+novaic-cortex/tests/test_step_index_outcome.py:276:    assert manifest["error"]["code"] == "payload_ref_mismatch"
+novaic-cortex/tests/test_step_index_outcome.py:280:async def test_read_payload_blob_failures_update_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:284:        payload_blob_client=blob,
+novaic-cortex/tests/test_step_index_outcome.py:285:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_step_index_outcome.py:295:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:301:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:303:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:304:    assert exc.value.code == "payload_blob_fetch_failed"
+novaic-cortex/tests/test_step_index_outcome.py:306:    assert manifest["error"]["code"] == "payload_blob_fetch_failed"
+novaic-cortex/tests/test_step_index_outcome.py:310:async def test_read_payload_missing_blob_client_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:314:        payload_blob_client=blob,
+novaic-cortex/tests/test_step_index_outcome.py:315:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_step_index_outcome.py:325:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:329:    ws._payload_blob_client = None
+novaic-cortex/tests/test_step_index_outcome.py:332:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:334:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:335:    assert exc.value.code == "payload_blob_client_missing"
+novaic-cortex/tests/test_step_index_outcome.py:337:    assert manifest["error"]["code"] == "payload_blob_client_missing"
+novaic-cortex/tests/test_step_index_outcome.py:344:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_step_index_outcome.py:356:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:367:    with pytest.raises(ValueError, match="payload/payload_ref"):
+novaic-cortex/tests/test_step_index_outcome.py:388:            "payload_ref": "step-ref:s1:round1:shell:0",

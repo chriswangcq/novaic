@@ -1,0 +1,284 @@
+# P422 projection/read-model payload leak guard
+novaic-cortex/novaic_cortex/context_event_read_model.py:1:"""ContextEvent-backed read model for LLM context preparation.
+novaic-cortex/novaic_cortex/context_event_read_model.py:4:projection function, then applies the context budget boundary.
+novaic-cortex/novaic_cortex/context_event_read_model.py:12:from novaic_cortex.context_event_projection import (
+novaic-cortex/novaic_cortex/context_event_read_model.py:13:    ContextProjectionSnapshot,
+novaic-cortex/novaic_cortex/context_event_read_model.py:14:    project_context_events,
+novaic-cortex/novaic_cortex/context_event_read_model.py:16:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/novaic_cortex/context_event_read_model.py:17:from novaic_cortex.context_stack.budget import budget_compact
+novaic-cortex/novaic_cortex/context_event_read_model.py:18:from novaic_cortex.context_stack.types import (
+novaic-cortex/novaic_cortex/context_event_read_model.py:31:class ContextEventPreparedContext:
+novaic-cortex/novaic_cortex/context_event_read_model.py:32:    """Prepared LLM context derived from one ContextEvent stream."""
+novaic-cortex/novaic_cortex/context_event_read_model.py:39:    projection: ContextProjectionSnapshot
+novaic-cortex/novaic_cortex/context_event_read_model.py:56:class ContextEventReadModelResetRequired(RuntimeError):
+novaic-cortex/novaic_cortex/context_event_read_model.py:61:            f"context event stream missing or empty for {root_scope_path}; reset required"
+novaic-cortex/novaic_cortex/context_event_read_model.py:66:class ContextEventReadModel:
+novaic-cortex/novaic_cortex/context_event_read_model.py:67:    """Prepare LLM context from the authoritative ContextEvent stream."""
+novaic-cortex/novaic_cortex/context_event_read_model.py:76:        event_store: ContextEventStore | None = None,
+novaic-cortex/novaic_cortex/context_event_read_model.py:82:        self._event_store = event_store or ContextEventStore(workspace)
+novaic-cortex/novaic_cortex/context_event_read_model.py:84:    async def prepare(self) -> ContextEventPreparedContext:
+novaic-cortex/novaic_cortex/context_event_read_model.py:86:            return ContextEventPreparedContext(
+novaic-cortex/novaic_cortex/context_event_read_model.py:92:                projection=ContextProjectionSnapshot(),
+novaic-cortex/novaic_cortex/context_event_read_model.py:97:            raise ContextEventReadModelResetRequired(self._root_scope_path)
+novaic-cortex/novaic_cortex/context_event_read_model.py:98:        projection = project_context_events(events)
+novaic-cortex/novaic_cortex/context_event_read_model.py:106:            estimated_tokens / self._config.context_window
+novaic-cortex/novaic_cortex/context_event_read_model.py:107:            if self._config.context_window > 0
+novaic-cortex/novaic_cortex/context_event_read_model.py:110:        return ContextEventPreparedContext(
+novaic-cortex/novaic_cortex/context_event_projection.py:1:"""Pure ContextEvent projection to LLM-facing snapshot state."""
+novaic-cortex/novaic_cortex/context_event_projection.py:8:from novaic_cortex.context_events import ContextEvent, stable_json
+novaic-cortex/novaic_cortex/context_event_projection.py:12:class ContextEventProjectionError(ValueError):
+novaic-cortex/novaic_cortex/context_event_projection.py:17:class ContextProjectionSnapshot:
+novaic-cortex/novaic_cortex/context_event_projection.py:47:    snapshot: ContextProjectionSnapshot = field(default_factory=ContextProjectionSnapshot)
+novaic-cortex/novaic_cortex/context_event_projection.py:55:def project_context_events(events: Iterable[ContextEvent]) -> ContextProjectionSnapshot:
+novaic-cortex/novaic_cortex/context_event_projection.py:68:def _validate_replay_order(state: _ProjectionState, event: ContextEvent) -> None:
+novaic-cortex/novaic_cortex/context_event_projection.py:72:            raise ContextEventProjectionError(
+novaic-cortex/novaic_cortex/context_event_projection.py:73:                f"context event sequence must start at 1, got {event.seq}"
+novaic-cortex/novaic_cortex/context_event_projection.py:81:        raise ContextEventProjectionError("cannot project events from multiple streams")
+novaic-cortex/novaic_cortex/context_event_projection.py:83:        raise ContextEventProjectionError("cannot project events from multiple root scopes")
+novaic-cortex/novaic_cortex/context_event_projection.py:87:        raise ContextEventProjectionError(
+novaic-cortex/novaic_cortex/context_event_projection.py:88:            f"context event sequence must be contiguous: expected seq {expected_seq}, got {event.seq}"
+novaic-cortex/novaic_cortex/context_event_projection.py:92:def _apply_event(state: _ProjectionState, event: ContextEvent) -> None:
+novaic-cortex/novaic_cortex/context_event_projection.py:97:        raise ContextEventProjectionError("cannot project events from multiple root scopes")
+novaic-cortex/novaic_cortex/context_event_projection.py:100:        snapshot.root_scope_id = event.payload.get("root_scope_id", event.root_scope_id)
+novaic-cortex/novaic_cortex/context_event_projection.py:109:                "name": event.payload.get("scope_name", "wake"),
+novaic-cortex/novaic_cortex/context_event_projection.py:114:        remaining = event.payload.get("remaining_stack")
+novaic-cortex/novaic_cortex/context_event_projection.py:121:            wake_scope_id = event.payload.get("wake_scope_id")
+novaic-cortex/novaic_cortex/context_event_projection.py:130:    elif event.type == "ContextMessageAppended":
+novaic-cortex/novaic_cortex/context_event_projection.py:132:            _message_container(state, event.payload.get("scope_id")),
+novaic-cortex/novaic_cortex/context_event_projection.py:136:        _message_container(state, event.payload.get("scope_id")).append(_notification_hint(event))
+novaic-cortex/novaic_cortex/context_event_projection.py:145:            "name": event.payload.get("name", event.payload.get("skill_name", "skill")),
+novaic-cortex/novaic_cortex/context_event_projection.py:156:            raise ContextEventProjectionError(
+novaic-cortex/novaic_cortex/context_event_projection.py:165:            raise ContextEventProjectionError(f"SkillScopeClosed missing opened scope {scope_id!r}")
+novaic-cortex/novaic_cortex/context_event_projection.py:166:        report = str(event.payload.get("report", ""))
+novaic-cortex/novaic_cortex/context_event_projection.py:172:                    "content": f"[Skill '{scope.frame['skill_name']}' completed]\n{report}",
+novaic-cortex/novaic_cortex/context_event_projection.py:186:        _message_container(state, event.payload.get("scope_id")).append(message)
+novaic-cortex/novaic_cortex/context_event_projection.py:189:        _message_container(state, event.payload.get("scope_id")).append(
+novaic-cortex/novaic_cortex/context_event_projection.py:190:            _tool_result_message(
+novaic-cortex/novaic_cortex/context_event_projection.py:198:def _required_message(event: ContextEvent) -> dict[str, Any]:
+novaic-cortex/novaic_cortex/context_event_projection.py:199:    message = event.payload.get("message")
+novaic-cortex/novaic_cortex/context_event_projection.py:201:        raise ContextEventProjectionError(f"{event.type} requires payload.message object")
+novaic-cortex/novaic_cortex/context_event_projection.py:244:    event: ContextEvent,
+novaic-cortex/novaic_cortex/context_event_projection.py:248:    report = str(event.payload.get("report", ""))
+novaic-cortex/novaic_cortex/context_event_projection.py:255:                    "content": f"[Skill '{frame.get('name', 'wake')}' completed]\n{report}",
+novaic-cortex/novaic_cortex/context_event_projection.py:271:                "content": f"[Skill '{frame.get('name', 'wake')}' completed]\n{report}",
+novaic-cortex/novaic_cortex/context_event_projection.py:329:def _notification_hint(event: ContextEvent) -> dict[str, Any]:
+novaic-cortex/novaic_cortex/context_event_projection.py:334:        "content": (
+novaic-cortex/novaic_cortex/context_event_projection.py:350:def _tool_result_message(
+novaic-cortex/novaic_cortex/context_event_projection.py:351:    event: ContextEvent,
+novaic-cortex/novaic_cortex/context_event_projection.py:356:    observation = event.payload.get("observation")
+novaic-cortex/novaic_cortex/context_event_projection.py:357:    content = _tool_result_content(observation)
+novaic-cortex/novaic_cortex/context_event_projection.py:358:    step_ref = event.payload.get("step_ref")
+novaic-cortex/novaic_cortex/context_event_projection.py:359:    payload_ref = event.payload.get("payload_ref")
+novaic-cortex/novaic_cortex/context_event_projection.py:362:        "tool": event.payload.get("tool"),
+novaic-cortex/novaic_cortex/context_event_projection.py:363:        "status": event.payload.get("status"),
+novaic-cortex/novaic_cortex/context_event_projection.py:373:        "content": content,
+novaic-cortex/novaic_cortex/context_event_projection.py:383:def _tool_result_content(observation: Any) -> str:
+novaic-cortex/novaic_cortex/context_event_projection.py:384:    if isinstance(observation, dict):
+novaic-cortex/novaic_cortex/context_event_projection.py:385:        for key in ("preview", "summary", "head"):
+novaic-cortex/novaic_cortex/context_event_projection.py:386:            value = observation.get(key)
+novaic-cortex/novaic_cortex/context_event_projection.py:389:        return stable_json(observation)
+novaic-cortex/novaic_cortex/context_event_projection.py:390:    if observation is None:
+novaic-cortex/novaic_cortex/context_event_projection.py:392:    return str(observation)
+novaic-cortex/novaic_cortex/context_event_projection.py:406:def _required_payload_str(event: ContextEvent, key: str) -> str:
+novaic-cortex/novaic_cortex/context_event_projection.py:407:    value = event.payload.get(key)
+novaic-cortex/novaic_cortex/context_event_projection.py:409:        raise ContextEventProjectionError(f"{event.type} requires payload.{key}")
+novaic-cortex/tests/test_context_event_read_model.py:5:from novaic_cortex.context_event_read_model import (
+novaic-cortex/tests/test_context_event_read_model.py:6:    ContextEventReadModel,
+novaic-cortex/tests/test_context_event_read_model.py:7:    ContextEventReadModelResetRequired,
+novaic-cortex/tests/test_context_event_read_model.py:9:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/tests/test_context_event_read_model.py:10:from novaic_cortex.context_events import ContextEvent, build_stream_id
+novaic-cortex/tests/test_context_event_read_model.py:11:from novaic_cortex.context_stack.types import CompactConfig, Phase
+novaic-cortex/tests/test_context_event_read_model.py:24:def _event(seq: int, type: str, payload: dict) -> ContextEvent:
+novaic-cortex/tests/test_context_event_read_model.py:25:    return ContextEvent.create(
+novaic-cortex/tests/test_context_event_read_model.py:38:async def _write_events(ws, events: list[ContextEvent]) -> None:
+novaic-cortex/tests/test_context_event_read_model.py:40:        ContextEventStore.event_log_path(ROOT_PATH),
+novaic-cortex/tests/test_context_event_read_model.py:46:async def test_event_read_model_empty_root_path_returns_closed_empty_context() -> None:
+novaic-cortex/tests/test_context_event_read_model.py:49:    prepared = await ContextEventReadModel(workspace=ws, root_scope_path="").prepare()
+novaic-cortex/tests/test_context_event_read_model.py:64:    with pytest.raises(ContextEventReadModelResetRequired, match="reset required"):
+novaic-cortex/tests/test_context_event_read_model.py:65:        await ContextEventReadModel(workspace=ws, root_scope_path=ROOT_PATH).prepare()
+novaic-cortex/tests/test_context_event_read_model.py:68:def _base_events() -> list[ContextEvent]:
+novaic-cortex/tests/test_context_event_read_model.py:92:                "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_read_model.py:93:                {"message": {"role": "user", "content": "please check"}},
+novaic-cortex/tests/test_context_event_read_model.py:101:                        "content": "",
+novaic-cortex/tests/test_context_event_read_model.py:122:                    "observation": {"preview": "exit_code=0\n/ro/rw"},
+novaic-cortex/tests/test_context_event_read_model.py:137:                "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_read_model.py:140:                    "message": {"role": "user", "content": "hidden inside skill"},
+novaic-cortex/tests/test_context_event_read_model.py:152:    prepared = await ContextEventReadModel(
+novaic-cortex/tests/test_context_event_read_model.py:182:            "content": "exit_code=0\n/ro/rw",
+novaic-cortex/tests/test_context_event_read_model.py:201:            _event(3, "ContextMessageAppended", {"message": {"role": "user", "content": "one"}}),
+novaic-cortex/tests/test_context_event_read_model.py:208:                        "content": "",
+novaic-cortex/tests/test_context_event_read_model.py:226:                    "observation": {"preview": long_tool_output},
+novaic-cortex/tests/test_context_event_read_model.py:229:            _event(6, "ContextMessageAppended", {"message": {"role": "user", "content": "two"}}),
+novaic-cortex/tests/test_context_event_read_model.py:234:    prepared = await ContextEventReadModel(
+novaic-cortex/tests/test_context_event_read_model.py:238:            context_window=200_000,
+novaic-cortex/tests/test_tool_output_projection.py:4:    format_for_current_tool_result_llm,
+novaic-cortex/tests/test_tool_output_projection.py:7:    parse_tool_result,
+novaic-cortex/tests/test_tool_output_projection.py:8:    preview_for_text,
+novaic-cortex/tests/test_tool_output_projection.py:16:        "text": "Captured host desktop screenshot.",
+novaic-cortex/tests/test_tool_output_projection.py:17:        "artifacts": [
+novaic-cortex/tests/test_tool_output_projection.py:24:                "summary": "Host desktop screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:39:                "type": "device.screenshot.captured",
+novaic-cortex/tests/test_tool_output_projection.py:40:                "summary": "Screenshot stored as artifact.",
+novaic-cortex/tests/test_tool_output_projection.py:47:def test_tool_output_v1_artifacts_render_as_manifest_text():
+novaic-cortex/tests/test_tool_output_projection.py:48:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:52:    assert parsed["artifacts"][0]["uri"] == "blob://runtime-artifact/screen-1"
+novaic-cortex/tests/test_tool_output_projection.py:53:    assert "Captured host desktop screenshot." in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:54:    assert "[Artifact: desktop.png (image, image/png, 2.0KB)]" in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:55:    assert 'display(file_url="blob://runtime-artifact/screen-1")' in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:56:    assert "[Event: device.screenshot.captured]" in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:60:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:63:    assert formatted["_mcp_content"]
+novaic-cortex/tests/test_tool_output_projection.py:64:    assert all(item["type"] == "text" for item in formatted["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:65:    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_tool_output_projection.py:68:def test_tool_output_v1_preview_mentions_artifact_count():
+novaic-cortex/tests/test_tool_output_projection.py:69:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:71:    assert "[1 artifacts]" in preview_for_text(parsed)
+novaic-cortex/tests/test_tool_output_projection.py:75:    parsed = parse_tool_result(
+novaic-cortex/tests/test_tool_output_projection.py:77:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:78:                {"type": "text", "text": "mcp image"},
+novaic-cortex/tests/test_tool_output_projection.py:84:    assert parsed["text"] == "mcp image"
+novaic-cortex/tests/test_tool_output_projection.py:85:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+novaic-cortex/tests/test_tool_output_projection.py:89:    parsed = parse_tool_result(
+novaic-cortex/tests/test_tool_output_projection.py:91:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:92:                {"type": "text", "text": "display image"},
+novaic-cortex/tests/test_tool_output_projection.py:99:    current = json.loads(format_for_current_tool_result_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:102:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:103:    assert all(item["type"] == "text" for item in current["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:104:    assert display["_mcp_content"][1] == {
+novaic-cortex/tests/test_tool_output_projection.py:111:def test_nested_result_wrapper_stays_text_and_does_not_project_image():
+novaic-cortex/tests/test_tool_output_projection.py:112:    parsed = parse_tool_result(
+novaic-cortex/tests/test_tool_output_projection.py:116:                "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:117:                    {"type": "text", "text": "unsupported wrapped shape"},
+novaic-cortex/tests/test_tool_output_projection.py:125:    assert '"result"' in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:127:    assert all(item["type"] == "text" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:131:    parsed = parse_tool_result({
+novaic-cortex/tests/test_tool_output_projection.py:133:        "llm_content": {
+novaic-cortex/tests/test_tool_output_projection.py:136:            "text": "exit_code=0\nstdout:\nshort preview",
+novaic-cortex/tests/test_tool_output_projection.py:137:            "artifacts": [],
+novaic-cortex/tests/test_tool_output_projection.py:151:    assert parsed["text"] == "exit_code=0\nstdout:\nshort preview"
+novaic-cortex/tests/test_tool_output_projection.py:152:    assert "x" * 100 not in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:157:    parsed = parse_tool_result({
+novaic-cortex/tests/test_tool_output_projection.py:159:        "llm_content": {
+novaic-cortex/tests/test_tool_output_projection.py:162:            "text": "exit_code=0\nstdout:\n/9j/AAAA\n... [truncated 10000 chars]",
+novaic-cortex/tests/test_tool_output_projection.py:163:            "artifacts": [],
+novaic-cortex/tests/test_tool_output_projection.py:185:    assert parsed["text"].startswith("exit_code=0\nstdout:\n/9j/AAAA")
+novaic-cortex/tests/test_tool_output_projection.py:186:    assert "A" * 1000 not in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:187:    assert all(item["type"] == "text" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:188:    assert not any(item.get("type") == "image" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:192:    parsed = parse_tool_result({
+novaic-cortex/tests/test_tool_output_projection.py:194:        "llm_content": {
+novaic-cortex/tests/test_tool_output_projection.py:196:            "message": "Loaded screenshot.jpg (6B, image/jpeg)",
+novaic-cortex/tests/test_tool_output_projection.py:197:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:200:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:201:                {"type": "text", "text": "desktop screenshot"},
+novaic-cortex/tests/test_tool_output_projection.py:207:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:216:    assert parsed["text"] == "desktop screenshot"
+novaic-cortex/tests/test_tool_output_projection.py:217:    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+novaic-cortex/tests/test_tool_output_projection.py:218:    assert display["_mcp_content"][1] == {
+novaic-cortex/tests/test_tool_output_projection.py:227:        "text": "parsed screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:229:        "display_files": [{"url": "data:image/png;base64,aabbcc"}],
+novaic-cortex/tests/test_tool_output_projection.py:233:    current = json.loads(format_for_current_tool_result_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:236:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:237:    assert all(item["type"] == "text" for item in current["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:238:    assert any(item["type"] == "image" for item in display["_mcp_content"])
+novaic-cortex/tests/test_context_event_projection.py:5:from novaic_cortex.context_event_projection import (
+novaic-cortex/tests/test_context_event_projection.py:6:    ContextEventProjectionError,
+novaic-cortex/tests/test_context_event_projection.py:7:    project_context_events,
+novaic-cortex/tests/test_context_event_projection.py:9:from novaic_cortex.context_events import ContextEvent, build_stream_id
+novaic-cortex/tests/test_context_event_projection.py:12:def _event(seq: int, type: str, payload: dict, **overrides) -> ContextEvent:
+novaic-cortex/tests/test_context_event_projection.py:28:    return ContextEvent.create(**data)
+novaic-cortex/tests/test_context_event_projection.py:31:def test_project_context_events_empty_snapshot() -> None:
+novaic-cortex/tests/test_context_event_projection.py:32:    snapshot = project_context_events([])
+novaic-cortex/tests/test_context_event_projection.py:45:def test_project_context_events_basic_messages_and_applied_seq() -> None:
+novaic-cortex/tests/test_context_event_projection.py:51:            {"message": {"role": "system", "content": "You are XiaoMa."}},
+novaic-cortex/tests/test_context_event_projection.py:55:            "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_projection.py:56:            {"message": {"role": "assistant", "content": "hello"}},
+novaic-cortex/tests/test_context_event_projection.py:60:    snapshot = project_context_events(events)
+novaic-cortex/tests/test_context_event_projection.py:69:        {"role": "system", "content": "You are XiaoMa."},
+novaic-cortex/tests/test_context_event_projection.py:70:        {"role": "assistant", "content": "hello"},
+novaic-cortex/tests/test_context_event_projection.py:75:def test_project_context_events_rejects_first_seq_that_does_not_start_at_one() -> None:
+novaic-cortex/tests/test_context_event_projection.py:76:    with pytest.raises(ContextEventProjectionError, match="must start at 1"):
+novaic-cortex/tests/test_context_event_projection.py:77:        project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:82:def test_project_context_events_rejects_mixed_stream_ids() -> None:
+novaic-cortex/tests/test_context_event_projection.py:83:    with pytest.raises(ContextEventProjectionError, match="multiple streams"):
+novaic-cortex/tests/test_context_event_projection.py:84:        project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:89:                    "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_projection.py:90:                    {"message": {"role": "assistant", "content": "wrong stream"}},
+novaic-cortex/tests/test_context_event_projection.py:105:                _event(1, "ContextMessageAppended", {"message": {"role": "assistant"}}),
+novaic-cortex/tests/test_context_event_projection.py:112:                _event(3, "ContextMessageAppended", {"message": {"role": "assistant"}}),
+novaic-cortex/tests/test_context_event_projection.py:118:                _event(2, "ContextMessageAppended", {"message": {"role": "assistant"}}),
+novaic-cortex/tests/test_context_event_projection.py:125:def test_project_context_events_rejects_invalid_sequence_order(events, message) -> None:
+novaic-cortex/tests/test_context_event_projection.py:126:    with pytest.raises(ContextEventProjectionError, match=message):
+novaic-cortex/tests/test_context_event_projection.py:127:        project_context_events(events)
+novaic-cortex/tests/test_context_event_projection.py:130:def test_project_context_events_notification_hint_does_not_fetch_body() -> None:
+novaic-cortex/tests/test_context_event_projection.py:131:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:149:            "content": (
+novaic-cortex/tests/test_context_event_projection.py:166:def test_project_context_events_wake_stack_archive() -> None:
+novaic-cortex/tests/test_context_event_projection.py:167:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:191:def test_project_context_events_new_wake_suppresses_stale_open_wake() -> None:
+novaic-cortex/tests/test_context_event_projection.py:192:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:201:                "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_projection.py:204:                    "message": {"role": "user", "content": "old input"},
+novaic-cortex/tests/test_context_event_projection.py:214:                "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_projection.py:217:                    "message": {"role": "user", "content": "stale input"},
+novaic-cortex/tests/test_context_event_projection.py:222:                "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_projection.py:225:                    "message": {"role": "user", "content": "current input"},
+novaic-cortex/tests/test_context_event_projection.py:237:def test_project_context_events_skill_scope_open_adds_stack_frame() -> None:
+novaic-cortex/tests/test_context_event_projection.py:238:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:270:def test_project_context_events_nested_skill_scope_stack_order() -> None:
+novaic-cortex/tests/test_context_event_projection.py:271:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:298:def test_project_context_events_valid_skill_close_pops_stack() -> None:
+novaic-cortex/tests/test_context_event_projection.py:299:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:318:def test_project_context_events_rejects_non_lifo_skill_close() -> None:
+novaic-cortex/tests/test_context_event_projection.py:319:    with pytest.raises(ContextEventProjectionError, match="violates LIFO"):
+novaic-cortex/tests/test_context_event_projection.py:320:        project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:346:def test_project_context_events_closed_skill_renders_fold_summary() -> None:
+novaic-cortex/tests/test_context_event_projection.py:347:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:361:                "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_projection.py:364:                    "message": {"role": "assistant", "content": "internal detail"},
+novaic-cortex/tests/test_context_event_projection.py:374:            "content": "[Skill 'research' completed]\ndone",
+novaic-cortex/tests/test_context_event_projection.py:381:def test_project_context_events_blank_scope_close_emits_no_empty_summary() -> None:
+novaic-cortex/tests/test_context_event_projection.py:382:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:396:                "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_projection.py:399:                    "message": {"role": "assistant", "content": "visible child detail"},
+novaic-cortex/tests/test_context_event_projection.py:406:    assert snapshot.messages == [{"role": "assistant", "content": "visible child detail"}]
+novaic-cortex/tests/test_context_event_projection.py:409:def test_project_context_events_blank_structural_parent_exposes_child_fold() -> None:
+novaic-cortex/tests/test_context_event_projection.py:410:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:439:            "content": "[Skill 'research' completed]\nchild done",
+novaic-cortex/tests/test_context_event_projection.py:446:def test_project_context_events_new_sibling_suppresses_stale_open_sibling() -> None:
+novaic-cortex/tests/test_context_event_projection.py:447:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:461:                "ContextMessageAppended",
+novaic-cortex/tests/test_context_event_projection.py:464:                    "message": {"role": "assistant", "content": "stale internal"},
+novaic-cortex/tests/test_context_event_projection.py:484:            "content": "[Skill 'debug' completed]\nfresh",
+novaic-cortex/tests/test_context_event_projection.py:491:def test_project_context_events_new_sibling_suppresses_stale_descendants() -> None:
+novaic-cortex/tests/test_context_event_projection.py:492:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:528:def test_project_context_events_nested_child_is_not_suppressed_by_parent_open() -> None:
+novaic-cortex/tests/test_context_event_projection.py:529:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:556:def test_project_context_events_assistant_tool_call_and_result() -> None:
+novaic-cortex/tests/test_context_event_projection.py:559:        "content": "",
+novaic-cortex/tests/test_context_event_projection.py:568:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:579:                    "observation": {"preview": "exit_code=0"},
+novaic-cortex/tests/test_context_event_projection.py:592:            "content": "exit_code=0",
+novaic-cortex/tests/test_context_event_projection.py:604:def test_project_context_events_multiple_tool_results_preserve_order_and_payload_refs() -> None:
+novaic-cortex/tests/test_context_event_projection.py:605:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:613:                        "content": "",
+novaic-cortex/tests/test_context_event_projection.py:625:                    "observation": {"summary": "A"},
+novaic-cortex/tests/test_context_event_projection.py:636:                    "observation": {"preview": "B"},
+novaic-cortex/tests/test_context_event_projection.py:654:def test_project_context_events_uses_stable_step_ref_when_payload_is_externalized() -> None:
+novaic-cortex/tests/test_context_event_projection.py:655:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:663:                        "content": "",
+novaic-cortex/tests/test_context_event_projection.py:675:                    "observation": {"summary": "done"},
+novaic-cortex/tests/test_context_event_projection.py:689:def test_project_context_events_orphan_tool_result_is_marked() -> None:
+novaic-cortex/tests/test_context_event_projection.py:690:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:699:                    "observation": {"summary": "orphan"},
+novaic-cortex/tests/test_context_event_projection.py:711:def test_project_context_events_scoped_tool_result_is_folded_with_skill() -> None:
+novaic-cortex/tests/test_context_event_projection.py:712:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:731:                        "content": "",
+novaic-cortex/tests/test_context_event_projection.py:744:                    "observation": {"preview": "internal output"},
+novaic-cortex/tests/test_context_event_projection.py:755:            "content": "[Skill 'research' completed]\ndone",
+novaic-cortex/tests/test_context_event_projection.py:762:def test_project_context_events_rejects_mixed_root_streams() -> None:
+novaic-cortex/tests/test_context_event_projection.py:763:    with pytest.raises(ContextEventProjectionError, match="multiple streams"):
+novaic-cortex/tests/test_context_event_projection.py:764:        project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:780:def test_project_context_events_rejects_missing_required_payload(type, payload, message) -> None:
+novaic-cortex/tests/test_context_event_projection.py:781:    with pytest.raises(ContextEventProjectionError, match=message):
+novaic-cortex/tests/test_context_event_projection.py:782:        project_context_events([_event(1, type, payload)])

@@ -1,0 +1,584 @@
+===== novaic-agent-runtime/task_queue/handlers/session_handlers.py:44 =====
+    39	        agent_id: str
+    40	        subagent_id: str
+    41	        scope_id: str
+    42	        finalize_reason: str
+    43	        generation: int
+    44	        remaining_stack: dict
+    45	    """
+    46	    agent_id = payload.get("agent_id")
+    47	    subagent_id = payload.get("subagent_id")
+    48	    scope_id = payload.get("scope_id")
+    49	    finalize_reason = payload.get("finalize_reason")
+
+===== novaic-agent-runtime/task_queue/handlers/session_handlers.py:51 =====
+    46	    agent_id = payload.get("agent_id")
+    47	    subagent_id = payload.get("subagent_id")
+    48	    scope_id = payload.get("scope_id")
+    49	    finalize_reason = payload.get("finalize_reason")
+    50	    generation = payload.get("generation")
+    51	    remaining_stack = payload.get("remaining_stack")
+    52	
+    53	    if not agent_id:
+    54	        raise ValidationError("Missing required field: agent_id")
+    55	    if not subagent_id:
+    56	        raise ValidationError("Missing required field: subagent_id")
+
+===== novaic-agent-runtime/task_queue/handlers/session_handlers.py:62 =====
+    57	    if not scope_id:
+    58	        raise ValidationError("Missing required field: scope_id")
+    59	    if not finalize_reason:
+    60	        raise ValidationError("Missing required field: finalize_reason")
+    61	    generation = _positive_generation(generation)
+    62	    if remaining_stack is None:
+    63	        raise ValidationError("Missing required field: remaining_stack")
+    64	    if not isinstance(remaining_stack, dict):
+    65	        raise ValidationError("remaining_stack must be an object")
+    66	
+    67	    saga_client = ctx.get("saga_client")
+
+===== novaic-agent-runtime/task_queue/handlers/session_handlers.py:63 =====
+    58	        raise ValidationError("Missing required field: scope_id")
+    59	    if not finalize_reason:
+    60	        raise ValidationError("Missing required field: finalize_reason")
+    61	    generation = _positive_generation(generation)
+    62	    if remaining_stack is None:
+    63	        raise ValidationError("Missing required field: remaining_stack")
+    64	    if not isinstance(remaining_stack, dict):
+    65	        raise ValidationError("remaining_stack must be an object")
+    66	
+    67	    saga_client = ctx.get("saga_client")
+    68	    if not saga_client:
+
+===== novaic-agent-runtime/task_queue/handlers/session_handlers.py:64 =====
+    59	    if not finalize_reason:
+    60	        raise ValidationError("Missing required field: finalize_reason")
+    61	    generation = _positive_generation(generation)
+    62	    if remaining_stack is None:
+    63	        raise ValidationError("Missing required field: remaining_stack")
+    64	    if not isinstance(remaining_stack, dict):
+    65	        raise ValidationError("remaining_stack must be an object")
+    66	
+    67	    saga_client = ctx.get("saga_client")
+    68	    if not saga_client:
+    69	        raise ValidationError("Missing required client in ctx: saga_client")
+
+===== novaic-agent-runtime/task_queue/handlers/session_handlers.py:65 =====
+    60	        raise ValidationError("Missing required field: finalize_reason")
+    61	    generation = _positive_generation(generation)
+    62	    if remaining_stack is None:
+    63	        raise ValidationError("Missing required field: remaining_stack")
+    64	    if not isinstance(remaining_stack, dict):
+    65	        raise ValidationError("remaining_stack must be an object")
+    66	
+    67	    saga_client = ctx.get("saga_client")
+    68	    if not saga_client:
+    69	        raise ValidationError("Missing required client in ctx: saga_client")
+    70	
+
+===== novaic-agent-runtime/task_queue/handlers/session_handlers.py:77 =====
+    72	        agent_id=agent_id,
+    73	        subagent_id=subagent_id,
+    74	        scope_id=scope_id,
+    75	        finalize_reason=str(finalize_reason),
+    76	        generation=generation,
+    77	        remaining_stack=remaining_stack,
+    78	    )
+    79	
+    80	    if result.get("action") == "finalize_rejected":
+    81	        reason = result.get("reason", "unknown")
+    82	        raise BusinessError(f"session_ended finalize_rejected: {reason}")
+
+===== novaic-agent-runtime/task_queue/retry_policy.py:69 =====
+    64	        Evaluate whether this failure should be retried.
+    65	
+    66	        Args:
+    67	            error: captured exception
+    68	            attempt: 1-based attempt index
+    69	            max_attempts: optional per-task/per-saga max override
+    70	        """
+    71	        effective_max = max(1, int(max_attempts or self.max_attempts))
+    72	
+    73	        if isinstance(error, BusinessError):
+    74	            return RetryDecision(
+
+===== novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:70 =====
+    65	    wake_scope_path = payload.get("wake_scope_path") or payload.get("scope_path")
+    66	    agent_id = payload.get("agent_id")
+    67	    user_id = payload.get("user_id")
+    68	    report = payload.get("report", "")
+    69	    finalize_reason = payload.get("finalize_reason", "stack_empty")
+    70	    remaining_stack = payload.get("remaining_stack")
+    71	    round_num = payload.get("round_num", 0)
+    72	
+    73	    if not scope_id:
+    74	        raise ValidationError("Missing required field: scope_id")
+    75	    if not agent_id:
+
+===== novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:80 =====
+    75	    if not agent_id:
+    76	        raise ValidationError("Missing required field: agent_id")
+    77	    if not user_id:
+    78	        return {"success": True, "message": "No user_id, skipped cortex archival", "scope_id": scope_id}
+    79	    session_generation = require_positive_session_generation(payload, "cortex.scope_end")
+    80	    if not isinstance(remaining_stack, dict):
+    81	        raise ValidationError("Missing required field: remaining_stack")
+    82	
+    83	    bridge_scope_id = agent_root_scope_id or scope_id
+    84	    bridge = get_cortex_bridge(bridge_scope_id, user_id, agent_id)
+    85	
+
+===== novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:81 =====
+    76	        raise ValidationError("Missing required field: agent_id")
+    77	    if not user_id:
+    78	        return {"success": True, "message": "No user_id, skipped cortex archival", "scope_id": scope_id}
+    79	    session_generation = require_positive_session_generation(payload, "cortex.scope_end")
+    80	    if not isinstance(remaining_stack, dict):
+    81	        raise ValidationError("Missing required field: remaining_stack")
+    82	
+    83	    bridge_scope_id = agent_root_scope_id or scope_id
+    84	    bridge = get_cortex_bridge(bridge_scope_id, user_id, agent_id)
+    85	
+    86	    # Step 1 — snapshot input_message_ids BEFORE archive.
+
+===== novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:116 =====
+   111	            report=report,
+   112	            is_root=(not agent_root_scope_id or agent_root_scope_id == scope_id),
+   113	            scope_path=wake_scope_path,
+   114	            session_generation=session_generation,
+   115	            finalize_reason=str(finalize_reason or "stack_empty"),
+   116	            remaining_stack=dict(remaining_stack),
+   117	            round_num=int(round_num or 0),
+   118	        )
+   119	    except Exception as e:
+   120	        logger.error(
+   121	            "[cortex.scope_end] archive failed scope=%s reason=%s round=%s err=%s",
+
+===== novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:51 =====
+    46	        scope_id: str
+    47	        agent_id: str
+    48	        subagent_id: str
+    49	        user_id: str
+    50	        trigger_type: str  (default "user_message")
+    51	        initial_context: list  (optional, for sub-subagent)
+    52	        user_message: str  (optional, for skill matching)
+    53	    """
+    54	    scope_id = payload.get("scope_id")
+    55	    agent_id = payload.get("agent_id")
+    56	    subagent_id = payload.get("subagent_id")
+
+===== novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:52 =====
+    47	        agent_id: str
+    48	        subagent_id: str
+    49	        user_id: str
+    50	        trigger_type: str  (default "user_message")
+    51	        initial_context: list  (optional, for sub-subagent)
+    52	        user_message: str  (optional, for skill matching)
+    53	    """
+    54	    scope_id = payload.get("scope_id")
+    55	    agent_id = payload.get("agent_id")
+    56	    subagent_id = payload.get("subagent_id")
+    57	    user_id = payload.get("user_id", "")
+
+===== novaic-agent-runtime/task_queue/sagas/wake_finalize.py:39 =====
+    34	        "agent_id": ctx["agent_id"],
+    35	        "user_id": ctx.get("user_id", ""),
+    36	        "session_generation": _session_generation(ctx),
+    37	        "report": "",
+    38	        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+    39	        "remaining_stack": _remaining_stack_snapshot(ctx),
+    40	        "round_num": _non_negative_int(ctx.get("round_num"), "round_num"),
+    41	    }
+    42	
+    43	
+    44	def _build_set_sleeping_payload(ctx):
+
+===== novaic-agent-runtime/task_queue/sagas/wake_finalize.py:97 =====
+    92	        "scope_id": ctx["scope_id"],
+    93	        "session_generation": _session_generation(ctx),
+    94	    }
+    95	
+    96	
+    97	def _remaining_stack_snapshot(ctx):
+    98	    remaining_stack = ctx.get("remaining_stack")
+    99	    if isinstance(remaining_stack, dict):
+   100	        return dict(remaining_stack)
+   101	    raise ValueError("remaining_stack is required for wake_finalize")
+   102	
+
+===== novaic-agent-runtime/task_queue/sagas/wake_finalize.py:98 =====
+    93	        "session_generation": _session_generation(ctx),
+    94	    }
+    95	
+    96	
+    97	def _remaining_stack_snapshot(ctx):
+    98	    remaining_stack = ctx.get("remaining_stack")
+    99	    if isinstance(remaining_stack, dict):
+   100	        return dict(remaining_stack)
+   101	    raise ValueError("remaining_stack is required for wake_finalize")
+   102	
+   103	
+
+===== novaic-agent-runtime/task_queue/sagas/wake_finalize.py:99 =====
+    94	    }
+    95	
+    96	
+    97	def _remaining_stack_snapshot(ctx):
+    98	    remaining_stack = ctx.get("remaining_stack")
+    99	    if isinstance(remaining_stack, dict):
+   100	        return dict(remaining_stack)
+   101	    raise ValueError("remaining_stack is required for wake_finalize")
+   102	
+   103	
+   104	def _build_session_ended_payload(ctx):
+
+===== novaic-agent-runtime/task_queue/sagas/wake_finalize.py:100 =====
+    95	
+    96	
+    97	def _remaining_stack_snapshot(ctx):
+    98	    remaining_stack = ctx.get("remaining_stack")
+    99	    if isinstance(remaining_stack, dict):
+   100	        return dict(remaining_stack)
+   101	    raise ValueError("remaining_stack is required for wake_finalize")
+   102	
+   103	
+   104	def _build_session_ended_payload(ctx):
+   105	    return {
+
+===== novaic-agent-runtime/task_queue/sagas/wake_finalize.py:101 =====
+    96	
+    97	def _remaining_stack_snapshot(ctx):
+    98	    remaining_stack = ctx.get("remaining_stack")
+    99	    if isinstance(remaining_stack, dict):
+   100	        return dict(remaining_stack)
+   101	    raise ValueError("remaining_stack is required for wake_finalize")
+   102	
+   103	
+   104	def _build_session_ended_payload(ctx):
+   105	    return {
+   106	        "agent_id": ctx["agent_id"],
+
+===== novaic-agent-runtime/task_queue/sagas/wake_finalize.py:113 =====
+   108	        "scope_id": ctx["scope_id"],
+   109	        "agent_root_scope_id": ctx.get("agent_root_scope_id"),
+   110	        "wake_scope_path": ctx.get("wake_scope_path"),
+   111	        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+   112	        "generation": _session_generation(ctx),
+   113	        "remaining_stack": _remaining_stack_snapshot(ctx),
+   114	        "round_num": _non_negative_int(ctx.get("round_num"), "round_num"),
+   115	    }
+   116	
+   117	
+   118	WAKE_FINALIZE_SAGA = SagaDefinition("wake_finalize")
+
+===== novaic-agent-runtime/task_queue/sagas/wake_finalize.py:124 =====
+   119	
+   120	WAKE_FINALIZE_SAGA.add_task_step(
+   121	    name="cortex_scope_end",
+   122	    topic=TaskTopics.CORTEX_SCOPE_END,
+   123	    build_payload=_build_cortex_scope_end_payload,
+   124	    optional=True,
+   125	)
+   126	
+   127	WAKE_FINALIZE_SAGA.add_task_step(
+   128	    name="session_ended",
+   129	    topic=TaskTopics.SESSION_ENDED,
+
+===== novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:124 =====
+   119	    Payload:
+   120	        agent_id: str
+   121	        subagent_id: str
+   122	        scope_id: str
+   123	        session_generation: int
+   124	        result: str (optional)
+   125	    """
+   126	    if not payload.get("agent_id"):
+   127	        raise ValidationError("Missing required field: agent_id")
+   128	    if not payload.get("subagent_id"):
+   129	        raise ValidationError("Missing required field: subagent_id")
+
+===== novaic-agent-runtime/task_queue/utils/cortex_bridge.py:130 =====
+   125	        *,
+   126	        is_root: bool = True,
+   127	        scope_path: str | None = None,
+   128	        session_generation: int | None = None,
+   129	        finalize_reason: str | None = None,
+   130	        remaining_stack: dict[str, Any] | None = None,
+   131	        round_num: int | None = None,
+   132	    ) -> Optional[str]:
+   133	        payload: Dict[str, Any] = {
+   134	            **self._tenant(),
+   135	            "scope_id": scope_id,
+
+===== novaic-agent-runtime/task_queue/utils/cortex_bridge.py:148 =====
+   143	                session_generation,
+   144	                "CortexBridge.scope_end",
+   145	            )
+   146	        if finalize_reason is not None:
+   147	            payload["finalize_reason"] = finalize_reason
+   148	        if remaining_stack is not None:
+   149	            payload["remaining_stack"] = dict(remaining_stack)
+   150	        if round_num is not None:
+   151	            payload["round_num"] = int(round_num)
+   152	        result = self._post("/v1/scope/end", payload)
+   153	        archive_path = result.get("archive_path")
+
+===== novaic-agent-runtime/task_queue/utils/cortex_bridge.py:149 =====
+   144	                "CortexBridge.scope_end",
+   145	            )
+   146	        if finalize_reason is not None:
+   147	            payload["finalize_reason"] = finalize_reason
+   148	        if remaining_stack is not None:
+   149	            payload["remaining_stack"] = dict(remaining_stack)
+   150	        if round_num is not None:
+   151	            payload["round_num"] = int(round_num)
+   152	        result = self._post("/v1/scope/end", payload)
+   153	        archive_path = result.get("archive_path")
+   154	        logger.info("[CortexBridge] scope.archived scope_id=%s path=%s", scope_id, archive_path)
+
+===== novaic-agent-runtime/task_queue/utils/cortex_bridge.py:518 =====
+   513	
+   514	        Args:
+   515	            scope_id: root session scope_id.
+   516	            child_scope_id: globally-unique id for the new scope (LLM-chosen).
+   517	            skill_name: skill label.
+   518	            task: optional task description.
+   519	        """
+   520	        return self._post("/v1/context/skill_begin", {
+   521	            **self._tenant(),
+   522	            "scope_id": scope_id,
+   523	            "child_scope_id": child_scope_id,
+
+===== novaic-agent-runtime/task_queue/client.py:36 =====
+    31	    
+    32	    使用方式：
+    33	        client = TaskQueueClient("http://localhost:8716", service_name="example")
+    34	        
+    35	        # 和 TaskQueue 相同的接口
+    36	        task_id = client.publish("my_topic", {"key": "value"})
+    37	        task = client.claim(["my_topic"], "worker-1")
+    38	        client.complete(task["id"], {"result": "ok"})
+    39	    """
+    40	    
+    41	    def __init__(
+
+===== novaic-agent-runtime/task_queue/client.py:130 =====
+   125	                return self._request(method, path, json_data, _retry=False)
+   126	            raise TaskQueueError(f"HTTP error: {e}")
+   127	        except httpx.HTTPError as e:
+   128	            raise TaskQueueError(f"HTTP error: {e}")
+   129	    
+   130	    def publish(
+   131	        self,
+   132	        topic: str,
+   133	        payload: Dict[str, Any],
+   134	        idempotency_key: Optional[str] = None,
+   135	        max_retries: int = None,
+
+===== novaic-agent-runtime/task_queue/client.py:484 =====
+   479	        subagent_id: str,
+   480	        scope_id: str,
+   481	        *,
+   482	        finalize_reason: str,
+   483	        generation: int,
+   484	        remaining_stack: Dict[str, Any],
+   485	    ) -> Dict[str, Any]:
+   486	        """Notify Session Coordinator that a session has ended.
+   487	
+   488	        Returns:
+   489	            {"action": "session_closed"}
+
+===== novaic-agent-runtime/task_queue/client.py:499 =====
+   494	            "agent_id": agent_id,
+   495	            "subagent_id": subagent_id,
+   496	            "scope_id": scope_id,
+   497	            "finalize_reason": finalize_reason,
+   498	            "generation": generation,
+   499	            "remaining_stack": remaining_stack,
+   500	        })
+   501	
+   502	class _BaseInternalApiClient:
+   503	    """Shared sync HTTP client for internal API calls."""
+   504	
+
+===== novaic-agent-runtime/task_queue/saga.py:85 =====
+    80	    # 条件执行
+    81	    condition: Optional[Callable] = None
+    82	    depends_on: Optional[List[str]] = None
+    83	    
+    84	    # 是否可选（失败不影响后续）
+    85	    optional: bool = False
+    86	    
+    87	    # 并行步骤失败策略
+    88	    # - fail_fast: 任一失败则返回失败结果（默认）
+    89	    # - ignore_failures: 忽略失败，继续执行
+    90	    # - require_all: 同 fail_fast
+
+===== novaic-agent-runtime/task_queue/saga.py:122 =====
+   117	        self,
+   118	        name: str,
+   119	        topic: str,
+   120	        build_payload: Callable,
+   121	        condition: Optional[Callable] = None,
+   122	        optional: bool = False,
+   123	        depends_on: Optional[List[str]] = None,
+   124	    ) -> 'SagaDefinition':
+   125	        """添加 Task 步骤"""
+   126	        self.steps.append(SagaStep(
+   127	            name=name,
+
+===== novaic-agent-runtime/task_queue/saga.py:132 =====
+   127	            name=name,
+   128	            step_type=StepType.TASK,
+   129	            topic=topic,
+   130	            build_payload=build_payload,
+   131	            condition=condition,
+   132	            optional=optional,
+   133	            depends_on=depends_on,
+   134	        ))
+   135	        return self
+   136	    
+   137	    def add_parallel_step(
+
+===== novaic-agent-runtime/task_queue/saga.py:142 =====
+   137	    def add_parallel_step(
+   138	        self,
+   139	        name: str,
+   140	        build_tasks: Callable,
+   141	        condition: Optional[Callable] = None,
+   142	        optional: bool = False,
+   143	        failure_policy: str = "fail_fast",
+   144	    ) -> 'SagaDefinition':
+   145	        """添加并行步骤
+   146	        
+   147	        Args:
+
+===== novaic-agent-runtime/task_queue/saga.py:158 =====
+   153	        self.steps.append(SagaStep(
+   154	            name=name,
+   155	            step_type=StepType.PARALLEL,
+   156	            build_tasks=build_tasks,
+   157	            condition=condition,
+   158	            optional=optional,
+   159	            failure_policy=failure_policy,
+   160	        ))
+   161	        return self
+   162	    
+   163	    def add_decision_step(
+
+===== novaic-agent-runtime/task_queue/tool_output.py:77 =====
+    72	
+    73	        data: dict[str, Any] = {
+    74	            "uri": uri,
+    75	            "modality": modality,
+    76	        }
+    77	        optional = {
+    78	            "id": self.id,
+    79	            "name": self.name,
+    80	            "mime_type": self.mime_type,
+    81	            "size_bytes": self.size_bytes,
+    82	            "sha256": self.sha256,
+
+===== novaic-agent-runtime/task_queue/tool_output.py:89 =====
+    84	            "source": _clean_mapping(self.source),
+    85	            "access": _clean_mapping(self.access),
+    86	            "projection": _clean_mapping(self.projection),
+    87	            "retention": _clean_mapping(self.retention),
+    88	        }
+    89	        for key, value in optional.items():
+    90	            if value not in ("", None, {}, []):
+    91	                data[key] = value
+    92	        return data
+    93	
+    94	
+
+===== novaic-agent-runtime/task_queue/workers/task_effects.py:83 =====
+    78	            str(effect.payload["error"]),
+    79	            retry=bool(effect.payload.get("retry", False)),
+    80	            retry_delay_seconds=effect.payload.get("retry_delay_seconds"),
+    81	        )
+    82	
+    83	    def _publish(self, effect: WorkerEffect) -> dict[str, Any]:
+    84	        task_id = self.client.publish(
+    85	            topic=str(effect.payload["topic"]),
+    86	            payload=effect.payload.get("payload") or {},
+    87	            idempotency_key=str(effect.payload["idempotency_key"]),
+    88	            saga_id=effect.payload.get("saga_id"),
+
+===== novaic-agent-runtime/task_queue/workers/task_effects.py:84 =====
+    79	            retry=bool(effect.payload.get("retry", False)),
+    80	            retry_delay_seconds=effect.payload.get("retry_delay_seconds"),
+    81	        )
+    82	
+    83	    def _publish(self, effect: WorkerEffect) -> dict[str, Any]:
+    84	        task_id = self.client.publish(
+    85	            topic=str(effect.payload["topic"]),
+    86	            payload=effect.payload.get("payload") or {},
+    87	            idempotency_key=str(effect.payload["idempotency_key"]),
+    88	            saga_id=effect.payload.get("saga_id"),
+    89	            step_name=effect.payload.get("step_name"),
+
+===== novaic-agent-runtime/task_queue/contracts/react_think.py:389 =====
+   384	            "subagent_id": source.subagent_id,
+   385	            "user_id": source.user_id,
+   386	            "session_generation": source.session_generation,
+   387	            "finalize_reason": finalize_reason,
+   388	            "round_num": round_num,
+   389	            "remaining_stack": {
+   390	                "known": stack_known,
+   391	                "depth": stack_depth,
+   392	                "frames": [],
+   393	            },
+   394	        },
+
+===== novaic-agent-runtime/task_queue/contracts/react_actions.py:392 =====
+   387	        "context": context,
+   388	        "idempotency_key": f"react-think-{source.scope_id}-round{next_round}",
+   389	    }
+   390	
+   391	
+   392	def _remaining_stack_snapshot(decision: dict[str, Any]) -> dict[str, Any]:
+   393	    stack_known = bool(decision.get("stack_known", True))
+   394	    stack_depth = int(decision.get("stack_depth") or 0)
+   395	    return {
+   396	        "known": stack_known,
+   397	        "depth": stack_depth,
+
+===== novaic-agent-runtime/task_queue/contracts/react_actions.py:420 =====
+   415	            "subagent_id": source.subagent_id,
+   416	            "user_id": source.user_id,
+   417	            "session_generation": source.session_generation,
+   418	            "finalize_reason": reason,
+   419	            "round_num": round_num,
+   420	            "remaining_stack": _remaining_stack_snapshot(decision),
+   421	            "tool_error_fingerprint": decision.get("tool_error_fingerprint"),
+   422	        },
+   423	        "idempotency_key": f"wake-finalize-{source.scope_id}-r{round_num}",
+   424	    }
+
+===== novaic-agent-runtime/task_queue/workers/saga_effects.py:34 =====
+    29	        })
+    30	
+    31	    def _heartbeat(self, effect: WorkerEffect) -> dict[str, Any]:
+    32	        return {"ok": self.saga_client.heartbeat(str(effect.payload["saga_id"]))}
+    33	
+    34	    def _task_publish(self, effect: WorkerEffect) -> dict[str, Any]:
+    35	        task_id = self.task_client.publish(
+    36	            topic=str(effect.payload["topic"]),
+    37	            payload=effect.payload.get("payload") or {},
+    38	            idempotency_key=str(effect.payload["idempotency_key"]),
+    39	            saga_id=str(effect.payload["saga_id"]),
+
+===== novaic-agent-runtime/task_queue/workers/saga_effects.py:35 =====
+    30	
+    31	    def _heartbeat(self, effect: WorkerEffect) -> dict[str, Any]:
+    32	        return {"ok": self.saga_client.heartbeat(str(effect.payload["saga_id"]))}
+    33	
+    34	    def _task_publish(self, effect: WorkerEffect) -> dict[str, Any]:
+    35	        task_id = self.task_client.publish(
+    36	            topic=str(effect.payload["topic"]),
+    37	            payload=effect.payload.get("payload") or {},
+    38	            idempotency_key=str(effect.payload["idempotency_key"]),
+    39	            saga_id=str(effect.payload["saga_id"]),
+    40	            step_name=str(effect.payload["step_name"]),
+

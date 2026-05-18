@@ -1,0 +1,299 @@
+=== source generation/active/finalize guard ===
+novaic-agent-runtime/queue_service/session_projection.py:110:    session_generation: int,
+novaic-agent-runtime/queue_service/session_projection.py:121:        "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:332:            reason="missing_generation",
+novaic-agent-runtime/queue_service/session_fsm.py:337:                    "reason": "missing_generation",
+novaic-agent-runtime/queue_service/session_rebuild.py:30:            session_generation = _positive_session_generation(
+novaic-agent-runtime/queue_service/session_rebuild.py:31:                context.get("session_generation")
+novaic-agent-runtime/queue_service/session_rebuild.py:33:            if not agent_id or not subagent_id or session_generation is None:
+novaic-agent-runtime/queue_service/session_rebuild.py:38:                generation=session_generation,
+novaic-agent-runtime/queue_service/session_rebuild.py:50:def _positive_session_generation(raw: Any) -> int | None:
+novaic-agent-runtime/queue_service/routes.py:547:    finalize_reason: str
+novaic-agent-runtime/queue_service/routes.py:549:    remaining_stack: Dict[str, Any]
+novaic-agent-runtime/queue_service/routes.py:590:            finalize_reason=req.finalize_reason,
+novaic-agent-runtime/queue_service/routes.py:592:            remaining_stack=req.remaining_stack,
+novaic-agent-runtime/queue_service/session_effects.py:17:    session_generation: int,
+novaic-agent-runtime/queue_service/session_effects.py:32:            "generation": session_generation,
+novaic-agent-runtime/queue_service/session_effects.py:56:    expected_session_generation: int | None,
+novaic-agent-runtime/queue_service/session_effects.py:72:            "expected_session_generation": expected_session_generation,
+novaic-cortex/novaic_cortex/active_stack_projection.py:204:            "remaining_stack": normalized,
+novaic-agent-runtime/queue_service/session_wake_plan.py:43:    session_generation: int,
+novaic-agent-runtime/queue_service/session_wake_plan.py:66:        "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:83:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:98:    session_generation: int,
+novaic-agent-runtime/queue_service/session_wake_plan.py:105:        session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:120:            session_generation=session_generation,
+novaic-cortex/novaic_cortex/context_event_projection.py:114:        remaining = event.payload.get("remaining_stack")
+novaic-cortex/novaic_cortex/workspace.py:389:            reason="scope_end_child", actor="cortex.workspace",
+novaic-cortex/novaic_cortex/workspace.py:508:            reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/novaic_cortex/workspace.py:536:                close_reason="scope_end_root",
+novaic-agent-runtime/queue_service/session_ledger.py:205:        generation = self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:280:        generation = self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:326:            generation=self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:355:        finalize_reason: str,
+novaic-agent-runtime/queue_service/session_ledger.py:359:        idempotency_suffix = finalize_reason
+novaic-agent-runtime/queue_service/session_ledger.py:361:            idempotency_suffix = f"{finalize_reason}:scope_mismatch"
+novaic-agent-runtime/queue_service/session_ledger.py:390:        finalize_reason: str,
+novaic-agent-runtime/queue_service/session_ledger.py:403:                f"{event_generation}:{finalize_reason}"
+novaic-agent-runtime/queue_service/session_ledger.py:458:    def session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:568:        generation = self.session_generation(
+novaic-agent-runtime/queue_service/session_outbox.py:8:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/queue_service/session_outbox.py:9:    require_positive_session_generation_value,
+novaic-agent-runtime/queue_service/session_outbox.py:204:        session_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_outbox.py:205:            payload.get("session_generation"),
+novaic-agent-runtime/queue_service/session_outbox.py:208:        remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/queue_service/session_outbox.py:209:        if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/queue_service/session_outbox.py:211:                "recovery archive outbox payload requires remaining_stack"
+novaic-agent-runtime/queue_service/session_outbox.py:221:                "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_outbox.py:223:                "finalize_reason": payload.get("finalize_reason") or "recovery",
+novaic-agent-runtime/queue_service/session_outbox.py:224:                "remaining_stack": dict(remaining_stack),
+novaic-agent-runtime/queue_service/session_outbox.py:243:        expected_generation = payload.get("expected_session_generation")
+novaic-agent-runtime/queue_service/session_outbox.py:246:                "attach input outbox payload requires expected_session_generation"
+novaic-agent-runtime/queue_service/session_outbox.py:248:        expected_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_outbox.py:264:                "expected_session_generation": expected_generation,
+novaic-agent-runtime/queue_service/session_recovery.py:13:def _positive_session_generation(raw: Any) -> int | None:
+novaic-agent-runtime/queue_service/session_recovery.py:87:    session_generation = _positive_session_generation(event.get("generation"))
+novaic-agent-runtime/queue_service/session_recovery.py:88:    if session_generation is not None:
+novaic-agent-runtime/queue_service/session_recovery.py:89:        marker["session_generation"] = session_generation
+novaic-agent-runtime/queue_service/session_recovery.py:147:    session_generation = _positive_session_generation(
+novaic-agent-runtime/queue_service/session_recovery.py:148:        recovery_marker.get("session_generation")
+novaic-agent-runtime/queue_service/session_recovery.py:150:    if not failed_scope_id or session_generation is None:
+novaic-agent-runtime/queue_service/session_recovery.py:154:    remaining_stack = recovery_metadata.get("remaining_stack")
+novaic-agent-runtime/queue_service/session_recovery.py:155:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/queue_service/session_recovery.py:156:        remaining_stack = {
+novaic-agent-runtime/queue_service/session_recovery.py:172:            "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_recovery.py:174:            "finalize_reason": (
+novaic-agent-runtime/queue_service/session_recovery.py:177:            "remaining_stack": remaining_stack,
+novaic-cortex/novaic_cortex/context_event_writer.py:80:        remaining_stack: list[str],
+novaic-cortex/novaic_cortex/context_event_writer.py:86:            "remaining_stack": remaining_stack,
+novaic-agent-runtime/task_queue/topics.py:38:    CORTEX_SCOPE_END = "cortex.scope_end"
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:42:        finalize_reason: str
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:44:        remaining_stack: dict
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:49:    finalize_reason = payload.get("finalize_reason")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:51:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:59:    if not finalize_reason:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:60:        raise ValidationError("Missing required field: finalize_reason")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:62:    if remaining_stack is None:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:63:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:64:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:65:        raise ValidationError("remaining_stack must be an object")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:75:        finalize_reason=str(finalize_reason),
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:77:        remaining_stack=remaining_stack,
+novaic-agent-runtime/queue_service/session_repo.py:328:                session_generation = self.session_ledger.next_generation(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:343:                    session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:376:        session_generation = self._next_session_generation_after_transaction(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:388:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:407:        session_generation: int,
+novaic-agent-runtime/queue_service/session_repo.py:434:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:508:        finalize_reason: Optional[str] = None,
+novaic-agent-runtime/queue_service/session_repo.py:510:        remaining_stack: Optional[Dict[str, Any]] = None,
+novaic-agent-runtime/queue_service/session_repo.py:520:        if not (finalize_reason or "").strip():
+novaic-agent-runtime/queue_service/session_repo.py:521:            raise ValueError("finalize_reason is required for session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:522:        if remaining_stack is None:
+novaic-agent-runtime/queue_service/session_repo.py:523:            raise ValueError("remaining_stack is required for session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:526:            "finalize_reason": finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:528:            "remaining_stack": dict(remaining_stack or {}),
+novaic-agent-runtime/queue_service/session_repo.py:552:                    finalize_reason=finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:575:                finalize_reason=finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:626:            session_generation = self.session_ledger.next_generation(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:631:                session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:925:            session_generation = _require_positive_generation(
+novaic-agent-runtime/queue_service/session_repo.py:942:                expected_session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:1068:    def _next_session_generation_after_transaction(self, session_key: str) -> int:
+novaic-cortex/novaic_cortex/scope_state.py:9:(which would violate INV-5 "scope_end is idempotent" and INV-6
+novaic-cortex/novaic_cortex/scope_state.py:16:        to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.api",
+novaic-cortex/novaic_cortex/scope_state.py:28:  and persists no transition event. This is what makes ``scope_end`` safe
+novaic-cortex/novaic_cortex/scope_state.py:41:  * ``archived`` — terminal after scope_end / archive_root.
+novaic-cortex/novaic_cortex/scope_state.py:82:#   * scope_end (idempotent)    → "archived"  -> "archived" (noop)
+novaic-cortex/novaic_cortex/scope_state.py:163:        reason:     Short snake_case reason (``"scope_end_root"``,
+novaic-cortex/novaic_cortex/scope_state.py:164:                    ``"scope_end_child"``, ``"scope_create"``, …).
+novaic-cortex/novaic_cortex/scope_state.py:195:        # retried scope_end still updates ``ended_at`` etc.
+novaic-agent-runtime/task_queue/sagas/react_think.py:125:        decision.get("finalize_reason"),
+novaic-agent-runtime/task_queue/sagas/react_think.py:140:    P0-5: ``finalize_reason`` is always populated by ``_decide_and_build_actions``
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:4:- cortex.scope_end:           Archive root scope to /ro/scopes/
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:26:from task_queue.contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:30:def _structural_scope_end_report(_: Any) -> str:
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:31:    """Runtime structural scope_end never writes durable summary text.
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:41:def handle_cortex_scope_end(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:69:    finalize_reason = payload.get("finalize_reason", "stack_empty")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:70:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:79:    session_generation = require_positive_session_generation(payload, "cortex.scope_end")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:80:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:81:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:97:            "[cortex.scope_end] read_session_meta soft-fail scope=%s err=%s",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:101:    report = _structural_scope_end_report(report)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:104:        "[cortex.scope_end] scope=%s generation=%s reason=%s round=%s report_len=%d inputs=%d",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:105:        scope_id, session_generation, finalize_reason, round_num,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:109:        archive_path = bridge.scope_end(
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:114:            session_generation=session_generation,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:115:            finalize_reason=str(finalize_reason or "stack_empty"),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:116:            remaining_stack=dict(remaining_stack),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:121:            "[cortex.scope_end] archive failed scope=%s reason=%s round=%s err=%s",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:122:            scope_id, finalize_reason, round_num, e,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:134:                "[cortex.scope_end] business_client missing from ctx; skipping "
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:145:                    reason="scope_end",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:151:                    "[cortex.scope_end] processed scope=%s inputs=%d ok=%d noop=%d error=%d",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:157:                    "[cortex.scope_end] environment notification transition soft-fail scope=%s inputs=%d err=%s",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:169:        "finalize_reason": finalize_reason,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:170:        "session_generation": session_generation,
+novaic-agent-runtime/queue_service/saga_repo.py:38:from task_queue.contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/queue_service/saga_repo.py:1124:def _positive_session_generation_from_context(context: Dict[str, Any]) -> int | None:
+novaic-agent-runtime/queue_service/saga_repo.py:1125:    raw = context.get("session_generation")
+novaic-agent-runtime/queue_service/saga_repo.py:1281:        session_generation = _positive_session_generation_from_context(context)
+novaic-agent-runtime/queue_service/saga_repo.py:1282:        if not scope_id or not agent_id or session_generation is None:
+novaic-agent-runtime/queue_service/saga_repo.py:1289:            "session_generation": session_generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1290:            "finalize_reason": f"compensation:{saga_type}_failed",
+novaic-agent-runtime/queue_service/saga_repo.py:1295:            "remaining_stack",
+novaic-agent-runtime/queue_service/saga_repo.py:1361:            "finalize_reason": saga_context.get(
+novaic-agent-runtime/queue_service/saga_repo.py:1362:                "finalize_reason",
+novaic-agent-runtime/queue_service/saga_repo.py:1377:            generation = require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:5:1. Structural Cortex scope_end (archive to /ro/scopes/ without summary)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:17:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:25:def _build_cortex_scope_end_payload(ctx):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:26:    """Feed finalize_reason + round_num into archival for audit logs.
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:28:    Structural scope_end gets an empty report. It is not a summary path.
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:36:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:38:        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:39:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:72:def _session_generation(ctx) -> int:
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:73:    return require_positive_session_generation(ctx, "wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:93:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:97:def _remaining_stack_snapshot(ctx):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:98:    remaining_stack = ctx.get("remaining_stack")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:99:    if isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:100:        return dict(remaining_stack)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:122:        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:123:        "generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:124:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:132:    name="cortex_scope_end",
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:134:    build_payload=_build_cortex_scope_end_payload,
+novaic-cortex/novaic_cortex/api.py:415:    session_generation: int | None = None
+novaic-cortex/novaic_cortex/api.py:416:    finalize_reason: str | None = None
+novaic-cortex/novaic_cortex/api.py:417:    remaining_stack: dict[str, Any] | None = None
+novaic-cortex/novaic_cortex/api.py:420:    @field_validator("session_generation", mode="before")
+novaic-cortex/novaic_cortex/api.py:422:    def _reject_bool_session_generation(cls, value: Any) -> Any:
+novaic-cortex/novaic_cortex/api.py:424:            raise ValueError("positive session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:430:            self.session_generation is not None
+novaic-cortex/novaic_cortex/api.py:431:            or self.finalize_reason is not None
+novaic-cortex/novaic_cortex/api.py:432:            or self.remaining_stack is not None
+novaic-cortex/novaic_cortex/api.py:436:        if self.session_generation is None:
+novaic-cortex/novaic_cortex/api.py:437:            raise ValueError("session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:438:        if self.session_generation < 1:
+novaic-cortex/novaic_cortex/api.py:439:            raise ValueError("positive session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:440:        if not (self.finalize_reason or "").strip():
+novaic-cortex/novaic_cortex/api.py:441:            raise ValueError("finalize_reason is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:442:        if self.remaining_stack is None:
+novaic-cortex/novaic_cortex/api.py:443:            raise ValueError("remaining_stack is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:454:    remaining_stack: list[str],
+novaic-cortex/novaic_cortex/api.py:467:        remaining_stack=remaining_stack,
+novaic-cortex/novaic_cortex/api.py:474:        req.session_generation is None
+novaic-cortex/novaic_cortex/api.py:475:        and req.finalize_reason is None
+novaic-cortex/novaic_cortex/api.py:476:        and req.remaining_stack is None
+novaic-cortex/novaic_cortex/api.py:480:        "session_generation": req.session_generation,
+novaic-cortex/novaic_cortex/api.py:481:        "finalize_reason": req.finalize_reason,
+novaic-cortex/novaic_cortex/api.py:482:        "remaining_stack": dict(req.remaining_stack or {}),
+novaic-cortex/novaic_cortex/api.py:495:def _semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:673:async def scope_end(req: ScopeEndRequest):
+novaic-cortex/novaic_cortex/api.py:676:    ``cortex_scope_end`` can safely retry after a transient failure).
+novaic-cortex/novaic_cortex/api.py:678:    Structural scope_end is not a summary API. Non-empty reports must go
+novaic-cortex/novaic_cortex/api.py:687:                "scope_end is structural and does not accept report; "
+novaic-cortex/novaic_cortex/api.py:714:            reason="scope_end_root",
+novaic-cortex/novaic_cortex/api.py:715:            remaining_stack=_semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:725:            reason="scope_end_root",
+novaic-cortex/novaic_cortex/api.py:755:            reason="scope_end_child",
+novaic-cortex/novaic_cortex/api.py:756:            remaining_stack=_semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:767:                reason="scope_end_child",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:14:from ..contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:26:def _positive_session_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:28:        return require_positive_session_generation_value(value, owner)
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:65:    session_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:66:        payload.get("session_generation"),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:110:        current_session_generation=session_generation,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:253:    expected_generation = payload.get("expected_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:266:        raise ValidationError("Missing required field: expected_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:267:    expected_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:269:        "session.attach_input.expected_session_generation",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:288:    current_generation = root_meta.get("current_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:289:    current_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:291:        "session.attach_input.current_session_generation",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:295:            "Stale session.attach_input: current_session_generation does not match expected"
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:322:        "session_generation": expected_generation,
+novaic-agent-runtime/task_queue/client.py:482:        finalize_reason: str,
+novaic-agent-runtime/task_queue/client.py:484:        remaining_stack: Dict[str, Any],
+novaic-agent-runtime/task_queue/client.py:497:            "finalize_reason": finalize_reason,
+novaic-agent-runtime/task_queue/client.py:499:            "remaining_stack": remaining_stack,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:102:    if decision.get("force_finalize_reason") == "reply_no_followup":
+novaic-agent-runtime/task_queue/sagas/react_actions.py:112:    if decision.get("force_finalize_reason") in {"round_cap", "repeated_scope_mismatch"}:
+novaic-agent-runtime/task_queue/sagas/react_actions.py:113:        metric_inc("turn_finalizer_total", reason=str(decision.get("force_finalize_reason")))
+novaic-agent-runtime/task_queue/sagas/react_actions.py:117:        "stack_known=%s stack_empty=%s should_finalize=%s force_finalize_reason=%s "
+novaic-agent-runtime/task_queue/sagas/react_actions.py:122:        decision["force_finalize_reason"],
+novaic-agent-runtime/task_queue/sagas/react_actions.py:137:    finalize_reason is either a forced-finalize cause (e.g. 'round_cap') or
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:13:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:56:    payload["session_generation"] = require_positive_session_generation(
+novaic-agent-runtime/task_queue/contracts/session_generation.py:8:def require_positive_session_generation_value(raw: Any, owner: str) -> int:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:12:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:20:                f"positive session_generation is required for {owner}"
+novaic-agent-runtime/task_queue/contracts/session_generation.py:23:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:26:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:30:def require_positive_session_generation(ctx: dict[str, Any], owner: str) -> int:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:33:    if "session_generation" not in ctx or ctx.get("session_generation") is None:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:34:        raise ValueError(f"{owner}.session_generation is required")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:35:    return require_positive_session_generation_value(ctx["session_generation"], owner)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:12:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/task_queue/contracts/react_actions.py:13:    require_positive_session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:14:    require_positive_session_generation_value,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:22:    session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_actions.py:39:            "session_generation",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:40:            require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/contracts/react_actions.py:41:                self.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:58:            session_generation=require_positive_session_generation(ctx, "ReactActionsInput"),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:321:            "force_finalize_reason": "reply_no_followup",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:333:            "force_finalize_reason": "repeated_scope_mismatch",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:341:            "force_finalize_reason": "round_cap",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:349:            "force_finalize_reason": None,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:357:        "force_finalize_reason": None,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:373:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:392:def _remaining_stack_snapshot(decision: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:406:    reason = decision.get("force_finalize_reason") or "stack_empty"
+novaic-agent-runtime/task_queue/contracts/react_actions.py:417:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:418:            "finalize_reason": reason,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:422:            "remaining_stack": _remaining_stack_snapshot(decision),
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:12:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:66:        require_positive_session_generation(payload, owner)
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:79:        session_generation: int
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:123:        session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_think.py:15:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/task_queue/contracts/react_think.py:16:    require_positive_session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:17:    require_positive_session_generation_value,
+novaic-agent-runtime/task_queue/contracts/react_think.py:26:    session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_think.py:42:            "session_generation",
+novaic-agent-runtime/task_queue/contracts/react_think.py:43:            require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/contracts/react_think.py:44:                self.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:61:            session_generation=require_positive_session_generation(ctx, "ReactThinkInput"),
+novaic-agent-runtime/task_queue/contracts/react_think.py:108:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:128:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:184:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:220:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:276:            "finalize_reason": "round_cap",
+novaic-agent-runtime/task_queue/contracts/react_think.py:305:            "finalize_reason": "stack_nonempty_after_retry",
+novaic-agent-runtime/task_queue/contracts/react_think.py:319:        "finalize_reason": "no_tool_exhausted",
+novaic-agent-runtime/task_queue/contracts/react_think.py:333:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:358:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:374:    finalize_reason = decision.get("finalize_reason", "no_tool_exhausted")
+novaic-agent-runtime/task_queue/contracts/react_think.py:386:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:387:            "finalize_reason": finalize_reason,
+novaic-agent-runtime/task_queue/contracts/react_think.py:391:            "remaining_stack": {
+novaic-agent-runtime/task_queue/contracts/react_think.py:397:        "idempotency_key": f"wake-finalize-{source.scope_id}-r{round_num}-{finalize_reason}",
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:17:from ..contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:121:    def scope_end(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:128:        session_generation: int | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:129:        finalize_reason: str | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:130:        remaining_stack: dict[str, Any] | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:141:        if session_generation is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:142:            payload["session_generation"] = require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:143:                session_generation,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:144:                "CortexBridge.scope_end",
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:146:        if finalize_reason is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:147:            payload["finalize_reason"] = finalize_reason
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:148:        if remaining_stack is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:149:            payload["remaining_stack"] = dict(remaining_stack)

@@ -1,0 +1,270 @@
+--- env reads source ---
+novaic-business/business/subscribers/dispatch_subscriber.py:111:        return max(0, int(environ.get("IM_AGGREGATION_WINDOW_SEC", "60")))
+novaic-business/business/subscribers/dispatch_subscriber.py:118:        return max(1, int(environ.get("IM_AGGREGATION_MAX_BATCH", "10")))
+--- config singleton/default source ---
+novaic-business/business/subscribers/dispatch_subscriber.py:60:_CLAIM_BACKOFF_MAX_S = 30.0
+novaic-business/business/subscribers/dispatch_subscriber.py:81:#   * the group size is ≥ 2 and ≤ ``IM_AGGREGATION_MAX_BATCH``,
+novaic-business/business/subscribers/dispatch_subscriber.py:118:        return max(1, int(environ.get("IM_AGGREGATION_MAX_BATCH", "10")))
+novaic-business/business/subscribers/dispatch_subscriber.py:336:                        _CLAIM_BACKOFF_MAX_S,
+novaic-agent-runtime/queue_service/main.py:16:from common.config import ServiceConfig
+novaic-agent-runtime/queue_service/main.py:24:NOVAIC_DATA_DIR = ServiceConfig.DATA_DIR
+novaic-agent-runtime/queue_service/main.py:109:_QUEUE_INTERNAL_KEY = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/queue_service/main.py:341:    PORT = ServiceConfig.QUEUE_SERVICE_PORT
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:15:from common.config import ServiceConfig
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:21:_DEFAULT_TIMEOUT = 30
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:46:        timeout: int = _DEFAULT_TIMEOUT,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:60:        url = ServiceConfig.CORTEX_URL.strip()
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:61:        timeout = ServiceConfig.CORTEX_TIMEOUT
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:62:        int_key = ServiceConfig.CORTEX_INTERNAL_KEY or ""
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:341:            http_timeout = max(float(self._timeout), float(timeout or _DEFAULT_TIMEOUT) + float(self._timeout))
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:25:from common.config import ServiceConfig
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:58:    with internal_sync_client(service_name="runtime-task", timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:97:    biz_url = ctx.get("business_url", ServiceConfig.BUSINESS_URL)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:113:        transport_config = LLMTransportConfig.from_mapping(llm_config)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:26:from common.config import ServiceConfig
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:294:        "NOVAIC_BLOB_SERVICE_URL": ServiceConfig.BLOB_SERVICE_URL,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:295:        "NOVAIC_BUSINESS_URL": ServiceConfig.BUSINESS_URL,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:296:        "NOVAIC_CORTEX_INTERNAL_KEY": ServiceConfig.CORTEX_INTERNAL_KEY,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:297:        "NOVAIC_DEVICE_URL": ServiceConfig.DEVICE_URL,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:298:        "NOVAIC_MAX_USER_REPLIES_PER_SESSION": str(ServiceConfig.MAX_USER_REPLIES_PER_SESSION),
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:299:        "NOVAIC_QUEUE_SERVICE_URL": ServiceConfig.QUEUE_SERVICE_URL,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:411:    base_url = ServiceConfig.BLOB_SERVICE_URL.rstrip("/")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:483:    factory_url = (llm_config.get("factory_url") or ServiceConfig.LLM_FACTORY_URL).rstrip("/")
+novaic-agent-runtime/task_queue/utils/activity_projection.py:31:_MAX_TEXT_CHARS = 4000
+novaic-agent-runtime/task_queue/utils/activity_projection.py:32:_MAX_ARGUMENT_CHARS = 1000
+novaic-agent-runtime/task_queue/utils/activity_projection.py:33:_MAX_DESC_CHARS = 80
+novaic-agent-runtime/task_queue/utils/activity_projection.py:82:def _text(value: Any, *, limit: int = _MAX_TEXT_CHARS) -> tuple[str, bool]:
+novaic-agent-runtime/task_queue/utils/activity_projection.py:133:    return compact[:_MAX_DESC_CHARS]
+novaic-agent-runtime/task_queue/utils/activity_projection.py:153:            text, truncated = _text(command, limit=_MAX_ARGUMENT_CHARS)
+novaic-agent-runtime/task_queue/factory_client.py:16:DEFAULT_TIMEOUT = 300.0  # LLM 调用可能很慢
+novaic-agent-runtime/task_queue/factory_client.py:17:DEFAULT_MAX_TOKENS = 4096
+novaic-agent-runtime/task_queue/factory_client.py:55:            "max_tokens": max_tokens or DEFAULT_MAX_TOKENS,
+novaic-agent-runtime/task_queue/factory_client.py:71:            with internal_sync_client(service_name="runtime-task", timeout=DEFAULT_TIMEOUT, verify=True) as client:
+novaic-agent-runtime/task_queue/client.py:14:from common.config import ServiceConfig
+novaic-agent-runtime/task_queue/client.py:60:        self._internal_key = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/task_queue/client.py:156:            max_retries = ServiceConfig.DEFAULT_MAX_RETRIES
+novaic-agent-runtime/task_queue/client.py:340:        self._internal_key = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/task_queue/client.py:577:            (queue_service_url if queue_service_url is not None else getattr(ServiceConfig, "QUEUE_SERVICE_URL", ""))
+novaic-agent-runtime/task_queue/client.py:709:        queue_key = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/queue_service/db/schema.py:414:DEFAULT_CONFIG = {
+novaic-agent-runtime/queue_service/db/schema.py:450:    for key, value in DEFAULT_CONFIG.items():
+novaic-agent-runtime/task_queue/contracts/llm_call.py:80:            raise ValueError("LLMTransportConfig.factory_url is required")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:82:            raise ValueError("LLMTransportConfig.model_id is required")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:84:            raise ValueError("LLMTransportConfig.user_id is required")
+novaic-agent-runtime/task_queue/workers/registry.py:57:                WorkerOption(("--max-concurrent",), default=config_default("MAX_CONCURRENT_SAGAS"), value_type=int, help="Max concurrent sagas"),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:157:    cfg.MAX_CONCURRENT_SAGAS = args.max_concurrent
+novaic-agent-runtime/task_queue/retry_policy.py:13:from common.config import ServiceConfig
+novaic-agent-runtime/task_queue/retry_policy.py:42:            else getattr(ServiceConfig, "DEFAULT_MAX_RETRIES", 3)
+novaic-agent-runtime/task_queue/retry_policy.py:48:            else getattr(ServiceConfig, "RETRY_BACKOFF_BASE", 1.0)
+novaic-agent-runtime/task_queue/retry_policy.py:53:            else getattr(ServiceConfig, "RETRY_BACKOFF_MAX", 30.0)
+novaic-agent-runtime/queue_service/session_repo.py:29:    DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/queue_service/session_repo.py:275:                    attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/queue_service/session_repo.py:792:            attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/queue_service/session_fsm.py:92:DEFAULT_ATTACHABLE_TRIGGER_TYPES: FrozenSet[str] = frozenset({
+novaic-agent-runtime/queue_service/session_fsm.py:207:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/task_queue/sagas/react_think.py:16:from common.config import ServiceConfig
+novaic-agent-runtime/task_queue/sagas/react_think.py:86:      (bounded by ``MAX_STACK_HOLD_RETRIES``) so the LLM gets a chance to emit
+novaic-agent-runtime/task_queue/sagas/react_think.py:89:    - ``round_num >= MAX_ROUNDS_BEFORE_FORCE_FINALIZE`` → force finalize regardless
+novaic-agent-runtime/task_queue/sagas/react_think.py:97:        max_rounds_before_force_finalize=ServiceConfig.MAX_ROUNDS_BEFORE_FORCE_FINALIZE,
+novaic-agent-runtime/task_queue/sagas/react_think.py:98:        max_stack_hold_retries=ServiceConfig.MAX_STACK_HOLD_RETRIES,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:13:from common.config import ServiceConfig
+novaic-agent-runtime/task_queue/sagas/react_actions.py:49:#   THINK_CAP          Existing ``round_num >= MAX_ROUNDS_BEFORE_FORCE_FINALIZE``
+novaic-agent-runtime/task_queue/sagas/react_actions.py:98:        max_rounds_before_force_finalize=ServiceConfig.MAX_ROUNDS_BEFORE_FORCE_FINALIZE,
+--- feature/compat/fallback branch source ---
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:164:    # 6. Write meta.json. PR-113 removed the old wake IM replay flag:
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:29:# flag as the source of truth for "what does this scope need to consume".
+novaic-agent-runtime/task_queue/workers/command_specs.py:34:    flags: tuple[str, ...]
+novaic-agent-runtime/task_queue/workers/command_specs.py:49:        parser.add_argument(*self.flags, **kwargs)
+--- mutable global/module cache source ---
+novaic-business/business/subscribers/dispatch_subscriber.py:59:_CLAIM_BACKOFF_BASE_S = 1.0
+novaic-business/business/subscribers/dispatch_subscriber.py:60:_CLAIM_BACKOFF_MAX_S = 30.0
+novaic-business/business/subscribers/dispatch_subscriber.py:61:_CLAIM_LOG_REMINDER_S = 30.0
+novaic-business/business/subscribers/dispatch_subscriber.py:348:                # and singletons fall through to the per-row
+novaic-agent-runtime/task_queue/exceptions.py:48:RETRYABLE_EXCEPTIONS = (
+novaic-agent-runtime/task_queue/exceptions.py:60:RETRYABLE_KEYWORDS = [
+novaic-agent-runtime/task_queue/topics.py:90:CONTROL_TOPICS = [
+novaic-agent-runtime/queue_service/main.py:19:BACKEND_DIR = Path(__file__).parent.parent.absolute()
+novaic-agent-runtime/queue_service/main.py:24:NOVAIC_DATA_DIR = ServiceConfig.DATA_DIR
+novaic-agent-runtime/queue_service/main.py:31:LOG_DIR = os.path.join(NOVAIC_DATA_DIR, "logs")
+novaic-agent-runtime/queue_service/main.py:34:LOG_FILE = os.path.join(LOG_DIR, f"queue-service-{datetime.utcnow().strftime('%Y%m%d')}.log")
+novaic-agent-runtime/queue_service/main.py:109:_QUEUE_INTERNAL_KEY = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/queue_service/main.py:110:_QUEUE_PUBLIC_PATHS = ("/health", "/ready", "/")
+novaic-agent-runtime/queue_service/main.py:135:DB_PATH = Path(NOVAIC_DATA_DIR) / "queue.db"
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:41:    Context Stack v2: no global historical-memory injection. The new scope
+novaic-agent-runtime/task_queue/sagas/react_think.py:146:REACT_THINK_SAGA = SagaDefinition("react_think")
+novaic-agent-runtime/task_queue/sagas/react_think.py:203:REACT_THINK_SAGA = register_saga_definition(REACT_THINK_SAGA)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:129:WAKE_FINALIZE_SAGA = SagaDefinition("wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:160:WAKE_FINALIZE_SAGA = register_saga_definition(WAKE_FINALIZE_SAGA)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:38:_DURABLE_PAYLOAD_KEY = "_novaic_durable_payload"
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:39:_DURABLE_PAYLOAD_VERSION = "tool-step-payload.v1"
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:71:        sanitized.setdefault("_placeholder", True)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:72:        sanitized.setdefault(
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:167:_SHELL_STREAM_PREVIEW_CHARS = 1600
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:168:_SHELL_TEXT_LIMIT_CHARS = 4000
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:317:    shell_result.setdefault("stdout", "")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:318:    shell_result.setdefault("stderr", "")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:319:    shell_result.setdefault("files_changed", [])
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:323:_DISPLAY_INLINE_BUDGET_BYTES = 200_000
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:324:_TEXT_MIME_TYPES = {
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:331:_TEXT_EXTS = {"txt", "md", "csv", "json", "xml", "html", "yaml", "yml", "toml", "log"}
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:522:KNOWN_TOOLS = set(_EXECUTORS.keys())
+novaic-agent-runtime/task_queue/sagas/react_actions.py:148:REACT_ACTIONS_SAGA = SagaDefinition("react_actions")
+novaic-agent-runtime/task_queue/sagas/react_actions.py:185:REACT_ACTIONS_SAGA = register_saga_definition(REACT_ACTIONS_SAGA)
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:18:SAGA_OUTBOX_DRAIN_JOB = WorkerJobSpec(kind="saga_outbox_drain")
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:95:SUBAGENT_WAKE_SAGA = SagaDefinition("subagent_wake")
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:115:SUBAGENT_WAKE_SAGA = register_saga_definition(SUBAGENT_WAKE_SAGA)
+novaic-agent-runtime/task_queue/factory_client.py:16:DEFAULT_TIMEOUT = 300.0  # LLM 调用可能很慢
+novaic-agent-runtime/task_queue/factory_client.py:17:DEFAULT_MAX_TOKENS = 4096
+novaic-agent-runtime/task_queue/utils/no_tool_warning.py:3:NO_TOOL_WARNING = (
+novaic-agent-runtime/task_queue/saga_creation_policy.py:11:SESSION_OWNED_SAGA_TYPES = frozenset({"subagent_wake"})
+novaic-agent-runtime/task_queue/saga_creation_policy.py:12:GENERIC_TRIGGER_ALLOWED_SAGA_TYPES = frozenset(
+novaic-agent-runtime/task_queue/utils/context.py:14:HAS_MULTIMODAL = True
+novaic-agent-runtime/queue_service/db/schema.py:10:SCHEMA_VERSION = 18
+novaic-agent-runtime/queue_service/db/schema.py:12:SCHEMA_SQL = """
+novaic-agent-runtime/queue_service/db/schema.py:20:PRAGMA cache_size = -64000;
+novaic-agent-runtime/queue_service/db/schema.py:414:DEFAULT_CONFIG = {
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:21:_DEFAULT_TIMEOUT = 30
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:581:# ── Global bridge cache ──────────────────────────────────────────────────
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:588:# ``scope_id`` as non-PK — see INV-8). A keyed-only-by-scope cache also
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:592:_bridge_cache: Dict[_BridgeKey, CortexBridge] = {}
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:606:    Each bridge is a lightweight HTTP client. The cache avoids creating
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:612:    cached = _bridge_cache.get(key)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:613:    if cached is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:614:        return cached
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:617:    _bridge_cache[key] = bridge
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:626:    """Drop cached bridge after session complete."""
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:629:    _bridge_cache.pop(_bridge_key(scope_id, user_id, agent_id), None)
+novaic-agent-runtime/task_queue/utils/multimodal.py:11:_TEXT_ONLY_CONTENT_LIMIT_CHARS = 4_000
+novaic-agent-runtime/task_queue/workers/task_execution.py:60:        self._completed_idempotency_cache_size = 5000
+novaic-agent-runtime/task_queue/workers/task_execution.py:379:        while len(self._completed_idempotency_keys) > self._completed_idempotency_cache_size:
+novaic-agent-runtime/queue_service/queue_db.py:43:_TASK_READ_MODEL_COLUMNS = """
+novaic-agent-runtime/task_queue/utils/user_content.py:12:_AUDIO_EXTS = {"wav", "mp3", "flac", "m4a", "mp4", "ogg", "webm"}
+novaic-agent-runtime/task_queue/utils/activity_projection.py:5:those projection entities from its local Entangled cache; it must not poll
+novaic-agent-runtime/task_queue/utils/activity_projection.py:19:_NAMESPACE = uuid.UUID("8ec895c9-5d25-4078-a71e-4a3ee408f9b6")
+novaic-agent-runtime/task_queue/utils/activity_projection.py:20:_SECRET_KEY_PARTS = (
+novaic-agent-runtime/task_queue/utils/activity_projection.py:31:_MAX_TEXT_CHARS = 4000
+novaic-agent-runtime/task_queue/utils/activity_projection.py:32:_MAX_ARGUMENT_CHARS = 1000
+novaic-agent-runtime/task_queue/utils/activity_projection.py:33:_MAX_DESC_CHARS = 80
+novaic-agent-runtime/task_queue/utils/activity_projection.py:36:ACTIVE_TOOL_LABELS = {
+novaic-agent-runtime/task_queue/utils/activity_projection.py:73:    bound.setdefault("activity_clock", _clock)
+novaic-agent-runtime/task_queue/utils/activity_projection.py:74:    bound.setdefault("activity_order_source", _order_source)
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:12:    global _assembler_instance, _assembler_key
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:13:_SQL_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+novaic-agent-runtime/task_queue/workers/scheduler_worker.py:7:SCHEDULED_WAKE_TICK_JOB = WorkerJobSpec(kind="scheduled_wake")
+novaic-agent-runtime/task_queue/constants.py:3:PHASE_NEED_THINK = "need_think"
+novaic-agent-runtime/task_queue/constants.py:4:PHASE_WAITING_ACTIONS = "waiting_actions"
+novaic-agent-runtime/task_queue/constants.py:5:PHASE_COMPLETED = "completed"
+novaic-agent-runtime/task_queue/workers/task_worker.py:16:QUEUE_TASK_JOB = WorkerJobSpec(
+novaic-agent-runtime/task_queue/workers/task_worker.py:21:QUEUE_TASK_DEPENDENCY_RELEASED_JOB = WorkerJobSpec(
+novaic-agent-runtime/queue_service/session_events.py:8:CURRENT_SESSION_EVENT_KEY_PREFIX = "session:"
+novaic-agent-runtime/task_queue/session_identity.py:6:AGENT_ROOT_SCOPE_PREFIX = "agent-root"
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:45:WORKER_ASSEMBLIES = WorkerAssemblySpecRegistry(
+novaic-agent-runtime/task_queue/workers/saga_worker.py:16:SAGA_CLAIMED_JOB = WorkerJobSpec(
+novaic-agent-runtime/queue_service/saga_repo.py:41:_SAGA_READ_MODEL_COLUMNS = """
+novaic-agent-runtime/queue_service/saga_repo.py:1121:_WAKE_SAGA_TYPES = ("subagent_wake", "react_think", "react_actions")
+novaic-agent-runtime/task_queue/contracts/react_think.py:6:global state.
+novaic-agent-runtime/queue_service/session_ledger.py:28:SESSION_FSM_STORE_CONFIG = FsmSqliteStoreConfig(
+novaic-agent-runtime/task_queue/tool_output.py:15:TOOL_OUTPUT_VERSION = "tool-output.v1"
+novaic-agent-runtime/task_queue/tool_output.py:16:_ALLOWED_MODALITIES = frozenset({"text", "image", "audio", "video", "binary", "resource"})
+novaic-agent-runtime/queue_service/lease_ledger.py:16:LEASE_FSM_STORE_CONFIG = FsmSqliteStoreConfig(
+novaic-agent-runtime/task_queue/saga.py:33:SAGA_CALLBACK_EXTENSION_POINTS = (
+novaic-agent-runtime/task_queue/workers/health_worker.py:7:HEALTH_RECOVERY_TICK_JOB = WorkerJobSpec(kind="health_recovery")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:18:SESSION_OUTBOX_DRAIN_JOB = WorkerJobSpec(kind="session_outbox_drain")
+novaic-agent-runtime/queue_service/saga_ledger.py:22:SAGA_FSM_STORE_CONFIG = FsmSqliteStoreConfig(
+novaic-agent-runtime/queue_service/task_ledger.py:17:TASK_FSM_STORE_CONFIG = FsmSqliteStoreConfig(
+novaic-agent-runtime/queue_service/session_fsm.py:410:    output_payload.setdefault(
+--- tests hidden input/config fixtures ---
+novaic-business/tests/test_business_action_dependencies.py:146:            "provider": "openai-compatible",
+novaic-business/tests/test_business_action_dependencies.py:158:                "provider": "openai-compatible",
+novaic-business/tests/test_business_action_dependencies.py:171:                "provider": "openai-compatible",
+novaic-business/tests/test_im_aggregation.py:114:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-business/tests/test_im_aggregation.py:128:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:145:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:170:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:187:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "300")
+novaic-business/tests/test_im_aggregation.py:188:    monkeypatch.setenv("IM_AGGREGATION_MAX_BATCH", "3")
+novaic-business/tests/test_im_aggregation.py:205:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:222:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:238:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:262:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:285:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:303:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:317:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:331:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:351:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:367:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:390:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:421:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:451:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-business/tests/test_im_aggregation.py:489:        "IM_AGGREGATION_MAX_BATCH": "xxx",
+novaic-business/tests/test_im_aggregation.py:496:    assert load_im_aggregation_config_from_env({"IM_AGGREGATION_MAX_BATCH": "0"}).max_batch == 1
+novaic-business/tests/test_im_aggregation.py:502:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:1:"""PR-255 - retired session harness compatibility paths stay removed."""
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:15:def test_legacy_dispatch_route_module_is_removed():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:29:    assert "shadow_legacy_action" not in session_repo
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:31:    assert '"legacy_pending"' not in session_repo
+novaic-business/tests/test_pr72_prompt_defaults_contract.py:2:    DEFAULT_BEHAVIOR_GUIDE_MD,
+novaic-business/tests/test_pr72_prompt_defaults_contract.py:3:    DEFAULT_CAPABILITY_LIST_MD,
+novaic-business/tests/test_pr72_prompt_defaults_contract.py:4:    DEFAULT_SOUL_MD,
+novaic-business/tests/test_pr72_prompt_defaults_contract.py:12:        DEFAULT_SOUL_MD,
+novaic-business/tests/test_pr72_prompt_defaults_contract.py:13:        DEFAULT_BEHAVIOR_GUIDE_MD,
+novaic-business/tests/test_pr72_prompt_defaults_contract.py:14:        DEFAULT_CAPABILITY_LIST_MD,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:16:    DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:81:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:95:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:111:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-business/tests/test_pr111_system_prompt_builder.py:118:def test_system_prompt_contract_names_agent_root_not_legacy_prev_blocks(monkeypatch):
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:10:    DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:91:            attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:134:        {"role": "user", "content": "legacy context.read projection"},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:159:    assert "legacy context.read projection" not in contents
+novaic-agent-runtime/tests/test_health_dispatch.py:110:# ── PR-19 invariant: no fallback-dispatch surface ──────────────────────────
+novaic-business/tests/test_assembler_factory.py:3:`get_assembler()` used to read a non-existent `ServiceConfig.BUSINESS_INTERNAL_URL`
+novaic-business/tests/test_assembler_factory.py:9:`ServiceConfig.BUSINESS_URL` instead, matching the agent-runtime factory.
+novaic-business/tests/test_assembler_factory.py:35:    from common.config import ServiceConfig
+novaic-business/tests/test_assembler_factory.py:38:    monkeypatch.setattr(ServiceConfig, "BUSINESS_URL", "http://127.0.0.1:19998")
+novaic-business/tests/test_assembler_factory.py:39:    monkeypatch.setattr(ServiceConfig, "QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
+novaic-business/tests/test_assembler_factory.py:59:    from common.config import ServiceConfig
+novaic-business/tests/test_assembler_factory.py:62:    monkeypatch.setattr(ServiceConfig, "BUSINESS_URL", "http://127.0.0.1:19998")
+novaic-business/tests/test_assembler_factory.py:63:    monkeypatch.setattr(ServiceConfig, "QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:1:"""PR-43 legacy ``previous_scope_id`` transport retired by PR-69."""
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:54:        "task_queue.handlers.tool_handlers.ServiceConfig.CORTEX_INTERNAL_KEY",
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:15:def test_runtime_has_no_legacy_recap_builder_or_env_flags() -> None:
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:19:    assert not hasattr(runtime_handlers, "WAKE_PREV_SCOPE_" + "SUMMARY_MAX_BYTES_ENV")
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:23:def test_runtime_handler_source_no_longer_mentions_legacy_recap_blocks() -> None:
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:7:    DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:25:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:45:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:64:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:26:    assert "legacy" not in combined
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py:1:"""PR-83: active Runtime must not expose legacy summary producers."""
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:21:os.environ.setdefault("NOVAIC_DATA_DIR", tempfile.mkdtemp())
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:48:    db_path = Path(os.environ["NOVAIC_DATA_DIR"]) / f"test_queue_{uuid.uuid4().hex[:8]}.db"
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:140:    db_path = Path(os.environ["NOVAIC_DATA_DIR"]) / f"test_release_{uuid.uuid4().hex[:8]}.db"
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:170:    db_path = Path(os.environ["NOVAIC_DATA_DIR"]) / f"test_routes_{uuid.uuid4().hex[:8]}.db"
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:16:    DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:113:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:125:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:137:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:9:    DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:29:        attachable_trigger_types=DEFAULT_ATTACHABLE_TRIGGER_TYPES,
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:38:    """Build a tool_call dict in the OpenAI-compatible shape the saga
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:207:        react_actions.ServiceConfig, "MAX_ROUNDS_BEFORE_FORCE_FINALIZE", 5, raising=False
+novaic-agent-runtime/tests/test_pr147_cortex_required.py:53:    monkeypatch.setattr(cortex_bridge, "ServiceConfig", DummyConfig)
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:19:os.environ.setdefault("NOVAIC_DATA_DIR", tempfile.mkdtemp())
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:33:    db_path = Path(os.environ["NOVAIC_DATA_DIR"]) / f"test_dep_{uuid.uuid4().hex[:8]}.db"
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:1:"""PR-43 legacy ``last_scope_id`` path retired by PR-69."""
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:91:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:113:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr112_business_client_boundary.py:46:def test_business_client_init_has_no_ignored_backcompat_parameters():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:82:def test_active_queue_coordinators_have_no_legacy_dual_path_language():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:90:        "legacy",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:91:        "compat",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:92:        "fallback",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:94:        "disable_fsm",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:95:        "enable_fsm",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:100:def test_generation_must_come_from_fsm_state_not_projection_fallback():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:106:    assert "fallback" not in queue_source
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:107:    assert "fallback" not in saga_source
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:62:def test_session_repository_no_longer_imports_legacy_dispatch_route():
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:24:    MAX_CONCURRENT_SAGAS = 2

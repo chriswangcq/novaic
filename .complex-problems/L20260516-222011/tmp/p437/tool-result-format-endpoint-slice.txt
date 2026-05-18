@@ -1,0 +1,81 @@
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "code": exc.code,
+                "message": exc.message,
+                "payload_ref": exc.payload_ref,
+            },
+        ) from exc
+    except (KeyError, FileNotFoundError, ValueError, json.JSONDecodeError):
+        return None
+
+
+@app.post("/v1/steps/read_formatted")
+async def steps_read_formatted(req: StepFormattedRequest):
+    """Read a step and return its result formatted as _mcp_content for LLM."""
+    from novaic_cortex.step_result_projection import (
+        parse_tool_result,
+        format_for_current_tool_result_llm,
+        format_for_display_perception_llm,
+        format_for_history_llm,
+    )
+
+    ws = _get_workspace(req.user_id, req.agent_id)
+    step = await _find_step_by_call_id(ws, req.scope_id, req.tool_call_id, req.step_ref)
+    if step is None:
+        return {"content": None}
+
+    raw_result = await _read_step_payload(ws, step)
+    if raw_result is None:
+        return {"content": None}
+
+    parsed = parse_tool_result(raw_result)
+    projection = (req.projection or "").strip()
+    if projection == "display_perception":
+        content = format_for_display_perception_llm(parsed, req.provider)
+    elif projection == "current_tool_result":
+        content = format_for_current_tool_result_llm(parsed, req.provider)
+    elif projection == "history":
+        content = format_for_history_llm(parsed, req.provider)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error_code": "unsupported_step_projection",
+                "projection": projection,
+                "allowed": ["history", "current_tool_result", "display_perception"],
+            },
+        )
+    return {"content": content}
+
+
+@app.post("/v1/steps/read_preview")
+async def steps_read_preview(req: StepPreviewRequest):
+    """Read a step and return a concise text preview."""
+    from novaic_cortex.step_result_projection import parse_tool_result, preview_for_text
+
+    ws = _get_workspace(req.user_id, req.agent_id)
+    step = await _find_step_by_call_id(ws, req.scope_id, req.tool_call_id, req.step_ref)
+    if step is None:
+        return {"preview": None}
+
+    observation = step.get("observation") if isinstance(step.get("observation"), dict) else {}
+    if observation:
+        preview = observation.get("preview") or observation.get("summary")
+        if isinstance(preview, str):
+            return {"preview": preview[:req.max_text_len]}
+
+    raw_result = await _read_step_payload(ws, step)
+    if raw_result is None:
+        return {"preview": None}
+
+    parsed = parse_tool_result(raw_result)
+    preview = preview_for_text(parsed, max_text_len=req.max_text_len)
+    return {"preview": preview}
+
+
+def _clamp_int(value: int, *, low: int, high: int) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        number = low

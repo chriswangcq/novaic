@@ -1,0 +1,1521 @@
+=== P615 Cortex persistence scan ===
+novaic-cortex/novaic_cortex/context_event_store.py:8:from novaic_cortex.context_events import (
+novaic-cortex/novaic_cortex/context_event_store.py:9:    CONTEXT_EVENT_SCHEMA_VERSION,
+novaic-cortex/novaic_cortex/context_event_store.py:47:        return f"{root_scope_path}/context_events/events.jsonl"
+novaic-cortex/novaic_cortex/context_event_store.py:170:            "schema_version": CONTEXT_EVENT_SCHEMA_VERSION,
+novaic-cortex/tests/test_operational_store.py:78:                payload_ref TEXT PRIMARY KEY,
+novaic-cortex/tests/test_operational_store.py:97:                payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/tests/test_operational_store.py:119:    manifest = store.get_payload_manifest(payload_ref="payload-1")
+novaic-cortex/tests/test_operational_store.py:121:        payload_ref="local",
+novaic-cortex/tests/test_operational_store.py:122:        source_payload_ref="local",
+novaic-cortex/tests/test_operational_store.py:132:    assert "source_payload_ref" in columns
+novaic-cortex/tests/test_operational_store.py:342:        payload_ref="payload-1",
+novaic-cortex/tests/test_operational_store.py:343:        source_payload_ref="step-ref-1",
+novaic-cortex/tests/test_operational_store.py:355:        payload_ref="payload-1",
+novaic-cortex/tests/test_operational_store.py:356:        source_payload_ref="step-ref-1",
+novaic-cortex/tests/test_operational_store.py:372:    assert updated["source_payload_ref"] == "step-ref-1"
+novaic-cortex/tests/test_operational_store.py:374:    assert store.get_payload_manifest(payload_ref="payload-1")["blob_ref"] == "blob://cortex-payload/1"
+novaic-cortex/tests/test_operational_store.py:381:        payload_ref="step-ref-local",
+novaic-cortex/tests/test_operational_store.py:382:        source_payload_ref="step-ref-local",
+novaic-cortex/tests/test_operational_store.py:395:    assert manifest["source_payload_ref"] == "step-ref-local"
+novaic-cortex/tests/test_operational_store.py:397:    assert store.get_payload_manifest(payload_ref="step-ref-local") == manifest
+novaic-cortex/tests/test_shell_capabilities_internal_auth.py:31:            length = int(self.headers.get("content-length", "0") or "0")
+novaic-cortex/tests/test_shell_capabilities_internal_auth.py:34:            seen.append((self.path, self.headers.get("X-Internal-Key", "")))
+novaic-cortex/tests/test_shell_capabilities_internal_auth.py:41:            self.send_header("Content-Type", "application/json")
+novaic-cortex/tests/test_shell_capabilities_internal_auth.py:42:            self.send_header("Content-Length", str(len(raw)))
+novaic-cortex/tests/test_shell_capabilities_internal_auth.py:43:            self.end_headers()
+novaic-cortex/tests/test_step_index_outcome.py:18:        self.payloads = {}
+novaic-cortex/tests/test_step_index_outcome.py:20:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_step_index_outcome.py:22:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_step_index_outcome.py:26:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_step_index_outcome.py:52:async def test_write_step_appends_to_index():
+novaic-cortex/tests/test_step_index_outcome.py:56:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:64:        "observation": {"kind": "tool_result", "preview": "web search complete"},
+novaic-cortex/tests/test_step_index_outcome.py:81:    assert entry["has_artifacts"] is True
+novaic-cortex/tests/test_step_index_outcome.py:95:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:97:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:103:    assert original["observation"] == {"kind": "tool_result", "preview": "FULL"}
+novaic-cortex/tests/test_step_index_outcome.py:105:    assert normalized["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:106:    assert normalized["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:108:    manifest = ws.operational_store.get_payload_manifest(payload_ref="step-ref:s1:round1:shell:0")
+novaic-cortex/tests/test_step_index_outcome.py:109:    assert manifest["source_payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:118:async def test_write_step_externalizes_payload_and_indexes_payload_ref():
+novaic-cortex/tests/test_step_index_outcome.py:128:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:130:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:132:    await ws.write_step(path, original)
+novaic-cortex/tests/test_step_index_outcome.py:135:    assert index[0]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:141:    assert step["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:142:    assert step["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:145:    assert original["observation"] == {"kind": "tool_result", "preview": "FULL"}
+novaic-cortex/tests/test_step_index_outcome.py:150:async def test_write_step_externalizes_large_payload_to_blob_ref():
+novaic-cortex/tests/test_step_index_outcome.py:160:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:166:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:170:            "preview": "FULL",
+novaic-cortex/tests/test_step_index_outcome.py:171:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:176:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:181:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:182:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:185:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:186:    assert manifest["source_payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:200:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:201:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:207:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:208:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:209:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:211:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:212:    await store.delete(f"agents/agent-idx/ro/active/s1/payloads/{payload_name}.json")
+novaic-cortex/tests/test_step_index_outcome.py:215:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:217:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:228:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:229:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:235:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:236:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:237:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:239:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:240:    await ws._sys_write(f"{path}/payloads/{payload_name}.json", "{not-json")
+novaic-cortex/tests/test_step_index_outcome.py:243:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:245:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:252:async def test_read_payload_ref_mismatch_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:256:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:257:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:263:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:264:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:265:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:267:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:268:    await ws._sys_write_json(f"{path}/payloads/{payload_name}.json", {"payload_ref": "other"})
+novaic-cortex/tests/test_step_index_outcome.py:271:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:273:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:274:    assert exc.value.code == "payload_ref_mismatch"
+novaic-cortex/tests/test_step_index_outcome.py:276:    assert manifest["error"]["code"] == "payload_ref_mismatch"
+novaic-cortex/tests/test_step_index_outcome.py:289:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:295:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:297:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:303:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:319:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:325:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:327:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:334:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:350:        await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:356:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:358:            "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:363:async def test_write_step_rejects_inline_tool_result():
+novaic-cortex/tests/test_step_index_outcome.py:367:    with pytest.raises(ValueError, match="payload/payload_ref"):
+novaic-cortex/tests/test_step_index_outcome.py:368:        await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:378:async def test_write_step_rejects_missing_tool_observation():
+novaic-cortex/tests/test_step_index_outcome.py:383:        await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:388:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:393:        await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:408:        await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:413:            "observation": {"kind": "tool_result", "preview": f"tool {i} complete"},
+novaic-cortex/tests/test_step_index_outcome.py:428:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:432:        "observation": {"kind": "tool_result", "preview": "OK"},
+novaic-cortex/tests/test_step_index_outcome.py:441:    assert "has_artifacts" not in entry
+novaic-cortex/tests/test_step_index_outcome.py:449:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:457:            "preview": "OK",
+novaic-cortex/tests/test_step_index_outcome.py:465:    assert index[0]["has_artifacts"] is True
+novaic-cortex/tests/test_step_index_outcome.py:473:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:518:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:520:        "observation": {"kind": "tool_result", "preview": "one"},
+novaic-cortex/tests/test_step_index_outcome.py:522:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:524:        "observation": {"kind": "tool_result", "preview": "two"},
+novaic-cortex/tests/test_step_index_outcome.py:538:    await ws.write_step(path, {
+novaic-cortex/tests/test_step_index_outcome.py:540:        "observation": {"kind": "tool_result", "preview": "one"},
+novaic-cortex/tests/test_step_result_projection.py:6:    preview_for_text,
+novaic-cortex/tests/test_step_result_projection.py:92:    assert "Truncated unknown tool result JSON" in parsed["text"]
+novaic-cortex/tests/test_step_result_projection.py:107:    assert "Truncated due to context budget length" in text_content
+novaic-cortex/tests/test_payload_inspection_api.py:11:    PayloadSearchRequest,
+novaic-cortex/tests/test_payload_inspection_api.py:12:    PayloadSummarizeRequest,
+novaic-cortex/tests/test_payload_inspection_api.py:39:async def _seed_payload(ws: Workspace, payload_ref: str, payload) -> None:
+novaic-cortex/tests/test_payload_inspection_api.py:41:    await ws.write_step(root, {
+novaic-cortex/tests/test_payload_inspection_api.py:47:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:48:        "step_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:52:            "preview": "short preview",
+novaic-cortex/tests/test_payload_inspection_api.py:53:            "payload_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:59:async def test_payload_read_returns_bounded_tail_slice():
+novaic-cortex/tests/test_payload_inspection_api.py:61:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:62:    await _seed_payload(ws, payload_ref, {"stdout": "alpha\nbeta\nFAILED final", "exit_code": 1})
+novaic-cortex/tests/test_payload_inspection_api.py:68:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:69:        mode="tail",
+novaic-cortex/tests/test_payload_inspection_api.py:74:    assert result["payload_ref"] == payload_ref
+novaic-cortex/tests/test_payload_inspection_api.py:78:    assert result["truncated"] is True
+novaic-cortex/tests/test_payload_inspection_api.py:85:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:86:    await _seed_payload(ws, payload_ref, "one failed\nTWO FAILED\nthree")
+novaic-cortex/tests/test_payload_inspection_api.py:88:    result = await payload_search_endpoint(PayloadSearchRequest(
+novaic-cortex/tests/test_payload_inspection_api.py:92:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:101:    assert result["truncated"] is True
+novaic-cortex/tests/test_payload_inspection_api.py:114:            payload_ref="missing",
+novaic-cortex/tests/test_payload_inspection_api.py:121:async def test_payload_read_missing_payload_record_returns_domain_detail():
+novaic-cortex/tests/test_payload_inspection_api.py:123:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:124:    await _seed_payload(ws, payload_ref, "payload")
+novaic-cortex/tests/test_payload_inspection_api.py:125:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_payload_inspection_api.py:126:    await ws._files.delete(f"/ro/active/root-1/payloads/{payload_name}.json")
+novaic-cortex/tests/test_payload_inspection_api.py:133:            payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:137:    assert exc.value.detail["code"] == "payload_record_missing"
+novaic-cortex/tests/test_payload_inspection_api.py:138:    assert exc.value.detail["payload_ref"] == payload_ref
+novaic-cortex/tests/test_payload_inspection_api.py:139:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_payload_inspection_api.py:146:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:149:        payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:160:    result = await payload_summarize_endpoint(PayloadSummarizeRequest(
+novaic-cortex/tests/test_payload_inspection_api.py:164:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:174:    assert result["input_truncated"] is True
+novaic-cortex/tests/test_payload_inspection_api.py:187:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:188:    await _seed_payload(ws, payload_ref, "alpha\nFAILED final")
+novaic-cortex/tests/test_payload_inspection_api.py:201:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:212:    assert result["output_truncated"] is True
+novaic-cortex/tests/test_payload_inspection_api.py:220:            payload_ref=payload_ref,
+novaic-cortex/tests/test_sandboxd_wiring.py:104:    await ws._sys_write(f"{old_wake_path}/payloads/old.json", "old")
+novaic-cortex/tests/test_sandboxd_wiring.py:105:    await ws._sys_write(f"{wake_path}/payloads/current.json", "current")
+novaic-cortex/tests/test_sandboxd_wiring.py:115:        assert (root / "ro" / wake_rel / "payloads/current.json").is_file()
+novaic-cortex/tests/test_sandboxd_wiring.py:116:        assert not (root / "ro" / old_wake_rel / "payloads/old.json").exists()
+novaic-cortex/tests/test_context_event_read_model.py:5:from novaic_cortex.context_event_read_model import (
+novaic-cortex/tests/test_context_event_read_model.py:9:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/tests/test_context_event_read_model.py:10:from novaic_cortex.context_events import ContextEvent, build_stream_id
+novaic-cortex/tests/test_context_event_read_model.py:122:                    "observation": {"preview": "exit_code=0\n/ro/rw"},
+novaic-cortex/tests/test_context_event_read_model.py:188:                "payload_ref": None,
+novaic-cortex/tests/test_context_event_read_model.py:226:                    "observation": {"preview": long_tool_output},
+novaic-cortex/tests/test_context_event_read_model.py:239:            micro_max_tool_output_chars=8,
+novaic-cortex/tests/test_context_event_read_model.py:250:    assert "[truncated: 26 → 8 chars]" in tool_content
+novaic-cortex/tests/test_engine_config_roundtrip.py:90:        micro_max_tool_output_chars=2**24,
+novaic-cortex/tests/test_workspace.py:60:    await ws.write_step(scope_path, {
+novaic-cortex/tests/test_workspace.py:66:        "payload_ref": "payload:tc_001",
+novaic-cortex/tests/test_workspace.py:67:        "observation": {"kind": "tool_result", "preview": "ok"},
+novaic-cortex/tests/test_workspace.py:70:    payload_record = json.loads(await ws.read(f"{scope_path}/payloads/{payload_name}.json"))
+novaic-cortex/tests/test_workspace.py:85:    await ws.write_step("/ro/active/arch", {
+novaic-cortex/tests/test_workspace.py:87:        "payload": {}, "payload_ref": "step-ref:arch:note",
+novaic-cortex/tests/test_workspace.py:88:        "observation": {"kind": "tool_result", "preview": "OK"},
+novaic-cortex/tests/test_workspace.py:121:    p1 = await ws.write_step(scope_path, {
+novaic-cortex/tests/test_workspace.py:124:        "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_workspace.py:125:        "observation": {"kind": "tool_result", "preview": "hits=3"},
+novaic-cortex/tests/test_workspace.py:129:    p2 = await ws.write_step(scope_path, {
+novaic-cortex/tests/test_workspace.py:136:    p3 = await ws.write_step(scope_path, {
+novaic-cortex/tests/test_workspace.py:139:        "payload_ref": "step-ref:s1:tc_002",
+novaic-cortex/tests/test_workspace.py:140:        "observation": {"kind": "tool_result", "preview": "..."},
+novaic-cortex/tests/test_workspace.py:170:    await ws.write_step(scope_path, {
+novaic-cortex/tests/test_workspace.py:172:        "status": "success", "payload": {}, "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_workspace.py:173:        "observation": {"kind": "tool_result", "preview": "OK"},
+novaic-cortex/tests/test_workspace.py:175:    await ws.write_step(scope_path, {
+novaic-cortex/tests/test_workspace.py:197:async def test_write_step_invalid_id() -> None:
+novaic-cortex/tests/test_workspace.py:202:        await ws.write_step(scope_path, {"type": "tool", "call_id": "bad/id"})
+novaic-cortex/tests/test_workspace.py:204:        await ws.write_step(scope_path, {"type": "tool", "call_id": ".."})
+novaic-cortex/tests/test_runtime.py:35:async def test_tool_read_truncates_per_micro_max_tool_output_chars() -> None:
+novaic-cortex/tests/test_runtime.py:40:        json.dumps({"micro_max_tool_output_chars": 20}).encode("utf-8"),
+novaic-cortex/tests/test_runtime.py:50:    assert "truncated" in out
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:61:            length = int(self.headers.get("content-length", "0") or "0")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:70:            self.send_header("Content-Type", "application/json")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:71:            self.send_header("Content-Length", str(len(raw)))
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:72:            self.end_headers()
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:126:            length = int(self.headers.get("content-length", "0") or "0")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:196:    assert "Do not dump raw large payloads or" in completed.stdout
+novaic-cortex/tests/test_context_event_api_lifecycle.py:15:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/novaic_cortex/workspace.py:34:    def __init__(self, *, code: str, payload_ref: str, message: str) -> None:
+novaic-cortex/novaic_cortex/workspace.py:37:        self.payload_ref = payload_ref
+novaic-cortex/novaic_cortex/workspace.py:41:def _payload_filename(payload_ref: str) -> str:
+novaic-cortex/novaic_cortex/workspace.py:42:    digest = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/novaic_cortex/workspace.py:74:    encode_payload_bytes,
+novaic-cortex/novaic_cortex/workspace.py:143:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:149:        manifest = operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/novaic_cortex/workspace.py:153:            payload_ref=manifest["payload_ref"],
+novaic-cortex/novaic_cortex/workspace.py:154:            source_payload_ref=manifest.get("source_payload_ref"),
+novaic-cortex/novaic_cortex/workspace.py:170:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:176:            payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:181:        return PayloadReadError(code=code, payload_ref=payload_ref, message=message)
+novaic-cortex/novaic_cortex/workspace.py:566:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:572:        if not payload_ref or not isinstance(payload_ref, str):
+novaic-cortex/novaic_cortex/workspace.py:573:            raise ValueError("payload_ref is required")
+novaic-cortex/novaic_cortex/workspace.py:574:        encoded = encode_payload_bytes(payload)
+novaic-cortex/novaic_cortex/workspace.py:577:        actual_payload_ref = payload_ref
+novaic-cortex/novaic_cortex/workspace.py:582:            actual_payload_ref = await self._payload_blob_client.put_payload(
+novaic-cortex/novaic_cortex/workspace.py:585:                source_payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:587:                payload_bytes=encoded,
+novaic-cortex/novaic_cortex/workspace.py:590:                "payload_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:591:                "source_payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:592:                "blob_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:594:                "payload_bytes": len(encoded),
+novaic-cortex/novaic_cortex/workspace.py:599:                "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:602:                "payload_bytes": len(encoded),
+novaic-cortex/novaic_cortex/workspace.py:605:        path = f"{scope_path.rstrip('/')}/payloads/{_payload_filename(actual_payload_ref)}"
+novaic-cortex/novaic_cortex/workspace.py:609:            payload_ref=actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:610:            source_payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:613:            step_ref=step_ref or payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:614:            blob_ref=actual_payload_ref if externalize else None,
+novaic-cortex/novaic_cortex/workspace.py:621:        return actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:623:    async def read_payload(self, scope_path: str, payload_ref: str) -> Any:
+novaic-cortex/novaic_cortex/workspace.py:625:        path = f"{scope_path.rstrip('/')}/payloads/{_payload_filename(payload_ref)}"
+novaic-cortex/novaic_cortex/workspace.py:630:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:633:                message=f"payload record not found for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:639:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:642:                message=f"payload record is not valid JSON for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:644:        if record.get("payload_ref") != payload_ref:
+novaic-cortex/novaic_cortex/workspace.py:646:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:647:                code="payload_ref_mismatch",
+novaic-cortex/novaic_cortex/workspace.py:649:                message=f"payload record ref mismatch for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:654:                    payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:666:                    payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:669:                    message=f"failed to fetch external Cortex payload {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:705:        ``payload_ref`` into the observation percept. The caller's input is not
+novaic-cortex/novaic_cortex/workspace.py:716:            raise ValueError("tool steps must use payload/payload_ref, not inline result")
+novaic-cortex/novaic_cortex/workspace.py:721:            payload_ref = normalized.get("payload_ref")
+novaic-cortex/novaic_cortex/workspace.py:722:            if not payload_ref:
+novaic-cortex/novaic_cortex/workspace.py:723:                raise ValueError("payload_ref is required when writing payload")
+novaic-cortex/novaic_cortex/workspace.py:724:            stable_step_ref = str(normalized.get("step_ref") or payload_ref)
+novaic-cortex/novaic_cortex/workspace.py:725:            actual_payload_ref = await self.write_payload(
+novaic-cortex/novaic_cortex/workspace.py:727:                str(payload_ref),
+novaic-cortex/novaic_cortex/workspace.py:732:            normalized["payload_ref"] = actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:734:                normalized["observation"]["payload_ref"] = actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:738:    async def write_step(self, scope_path: str, step: dict) -> str:
+novaic-cortex/novaic_cortex/workspace.py:770:        if step.get("payload_ref"):
+novaic-cortex/novaic_cortex/workspace.py:771:            index_entry["payload_ref"] = step["payload_ref"]
+novaic-cortex/novaic_cortex/workspace.py:779:            index_entry["has_artifacts"] = True
+novaic-cortex/novaic_cortex/workspace.py:787:    async def write_step_projection(self, scope_path: str, step: dict) -> str:
+novaic-cortex/novaic_cortex/workspace.py:789:        return await self.write_step(scope_path, step)
+novaic-cortex/novaic_cortex/context_stack/types.py:28:    micro_max_tool_output_chars: int = 500
+novaic-cortex/novaic_cortex/context_stack/types.py:94:    tokens += 4  # per-message overhead
+novaic-cortex/novaic_cortex/__init__.py:35:    preview_for_text,
+novaic-cortex/novaic_cortex/__init__.py:64:    "preview_for_text",
+novaic-cortex/novaic_cortex/context_event_projection.py:8:from novaic_cortex.context_events import ContextEvent, stable_json
+novaic-cortex/novaic_cortex/context_event_projection.py:55:def project_context_events(events: Iterable[ContextEvent]) -> ContextProjectionSnapshot:
+novaic-cortex/novaic_cortex/context_event_projection.py:358:    payload_ref = event.payload.get("payload_ref")
+novaic-cortex/novaic_cortex/context_event_projection.py:359:    content = _tool_result_content(observation, payload_ref=payload_ref)
+novaic-cortex/novaic_cortex/context_event_projection.py:364:        "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/context_event_projection.py:377:    lookup_ref = step_ref if isinstance(step_ref, str) and step_ref else payload_ref
+novaic-cortex/novaic_cortex/context_event_projection.py:383:def _tool_result_content(observation: Any, *, payload_ref: Any = None) -> str:
+novaic-cortex/novaic_cortex/context_event_projection.py:385:        for key in ("preview", "summary", "head"):
+novaic-cortex/novaic_cortex/context_event_projection.py:389:        ref = payload_ref if isinstance(payload_ref, str) and payload_ref.strip() else None
+novaic-cortex/novaic_cortex/context_event_projection.py:391:        detail = f"; keys={keys}" if keys else ""
+novaic-cortex/novaic_cortex/context_event_projection.py:393:            return f"[Tool result omitted from context; inspect payload_ref={ref}{detail}]"
+novaic-cortex/novaic_cortex/context_event_projection.py:394:        return f"[Tool result omitted from context{detail}]"
+novaic-cortex/novaic_cortex/config.py:20:    micro_max_tool_output_chars: int = 500
+novaic-cortex/novaic_cortex/config.py:92:        micro_max_tool_output_chars=cfg.micro_max_tool_output_chars,
+novaic-cortex/novaic_cortex/cli.py:49:    headers: dict[str, str] = {"Authorization": f"Bearer {TOKEN}"}
+novaic-cortex/novaic_cortex/cli.py:52:        headers["Content-Type"] = "application/json"
+novaic-cortex/novaic_cortex/cli.py:55:    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:69:        message={"role": "user", "content": "raw prior user detail"},
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:78:        task="inspect raw implementation detail",
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:86:        message={"role": "assistant", "content": "raw child detail"},
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:162:    assert "raw prior user detail" not in "\n".join(contents)
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:163:    assert "raw child detail" not in "\n".join(contents)
+novaic-cortex/tests/test_context_event_projection.py:5:from novaic_cortex.context_event_projection import (
+novaic-cortex/tests/test_context_event_projection.py:7:    project_context_events,
+novaic-cortex/tests/test_context_event_projection.py:9:from novaic_cortex.context_events import ContextEvent, build_stream_id
+novaic-cortex/tests/test_context_event_projection.py:31:def test_project_context_events_empty_snapshot() -> None:
+novaic-cortex/tests/test_context_event_projection.py:32:    snapshot = project_context_events([])
+novaic-cortex/tests/test_context_event_projection.py:45:def test_project_context_events_basic_messages_and_applied_seq() -> None:
+novaic-cortex/tests/test_context_event_projection.py:60:    snapshot = project_context_events(events)
+novaic-cortex/tests/test_context_event_projection.py:75:def test_project_context_events_rejects_first_seq_that_does_not_start_at_one() -> None:
+novaic-cortex/tests/test_context_event_projection.py:77:        project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:82:def test_project_context_events_rejects_mixed_stream_ids() -> None:
+novaic-cortex/tests/test_context_event_projection.py:84:        project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:125:def test_project_context_events_rejects_invalid_sequence_order(events, message) -> None:
+novaic-cortex/tests/test_context_event_projection.py:127:        project_context_events(events)
+novaic-cortex/tests/test_context_event_projection.py:130:def test_project_context_events_notification_hint_does_not_fetch_body() -> None:
+novaic-cortex/tests/test_context_event_projection.py:131:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:166:def test_project_context_events_wake_stack_archive() -> None:
+novaic-cortex/tests/test_context_event_projection.py:167:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:191:def test_project_context_events_new_wake_suppresses_stale_open_wake() -> None:
+novaic-cortex/tests/test_context_event_projection.py:192:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:237:def test_project_context_events_skill_scope_open_adds_stack_frame() -> None:
+novaic-cortex/tests/test_context_event_projection.py:238:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:270:def test_project_context_events_nested_skill_scope_stack_order() -> None:
+novaic-cortex/tests/test_context_event_projection.py:271:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:298:def test_project_context_events_valid_skill_close_pops_stack() -> None:
+novaic-cortex/tests/test_context_event_projection.py:299:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:318:def test_project_context_events_rejects_non_lifo_skill_close() -> None:
+novaic-cortex/tests/test_context_event_projection.py:320:        project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:346:def test_project_context_events_closed_skill_renders_fold_summary() -> None:
+novaic-cortex/tests/test_context_event_projection.py:347:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:364:                    "message": {"role": "assistant", "content": "internal detail"},
+novaic-cortex/tests/test_context_event_projection.py:381:def test_project_context_events_blank_scope_close_emits_no_empty_summary() -> None:
+novaic-cortex/tests/test_context_event_projection.py:382:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:399:                    "message": {"role": "assistant", "content": "visible child detail"},
+novaic-cortex/tests/test_context_event_projection.py:406:    assert snapshot.messages == [{"role": "assistant", "content": "visible child detail"}]
+novaic-cortex/tests/test_context_event_projection.py:409:def test_project_context_events_blank_structural_parent_exposes_child_fold() -> None:
+novaic-cortex/tests/test_context_event_projection.py:410:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:446:def test_project_context_events_new_sibling_suppresses_stale_open_sibling() -> None:
+novaic-cortex/tests/test_context_event_projection.py:447:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:491:def test_project_context_events_new_sibling_suppresses_stale_descendants() -> None:
+novaic-cortex/tests/test_context_event_projection.py:492:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:528:def test_project_context_events_nested_child_is_not_suppressed_by_parent_open() -> None:
+novaic-cortex/tests/test_context_event_projection.py:529:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:556:def test_project_context_events_assistant_tool_call_and_result() -> None:
+novaic-cortex/tests/test_context_event_projection.py:568:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:579:                    "observation": {"preview": "exit_code=0"},
+novaic-cortex/tests/test_context_event_projection.py:580:                    "payload_ref": "step-ref:1",
+novaic-cortex/tests/test_context_event_projection.py:598:                "payload_ref": "step-ref:1",
+novaic-cortex/tests/test_context_event_projection.py:604:def test_project_context_events_multiple_tool_results_preserve_order_and_payload_refs() -> None:
+novaic-cortex/tests/test_context_event_projection.py:605:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:626:                    "payload_ref": "payload:a",
+novaic-cortex/tests/test_context_event_projection.py:636:                    "observation": {"preview": "B"},
+novaic-cortex/tests/test_context_event_projection.py:637:                    "payload_ref": "payload:b",
+novaic-cortex/tests/test_context_event_projection.py:648:    assert [message["_metadata"]["payload_ref"] for message in snapshot.messages[1:]] == [
+novaic-cortex/tests/test_context_event_projection.py:654:def test_project_context_events_unknown_tool_observation_does_not_inline_payload() -> None:
+novaic-cortex/tests/test_context_event_projection.py:662:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:672:                    "payload_ref": "payload:display-image",
+novaic-cortex/tests/test_context_event_projection.py:685:def test_project_context_events_uses_stable_step_ref_when_payload_is_externalized() -> None:
+novaic-cortex/tests/test_context_event_projection.py:686:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:708:                    "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_projection.py:717:    assert tool_message["_metadata"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_projection.py:720:def test_project_context_events_orphan_tool_result_is_marked() -> None:
+novaic-cortex/tests/test_context_event_projection.py:721:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:731:                    "payload_ref": "payload:missing",
+novaic-cortex/tests/test_context_event_projection.py:742:def test_project_context_events_scoped_tool_result_is_folded_with_skill() -> None:
+novaic-cortex/tests/test_context_event_projection.py:743:    snapshot = project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:775:                    "observation": {"preview": "internal output"},
+novaic-cortex/tests/test_context_event_projection.py:776:                    "payload_ref": "payload:shell",
+novaic-cortex/tests/test_context_event_projection.py:793:def test_project_context_events_rejects_mixed_root_streams() -> None:
+novaic-cortex/tests/test_context_event_projection.py:795:        project_context_events(
+novaic-cortex/tests/test_context_event_projection.py:811:def test_project_context_events_rejects_missing_required_payload(type, payload, message) -> None:
+novaic-cortex/tests/test_context_event_projection.py:813:        project_context_events([_event(1, type, payload)])
+novaic-cortex/tests/test_step_write_boundary_residue.py:15:    ("novaic-cortex/novaic_cortex/workspace.py", "async def write_step(self, scope_path: str, step: dict) -> str:"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:16:    ("novaic-cortex/novaic_cortex/workspace.py", "async def write_step_projection(self, scope_path: str, step: dict) -> str:"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:17:    ("novaic-cortex/novaic_cortex/workspace.py", "return await self.write_step(scope_path, step)"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:18:    ("novaic-cortex/novaic_cortex/api.py", "path = await ws.write_step_projection(active_path, normalized_step)"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:19:    ("novaic-agent-runtime/task_queue/utils/cortex_bridge.py", "def write_step(self, scope_id: str, step: Dict[str, Any]) -> StepRecord:"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:20:    ("novaic-agent-runtime/task_queue/utils/cortex_bridge.py", "return self.write_step(scope_id, step)"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:21:    ("novaic-agent-runtime/task_queue/handlers/context_handlers.py", "result = bridge.write_step(cortex_scope_id, step)"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:39:            if "write_step(" not in stripped and "write_step_projection(" not in stripped:
+novaic-cortex/novaic_cortex/context_event_writer.py:8:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/novaic_cortex/context_event_writer.py:9:from novaic_cortex.context_events import ContextEvent, build_stream_id
+novaic-cortex/novaic_cortex/context_event_writer.py:214:        payload_ref: str | None = None,
+novaic-cortex/novaic_cortex/context_event_writer.py:226:        if payload_ref is not None:
+novaic-cortex/novaic_cortex/context_event_writer.py:227:            payload["payload_ref"] = payload_ref
+novaic-cortex/novaic_cortex/context_event_writer.py:238:                    f"context-tool:step:{ctx.stream_id}:{scope_id or '_root'}:{step_ref or payload_ref or call_id}"
+novaic-cortex/novaic_cortex/operational_store.py:5:events, active-stack projections, and semantic manifests for Blob payloads.
+novaic-cortex/novaic_cortex/operational_store.py:142:                    payload_ref TEXT PRIMARY KEY,
+novaic-cortex/novaic_cortex/operational_store.py:143:                    source_payload_ref TEXT,
+novaic-cortex/novaic_cortex/operational_store.py:176:            "source_payload_ref" in columns
+novaic-cortex/novaic_cortex/operational_store.py:187:                payload_ref TEXT PRIMARY KEY,
+novaic-cortex/novaic_cortex/operational_store.py:188:                source_payload_ref TEXT,
+novaic-cortex/novaic_cortex/operational_store.py:484:        payload_ref: str,
+novaic-cortex/novaic_cortex/operational_store.py:485:        source_payload_ref: str | None = None,
+novaic-cortex/novaic_cortex/operational_store.py:503:                    payload_ref, source_payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/novaic_cortex/operational_store.py:508:                ON CONFLICT(payload_ref) DO UPDATE SET
+novaic-cortex/novaic_cortex/operational_store.py:509:                    source_payload_ref=excluded.source_payload_ref,
+novaic-cortex/novaic_cortex/operational_store.py:523:                    payload_ref,
+novaic-cortex/novaic_cortex/operational_store.py:524:                    source_payload_ref,
+novaic-cortex/novaic_cortex/operational_store.py:540:                "SELECT * FROM payload_manifest WHERE payload_ref = ?",
+novaic-cortex/novaic_cortex/operational_store.py:541:                (payload_ref,),
+novaic-cortex/novaic_cortex/operational_store.py:545:    def get_payload_manifest(self, *, payload_ref: str) -> dict[str, Any] | None:
+novaic-cortex/novaic_cortex/operational_store.py:548:                "SELECT * FROM payload_manifest WHERE payload_ref = ?",
+novaic-cortex/novaic_cortex/operational_store.py:549:                (payload_ref,),
+novaic-cortex/tests/test_context_event_store.py:7:from novaic_cortex.context_event_store import (
+novaic-cortex/tests/test_context_event_store.py:12:from novaic_cortex.context_events import ContextEvent, ContextEventError, build_stream_id
+novaic-cortex/tests/test_context_event_store.py:62:async def test_context_event_store_path_is_root_stream_owned() -> None:
+novaic-cortex/tests/test_context_event_store.py:68:        == "/ro/active/root-1/context_events/events.jsonl"
+novaic-cortex/tests/test_context_event_store.py:76:async def test_context_event_store_missing_log_reads_empty() -> None:
+novaic-cortex/tests/test_context_event_store.py:84:async def test_context_event_store_reads_ordered_valid_events() -> None:
+novaic-cortex/tests/test_context_event_store.py:97:async def test_context_event_store_rejects_malformed_json() -> None:
+novaic-cortex/tests/test_context_event_store.py:108:async def test_context_event_store_rejects_non_object_row() -> None:
+novaic-cortex/tests/test_context_event_store.py:119:async def test_context_event_store_rejects_invalid_envelope() -> None:
+novaic-cortex/tests/test_context_event_store.py:132:async def test_context_event_store_rejects_semantically_invalid_envelope() -> None:
+novaic-cortex/tests/test_context_event_store.py:145:async def test_context_event_store_append_requires_explicit_providers() -> None:
+novaic-cortex/tests/test_context_event_store.py:163:async def test_context_event_store_appends_with_injected_fields() -> None:
+novaic-cortex/tests/test_context_event_store.py:186:async def test_context_event_store_append_assigns_monotonic_sequence() -> None:
+novaic-cortex/tests/test_context_event_store.py:214:async def test_context_event_store_append_rejects_stream_root_mismatch() -> None:
+novaic-cortex/tests/test_context_event_store.py:233:async def test_context_event_store_initializes_fresh_root_without_legacy_migration() -> None:
+novaic-cortex/tests/test_context_event_store.py:258:async def test_context_event_store_idempotent_duplicate_returns_existing_without_provider_consumption() -> None:
+novaic-cortex/tests/test_context_event_store.py:289:async def test_context_event_store_idempotent_conflict_fails_loudly() -> None:
+novaic-cortex/tests/test_context_event_store.py:321:async def test_context_event_store_non_idempotent_append_creates_new_events() -> None:
+novaic-cortex/tests/test_context_event_store.py:350:async def test_context_event_store_root_initialization_is_retry_safe() -> None:
+novaic-cortex/novaic_cortex/step_result_projection.py:4:Tool outputs are stored on Cortex steps. This module parses those stored
+novaic-cortex/novaic_cortex/step_result_projection.py:37:    details = ", ".join(part for part in (modality, mime_type, size) if part)
+novaic-cortex/novaic_cortex/step_result_projection.py:39:    if details:
+novaic-cortex/novaic_cortex/step_result_projection.py:40:        prefix += f" ({details})"
+novaic-cortex/novaic_cortex/step_result_projection.py:206:            + f"\n\n... [Truncated unknown tool result JSON length > {_UNKNOWN_DICT_TEXT_LIMIT}]"
+novaic-cortex/novaic_cortex/step_result_projection.py:223:        text = text[:max_text_len] + f"\n\n... [Truncated due to context budget length > {max_text_len}]"
+novaic-cortex/novaic_cortex/step_result_projection.py:272:    """Format historical tool output as manifest/text only."""
+novaic-cortex/novaic_cortex/step_result_projection.py:282:    """Format current non-display tool output as manifest/text only."""
+novaic-cortex/novaic_cortex/step_result_projection.py:303:    """Format a monitor-safe text preview of a tool result."""
+novaic-cortex/novaic_cortex/step_result_projection.py:304:    return preview_for_text(result_data, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:307:def preview_for_text(result_data: Dict[str, Any], max_text_len: int = 500) -> str:
+novaic-cortex/novaic_cortex/step_result_projection.py:308:    """Generate a concise text preview of a tool result."""
+novaic-cortex/novaic_cortex/step_result_projection.py:311:        text = text[:max_text_len] + "... [truncated]"
+novaic-cortex/tests/test_context_event_write_authority.py:24:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/tests/test_context_event_write_authority.py:47:async def test_phase3_write_paths_are_authorized_by_context_events() -> None:
+novaic-cortex/tests/test_context_event_write_authority.py:128:                "observation": {"kind": "tool_result", "preview": "exit_code=0"},
+novaic-cortex/tests/test_context_event_write_authority.py:198:        "observation": {"kind": "tool_result", "preview": "exit_code=0"},
+novaic-cortex/novaic_cortex/store.py:6:persistence detail below that boundary.
+novaic-cortex/tests/test_context_event_api_context_writes.py:14:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/novaic_cortex/blob_payload.py:5:payloads in Blob Service and returns ``blob://cortex-payload/...`` refs.
+novaic-cortex/novaic_cortex/blob_payload.py:29:        source_payload_ref: str,
+novaic-cortex/novaic_cortex/blob_payload.py:31:        payload_bytes: bytes,
+novaic-cortex/novaic_cortex/blob_payload.py:75:        source_payload_ref: str,
+novaic-cortex/novaic_cortex/blob_payload.py:77:        payload_bytes: bytes,
+novaic-cortex/novaic_cortex/blob_payload.py:79:        blob_id = _payload_blob_id(tenant_id, scope_path, source_payload_ref)
+novaic-cortex/novaic_cortex/blob_payload.py:80:        digest = hashlib.sha256(payload_bytes).hexdigest()
+novaic-cortex/novaic_cortex/blob_payload.py:86:            "expected_size": len(payload_bytes),
+novaic-cortex/novaic_cortex/blob_payload.py:89:            "source_ref": source_payload_ref,
+novaic-cortex/novaic_cortex/blob_payload.py:99:            if payload_bytes:
+novaic-cortex/novaic_cortex/blob_payload.py:102:                    content=payload_bytes,
+novaic-cortex/novaic_cortex/blob_payload.py:103:                    headers={"X-Tenant-ID": tenant_id},
+novaic-cortex/novaic_cortex/blob_payload.py:111:                headers={"X-Tenant-ID": tenant_id},
+novaic-cortex/novaic_cortex/blob_payload.py:125:                headers={"X-Tenant-ID": tenant_id},
+novaic-cortex/novaic_cortex/blob_payload.py:132:def encode_payload_bytes(payload: Any) -> bytes:
+novaic-cortex/novaic_cortex/blob_payload.py:136:def _payload_blob_id(tenant_id: str, scope_path: str, source_payload_ref: str) -> str:
+novaic-cortex/novaic_cortex/blob_payload.py:137:    digest = hashlib.sha256(f"{tenant_id}:{scope_path}:{source_payload_ref}".encode("utf-8")).hexdigest()
+novaic-cortex/novaic_cortex/context_stack/budget.py:4:  1. Micro:     truncate long tool outputs in older rounds (lossless for recent)
+novaic-cortex/novaic_cortex/context_stack/budget.py:101:    """Truncate long tool outputs in older rounds."""
+novaic-cortex/novaic_cortex/context_stack/budget.py:102:    max_chars = config.micro_max_tool_output_chars
+novaic-cortex/novaic_cortex/context_stack/budget.py:127:                    + f"\n\n[truncated: {len(content)} → {max_chars} chars]",
+novaic-cortex/novaic_cortex/logical_fs.py:240:            await self._add_file_if_exists(files, f"{root_path}/context_events/events.jsonl")
+novaic-cortex/novaic_cortex/auth.py:53:    header = {"alg": "HS256", "typ": "JWT"}
+novaic-cortex/novaic_cortex/auth.py:63:        _b64url_encode(json.dumps(header, separators=(",", ":")).encode()),
+novaic-cortex/novaic_cortex/context_event_read_model.py:12:from novaic_cortex.context_event_projection import (
+novaic-cortex/novaic_cortex/context_event_read_model.py:14:    project_context_events,
+novaic-cortex/novaic_cortex/context_event_read_model.py:16:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/novaic_cortex/context_event_read_model.py:98:        projection = project_context_events(events)
+novaic-cortex/novaic_cortex/shell_capabilities.py:99:  cortex payload read --payload-ref REF [--mode preview|head|tail|range] [--offset N] [--limit N]
+novaic-cortex/novaic_cortex/shell_capabilities.py:110:PAYLOAD_HELP = \"\"\"cortex payload - inspect durable Cortex payloads from shell
+novaic-cortex/novaic_cortex/shell_capabilities.py:114:  cortex payload read --payload-ref REF [--mode preview|head|tail|range] [--offset N] [--limit N]
+novaic-cortex/novaic_cortex/shell_capabilities.py:123:  payload text to the configured model. Do not dump raw large payloads or
+novaic-cortex/novaic_cortex/shell_capabilities.py:154:    headers = {{"Authorization": f"Bearer {{token}}"}}
+novaic-cortex/novaic_cortex/shell_capabilities.py:157:        headers["Content-Type"] = "application/json"
+novaic-cortex/novaic_cortex/shell_capabilities.py:159:    request = urllib.request.Request(f"{{api}}{{path}}", data=data, headers=headers, method=method)
+novaic-cortex/novaic_cortex/shell_capabilities.py:164:        detail = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+novaic-cortex/novaic_cortex/shell_capabilities.py:165:        print(f"{{COMMAND}}: HTTP {{exc.code}}: {{detail}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:172:def _post_json(base_url: str, path: str, body: dict, extra_headers: dict | None = None) -> dict:
+novaic-cortex/novaic_cortex/shell_capabilities.py:177:    headers = {{"Content-Type": "application/json"}}
+novaic-cortex/novaic_cortex/shell_capabilities.py:178:    if extra_headers:
+novaic-cortex/novaic_cortex/shell_capabilities.py:179:        headers.update({{str(k): str(v) for k, v in extra_headers.items() if v is not None}})
+novaic-cortex/novaic_cortex/shell_capabilities.py:181:    request = urllib.request.Request(f"{{base}}{{path}}", data=data, headers=headers, method="POST")
+novaic-cortex/novaic_cortex/shell_capabilities.py:186:        detail = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+novaic-cortex/novaic_cortex/shell_capabilities.py:187:        print(f"{{COMMAND}}: HTTP {{exc.code}} from {{path}}: {{detail}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:209:        detail = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+novaic-cortex/novaic_cortex/shell_capabilities.py:210:        print(f"{{COMMAND}}: HTTP {{exc.code}} from {{path}}: {{detail}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:242:        headers={{"X-Tenant-ID": _env("NOVAIC_USER_ID")}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:248:            mime_type = response.headers.get("content-type", "").split(";", 1)[0].strip()
+novaic-cortex/novaic_cortex/shell_capabilities.py:250:        detail = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+novaic-cortex/novaic_cortex/shell_capabilities.py:251:        print(f"{{COMMAND}}: Blob Service HTTP {{exc.code}}: {{detail}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:270:    headers = {{"X-Tenant-ID": user_id}}
+novaic-cortex/novaic_cortex/shell_capabilities.py:282:    created = _post_json(base, "/v1/blobs/uploads", create_body, headers)
+novaic-cortex/novaic_cortex/shell_capabilities.py:292:            headers=headers,
+novaic-cortex/novaic_cortex/shell_capabilities.py:299:            detail = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+novaic-cortex/novaic_cortex/shell_capabilities.py:300:            print(f"{{COMMAND}}: Blob Service HTTP {{exc.code}} uploading part: {{detail}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:310:        headers,
+novaic-cortex/novaic_cortex/shell_capabilities.py:334:        "diagnostics": {{"truncated": False, **(diagnostics or {{}})}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:493:    headers = {{"X-Internal-Key": internal_key}} if internal_key else None
+novaic-cortex/novaic_cortex/shell_capabilities.py:498:    }}, headers)
+novaic-cortex/novaic_cortex/shell_capabilities.py:993:    payload_ref = _required_flag(rest, "--payload-ref")
+novaic-cortex/novaic_cortex/shell_capabilities.py:1004:                "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:1005:                "mode": (_flag_value(rest, "--mode") or "preview"),
+novaic-cortex/novaic_cortex/shell_capabilities.py:1018:                "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:1032:                "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:1047:                "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/runtime.py:167:        if cfg is not None and len(text) > cfg.micro_max_tool_output_chars:
+novaic-cortex/novaic_cortex/runtime.py:168:            cap = cfg.micro_max_tool_output_chars
+novaic-cortex/novaic_cortex/runtime.py:169:            return text[:cap] + "\n\n[truncated by micro_max_tool_output_chars]"
+novaic-cortex/novaic_cortex/context_events.py:15:CONTEXT_EVENT_SCHEMA_VERSION = 1
+novaic-cortex/novaic_cortex/context_events.py:17:CONTEXT_EVENT_TYPES = frozenset(
+novaic-cortex/novaic_cortex/context_events.py:74:        schema_version: int = CONTEXT_EVENT_SCHEMA_VERSION,
+novaic-cortex/novaic_cortex/context_events.py:114:        if self.schema_version != CONTEXT_EVENT_SCHEMA_VERSION:
+novaic-cortex/novaic_cortex/context_events.py:124:        if self.type not in CONTEXT_EVENT_TYPES:
+novaic-cortex/tests/test_context_event_api_steps_write.py:23:from novaic_cortex.context_event_store import ContextEventStore
+novaic-cortex/tests/test_context_event_api_steps_write.py:40:        self.payloads: dict[tuple[str, str], object] = {}
+novaic-cortex/tests/test_context_event_api_steps_write.py:42:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_context_event_api_steps_write.py:44:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_context_event_api_steps_write.py:48:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_context_event_api_steps_write.py:102:async def test_steps_write_emits_tool_step_recorded_without_fake_payload_ref() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:122:                    "preview": "exit_code=0",
+novaic-cortex/tests/test_context_event_api_steps_write.py:138:            "preview": "exit_code=0",
+novaic-cortex/tests/test_context_event_api_steps_write.py:145:    assert "payload_ref" not in index[0]
+novaic-cortex/tests/test_context_event_api_steps_write.py:147:    assert index[0]["has_artifacts"] is True
+novaic-cortex/tests/test_context_event_api_steps_write.py:155:    with pytest.raises(ValueError, match="payload/payload_ref"):
+=== context event writer/store/read-model slices ===
+     1	"""Explicit write boundary for appending Cortex ContextEvents."""
+     2	
+     3	from __future__ import annotations
+     4	
+     5	from dataclasses import dataclass
+     6	from typing import Any
+     7	
+     8	from novaic_cortex.context_event_store import ContextEventStore
+     9	from novaic_cortex.context_events import ContextEvent, build_stream_id
+    10	
+    11	
+    12	@dataclass(frozen=True)
+    13	class ContextEventWriteContext:
+    14	    """Explicit identity for one root-scope event stream."""
+    15	
+    16	    user_id: str
+    17	    agent_id: str
+    18	    root_scope_id: str
+    19	    root_scope_path: str
+    20	    actor: str = "cortex"
+    21	
+    22	    @property
+    23	    def stream_id(self) -> str:
+    24	        return build_stream_id(
+    25	            user_id=self.user_id,
+    26	            agent_id=self.agent_id,
+    27	            root_scope_id=self.root_scope_id,
+    28	        )
+    29	
+    30	
+    31	class ContextEventWriter:
+    32	    """Small endpoint-facing adapter around ``ContextEventStore``.
+    33	
+    34	    The writer intentionally does not own clocks, ids, env, or request-global
+    35	    state. Those dependencies belong to the store construction boundary, while
+    36	    per-request identity is passed through ``ContextEventWriteContext``.
+    37	    """
+    38	
+    39	    def __init__(self, store: ContextEventStore) -> None:
+    40	        self._store = store
+    41	
+    42	    async def root_initialized(
+    43	        self,
+    44	        ctx: ContextEventWriteContext,
+    45	        *,
+    46	        subagent_id: str,
+    47	        scope_name: str,
+    48	    ) -> ContextEvent:
+    49	        return await self._append(
+    50	            ctx,
+    51	            type="RootInitialized",
+    52	            payload={
+    53	                "root_scope_id": ctx.root_scope_id,
+    54	                "subagent_id": subagent_id,
+    55	                "scope_name": scope_name,
+    56	            },
+    57	            idempotency_key=f"context-root:init:{ctx.stream_id}",
+    58	        )
+    59	
+    60	    async def wake_started(
+    61	        self,
+    62	        ctx: ContextEventWriteContext,
+    63	        *,
+    64	        wake_scope_id: str,
+    65	        scope_name: str,
+    66	    ) -> ContextEvent:
+    67	        return await self._append(
+    68	            ctx,
+    69	            type="WakeStarted",
+    70	            payload={"wake_scope_id": wake_scope_id, "scope_name": scope_name},
+    71	            idempotency_key=f"context-wake:start:{ctx.stream_id}:{wake_scope_id}",
+    72	        )
+    73	
+    74	    async def wake_archived(
+    75	        self,
+    76	        ctx: ContextEventWriteContext,
+    77	        *,
+    78	        wake_scope_id: str,
+    79	        reason: str,
+    80	        remaining_stack: list[str],
+    81	        archive_diagnostics: dict[str, Any] | None = None,
+    82	    ) -> ContextEvent:
+    83	        payload: dict[str, Any] = {
+    84	            "wake_scope_id": wake_scope_id,
+    85	            "reason": reason,
+    86	            "remaining_stack": remaining_stack,
+    87	        }
+    88	        if archive_diagnostics is not None:
+    89	            payload["archive_diagnostics"] = dict(archive_diagnostics)
+    90	        return await self._append(
+    91	            ctx,
+    92	            type="WakeArchived",
+    93	            payload=payload,
+    94	            idempotency_key=f"context-wake:archive:{ctx.stream_id}:{wake_scope_id}",
+    95	        )
+    96	
+    97	    async def system_prompt_added(
+    98	        self,
+    99	        ctx: ContextEventWriteContext,
+   100	        *,
+   101	        message: dict[str, Any],
+   102	        idempotency_key: str | None = None,
+   103	    ) -> ContextEvent:
+   104	        return await self._append(
+   105	            ctx,
+   106	            type="SystemPromptAdded",
+   107	            payload={"message": message},
+   108	            idempotency_key=idempotency_key,
+   109	        )
+   110	
+   111	    async def context_message_appended(
+   112	        self,
+   113	        ctx: ContextEventWriteContext,
+   114	        *,
+   115	        message: dict[str, Any],
+   116	        scope_id: str | None = None,
+   117	        idempotency_key: str | None = None,
+   118	    ) -> ContextEvent:
+   119	        payload: dict[str, Any] = {"message": message}
+   120	        if scope_id is not None:
+   121	            payload["scope_id"] = scope_id
+   122	        return await self._append(
+   123	            ctx,
+   124	            type="ContextMessageAppended",
+   125	            payload=payload,
+   126	            idempotency_key=idempotency_key,
+   127	        )
+   128	
+   129	    async def input_notification_attached(
+   130	        self,
+   131	        ctx: ContextEventWriteContext,
+   132	        *,
+   133	        notification_id: str,
+   134	        source_kind: str,
+   135	        scope_id: str | None = None,
+   136	    ) -> ContextEvent:
+   137	        payload: dict[str, Any] = {
+   138	            "notification_id": notification_id,
+   139	            "source_kind": source_kind,
+   140	        }
+   141	        if scope_id is not None:
+   142	            payload["scope_id"] = scope_id
+   143	        return await self._append(
+   144	            ctx,
+   145	            type="InputNotificationAttached",
+   146	            payload=payload,
+   147	            idempotency_key=f"context-input:attach:{ctx.stream_id}:{notification_id}",
+   148	        )
+   149	
+   150	    async def skill_scope_opened(
+   151	        self,
+   152	        ctx: ContextEventWriteContext,
+   153	        *,
+   154	        scope_id: str,
+   155	        parent_scope_id: str,
+   156	        skill_name: str,
+   157	        name: str | None = None,
+   158	    ) -> ContextEvent:
+   159	        payload = {
+   160	            "scope_id": scope_id,
+   161	            "parent_scope_id": parent_scope_id,
+   162	            "skill_name": skill_name,
+   163	        }
+   164	        if name is not None:
+   165	            payload["name"] = name
+   166	        return await self._append(
+   167	            ctx,
+   168	            type="SkillScopeOpened",
+   169	            payload=payload,
+   170	            idempotency_key=f"context-skill:open:{ctx.stream_id}:{scope_id}",
+   171	        )
+   172	
+   173	    async def skill_scope_closed(
+   174	        self,
+   175	        ctx: ContextEventWriteContext,
+   176	        *,
+   177	        scope_id: str,
+   178	        report: str,
+   179	    ) -> ContextEvent:
+   180	        return await self._append(
+   181	            ctx,
+   182	            type="SkillScopeClosed",
+   183	            payload={"scope_id": scope_id, "report": report},
+   184	            idempotency_key=f"context-skill:close:{ctx.stream_id}:{scope_id}",
+   185	        )
+   186	
+   187	    async def assistant_tool_call_recorded(
+   188	        self,
+   189	        ctx: ContextEventWriteContext,
+   190	        *,
+   191	        message: dict[str, Any],
+   192	        scope_id: str | None = None,
+   193	        idempotency_key: str | None = None,
+   194	    ) -> ContextEvent:
+   195	        payload: dict[str, Any] = {"message": message}
+   196	        if scope_id is not None:
+   197	            payload["scope_id"] = scope_id
+   198	        return await self._append(
+   199	            ctx,
+   200	            type="AssistantToolCallRecorded",
+   201	            payload=payload,
+   202	            idempotency_key=idempotency_key,
+   203	        )
+   204	
+   205	    async def tool_step_recorded(
+   206	        self,
+   207	        ctx: ContextEventWriteContext,
+   208	        *,
+   209	        call_id: str,
+   210	        tool: str,
+   211	        status: str,
+   212	        observation: dict[str, Any],
+   213	        step_ref: str | None = None,
+   214	        payload_ref: str | None = None,
+   215	        scope_id: str | None = None,
+   216	        idempotency_key: str | None = None,
+   217	    ) -> ContextEvent:
+   218	        payload: dict[str, Any] = {
+   219	            "call_id": call_id,
+   220	            "tool": tool,
+   221	            "status": status,
+   222	            "observation": observation,
+   223	        }
+   224	        if step_ref is not None:
+   225	            payload["step_ref"] = step_ref
+   226	        if payload_ref is not None:
+   227	            payload["payload_ref"] = payload_ref
+   228	        if scope_id is not None:
+   229	            payload["scope_id"] = scope_id
+   230	        return await self._append(
+   231	            ctx,
+   232	            type="ToolStepRecorded",
+   233	            payload=payload,
+   234	            idempotency_key=(
+   235	                idempotency_key
+   236	                if idempotency_key is not None
+   237	                else (
+   238	                    f"context-tool:step:{ctx.stream_id}:{scope_id or '_root'}:{step_ref or payload_ref or call_id}"
+   239	                    if call_id != "unknown"
+   240	                    else None
+     1	"""Workspace-backed ContextEvent append-only store."""
+     2	
+     3	from __future__ import annotations
+     4	
+     5	import json
+     6	from typing import TYPE_CHECKING, Callable
+     7	
+     8	from novaic_cortex.context_events import (
+     9	    CONTEXT_EVENT_SCHEMA_VERSION,
+    10	    ContextEvent,
+    11	    ContextEventError,
+    12	    build_stream_id,
+    13	    stable_json,
+    14	)
+    15	
+    16	if TYPE_CHECKING:
+    17	    from novaic_cortex.workspace import Workspace
+    18	
+    19	
+    20	class ContextEventStoreError(ValueError):
+    21	    """Raised when the persisted ContextEvent log cannot be replayed."""
+    22	
+    23	
+    24	class ContextEventIdempotencyConflict(ContextEventStoreError):
+    25	    """Raised when a retry idempotency key maps to a different event body."""
+    26	
+    27	
+    28	class ContextEventStore:
+    29	    """Read and eventually append ContextEvents for one root-scope stream."""
+    30	
+    31	    def __init__(
+    32	        self,
+    33	        workspace: "Workspace",
+    34	        *,
+    35	        clock: Callable[[], str] | None = None,
+    36	        id_provider: Callable[[], str] | None = None,
+    37	    ) -> None:
+    38	        self._workspace = workspace
+    39	        self._clock = clock
+    40	        self._id_provider = id_provider
+    41	
+    42	    @staticmethod
+    43	    def event_log_path(root_scope_path: str) -> str:
+    44	        root_scope_path = root_scope_path.rstrip("/")
+    45	        if not root_scope_path:
+    46	            raise ContextEventStoreError("root_scope_path must be non-empty")
+    47	        return f"{root_scope_path}/context_events/events.jsonl"
+    48	
+    49	    async def read_events(self, root_scope_path: str) -> list[ContextEvent]:
+    50	        path = self.event_log_path(root_scope_path)
+    51	        try:
+    52	            raw = await self._workspace.read(path)
+    53	        except KeyError:
+    54	            return []
+    55	
+    56	        events: list[ContextEvent] = []
+    57	        for lineno, line in enumerate(raw.splitlines(), start=1):
+    58	            if not line.strip():
+    59	                continue
+    60	            try:
+    61	                row = json.loads(line)
+    62	            except json.JSONDecodeError as exc:
+    63	                raise ContextEventStoreError(
+    64	                    f"invalid ContextEvent JSON at {path}:{lineno}: {exc.msg}"
+    65	                ) from exc
+    66	            if not isinstance(row, dict):
+    67	                raise ContextEventStoreError(
+    68	                    f"invalid ContextEvent row at {path}:{lineno}: expected object"
+    69	                )
+    70	            try:
+    71	                events.append(ContextEvent.from_dict(row))
+    72	            except ContextEventError as exc:
+    73	                raise ContextEventStoreError(
+    74	                    f"invalid ContextEvent envelope at {path}:{lineno}: {exc}"
+    75	                ) from exc
+    76	        return events
+    77	
+    78	    async def append_event(
+    79	        self,
+    80	        root_scope_path: str,
+    81	        *,
+    82	        stream_id: str,
+    83	        root_scope_id: str,
+    84	        actor: str,
+    85	        type: str,
+    86	        payload: dict,
+    87	        idempotency_key: str | None = None,
+    88	    ) -> ContextEvent:
+    89	        existing = await self.read_events(root_scope_path)
+    90	        if idempotency_key:
+    91	            candidate = _canonical_semantic_json(
+    92	                stream_id=stream_id,
+    93	                root_scope_id=root_scope_id,
+    94	                actor=actor,
+    95	                type=type,
+    96	                payload=payload,
+    97	            )
+    98	            for event in existing:
+    99	                if event.idempotency_key != idempotency_key:
+   100	                    continue
+   101	                if event.canonical_semantic_json() == candidate:
+   102	                    return event
+   103	                raise ContextEventIdempotencyConflict(
+   104	                    f"idempotency key {idempotency_key!r} already maps to a different ContextEvent"
+   105	                )
+   106	
+   107	        if self._clock is None:
+   108	            raise ContextEventStoreError("ContextEventStore append requires clock provider")
+   109	        if self._id_provider is None:
+   110	            raise ContextEventStoreError("ContextEventStore append requires id provider")
+   111	
+   112	        event = ContextEvent.create(
+   113	            event_id=self._id_provider(),
+   114	            stream_id=stream_id,
+   115	            root_scope_id=root_scope_id,
+   116	            seq=len(existing) + 1,
+   117	            idempotency_key=idempotency_key,
+   118	            occurred_at=self._clock(),
+   119	            actor=actor,
+   120	            type=type,
+   121	            payload=payload,
+   122	        )
+   123	        await self._workspace._sys_append_line(
+   124	            self.event_log_path(root_scope_path),
+   125	            event.to_json_line(),
+   126	        )
+   127	        return event
+   128	
+   129	    async def initialize_root(
+   130	        self,
+   131	        root_scope_path: str,
+   132	        *,
+   133	        user_id: str,
+   134	        agent_id: str,
+   135	        root_scope_id: str,
+   136	        subagent_id: str,
+   137	        scope_name: str,
+   138	        actor: str = "cortex",
+   139	    ) -> ContextEvent:
+   140	        stream_id = build_stream_id(
+   141	            user_id=user_id,
+   142	            agent_id=agent_id,
+   143	            root_scope_id=root_scope_id,
+   144	        )
+   145	        return await self.append_event(
+   146	            root_scope_path,
+   147	            stream_id=stream_id,
+   148	            root_scope_id=root_scope_id,
+   149	            actor=actor,
+   150	            type="RootInitialized",
+   151	            payload={
+   152	                "root_scope_id": root_scope_id,
+   153	                "subagent_id": subagent_id,
+   154	                "scope_name": scope_name,
+   155	            },
+   156	            idempotency_key=f"context-root:init:{stream_id}",
+   157	        )
+   158	
+   159	
+   160	def _canonical_semantic_json(
+   161	    *,
+   162	    stream_id: str,
+   163	    root_scope_id: str,
+   164	    actor: str,
+   165	    type: str,
+   166	    payload: dict,
+   167	) -> str:
+   168	    return stable_json(
+   169	        {
+   170	            "schema_version": CONTEXT_EVENT_SCHEMA_VERSION,
+   171	            "stream_id": stream_id,
+   172	            "root_scope_id": root_scope_id,
+   173	            "actor": actor,
+   174	            "type": type,
+   175	            "payload": payload,
+   176	        }
+   177	    )
+     1	"""ContextEvent-backed read model for LLM context preparation.
+     2	
+     3	This module reads the authoritative event stream, projects it through the pure
+     4	projection function, then applies the context budget boundary.
+     5	"""
+     6	
+     7	from __future__ import annotations
+     8	
+     9	from dataclasses import dataclass
+    10	from typing import TYPE_CHECKING
+    11	
+    12	from novaic_cortex.context_event_projection import (
+    13	    ContextProjectionSnapshot,
+    14	    project_context_events,
+    15	)
+    16	from novaic_cortex.context_event_store import ContextEventStore
+    17	from novaic_cortex.context_stack.budget import budget_compact
+    18	from novaic_cortex.context_stack.types import (
+    19	    CompactConfig,
+    20	    Phase,
+    21	    StackStatus,
+    22	    TokenCounter,
+    23	    count_all_tokens,
+    24	)
+    25	
+    26	if TYPE_CHECKING:
+    27	    from novaic_cortex.workspace import Workspace
+    28	
+    29	
+    30	@dataclass(frozen=True)
+    31	class ContextEventPreparedContext:
+    32	    """Prepared LLM context derived from one ContextEvent stream."""
+    33	
+    34	    messages: list[dict]
+    35	    stack: list[dict]
+    36	    estimated_tokens: int
+    37	    usage_ratio: float
+    38	    applied_seq: int
+    39	    projection: ContextProjectionSnapshot
+    40	
+    41	    def status(self) -> StackStatus:
+    42	        current = self.stack[0].get("skill_name") if self.stack else None
+    43	        if current is None and self.stack:
+    44	            current = self.stack[0].get("name")
+    45	        return StackStatus(
+    46	            stack_depth=len(self.stack),
+    47	            current_skill=str(current) if current is not None else None,
+    48	            frames=self.stack,
+    49	            total_messages=len(self.messages),
+    50	            estimated_tokens=self.estimated_tokens,
+    51	            usage_ratio=self.usage_ratio,
+    52	            phase=Phase.EXECUTING if self.stack else Phase.CLOSED,
+    53	        )
+    54	
+    55	
+    56	class ContextEventReadModelResetRequired(RuntimeError):
+    57	    """Raised when a root has no event stream and reset is required."""
+    58	
+    59	    def __init__(self, root_scope_path: str) -> None:
+    60	        super().__init__(
+    61	            f"context event stream missing or empty for {root_scope_path}; reset required"
+    62	        )
+    63	        self.root_scope_path = root_scope_path
+    64	
+    65	
+    66	class ContextEventReadModel:
+    67	    """Prepare LLM context from the authoritative ContextEvent stream."""
+    68	
+    69	    def __init__(
+    70	        self,
+    71	        *,
+    72	        workspace: "Workspace",
+    73	        root_scope_path: str,
+    74	        config: CompactConfig | None = None,
+    75	        token_counter: TokenCounter | None = None,
+    76	        event_store: ContextEventStore | None = None,
+    77	    ) -> None:
+    78	        self._workspace = workspace
+    79	        self._root_scope_path = root_scope_path.rstrip("/")
+    80	        self._config = config or CompactConfig()
+    81	        self._token_counter = token_counter
+    82	        self._event_store = event_store or ContextEventStore(workspace)
+    83	
+    84	    async def prepare(self) -> ContextEventPreparedContext:
+    85	        if not self._root_scope_path:
+    86	            return ContextEventPreparedContext(
+    87	                messages=[],
+    88	                stack=[],
+    89	                estimated_tokens=0,
+    90	                usage_ratio=0.0,
+    91	                applied_seq=0,
+    92	                projection=ContextProjectionSnapshot(),
+    93	            )
+    94	
+    95	        events = await self._event_store.read_events(self._root_scope_path)
+    96	        if not events:
+    97	            raise ContextEventReadModelResetRequired(self._root_scope_path)
+    98	        projection = project_context_events(events)
+    99	        messages = budget_compact(
+   100	            projection.messages,
+   101	            self._config,
+   102	            counter=self._token_counter,
+   103	        )
+   104	        estimated_tokens = count_all_tokens(messages, self._token_counter)
+   105	        usage_ratio = (
+   106	            estimated_tokens / self._config.context_window
+   107	            if self._config.context_window > 0
+   108	            else 0.0
+   109	        )
+   110	        return ContextEventPreparedContext(
+   111	            messages=messages,
+   112	            stack=_top_first_stack(projection.stack),
+   113	            estimated_tokens=estimated_tokens,
+   114	            usage_ratio=usage_ratio,
+   115	            applied_seq=projection.applied_seq,
+   116	            projection=projection,
+   117	        )
+   118	
+   119	
+   120	def _top_first_stack(stack: list[dict]) -> list[dict]:
+   121	    """Return stack frames in API/control order: current top first."""
+   122	
+   123	    frames: list[dict] = []
+   124	    for frame in reversed(stack):
+   125	        normalized = dict(frame)
+   126	        if normalized.get("kind") == "wake" and "skill_name" not in normalized:
+   127	            normalized["skill_name"] = "wake"
+   128	        frames.append(normalized)
+   129	    return frames
+=== runtime truncation slices ===
+     1	"""Cortex runtime façade (docs/novaic_cortex_design.md §5).
+     2	
+     3	Assembles all components and provides:
+     4	  - Agent-facing tool methods: shell and file tools
+     5	  - Tool schema loading from files (/ro/config/tools/ + skill tools)
+     6	  - Skill installation
+     7	"""
+     8	
+     9	from __future__ import annotations
+    10	
+    11	import inspect
+    12	import json
+    13	import warnings
+    14	
+    15	from novaic_cortex.config import EngineConfig, load_engine_config
+    16	from novaic_cortex.context_budget import compact_level, usage_ratio
+    17	from novaic_cortex.hooks import CortexHooks
+    18	from novaic_cortex.sandbox import Sandbox
+    19	from novaic_cortex.tool_schemas import BUILTIN_TOOL_SCHEMAS
+    20	from novaic_cortex.types import CortexMetrics, ShellResult
+    21	from novaic_cortex.workspace import Workspace
+    22	
+    23	
+    24	def _validate_agent_tool_path(path: str) -> None:
+    25	    p = path.strip()
+    26	    if not (p.startswith("/ro/") or p.startswith("/rw/")):
+    27	        raise ValueError(f"path must start with /ro/ or /rw/: {path!r}")
+    28	
+    29	
+    30	class Cortex:
+    31	    """NovAIC Cortex — cognitive infrastructure for AI agents."""
+    32	
+    33	    def __init__(
+    34	        self,
+    35	        *,
+    36	        workspace: Workspace,
+    37	        hooks: CortexHooks | None = None,
+    38	        metrics: CortexMetrics | None = None,
+    39	        sandbox_process_runner: object | None = None,
+    40	    ) -> None:
+    41	        self.hooks = hooks if hooks is not None else CortexHooks()
+    42	        self.metrics = metrics if metrics is not None else CortexMetrics()
+    43	        self.config: EngineConfig | None = None
+    44	        self._sandbox_process_runner = sandbox_process_runner
+    45	        self.workspace = workspace
+    46	        cfg0 = EngineConfig()
+    47	        self.sandbox = Sandbox(
+    48	            self.workspace,
+    49	            max_sync_bytes=None,
+    50	            max_wall_timeout=cfg0.sandbox_timeout_max,
+    51	            process_runner=self._sandbox_process_runner,
+    52	        )
+    53	
+    54	    async def initialize(self) -> None:
+    55	        await self.workspace.initialize()
+    56	        await self._seed_builtin_tools()
+    57	        cfg = await load_engine_config(self.workspace)
+    58	        self.config = cfg
+    59	        self.sandbox = Sandbox(
+    60	            self.workspace,
+    61	            max_sync_bytes=None,
+    62	            max_wall_timeout=cfg.sandbox_timeout_max,
+    63	            process_runner=self._sandbox_process_runner,
+    64	        )
+    65	
+    66	    async def _seed_builtin_tools(self) -> None:
+    67	        """Write builtin tool schemas to /ro/config/tools/.
+    68	
+    69	        Builtins are code-owned, so refresh them on initialize. This keeps
+    70	        long-lived agents from retaining stale tool definitions after a deploy
+    71	        (for example, adding shell back to the LLM-facing tool set).
+    72	        """
+    73	        for schema in BUILTIN_TOOL_SCHEMAS:
+    74	            name = schema["name"]
+    75	            await self.workspace._sys_write_json(f"/ro/config/tools/{name}.json", schema)
+    76	        names = [s["name"] for s in BUILTIN_TOOL_SCHEMAS]
+    77	        await self.workspace._sys_write_json("/ro/config/tools/_index.json", names)
+    78	
+    79	    # ── Tool Schema Loading ──
+    80	
+    81	    async def load_tool_schemas(self) -> list[dict]:
+    82	        """Load tool definitions from /ro/config/tools/ + skill tools."""
+    83	        schemas: list[dict] = []
+    84	        seen_names: set[str] = set()
+    85	
+    86	        tools_dir = "/ro/config/tools/"
+    87	        try:
+    88	            entries = await self.workspace.list_dir(tools_dir)
+    89	        except (KeyError, FileNotFoundError):
+    90	            entries = []
+    91	        for entry in entries:
+    92	            if entry.name.endswith(".json") and not entry.name.startswith("_"):
+    93	                try:
+    94	                    raw = await self.workspace.read(entry.path)
+    95	                    schema = json.loads(raw)
+    96	                    name = schema.get("name", "")
+    97	                    if name and name not in seen_names:
+    98	                        schemas.append(schema)
+    99	                        seen_names.add(name)
+   100	                except (KeyError, FileNotFoundError, json.JSONDecodeError):
+   101	                    pass
+   102	
+   103	        try:
+   104	            skills = await self.workspace.list_dir("/ro/skills/")
+   105	        except (KeyError, FileNotFoundError):
+   106	            skills = []
+   107	        for skill in skills:
+   108	            if skill.is_dir and not skill.name.startswith("_"):
+   109	                skill_tools = f"/ro/skills/{skill.name}/tools/"
+   110	                if await self.workspace.exists(skill_tools):
+   111	                    try:
+   112	                        tool_entries = await self.workspace.list_dir(skill_tools)
+   113	                    except (KeyError, FileNotFoundError):
+   114	                        tool_entries = []
+   115	                    for entry in tool_entries:
+   116	                        if entry.name.endswith(".json"):
+   117	                            try:
+   118	                                raw = await self.workspace.read(entry.path)
+   119	                                schema = json.loads(raw)
+   120	                                name = schema.get("name", "")
+   121	                                if name and name not in seen_names:
+   122	                                    schemas.append(schema)
+   123	                                    seen_names.add(name)
+   124	                            except (KeyError, FileNotFoundError, json.JSONDecodeError):
+   125	                                pass
+   126	
+   127	        return schemas
+   128	
+   129	    # ── Compact suggestion ──
+   130	
+   131	    async def suggest_compact(self, used_tokens: int) -> dict[str, str | float]:
+   132	        cfg = self.config if self.config is not None else EngineConfig()
+   133	        ratio = usage_ratio(used_tokens, cfg.context_window)
+   134	        level = compact_level(used_tokens, cfg)
+   135	        return {
+   136	            "usage_ratio": ratio,
+   137	            "level": level,
+   138	            "context_window": cfg.context_window,
+   139	            "compact_threshold": cfg.compact_threshold,
+   140	            "emergency_threshold": cfg.emergency_threshold,
+=== tests: context event api steps/write ===
+     1	from __future__ import annotations
+     2	
+     3	import itertools
+     4	import json
+     5	
+     6	import pytest
+     7	from fastapi import HTTPException
+     8	
+     9	from novaic_cortex.api import (
+    10	    ContextSkillBeginRequest,
+    11	    ScopeCreateRequest,
+    12	    ScopeWriteAssistantRequest,
+    13	    StepFormattedRequest,
+    14	    StepWriteRequest,
+    15	    context_skill_begin,
+    16	    scope_create,
+    17	    scope_write_assistant,
+    18	    set_registry,
+    19	    steps_read_formatted,
+    20	    steps_write,
+    21	)
+    22	from novaic_cortex.blob_payload import BlobPayloadPolicy
+    23	from novaic_cortex.context_event_store import ContextEventStore
+    24	from novaic_cortex.operational_store import build_operational_sqlite_store
+    25	from novaic_cortex.scope_locks import InMemoryScopeLockManager, install_lock_manager
+    26	from novaic_cortex.workspace import Workspace
+    27	from cortex_tests.workspace_test_utils import make_workspace_with_store
+    28	
+    29	
+    30	class _Registry:
+    31	    def __init__(self, ws: Workspace) -> None:
+    32	        self._ws = ws
+    33	
+    34	    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+    35	        return self._ws
+    36	
+    37	
+    38	class _FakeBlobClient:
+    39	    def __init__(self) -> None:
+    40	        self.payloads: dict[tuple[str, str], object] = {}
+    41	
+    42	    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+    43	        blob_ref = "blob://cortex-payload/blob-1"
+    44	        self.payloads[(tenant_id, blob_ref)] = payload
+    45	        return blob_ref
+    46	
+    47	    async def get_payload(self, *, tenant_id, blob_ref):
+    48	        return self.payloads[(tenant_id, blob_ref)]
+    49	
+    50	
+    51	async def _workspace(agent_id: str = "agent-1", **kwargs) -> Workspace:
+    52	    ws, _store = make_workspace_with_store(agent_id, **kwargs)
+    53	    await ws.initialize()
+    54	    set_registry(_Registry(ws))
+    55	    install_lock_manager(InMemoryScopeLockManager(), name="in-memory-test")
+    56	    return ws
+    57	
+    58	
+    59	async def _root_and_wake(ws: Workspace) -> tuple[dict, dict]:
+    60	    root = await scope_create(
+    61	        ScopeCreateRequest(
+    62	            user_id="user-1",
+    63	            agent_id="agent-1",
+    64	            scope_id="agent-root",
+    65	            name="agent root",
+    66	            skill="agent_root",
+    67	        )
+    68	    )
+    69	    wake = await scope_create(
+    70	        ScopeCreateRequest(
+    71	            user_id="user-1",
+    72	            agent_id="agent-1",
+    73	            scope_id="wake-1",
+    74	            name="user conversation",
+    75	            skill="wake",
+    76	            parent_path=root["scope_path"],
+    77	        )
+    78	    )
+    79	    return root, wake
+    80	
+    81	
+    82	async def _reopen_workspace(ws: Workspace, memory_store, **kwargs) -> Workspace:
+    83	    clock = itertools.count(2_000_000)
+    84	    ids = itertools.count(1)
+    85	    reopened_ops = build_operational_sqlite_store(
+    86	        ws.operational_store.path,
+    87	        clock_ms=lambda: next(clock),
+    88	        id_provider=lambda: f"routing-reopen-event-{next(ids)}",
+    89	    )
+    90	    reopened_ws, _ = make_workspace_with_store(
+    91	        "agent-1",
+    92	        store=memory_store,
+    93	        operational_store=reopened_ops,
+    94	        **kwargs,
+    95	    )
+    96	    await reopened_ws.initialize()
+    97	    set_registry(_Registry(reopened_ws))
+    98	    return reopened_ws
+    99	
+   100	
+   101	@pytest.mark.asyncio
+   102	async def test_steps_write_emits_tool_step_recorded_without_fake_payload_ref() -> None:
+   103	    ws = await _workspace()
+   104	    event_store = ContextEventStore(ws)
+   105	    root, wake = await _root_and_wake(ws)
+   106	
+   107	    assert not hasattr(ws, "resolve_active_scope_path")
+   108	
+   109	    result = await steps_write(
+   110	        StepWriteRequest(
+   111	            user_id="user-1",
+   112	            agent_id="agent-1",
+   113	            scope_id="agent-root",
+   114	            step={
+   115	                "type": "tool",
+   116	                "call_id": "shell:1",
+   117	                "tool": "shell",
+   118	                "status": "completed",
+   119	                "duration_ms": 0,
+   120	                "observation": {
+   121	                    "kind": "tool_result",
+   122	                    "preview": "exit_code=0",
+   123	                    "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+   124	                },
+   125	            },
+   126	        )
+   127	    )
+   128	
+   129	    events = await event_store.read_events(root["scope_path"])
+   130	    assert events[-1].type == "ToolStepRecorded"
+   131	    assert events[-1].payload == {
+   132	        "scope_id": "wake-1",
+   133	        "call_id": "shell:1",
+   134	        "tool": "shell",
+   135	        "status": "completed",
+   136	        "observation": {
+   137	            "kind": "tool_result",
+   138	            "preview": "exit_code=0",
+   139	            "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+   140	        },
+   141	    }
+   142	    assert result["scope_path"] == wake["scope_path"]
+   143	    index = await ws.read_step_index(wake["scope_path"])
+   144	    assert len(index) == 1
+   145	    assert "payload_ref" not in index[0]
+   146	    assert index[0]["duration_ms"] == 0
+   147	    assert index[0]["has_artifacts"] is True
+   148	
+   149	
+   150	@pytest.mark.asyncio
+   151	async def test_steps_write_rejects_inline_result_request() -> None:
+   152	    ws = await _workspace()
+   153	    _root, wake = await _root_and_wake(ws)
+   154	
+   155	    with pytest.raises(ValueError, match="payload/payload_ref"):
+   156	        await steps_write(
+   157	            StepWriteRequest(
+   158	                user_id="user-1",
+   159	                agent_id="agent-1",
+   160	                scope_id="agent-root",
+   161	                step={
+   162	                    "type": "tool",
+   163	                    "call_id": "shell:inline",
+   164	                    "tool": "shell",
+   165	                    "status": "completed",
+   166	                    "result": "raw terminal output must not be written inline",
+   167	                },
+   168	            )
+   169	        )
+   170	
+   171	    assert await ws.read_step_index(wake["scope_path"]) == []
+   172	
+   173	
+   174	@pytest.mark.asyncio
+   175	async def test_steps_write_records_deepest_scope_and_final_blob_payload_ref() -> None:
+   176	    blob = _FakeBlobClient()
+   177	    ws, memory_store = make_workspace_with_store(
+   178	        "agent-1",
+   179	        payload_blob_client=blob,
+   180	        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+   181	    )
+   182	    await ws.initialize()
+   183	    set_registry(_Registry(ws))
+   184	    install_lock_manager(InMemoryScopeLockManager(), name="in-memory-test")
+   185	    event_store = ContextEventStore(ws)
+   186	    root, wake = await _root_and_wake(ws)
+   187	    child = await context_skill_begin(
+   188	        ContextSkillBeginRequest(
+   189	            user_id="user-1",
+   190	            agent_id="agent-1",
+=== tests: read model truncation ===
+   180	            "role": "tool",
+   181	            "tool_call_id": "shell:1",
+   182	            "content": "exit_code=0\n/ro/rw",
+   183	            "_message_type": "TOOL_RESULT",
+   184	            "_metadata": {
+   185	                "call_id": "shell:1",
+   186	                "tool": "shell",
+   187	                "status": "completed",
+   188	                "payload_ref": None,
+   189	            },
+   190	        }
+   191	    ]
+   192	
+   193	
+   194	@pytest.mark.asyncio
+   195	async def test_event_read_model_applies_budget_compaction_to_projected_messages() -> None:
+   196	    ws, _store = make_workspace_with_store("agent-1")
+   197	    long_tool_output = "abcdefghijklmnopqrstuvwxyz"
+   198	    events = _base_events()
+   199	    events.extend(
+   200	        [
+   201	            _event(3, "ContextMessageAppended", {"message": {"role": "user", "content": "one"}}),
+   202	            _event(
+   203	                4,
+   204	                "AssistantToolCallRecorded",
+   205	                {
+   206	                    "message": {
+   207	                        "role": "assistant",
+   208	                        "content": "",
+   209	                        "tool_calls": [
+   210	                            {
+   211	                                "id": "shell:1",
+   212	                                "type": "function",
+   213	                                "function": {"name": "shell", "arguments": "{}"},
+   214	                            }
+   215	                        ],
+   216	                    }
+   217	                },
+   218	            ),
+   219	            _event(
+   220	                5,
+   221	                "ToolStepRecorded",
+   222	                {
+   223	                    "call_id": "shell:1",
+   224	                    "tool": "shell",
+   225	                    "status": "completed",
+   226	                    "observation": {"preview": long_tool_output},
+   227	                },
+   228	            ),
+   229	            _event(6, "ContextMessageAppended", {"message": {"role": "user", "content": "two"}}),
+   230	        ]
+   231	    )
+   232	    await _write_events(ws, events)
+   233	
+   234	    prepared = await ContextEventReadModel(
+   235	        workspace=ws,
+   236	        root_scope_path=ROOT_PATH,
+   237	        config=CompactConfig(
+   238	            context_window=200_000,
+   239	            micro_max_tool_output_chars=8,
+   240	            micro_preserve_recent_rounds=1,
+   241	        ),
+   242	    ).prepare()
+   243	
+   244	    tool_content = next(
+   245	        str(message["content"])
+   246	        for message in prepared.messages
+   247	        if message.get("role") == "tool"
+   248	    )
+   249	    assert tool_content.startswith("abcdefgh")
+   250	    assert "[truncated: 26 → 8 chars]" in tool_content
+   251	    assert prepared.estimated_tokens > 0
+   252	    assert prepared.usage_ratio > 0
+=== tests: step index artifacts ===
+   430	        "call_id": "tc_min",
+   431	        "status": "success",
+   432	        "observation": {"kind": "tool_result", "preview": "OK"},
+   433	    })
+   434	
+   435	    index = await ws.read_step_index(path)
+   436	    assert len(index) == 1
+   437	    entry = index[0]
+   438	    assert "tool" not in entry
+   439	    assert "duration_ms" not in entry
+   440	    assert "step_ref" not in entry
+   441	    assert "has_artifacts" not in entry
+   442	
+   443	
+   444	@pytest.mark.asyncio
+   445	async def test_index_keeps_zero_duration_and_observation_artifacts():
+   446	    ws = await _make_ws()
+   447	    path = await ws.create_scope("s1", "test scope")
+   448	
+   449	    await ws.write_step(path, {
+   450	        "type": "tool",
+   451	        "call_id": "tc_zero_duration",
+   452	        "tool": "display",
+   453	        "status": "success",
+   454	        "duration_ms": 0,
+   455	        "observation": {
+   456	            "kind": "tool_result",
+   457	            "preview": "OK",
+   458	            "artifacts": [{"uri": "blob://runtime-artifact/img"}],
+   459	        },
+   460	    })
+   461	
+   462	    index = await ws.read_step_index(path)
+   463	    assert len(index) == 1
+   464	    assert index[0]["duration_ms"] == 0
+   465	    assert index[0]["has_artifacts"] is True
+   466	
+   467	
+   468	@pytest.mark.asyncio
+   469	async def test_scope_type_step_in_index():
+   470	    ws = await _make_ws()
+   471	    path = await ws.create_scope("parent", "parent scope")
+   472	
+   473	    await ws.write_step(path, {
+   474	        "type": "scope",
+   475	        "call_id": "child_a",

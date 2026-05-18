@@ -1,0 +1,144 @@
+novaic-agent-runtime/queue_service/routes.py:219:        task_id = queue.publish(
+novaic-agent-runtime/queue_service/routes.py:366:        def create_saga(req: SagaCreateRequest):
+novaic-agent-runtime/queue_service/routes.py:549:    remaining_stack: Dict[str, Any]
+novaic-agent-runtime/queue_service/routes.py:585:        """Clean up session, optionally restart from pending inbox."""
+novaic-agent-runtime/queue_service/routes.py:592:            remaining_stack=req.remaining_stack,
+novaic-agent-runtime/queue_service/routes.py:599:        return {"sessions": session_repo.list_active_session_states()}
+novaic-agent-runtime/queue_service/session_outbox.py:120:        publish_result = self._publish(effect)
+novaic-agent-runtime/queue_service/session_outbox.py:137:    def _publish(self, effect: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_outbox.py:207:        remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/queue_service/session_outbox.py:208:        if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/queue_service/session_outbox.py:210:                "recovery archive outbox payload requires remaining_stack"
+novaic-agent-runtime/queue_service/session_outbox.py:212:        self.queue.publish(
+novaic-agent-runtime/queue_service/session_outbox.py:223:                "remaining_stack": dict(remaining_stack),
+novaic-agent-runtime/queue_service/session_outbox.py:255:        task_id = self.queue.publish(
+novaic-agent-runtime/queue_service/main.py:61:    """Startup/shutdown hooks — replaces deprecated @app.on_event.
+novaic-agent-runtime/queue_service/queue_audit.py:79:        final_state=_optional_str((state or {}).get("state")),
+novaic-agent-runtime/queue_service/queue_audit.py:80:        final_generation=_optional_int((state or {}).get("generation")),
+novaic-agent-runtime/queue_service/queue_audit.py:97:        created_at=_optional_str(event.get("created_at")),
+novaic-agent-runtime/queue_service/queue_audit.py:113:        observed_at=_optional_str(event.get("consumed_at")),
+novaic-agent-runtime/queue_service/queue_audit.py:123:        idempotency_key=_optional_str(effect.get("idempotency_key")),
+novaic-agent-runtime/queue_service/queue_audit.py:134:def _optional_str(value: Any) -> str | None:
+novaic-agent-runtime/queue_service/queue_audit.py:138:def _optional_int(value: Any) -> int | None:
+novaic-agent-runtime/queue_service/queue_db.py:5:- publish(): 发布任务
+novaic-agent-runtime/queue_service/queue_db.py:75:        task_id = queue.publish("my_topic", {"key": "value"})
+novaic-agent-runtime/queue_service/queue_db.py:115:    def publish(
+novaic-agent-runtime/queue_service/queue_db.py:926:            if status == "in_progress" and lease_active and existing_owner != owner_token:
+novaic-agent-runtime/queue_service/session_recovery.py:15:def _unknown_remaining_stack() -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_recovery.py:59:def recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/queue_service/session_recovery.py:133:        metadata["recovery_suspected_dead_event_id"] = (
+novaic-agent-runtime/queue_service/session_recovery.py:160:    raw_remaining_stack = recovery_metadata.get("remaining_stack", _MISSING)
+novaic-agent-runtime/queue_service/session_recovery.py:161:    if raw_remaining_stack is _MISSING:
+novaic-agent-runtime/queue_service/session_recovery.py:162:        remaining_stack = _unknown_remaining_stack()
+novaic-agent-runtime/queue_service/session_recovery.py:163:    elif isinstance(raw_remaining_stack, dict):
+novaic-agent-runtime/queue_service/session_recovery.py:164:        remaining_stack = dict(raw_remaining_stack)
+novaic-agent-runtime/queue_service/session_recovery.py:166:        raise ValueError("remaining_stack must be an object")
+novaic-agent-runtime/queue_service/session_recovery.py:180:            "remaining_stack": remaining_stack,
+novaic-agent-runtime/queue_service/session_events.py:18:    SESSION_SUSPECTED_DEAD = "session_suspected_dead"
+novaic-agent-runtime/queue_service/session_events.py:19:    SESSION_SUSPECTED_DEAD_OBSERVED = "session_suspected_dead_observed"
+novaic-agent-runtime/queue_service/session_events.py:31:    SESSION_SUSPECTED_DEAD_OBSERVED = "session:session_suspected_dead_observed:"
+novaic-agent-runtime/queue_service/session_observed_events.py:70:            if state_is_active:
+novaic-agent-runtime/queue_service/session_observed_events.py:103:            self.ledger.record_active_session(
+novaic-agent-runtime/queue_service/session_observed_events.py:155:        if state.get("active_scope_id") != scope_id:
+novaic-agent-runtime/queue_service/saga_repo.py:1140:def _explicit_or_unknown_remaining_stack(context: Dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/saga_repo.py:1141:    remaining_stack = context.get("remaining_stack")
+novaic-agent-runtime/queue_service/saga_repo.py:1142:    if isinstance(remaining_stack, dict):
+novaic-agent-runtime/queue_service/saga_repo.py:1143:        return dict(remaining_stack)
+novaic-agent-runtime/queue_service/saga_repo.py:1207:            effect = self._build_session_suspected_dead_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1227:            "record_session_suspected_dead",
+novaic-agent-runtime/queue_service/saga_repo.py:1274:        if effect_type == "record_session_suspected_dead":
+novaic-agent-runtime/queue_service/saga_repo.py:1275:            self._record_session_suspected_dead_event(**payload)
+novaic-agent-runtime/queue_service/saga_repo.py:1298:            "remaining_stack": _explicit_or_unknown_remaining_stack(context),
+novaic-agent-runtime/queue_service/saga_repo.py:1318:    def _build_session_suspected_dead_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1331:            "effect_type": "record_session_suspected_dead",
+novaic-agent-runtime/queue_service/saga_repo.py:1345:    def _record_session_suspected_dead_event(
+novaic-agent-runtime/queue_service/saga_repo.py:1374:            "remaining_stack": _explicit_or_unknown_remaining_stack(saga_context),
+novaic-agent-runtime/queue_service/saga_repo.py:1381:                    "cannot record session_suspected_dead without session state"
+novaic-agent-runtime/queue_service/saga_repo.py:1385:                "record_session_suspected_dead",
+novaic-agent-runtime/queue_service/session_fsm.py:23:    SUSPECTED_DEAD = "suspected_dead"
+novaic-agent-runtime/queue_service/session_fsm.py:24:    RECOVERING = "recovering"
+novaic-agent-runtime/queue_service/session_fsm.py:195:        if active_saga_id and active_scope_id
+novaic-agent-runtime/queue_service/session_fsm.py:365:    if active_scope_id and active_scope_id != scope_id:
+novaic-agent-runtime/queue_service/session_rebuild.py:36:            session_ledger.record_active_session(
+novaic-agent-runtime/queue_service/session_ledger.py:431:    def record_active_session(
+novaic-agent-runtime/queue_service/session_ledger.py:466:            return 1 if active_scope_id else 0
+novaic-agent-runtime/queue_service/session_ledger.py:470:        if active_scope_id and current.get("active_scope_id") != active_scope_id:
+novaic-agent-runtime/queue_service/session_ledger.py:576:            "suspected_dead",
+novaic-agent-runtime/queue_service/session_ledger.py:577:            "recovering",
+novaic-agent-runtime/queue_service/session_ledger.py:586:            active_saga_id=active_saga_id if state == "active" else None,
+novaic-agent-runtime/queue_service/session_repo.py:11:- session_ended():  Clean up session, optionally restart from pending inbox
+novaic-agent-runtime/queue_service/session_repo.py:50:    recovery_marker_from_suspected_dead_event,
+novaic-agent-runtime/queue_service/session_repo.py:158:            active = self._active_session_from_session_state(current_state)
+novaic-agent-runtime/queue_service/session_repo.py:160:            if active:
+novaic-agent-runtime/queue_service/session_repo.py:163:                suspected_dead_event = self._suspected_dead_event_for_active_scope(
+novaic-agent-runtime/queue_service/session_repo.py:167:                if suspected_dead_event:
+novaic-agent-runtime/queue_service/session_repo.py:168:                    recovery_marker = recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/queue_service/session_repo.py:173:                        event=suspected_dead_event,
+novaic-agent-runtime/queue_service/session_repo.py:179:                        "action": "suspected_dead_observed",
+novaic-agent-runtime/queue_service/session_repo.py:190:                            suspected_dead_event["id"],
+novaic-agent-runtime/queue_service/session_repo.py:198:                            "suspected_dead_event_id": suspected_dead_event["id"],
+novaic-agent-runtime/queue_service/session_repo.py:209:                        active_session=active,
+novaic-agent-runtime/queue_service/session_repo.py:270:            elif current_state and current_state.get("state") != "no_active":
+novaic-agent-runtime/queue_service/session_repo.py:416:            active_session=None,
+novaic-agent-runtime/queue_service/session_repo.py:510:        remaining_stack: Dict[str, Any],
+novaic-agent-runtime/queue_service/session_repo.py:512:        """Clean up session and optionally restart from pending inbox.
+novaic-agent-runtime/queue_service/session_repo.py:522:        if remaining_stack is None:
+novaic-agent-runtime/queue_service/session_repo.py:523:            raise ValueError("remaining_stack is required for session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:528:            "remaining_stack": dict(remaining_stack),
+novaic-agent-runtime/queue_service/session_repo.py:697:    def get_active_session(self, session_key: str) -> Optional[Dict[str, Any]]:
+novaic-agent-runtime/queue_service/session_repo.py:700:            return self._active_session_state_in_current_transaction(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:702:    def list_active_session_states(self) -> list:
+novaic-agent-runtime/queue_service/session_repo.py:715:    def _suspected_dead_event_for_active_scope(
+novaic-agent-runtime/queue_service/session_repo.py:721:        if not active_scope_id:
+novaic-agent-runtime/queue_service/session_repo.py:731:        if failed_scope_id and failed_scope_id != active_scope_id:
+novaic-agent-runtime/queue_service/session_repo.py:737:    def _active_session_state_in_current_transaction(
+novaic-agent-runtime/queue_service/session_repo.py:742:        return self._active_session_from_session_state(state)
+novaic-agent-runtime/queue_service/session_repo.py:744:    def _active_session_from_session_state(
+novaic-agent-runtime/queue_service/session_repo.py:748:        if not state or state.get("state") != "active":
+novaic-agent-runtime/queue_service/session_repo.py:750:        if not state.get("active_saga_id") or not state.get("active_scope_id"):
+novaic-agent-runtime/queue_service/session_repo.py:771:        active_session: Optional[Dict[str, Any]],
+novaic-agent-runtime/queue_service/session_repo.py:777:            if active_session else SessionRuntimeStatus.NO_ACTIVE
+novaic-agent-runtime/queue_service/session_repo.py:784:                    (active_session or {}).get("generation"),
+novaic-agent-runtime/queue_service/session_repo.py:787:                active_saga_id=(active_session or {}).get("saga_id"),
+novaic-agent-runtime/queue_service/session_repo.py:788:                active_scope_id=(active_session or {}).get("scope_id"),
+novaic-agent-runtime/queue_service/session_repo.py:870:            current_active = self._active_session_from_session_state(current_state)
+novaic-agent-runtime/queue_service/session_repo.py:888:                    "reason": "active_session_changed_before_attach",
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:44:        remaining_stack: dict
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:51:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:62:    if remaining_stack is None:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:63:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:64:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:65:        raise ValidationError("remaining_stack must be an object")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:77:        remaining_stack=remaining_stack,
+novaic-agent-runtime/task_queue/retry_policy.py:69:            max_attempts: optional per-task/per-saga max override
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:70:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:80:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:81:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:116:            remaining_stack=dict(remaining_stack),
+novaic-agent-runtime/task_queue/client.py:36:        task_id = client.publish("my_topic", {"key": "value"})
+novaic-agent-runtime/task_queue/client.py:130:    def publish(
+novaic-agent-runtime/task_queue/client.py:484:        remaining_stack: Dict[str, Any],
+novaic-agent-runtime/task_queue/client.py:499:            "remaining_stack": remaining_stack,
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:124:        result: str (optional)
+novaic-agent-runtime/task_queue/tool_output.py:77:        optional = {
+novaic-agent-runtime/task_queue/tool_output.py:89:        for key, value in optional.items():
+novaic-agent-runtime/task_queue/contracts/react_think.py:389:            "remaining_stack": {
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:39:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:97:def _remaining_stack_snapshot(ctx):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:98:    remaining_stack = ctx.get("remaining_stack")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:99:    if isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:100:        return dict(remaining_stack)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:101:    raise ValueError("remaining_stack is required for wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:113:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:51:        initial_context: list  (optional, for sub-subagent)
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:52:        user_message: str  (optional, for skill matching)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:392:def _remaining_stack_snapshot(decision: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:420:            "remaining_stack": _remaining_stack_snapshot(decision),
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:130:        remaining_stack: dict[str, Any] | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:148:        if remaining_stack is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:149:            payload["remaining_stack"] = dict(remaining_stack)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:518:            task: optional task description.
+novaic-agent-runtime/task_queue/workers/task_effects.py:83:    def _publish(self, effect: WorkerEffect) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/workers/task_effects.py:84:        task_id = self.client.publish(
+novaic-agent-runtime/task_queue/workers/saga_effects.py:34:    def _task_publish(self, effect: WorkerEffect) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/workers/saga_effects.py:35:        task_id = self.task_client.publish(

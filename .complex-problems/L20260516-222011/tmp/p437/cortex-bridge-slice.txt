@@ -1,0 +1,381 @@
+=== cortex bridge source ===
+"""Cortex HTTP client for agent-runtime.
+
+All operations go through the Cortex HTTP service.
+No direct S3 access — Cortex is the single gateway to agent storage.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional
+
+import httpx
+from common.http.clients import internal_sync_client
+from common.config import ServiceConfig
+from common.contracts.cortex_observation import build_tool_observation
+from ..contracts.session_generation import require_positive_session_generation_value
+
+logger = logging.getLogger(__name__)
+
+_DEFAULT_TIMEOUT = 30
+
+
+@dataclass
+class StepRecord:
+    """Summary of a step written to scope."""
+    path: str
+    seq: int
+    step_type: str
+    step_id: str
+
+
+class CortexBridge:
+    """HTTP client for Cortex service.
+
+    All public methods are synchronous. Cortex is a required runtime
+    dependency; there is no disabled/no-op mode.
+    """
+
+    def __init__(
+        self,
+        base_url: str,
+        user_id: str,
+        agent_id: str,
+        *,
+        timeout: int = _DEFAULT_TIMEOUT,
+        internal_key: str = "",
+        clock: Callable[[], float] | None = None,
+    ) -> None:
+        self._url = base_url.rstrip("/")
+        self._user_id = user_id
+        self._agent_id = agent_id
+        self._timeout = timeout
+        self._internal_key = internal_key or ""
+        self._client = internal_sync_client(service_name="runtime-task", timeout=timeout)
+        self._clock = clock
+
+    @classmethod
+    def from_env(cls, user_id: str, agent_id: str) -> "CortexBridge":
+        url = ServiceConfig.CORTEX_URL.strip()
+        timeout = ServiceConfig.CORTEX_TIMEOUT
+        int_key = ServiceConfig.CORTEX_INTERNAL_KEY or ""
+        logger.info("[CortexBridge] HTTP client: user=%s agent=%s url=%s", user_id, agent_id, url)
+        import time
+        return cls(url, user_id, agent_id, timeout=timeout, internal_key=int_key, clock=time.time)
+
+    def _now(self) -> float:
+        if self._clock is None:
+            raise ValueError("CortexBridge requires an explicit clock provider")
+        return float(self._clock())
+
+    def _tenant(self) -> dict:
+        return {"user_id": self._user_id, "agent_id": self._agent_id}
+
+    def _post(self, path: str, payload: dict, *, timeout: float | None = None) -> dict:
+        """POST to Cortex. Raises httpx.HTTPError on transport / 4xx / 5xx.
+
+        Write-path callers let this propagate so durability failures reach the
+        saga (and get retried). Read-path callers catch + soft-fail.
+
+        P3-1: attaches ``X-Internal-Key`` when configured, matching the
+        secret Cortex requires on ``/v1/internal/*``, ``/v1/scope/*``,
+        ``/v1/context/*``, ``/v1/meta/*``, ``/v1/steps/*``, ``/v1/token``.
+        """
+        headers = {"X-Internal-Key": self._internal_key} if self._internal_key else None
+        kwargs: dict[str, Any] = {}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        resp = self._client.post(f"{self._url}{path}", json=payload, headers=headers, **kwargs)
+        resp.raise_for_status()
+        return resp.json()
+
+    # ── Scope lifecycle (WRITE — failures raise) ─────────────────────────
+
+    def create_scope(
+        self,
+        scope_id: str,
+        name: str = "runtime-session",
+        skill: str = "",
+        parent_scope_id: str | None = None,
+    ) -> Optional[str]:
+        """Create a Cortex scope."""
+        parent_path = None
+        if parent_scope_id:
+            parent_path = f"/ro/active/{parent_scope_id}"
+        payload: Dict[str, Any] = {
+            **self._tenant(),
+            "scope_id": scope_id,
+            "name": name,
+            "skill": skill,
+            "parent_path": parent_path,
+        }
+        result = self._post("/v1/scope/create", payload)
+        scope_path = result.get("scope_path")
+        logger.info(
+            "[CortexBridge] scope.created scope_id=%s path=%s",
+            scope_id, scope_path,
+        )
+        return scope_path
+
+    def scope_end(
+        self,
+        scope_id: str,
+        report: str = "",
+        *,
+        is_root: bool = True,
+        scope_path: str | None = None,
+        session_generation: int | None = None,
+        finalize_reason: str | None = None,
+        remaining_stack: dict[str, Any] | None = None,
+        round_num: int | None = None,
+    ) -> Optional[str]:
+        payload: Dict[str, Any] = {
+            **self._tenant(),
+            "scope_id": scope_id,
+            "report": report,
+            "is_root": is_root,
+        }
+        if scope_path:
+            payload["scope_path"] = scope_path
+        if session_generation is not None:
+            payload["session_generation"] = require_positive_session_generation_value(
+                session_generation,
+                "CortexBridge.scope_end",
+            )
+        if finalize_reason is not None:
+            payload["finalize_reason"] = finalize_reason
+        if remaining_stack is not None:
+            payload["remaining_stack"] = dict(remaining_stack)
+        if round_num is not None:
+            payload["round_num"] = int(round_num)
+        result = self._post("/v1/scope/end", payload)
+        archive_path = result.get("archive_path")
+        logger.info("[CortexBridge] scope.archived scope_id=%s path=%s", scope_id, archive_path)
+        return archive_path
+
+    # ── Session context (conversation history) ───────────────────────────
+
+    def read_context(self, scope_id: str, *, scope_path: str | None = None) -> list[dict]:
+        """Read the materialized context projection (fail closed)."""
+        payload = {**self._tenant(), "scope_id": scope_id}
+        if scope_path:
+            payload["scope_path"] = scope_path
+        result = self._post("/v1/context/read", payload)
+        return result.get("messages", [])
+
+    def append_context(
+        self,
+        scope_id: str,
+        message: dict,
+        *,
+        scope_path: str | None = None,
+    ) -> None:
+        """Append a message (WRITE — failures raise)."""
+        payload = {**self._tenant(), "scope_id": scope_id, "message": message}
+        if scope_path:
+            payload["scope_path"] = scope_path
+        self._post("/v1/context/append", payload)
+
+    def append_context_batch(
+        self,
+        scope_id: str,
+        messages: list[dict],
+        *,
+        scope_path: str | None = None,
+    ) -> None:
+        """Batch-append messages (WRITE — failures raise)."""
+        if not messages:
+            return
+        payload = {**self._tenant(), "scope_id": scope_id, "messages": messages}
+        if scope_path:
+            payload["scope_path"] = scope_path
+        self._post("/v1/context/batch", payload)
+
+    # ── Session metadata ─────────────────────────────────────────────────
+
+    def read_session_meta(
+        self,
+        scope_id: str,
+        *,
+        scope_path: str | None = None,
+        soft_fail: bool = True,
+    ) -> dict:
+        """Read session meta.
+
+        By default this is a diagnostic/read convenience and returns ``{}`` on
+        transport errors. Callers that need a correctness gate, such as the
+        user-visible reply observed-before-reply check, pass ``soft_fail=False``
+        and let the exception surface as a blocked tool result.
+        """
+        try:
+            payload = {**self._tenant(), "scope_id": scope_id}
+            if scope_path:
+                payload["scope_path"] = scope_path
+            result = self._post("/v1/meta/read", payload)
+            return result.get("meta", {})
+        except Exception as e:
+            if not soft_fail:
+                raise
+            logger.warning("[CortexBridge] read_session_meta soft-fail: %s", e)
+            return {}
+
+    def update_session_meta(
+        self,
+        scope_id: str,
+        *,
+        scope_path: str | None = None,
+        **updates: object,
+    ) -> dict:
+        """Update session meta (WRITE — failures raise)."""
+        payload = {**self._tenant(), "scope_id": scope_id, "updates": dict(updates)}
+        if scope_path:
+            payload["scope_path"] = scope_path
+        result = self._post("/v1/meta/update", payload)
+        return result.get("meta", {})
+
+    def append_scope_input(
+        self,
+        scope_id: str,
+        message_ids: list[str],
+        *,
+        scope_path: str | None = None,
+    ) -> list[str]:
+        """PR-20 (2026-04-20) — register message ids as inputs to a scope.
+
+        Two Runtime callers feed this today:
+        1. ``handle_session_init`` at saga start — for the message(s) that
+           triggered the new scope, propagated end-to-end from the
+           assembler's ``DispatchRequest.message_ids`` through the wake
+           payload (``metadata.message_ids`` → saga context → session_init
+           payload).
+        2. ``handle_session_attach_input`` during an active wake — for new
+           Environment IM inputs that should be observed by the already-live
+           scope rather than creating a new wake.
+
+        Soft-fail on empty
+        ------------------
+        An empty ``message_ids`` is a no-op (we do not round-trip to
+        Cortex). We return an empty list so the caller's logging still
+        works.
+
+        WRITE — failures raise. The trace-completeness loss on a
+        durability failure is worse than slowing down the saga by one
+        retry; PR-26 orphan metric depends on this list being accurate.
+        """
+        if not message_ids:
+            return []
+        payload = {
+            **self._tenant(),
+            "scope_id": scope_id,
+            "message_ids": list(message_ids),
+        }
+        if scope_path:
+            payload["scope_path"] = scope_path
+        result = self._post("/v1/scope/append_input", payload)
+        merged = result.get("input_message_ids", [])
+        logger.info(
+            "[CortexBridge] scope_input_appended scope_id=%s added=%s total=%s",
+            scope_id,
+            len(message_ids),
+            len(merged),
+        )
+        return merged
+
+    def counter_inc(
+        self,
+        scope_id: str,
+        name: str,
+        delta: int = 1,
+        *,
+        scope_path: str | None = None,
+    ) -> int:
+        """Atomically increment a named counter in scope metadata (WRITE — failures raise).
+
+        P2-10: Backing store for per-session action caps such as user-visible replies. Server
+        serializes via the per-root scope lock.
+        """
+        payload = {
+            **self._tenant(),
+            "scope_id": scope_id,
+            "name": name,
+            "delta": delta,
+        }
+        if scope_path:
+            payload["scope_path"] = scope_path
+        result = self._post("/v1/meta/counter_inc", payload)
+        return int(result.get("value", 0) or 0)
+
+    def advance_round(self, scope_id: str) -> int:
+        """Atomically increment round_num on the server and return the new value.
+
+        P2-1: Delegates to ``/v1/meta/advance_round`` which serializes the
+        read-modify-write under the per-root scope lock. Write failures raise.
+        """
+        result = self._post("/v1/meta/advance_round", {
+            **self._tenant(), "scope_id": scope_id,
+        })
+        return int(result.get("round_num", 0) or 0)
+
+    # ── Skill lifecycle ──────────────────────────────────────────────────
+    # P2-2: the direct ``skill_begin`` / ``skill_end`` methods that hit
+    # ``/v1/internal/skill/*`` have been removed. Those endpoints bypassed
+    # Cortex's per-root scope lock manager, which is how we keep the skill
+    # stack correct under concurrent tool rounds. All stack mutations go
+    # through ``context_skill_begin`` / ``context_skill_end`` below, which
+    # hit the locked ``/v1/context/skill_*`` endpoints.
+
+    # ── Shell execution (3-tool model) ───────────────────────────────────
+
+    def shell_exec(
+        self,
+        command: str,
+        timeout: int = 30,
+        *,
+        capability_env: dict[str, str] | None = None,
+    ) -> dict | None:
+        """Run a shell command. Transport errors surface as exit_code=-1 so
+        the tool result path remains consistent (shell errors == bad exit).
+        """
+        try:
+            http_timeout = max(float(self._timeout), float(timeout or _DEFAULT_TIMEOUT) + float(self._timeout))
+            result = self._post("/v1/internal/shell", {
+                **self._tenant(),
+                "command": command,
+                "timeout": timeout,
+                "env": {str(k): str(v) for k, v in dict(capability_env or {}).items() if v is not None},
+            }, timeout=http_timeout)
+            return result
+        except Exception as e:
+            logger.error("[CortexBridge] shell_exec transport error: %s", e)
+            return {"stdout": "", "stderr": str(e), "exit_code": -1, "files_changed": []}
+
+    # ── Steps ────────────────────────────────────────────────────────────
+
+    def write_step(self, scope_id: str, step: Dict[str, Any]) -> StepRecord:
+        """Write a step (WRITE — failures raise)."""
+        result = self._post("/v1/steps/write", {
+            **self._tenant(), "scope_id": scope_id, "step": step,
+        })
+        return StepRecord(
+            path=result.get("path", ""),
+            seq=step.get("seq", 0),
+            step_type=step.get("type", "unknown"),
+            step_id=step.get("call_id") or step.get("id") or "unknown",
+        )
+
+    def write_tool_step(
+        self,
+        scope_id: str,
+        *,
+        call_id: str,
+        tool_name: str,
+        status: str,
+        result: Any = None,
+        duration_ms: int = 0,
+        step_ref: Optional[str] = None,
+        artifacts: Optional[List[Dict[str, Any]]] = None,
+    ) -> Optional[StepRecord]:
+        step: Dict[str, Any] = {
+            "type": "tool",

@@ -1,0 +1,6 @@
+raw_hits=395
+production_hits=150
+test_hits=245
+raw_files=83
+production_files=27
+test_files=56

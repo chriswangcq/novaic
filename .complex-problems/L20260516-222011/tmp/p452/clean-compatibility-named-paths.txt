@@ -1,0 +1,6 @@
+=== clean compatibility-named project paths (dependency noise excluded) ===
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py
+novaic-cortex/tests/test_context_event_no_compat.py
+novaic-cortex/tests/test_legacy_skill_lifecycle_removed.py
+novaic-cortex/tests/test_lock_and_compat_boundary_guards.py

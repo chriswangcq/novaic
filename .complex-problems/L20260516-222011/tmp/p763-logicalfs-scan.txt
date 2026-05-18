@@ -1,0 +1,385 @@
+## LogicalFS files
+novaic-logicalfs/README.md
+novaic-logicalfs/tests/test_logicalfs.py
+novaic-logicalfs/tests/test_blob_store.py
+novaic-logicalfs/tests/test_authority.py
+novaic-logicalfs/pyproject.toml
+novaic-logicalfs/logicalfs/contracts.py
+novaic-logicalfs/logicalfs/authority.py
+novaic-logicalfs/logicalfs/__init__.py
+novaic-logicalfs/logicalfs/local.py
+novaic-logicalfs/logicalfs/blob_store.py
+
+## LogicalFS suspicious hits
+novaic-logicalfs/README.md:1:# NovaIC LogicalFS
+novaic-logicalfs/README.md:3:Business-agnostic LogicalFS substrate.
+novaic-logicalfs/README.md:5:LogicalFS turns an explicit snapshot into a local filesystem view and turns RW
+novaic-logicalfs/README.md:7:subagents, agentctl, or process execution.
+novaic-logicalfs/README.md:11:- `LogicalFSSnapshot`
+novaic-logicalfs/README.md:12:- `LogicalFSLayout`
+novaic-logicalfs/README.md:13:- env overlay values from the caller
+novaic-logicalfs/README.md:17:- `LogicalFSView`
+novaic-logicalfs/README.md:18:- `LogicalFSPatch`
+novaic-logicalfs/README.md:20:Process execution belongs to sandboxd; workspace state ownership belongs to
+novaic-logicalfs/tests/test_logicalfs.py:1:from __future__ import annotations
+novaic-logicalfs/tests/test_logicalfs.py:5:from logicalfs import (
+novaic-logicalfs/tests/test_logicalfs.py:6:    LocalLogicalFSProvider,
+novaic-logicalfs/tests/test_logicalfs.py:7:    LogicalFSEnv,
+novaic-logicalfs/tests/test_logicalfs.py:8:    LogicalFSFile,
+novaic-logicalfs/tests/test_logicalfs.py:9:    LogicalFSLayout,
+novaic-logicalfs/tests/test_logicalfs.py:10:    LogicalFSSnapshot,
+novaic-logicalfs/tests/test_logicalfs.py:16:    provider = LocalLogicalFSProvider()
+novaic-logicalfs/tests/test_logicalfs.py:17:    view = provider.materialize(
+novaic-logicalfs/tests/test_logicalfs.py:18:        snapshot=LogicalFSSnapshot(
+novaic-logicalfs/tests/test_logicalfs.py:20:                LogicalFSFile(path="config/tool.json", data=b"ro"),
+novaic-logicalfs/tests/test_logicalfs.py:21:                LogicalFSFile(path="scratch/existing.txt", data=b"rw", writable=True),
+novaic-logicalfs/tests/test_logicalfs.py:24:        root=tmp_path,
+novaic-logicalfs/tests/test_logicalfs.py:25:        layout=LogicalFSLayout(
+novaic-logicalfs/tests/test_logicalfs.py:28:                "RW_SELF": "/cortex/rw/subagents/sub-1",
+novaic-logicalfs/tests/test_logicalfs.py:29:                "RW_TMP": "/cortex/rw/tmp",
+novaic-logicalfs/tests/test_logicalfs.py:31:            writable_dirs=("/cortex/rw/system",),
+novaic-logicalfs/tests/test_logicalfs.py:33:        env=LogicalFSEnv({"NOVAIC_TOKEN": "token-1", "NOVAIC_API": "http://cortex"}),
+novaic-logicalfs/tests/test_logicalfs.py:37:    assert (view.ro / "config/tool.json").read_bytes() == b"ro"
+novaic-logicalfs/tests/test_logicalfs.py:38:    assert (view.rw / "scratch/existing.txt").read_bytes() == b"rw"
+novaic-logicalfs/tests/test_logicalfs.py:39:    assert (view.rw / "subagents/sub-1").is_dir()
+novaic-logicalfs/tests/test_logicalfs.py:40:    assert (view.rw / "tmp").is_dir()
+novaic-logicalfs/tests/test_logicalfs.py:41:    assert (view.rw / "system").is_dir()
+novaic-logicalfs/tests/test_logicalfs.py:42:    assert view.stable_cwd == "/cortex/rw/scratch"
+novaic-logicalfs/tests/test_logicalfs.py:43:    assert view.env["RW_SELF"] == "/cortex/rw/subagents/sub-1"
+novaic-logicalfs/tests/test_logicalfs.py:48:    provider = LocalLogicalFSProvider()
+novaic-logicalfs/tests/test_logicalfs.py:49:    view = provider.materialize(
+novaic-logicalfs/tests/test_logicalfs.py:50:        snapshot=LogicalFSSnapshot(
+novaic-logicalfs/tests/test_logicalfs.py:52:                LogicalFSFile(path="keep.txt", data=b"old", writable=True),
+novaic-logicalfs/tests/test_logicalfs.py:53:                LogicalFSFile(path="delete.txt", data=b"bye", writable=True),
+novaic-logicalfs/tests/test_logicalfs.py:56:        root=tmp_path,
+novaic-logicalfs/tests/test_logicalfs.py:57:        layout=LogicalFSLayout(),
+novaic-logicalfs/tests/test_logicalfs.py:58:        env=LogicalFSEnv(),
+novaic-logicalfs/tests/test_logicalfs.py:61:    (view.rw / "keep.txt").write_bytes(b"new")
+novaic-logicalfs/tests/test_logicalfs.py:62:    (view.rw / "add.txt").write_bytes(b"add")
+novaic-logicalfs/tests/test_logicalfs.py:63:    (view.rw / "delete.txt").unlink()
+novaic-logicalfs/tests/test_logicalfs.py:65:    patch = provider.observe_patch(view)
+novaic-logicalfs/tests/test_logicalfs.py:67:    assert patch.deletes == ("/cortex/rw/delete.txt",)
+novaic-logicalfs/tests/test_logicalfs.py:69:        "/cortex/rw/add.txt": b"add",
+novaic-logicalfs/tests/test_logicalfs.py:70:        "/cortex/rw/keep.txt": b"new",
+novaic-logicalfs/tests/test_logicalfs.py:73:        "/cortex/rw/add.txt",
+novaic-logicalfs/tests/test_logicalfs.py:74:        "/cortex/rw/delete.txt",
+novaic-logicalfs/tests/test_logicalfs.py:75:        "/cortex/rw/keep.txt",
+novaic-logicalfs/tests/test_logicalfs.py:80:    provider = LocalLogicalFSProvider()
+novaic-logicalfs/tests/test_logicalfs.py:81:    with pytest.raises(ValueError):
+novaic-logicalfs/tests/test_logicalfs.py:82:        provider.materialize(
+novaic-logicalfs/tests/test_logicalfs.py:83:            snapshot=LogicalFSSnapshot(files=()),
+novaic-logicalfs/tests/test_logicalfs.py:84:            root=tmp_path,
+novaic-logicalfs/tests/test_logicalfs.py:85:            layout=LogicalFSLayout(),
+novaic-logicalfs/tests/test_logicalfs.py:86:            env=LogicalFSEnv(),
+novaic-logicalfs/tests/test_logicalfs.py:92:    provider = LocalLogicalFSProvider()
+novaic-logicalfs/tests/test_logicalfs.py:93:    view = provider.materialize(
+novaic-logicalfs/tests/test_logicalfs.py:94:        snapshot=LogicalFSSnapshot(files=(LogicalFSFile(path="a.txt", data=b"a"),)),
+novaic-logicalfs/tests/test_logicalfs.py:95:        root=tmp_path,
+novaic-logicalfs/tests/test_logicalfs.py:96:        layout=LogicalFSLayout(),
+novaic-logicalfs/tests/test_logicalfs.py:97:        env=LogicalFSEnv(),
+novaic-logicalfs/tests/test_logicalfs.py:100:    text = f"{view.root} {view.ro} {view.rw}"
+novaic-logicalfs/tests/test_logicalfs.py:102:    assert provider.sanitize_output(text, view) == "/cortex /cortex/ro /cortex/rw"
+novaic-logicalfs/tests/test_blob_store.py:1:"""BlobObjectStore tests."""
+novaic-logicalfs/tests/test_blob_store.py:3:from __future__ import annotations
+novaic-logicalfs/tests/test_blob_store.py:6:from pathlib import Path
+novaic-logicalfs/tests/test_blob_store.py:11:from logicalfs import BlobObjectStore
+novaic-logicalfs/tests/test_blob_store.py:14:@pytest.mark.asyncio
+novaic-logicalfs/tests/test_blob_store.py:15:async def test_blob_object_store_roundtrip_and_move_prefix(tmp_path, monkeypatch):
+novaic-logicalfs/tests/test_blob_store.py:16:    storage_root = Path(__file__).resolve().parents[2] / "novaic-blob-service"
+novaic-logicalfs/tests/test_blob_store.py:17:    sys.path.insert(0, str(storage_root))
+novaic-logicalfs/tests/test_blob_store.py:19:        from blob_service.main import create_app
+novaic-logicalfs/tests/test_blob_store.py:22:        real_async_client = httpx.AsyncClient
+novaic-logicalfs/tests/test_blob_store.py:24:        def patched_async_client(*args, **kwargs):
+novaic-logicalfs/tests/test_blob_store.py:26:            return real_async_client(
+novaic-logicalfs/tests/test_blob_store.py:28:                base_url="http://blob.local",
+novaic-logicalfs/tests/test_blob_store.py:32:        monkeypatch.setattr(httpx, "AsyncClient", patched_async_client)
+novaic-logicalfs/tests/test_blob_store.py:33:        store = BlobObjectStore(base_url="http://blob.local", tenant_id="user-1")
+novaic-logicalfs/tests/test_blob_store.py:35:        await store.put("agents/a/rw/a.txt", b"A", "text/plain")
+novaic-logicalfs/tests/test_blob_store.py:36:        await store.put("agents/a/rw/sub/b.txt", b"B", "text/plain")
+novaic-logicalfs/tests/test_blob_store.py:38:        assert await store.get("agents/a/rw/a.txt") == b"A"
+novaic-logicalfs/tests/test_blob_store.py:39:        assert await store.exists("agents/a/rw/a.txt")
+novaic-logicalfs/tests/test_blob_store.py:40:        assert not await store.exists("agents/a/rw/missing.txt")
+novaic-logicalfs/tests/test_blob_store.py:42:        infos = await store.list_objects("agents/a/rw/")
+novaic-logicalfs/tests/test_blob_store.py:44:        assert ("agents/a/rw/a.txt", False, 1) in keys
+novaic-logicalfs/tests/test_blob_store.py:45:        assert ("agents/a/rw/sub/", True, 0) in keys
+novaic-logicalfs/tests/test_blob_store.py:47:        assert await store.list_recursive("agents/a/rw/") == [
+novaic-logicalfs/tests/test_blob_store.py:48:            "agents/a/rw/a.txt",
+novaic-logicalfs/tests/test_blob_store.py:49:            "agents/a/rw/sub/b.txt",
+novaic-logicalfs/tests/test_blob_store.py:52:        moved = await store.move_prefix("agents/a/rw/", "agents/a/ro/scopes/s1/")
+novaic-logicalfs/tests/test_blob_store.py:54:        assert await store.get("agents/a/ro/scopes/s1/a.txt") == b"A"
+novaic-logicalfs/tests/test_blob_store.py:55:        assert not await store.exists("agents/a/rw/a.txt")
+novaic-logicalfs/tests/test_blob_store.py:58:            sys.path.remove(str(storage_root))
+novaic-logicalfs/tests/test_blob_store.py:59:        except ValueError:
+novaic-logicalfs/tests/test_authority.py:1:from __future__ import annotations
+novaic-logicalfs/tests/test_authority.py:5:from logicalfs import (
+novaic-logicalfs/tests/test_authority.py:17:    async def put(self, key: str, data: bytes, content_type: str = "") -> None:
+novaic-logicalfs/tests/test_authority.py:20:    async def get(self, key: str) -> bytes:
+novaic-logicalfs/tests/test_authority.py:22:            raise KeyError(key)
+novaic-logicalfs/tests/test_authority.py:25:    async def exists(self, key: str) -> bool:
+novaic-logicalfs/tests/test_authority.py:28:    async def delete(self, key: str) -> None:
+novaic-logicalfs/tests/test_authority.py:31:    async def list_objects(self, prefix: str, delimiter: str = "/") -> list[LogicalObjectInfo]:
+novaic-logicalfs/tests/test_authority.py:33:            raise NotImplementedError
+novaic-logicalfs/tests/test_authority.py:51:    async def list_recursive(self, prefix: str) -> list[str]:
+novaic-logicalfs/tests/test_authority.py:54:    async def move_prefix(self, src_prefix: str, dst_prefix: str) -> int:
+novaic-logicalfs/tests/test_authority.py:68:def test_maps_logical_paths_from_explicit_layout() -> None:
+novaic-logicalfs/tests/test_authority.py:69:    layout = LogicalFileAuthorityLayout(owner_prefix="owners/o1", ro_prefix="readonly", rw_prefix="writeable")
+novaic-logicalfs/tests/test_authority.py:71:    assert logical_to_object_key(layout, "/ro/config/tool.json") == "owners/o1/readonly/config/tool.json"
+novaic-logicalfs/tests/test_authority.py:72:    assert logical_to_object_key(layout, "rw/scratch/a.txt") == "owners/o1/writeable/scratch/a.txt"
+novaic-logicalfs/tests/test_authority.py:75:@pytest.mark.asyncio
+novaic-logicalfs/tests/test_authority.py:76:async def test_read_write_append_exists_delete_roundtrip() -> None:
+novaic-logicalfs/tests/test_authority.py:79:    await fs.write_text("/rw/scratch/a.txt", "one")
+novaic-logicalfs/tests/test_authority.py:80:    await fs.append_line("/rw/scratch/a.txt", "two")
+novaic-logicalfs/tests/test_authority.py:82:    assert await fs.exists("/rw/scratch/a.txt")
+novaic-logicalfs/tests/test_authority.py:83:    assert await fs.read_text("/rw/scratch/a.txt") == "onetwo\n"
+novaic-logicalfs/tests/test_authority.py:85:    await fs.delete("/rw/scratch/a.txt")
+novaic-logicalfs/tests/test_authority.py:87:    assert not await fs.exists("/rw/scratch/a.txt")
+novaic-logicalfs/tests/test_authority.py:90:@pytest.mark.asyncio
+novaic-logicalfs/tests/test_authority.py:91:async def test_lists_directory_entries_and_tree_bytes() -> None:
+novaic-logicalfs/tests/test_authority.py:93:    await fs.write_text("/ro/config/tool.json", "{}")
+novaic-logicalfs/tests/test_authority.py:94:    await fs.write_text("/ro/config/nested/a.txt", "a")
+novaic-logicalfs/tests/test_authority.py:96:    entries = await fs.list_dir("/ro/config/")
+novaic-logicalfs/tests/test_authority.py:99:        ("nested", "/ro/config/nested/", True),
+novaic-logicalfs/tests/test_authority.py:100:        ("tool.json", "/ro/config/tool.json", False),
+novaic-logicalfs/tests/test_authority.py:102:    assert await fs.list_tree_bytes("/ro/config") == [
+novaic-logicalfs/tests/test_authority.py:108:@pytest.mark.asyncio
+novaic-logicalfs/tests/test_authority.py:109:async def test_moves_tree_and_initializes_layout() -> None:
+novaic-logicalfs/tests/test_authority.py:111:    await fs.write_text("/ro/active/s1/meta.json", "{}")
+novaic-logicalfs/tests/test_authority.py:112:    await fs.initialize_layout(("/ro/config/tools", "/rw/scratch"))
+novaic-logicalfs/tests/test_authority.py:114:    moved = await fs.move_tree("/ro/active/s1", "/ro/scopes/s1")
+novaic-logicalfs/tests/test_authority.py:117:    assert await fs.read_text("/ro/scopes/s1/meta.json") == "{}"
+novaic-logicalfs/tests/test_authority.py:118:    assert await fs.exists("/ro/config/tools/.keep")
+novaic-logicalfs/tests/test_authority.py:119:    assert await fs.exists("/rw/scratch/.keep")
+novaic-logicalfs/tests/test_authority.py:122:@pytest.mark.asyncio
+novaic-logicalfs/tests/test_authority.py:123:async def test_rejects_invalid_logical_paths() -> None:
+novaic-logicalfs/tests/test_authority.py:126:    for path in ["/etc/passwd", "/rw/../x", "/ro/bad\x00name"]:
+novaic-logicalfs/tests/test_authority.py:127:        with pytest.raises(ValueError):
+novaic-logicalfs/pyproject.toml:1:[project]
+novaic-logicalfs/pyproject.toml:2:name = "novaic-logicalfs"
+novaic-logicalfs/pyproject.toml:4:description = "Snapshot/view/patch LogicalFS substrate for NovaIC"
+novaic-logicalfs/logicalfs/contracts.py:1:"""LogicalFS snapshot/view/patch contracts."""
+novaic-logicalfs/logicalfs/contracts.py:3:from __future__ import annotations
+novaic-logicalfs/logicalfs/contracts.py:5:from dataclasses import dataclass, field
+novaic-logicalfs/logicalfs/contracts.py:6:from pathlib import Path
+novaic-logicalfs/logicalfs/contracts.py:7:from typing import Mapping
+novaic-logicalfs/logicalfs/contracts.py:10:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:11:class LogicalFSFile:
+novaic-logicalfs/logicalfs/contracts.py:17:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:18:class LogicalFSSnapshot:
+novaic-logicalfs/logicalfs/contracts.py:19:    files: tuple[LogicalFSFile, ...]
+novaic-logicalfs/logicalfs/contracts.py:22:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:24:    root: str = "/cortex"
+novaic-logicalfs/logicalfs/contracts.py:25:    ro: str = "/cortex/ro"
+novaic-logicalfs/logicalfs/contracts.py:26:    rw: str = "/cortex/rw"
+novaic-logicalfs/logicalfs/contracts.py:30:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:31:class LogicalFSLayout:
+novaic-logicalfs/logicalfs/contracts.py:37:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:38:class LogicalFSEnv:
+novaic-logicalfs/logicalfs/contracts.py:42:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:43:class LogicalFSView:
+novaic-logicalfs/logicalfs/contracts.py:44:    root: Path
+novaic-logicalfs/logicalfs/contracts.py:45:    ro: Path
+novaic-logicalfs/logicalfs/contracts.py:46:    rw: Path
+novaic-logicalfs/logicalfs/contracts.py:51:    before_rw: Mapping[str, tuple[int, int]]
+novaic-logicalfs/logicalfs/contracts.py:55:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:56:class LogicalFSPatchFile:
+novaic-logicalfs/logicalfs/contracts.py:61:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:62:class LogicalFSPatch:
+novaic-logicalfs/logicalfs/contracts.py:63:    upserts: tuple[LogicalFSPatchFile, ...] = ()
+novaic-logicalfs/logicalfs/contracts.py:70:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/contracts.py:71:class LogicalFSDirectoryEntry:
+novaic-logicalfs/logicalfs/contracts.py:78:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/__init__.py:1:"""Business-agnostic LogicalFS snapshot/view/patch substrate."""
+novaic-logicalfs/logicalfs/__init__.py:3:from logicalfs.contracts import (
+novaic-logicalfs/logicalfs/__init__.py:4:    LogicalFSDirectoryEntry,
+novaic-logicalfs/logicalfs/__init__.py:5:    LogicalFSEnv,
+novaic-logicalfs/logicalfs/__init__.py:6:    LogicalFSFile,
+novaic-logicalfs/logicalfs/__init__.py:7:    LogicalFSLayout,
+novaic-logicalfs/logicalfs/__init__.py:8:    LogicalFSPatch,
+novaic-logicalfs/logicalfs/__init__.py:9:    LogicalFSPatchFile,
+novaic-logicalfs/logicalfs/__init__.py:10:    LogicalFSSnapshot,
+novaic-logicalfs/logicalfs/__init__.py:11:    LogicalFSView,
+novaic-logicalfs/logicalfs/__init__.py:15:from logicalfs.authority import (
+novaic-logicalfs/logicalfs/__init__.py:21:from logicalfs.blob_store import BlobObjectStore
+novaic-logicalfs/logicalfs/__init__.py:22:from logicalfs.local import LocalLogicalFSProvider
+novaic-logicalfs/logicalfs/__init__.py:25:    "BlobObjectStore",
+novaic-logicalfs/logicalfs/__init__.py:26:    "LogicalFSDirectoryEntry",
+novaic-logicalfs/logicalfs/__init__.py:27:    "LocalLogicalFSProvider",
+novaic-logicalfs/logicalfs/__init__.py:29:    "LogicalFSEnv",
+novaic-logicalfs/logicalfs/__init__.py:30:    "LogicalFSFile",
+novaic-logicalfs/logicalfs/__init__.py:31:    "LogicalFSLayout",
+novaic-logicalfs/logicalfs/__init__.py:32:    "LogicalFSPatch",
+novaic-logicalfs/logicalfs/__init__.py:33:    "LogicalFSPatchFile",
+novaic-logicalfs/logicalfs/__init__.py:34:    "LogicalFSSnapshot",
+novaic-logicalfs/logicalfs/__init__.py:35:    "LogicalFSView",
+novaic-logicalfs/logicalfs/blob_store.py:1:"""Blob Service object-store adapter below LogicalFS.
+novaic-logicalfs/logicalfs/blob_store.py:3:Blob Service is a cheap byte/object server. LogicalFS owns realtime /ro and /rw
+novaic-logicalfs/logicalfs/blob_store.py:8:from __future__ import annotations
+novaic-logicalfs/logicalfs/blob_store.py:10:from typing import Any
+novaic-logicalfs/logicalfs/blob_store.py:11:from urllib.parse import quote
+novaic-logicalfs/logicalfs/blob_store.py:13:from common.http.clients import internal_async_client
+novaic-logicalfs/logicalfs/blob_store.py:15:from logicalfs.contracts import LogicalObjectInfo
+novaic-logicalfs/logicalfs/blob_store.py:18:class BlobObjectStore:
+novaic-logicalfs/logicalfs/blob_store.py:19:    """Async object-store adapter over Blob Service object APIs."""
+novaic-logicalfs/logicalfs/blob_store.py:28:        client_service_name: str = "logicalfs",
+novaic-logicalfs/logicalfs/blob_store.py:31:            raise ValueError("base_url is required")
+novaic-logicalfs/logicalfs/blob_store.py:33:            raise ValueError("tenant_id is required")
+novaic-logicalfs/logicalfs/blob_store.py:46:    async def put(self, key: str, data: bytes, content_type: str = "") -> None:
+novaic-logicalfs/logicalfs/blob_store.py:50:        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+novaic-logicalfs/logicalfs/blob_store.py:54:    async def get(self, key: str) -> bytes:
+novaic-logicalfs/logicalfs/blob_store.py:55:        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+novaic-logicalfs/logicalfs/blob_store.py:58:            raise KeyError(key)
+novaic-logicalfs/logicalfs/blob_store.py:62:    async def exists(self, key: str) -> bool:
+novaic-logicalfs/logicalfs/blob_store.py:63:        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+novaic-logicalfs/logicalfs/blob_store.py:73:    async def delete(self, key: str) -> None:
+novaic-logicalfs/logicalfs/blob_store.py:74:        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+novaic-logicalfs/logicalfs/blob_store.py:80:    async def list_objects(self, prefix: str, delimiter: str = "/") -> list[LogicalObjectInfo]:
+novaic-logicalfs/logicalfs/blob_store.py:82:            raise NotImplementedError("BlobObjectStore only supports delimiter='/'")
+novaic-logicalfs/logicalfs/blob_store.py:93:    async def list_recursive(self, prefix: str) -> list[str]:
+novaic-logicalfs/logicalfs/blob_store.py:97:    async def _list(self, *, prefix: str, delimiter: str, recursive: bool) -> dict[str, Any]:
+novaic-logicalfs/logicalfs/blob_store.py:104:        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+novaic-logicalfs/logicalfs/blob_store.py:113:    async def move(self, src: str, dst: str) -> None:
+novaic-logicalfs/logicalfs/blob_store.py:118:    async def move_prefix(self, src_prefix: str, dst_prefix: str) -> int:
+novaic-logicalfs/logicalfs/blob_store.py:125:        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+novaic-logicalfs/logicalfs/blob_store.py:132:__all__ = ["BlobObjectStore"]
+novaic-logicalfs/logicalfs/local.py:1:"""Local LogicalFS materialization/diff provider."""
+novaic-logicalfs/logicalfs/local.py:3:from __future__ import annotations
+novaic-logicalfs/logicalfs/local.py:5:from pathlib import Path
+novaic-logicalfs/logicalfs/local.py:6:from typing import Mapping
+novaic-logicalfs/logicalfs/local.py:8:from logicalfs.contracts import (
+novaic-logicalfs/logicalfs/local.py:9:    LogicalFSEnv,
+novaic-logicalfs/logicalfs/local.py:10:    LogicalFSLayout,
+novaic-logicalfs/logicalfs/local.py:11:    LogicalFSPatch,
+novaic-logicalfs/logicalfs/local.py:12:    LogicalFSPatchFile,
+novaic-logicalfs/logicalfs/local.py:13:    LogicalFSSnapshot,
+novaic-logicalfs/logicalfs/local.py:14:    LogicalFSView,
+novaic-logicalfs/logicalfs/local.py:21:def _file_stats(root: Path) -> FileStats:
+novaic-logicalfs/logicalfs/local.py:23:    if not root.is_dir():
+novaic-logicalfs/logicalfs/local.py:25:    for path in root.rglob("*"):
+novaic-logicalfs/logicalfs/local.py:28:            rel = path.relative_to(root).as_posix()
+novaic-logicalfs/logicalfs/local.py:45:def _resolve_cwd_under_root(root: Path, cwd: str | None) -> Path:
+novaic-logicalfs/logicalfs/local.py:46:    root_resolved = root.resolve()
+novaic-logicalfs/logicalfs/local.py:48:        return root_resolved
+novaic-logicalfs/logicalfs/local.py:49:    candidate = (root_resolved / cwd).resolve()
+novaic-logicalfs/logicalfs/local.py:51:        candidate.relative_to(root_resolved)
+novaic-logicalfs/logicalfs/local.py:52:    except ValueError as exc:
+novaic-logicalfs/logicalfs/local.py:53:        raise ValueError(f"cwd must be relative to logical rw root: {cwd!r}") from exc
+novaic-logicalfs/logicalfs/local.py:57:def _stable_path_for_actual(path: Path, *, view_root: Path, ro: Path, rw: Path, stable: StableLogicalPaths) -> str:
+novaic-logicalfs/logicalfs/local.py:59:    for actual_root, stable_root in [
+novaic-logicalfs/logicalfs/local.py:60:        (rw.resolve(), stable.rw),
+novaic-logicalfs/logicalfs/local.py:61:        (ro.resolve(), stable.ro),
+novaic-logicalfs/logicalfs/local.py:62:        (view_root.resolve(), stable.root),
+novaic-logicalfs/logicalfs/local.py:65:            rel = resolved.relative_to(actual_root)
+novaic-logicalfs/logicalfs/local.py:66:        except ValueError:
+novaic-logicalfs/logicalfs/local.py:69:            return stable_root
+novaic-logicalfs/logicalfs/local.py:71:        return stable_root if not suffix else f"{stable_root}/{suffix}"
+novaic-logicalfs/logicalfs/local.py:75:def _logical_rw_path(rel: str, stable: StableLogicalPaths) -> str:
+novaic-logicalfs/logicalfs/local.py:76:    return f"{stable.rw}/{rel}" if rel else stable.rw
+novaic-logicalfs/logicalfs/local.py:86:class LocalLogicalFSProvider:
+novaic-logicalfs/logicalfs/local.py:87:    """Materialize explicit snapshots into local RO/RW views and observe patches."""
+novaic-logicalfs/logicalfs/local.py:92:        snapshot: LogicalFSSnapshot,
+novaic-logicalfs/logicalfs/local.py:93:        root: Path,
+novaic-logicalfs/logicalfs/local.py:94:        layout: LogicalFSLayout,
+novaic-logicalfs/logicalfs/local.py:95:        env: LogicalFSEnv,
+novaic-logicalfs/logicalfs/local.py:97:    ) -> LogicalFSView:
+novaic-logicalfs/logicalfs/local.py:98:        ro = root / "ro"
+novaic-logicalfs/logicalfs/local.py:99:        rw = root / "rw"
+novaic-logicalfs/logicalfs/local.py:100:        bin_dir = root / "bin"
+novaic-logicalfs/logicalfs/local.py:101:        ro.mkdir(parents=True)
+novaic-logicalfs/logicalfs/local.py:102:        rw.mkdir(parents=True)
+novaic-logicalfs/logicalfs/local.py:109:            base = rw if item.writable else ro
+novaic-logicalfs/logicalfs/local.py:115:            if stable_path.startswith(layout.paths.rw + "/"):
+novaic-logicalfs/logicalfs/local.py:116:                rel = stable_path.removeprefix(layout.paths.rw + "/")
+novaic-logicalfs/logicalfs/local.py:117:                (rw / rel).mkdir(parents=True, exist_ok=True)
+novaic-logicalfs/logicalfs/local.py:119:        proc_cwd = _resolve_cwd_under_root(rw, cwd)
+novaic-logicalfs/logicalfs/local.py:121:            "PATH": f"{layout.paths.bin}:/usr/local/bin:/usr/bin:/bin",
+novaic-logicalfs/logicalfs/local.py:122:            "RO": layout.paths.ro,
+novaic-logicalfs/logicalfs/local.py:123:            "RW": layout.paths.rw,
+novaic-logicalfs/logicalfs/local.py:124:            "CORTEX_RO": layout.paths.ro,
+novaic-logicalfs/logicalfs/local.py:125:            "CORTEX_RW": layout.paths.rw,
+novaic-logicalfs/logicalfs/local.py:126:            "CORTEX_ROOT": layout.paths.root,
+novaic-logicalfs/logicalfs/local.py:127:            "CORTEX_FS_PROVIDER": "logicalfs",
+novaic-logicalfs/logicalfs/local.py:128:            "CORTEX_TRUE_STABLE_PATH_MOUNT": "1",
+novaic-logicalfs/logicalfs/local.py:129:            "HOME": layout.paths.rw,
+novaic-logicalfs/logicalfs/local.py:133:        return LogicalFSView(
+novaic-logicalfs/logicalfs/local.py:134:            root=root,
+novaic-logicalfs/logicalfs/local.py:135:            ro=ro,
+novaic-logicalfs/logicalfs/local.py:136:            rw=rw,
+novaic-logicalfs/logicalfs/local.py:138:            cwd=proc_cwd,
+novaic-logicalfs/logicalfs/local.py:140:                proc_cwd,
+novaic-logicalfs/logicalfs/local.py:141:                view_root=root,
+novaic-logicalfs/logicalfs/local.py:142:                ro=ro,
+novaic-logicalfs/logicalfs/local.py:143:                rw=rw,
+novaic-logicalfs/logicalfs/local.py:147:            before_rw=_file_stats(rw),
+novaic-logicalfs/logicalfs/local.py:151:    def observe_patch(self, view: LogicalFSView) -> LogicalFSPatch:
+novaic-logicalfs/logicalfs/local.py:152:        after = _file_stats(view.rw)
+novaic-logicalfs/logicalfs/local.py:153:        upserts: list[LogicalFSPatchFile] = []
+novaic-logicalfs/logicalfs/local.py:155:        for rel in _changed_relative_paths(view.before_rw, after):
+novaic-logicalfs/logicalfs/local.py:156:            logical = _logical_rw_path(rel, view.paths)
+novaic-logicalfs/logicalfs/local.py:160:                upserts.append(LogicalFSPatchFile(path=logical, data=(view.rw / rel).read_bytes()))
+novaic-logicalfs/logicalfs/local.py:161:        return LogicalFSPatch(upserts=tuple(upserts), deletes=tuple(sorted(deletes)))
+novaic-logicalfs/logicalfs/local.py:163:    def sanitize_output(self, text: str, view: LogicalFSView) -> str:
+novaic-logicalfs/logicalfs/local.py:167:                str(view.ro.resolve()): view.paths.ro,
+novaic-logicalfs/logicalfs/local.py:168:                str(view.rw.resolve()): view.paths.rw,
+novaic-logicalfs/logicalfs/local.py:169:                str(view.root.resolve()): view.paths.root,
+novaic-logicalfs/logicalfs/authority.py:1:"""Generic live LogicalFS file authority.
+novaic-logicalfs/logicalfs/authority.py:3:This module owns realtime logical file operations over /ro and /rw. It is
+novaic-logicalfs/logicalfs/authority.py:4:business-agnostic: callers provide explicit namespace/layout configuration and
+novaic-logicalfs/logicalfs/authority.py:5:a generic object-store adapter. Cortex semantics, agents, scopes, Blob Service,
+novaic-logicalfs/logicalfs/authority.py:6:and process execution live outside this boundary.
+novaic-logicalfs/logicalfs/authority.py:9:from __future__ import annotations
+novaic-logicalfs/logicalfs/authority.py:11:import asyncio
+novaic-logicalfs/logicalfs/authority.py:13:from dataclasses import dataclass
+novaic-logicalfs/logicalfs/authority.py:14:from typing import Iterable, Protocol, Sequence
+novaic-logicalfs/logicalfs/authority.py:16:from logicalfs.contracts import LogicalFSDirectoryEntry, LogicalObjectInfo
+novaic-logicalfs/logicalfs/authority.py:19:class LogicalObjectStore(Protocol):
+novaic-logicalfs/logicalfs/authority.py:20:    async def put(self, key: str, data: bytes, content_type: str = "") -> None: ...
+novaic-logicalfs/logicalfs/authority.py:22:    async def get(self, key: str) -> bytes: ...
+novaic-logicalfs/logicalfs/authority.py:24:    async def exists(self, key: str) -> bool: ...
+novaic-logicalfs/logicalfs/authority.py:26:    async def delete(self, key: str) -> None: ...
+novaic-logicalfs/logicalfs/authority.py:28:    async def list_objects(self, prefix: str, delimiter: str = "/") -> Sequence[LogicalObjectInfo]: ...
+novaic-logicalfs/logicalfs/authority.py:30:    async def list_recursive(self, prefix: str) -> Sequence[str]: ...
+novaic-logicalfs/logicalfs/authority.py:32:    async def move_prefix(self, src_prefix: str, dst_prefix: str) -> int: ...
+novaic-logicalfs/logicalfs/authority.py:35:@dataclass(frozen=True)
+novaic-logicalfs/logicalfs/authority.py:38:    ro_prefix: str = "ro"
+novaic-logicalfs/logicalfs/authority.py:39:    rw_prefix: str = "rw"
+novaic-logicalfs/logicalfs/authority.py:47:        raise ValueError("path must be a string")
+novaic-logicalfs/logicalfs/authority.py:50:        raise ValueError("path must not contain NUL")
+novaic-logicalfs/logicalfs/authority.py:57:            raise ValueError("path must not contain '..'")
+novaic-logicalfs/logicalfs/authority.py:58:    if p in {"/ro", "/rw"}:
+novaic-logicalfs/logicalfs/authority.py:60:    if p.startswith("/ro/") or p.startswith("/rw/"):
+novaic-logicalfs/logicalfs/authority.py:62:    raise ValueError(f"path must start with /ro/ or /rw/: {path!r}")
+novaic-logicalfs/logicalfs/authority.py:69:    ro = layout.ro_prefix.strip("/")
+novaic-logicalfs/logicalfs/authority.py:70:    rw = layout.rw_prefix.strip("/")
+novaic-logicalfs/logicalfs/authority.py:71:    if logical.startswith("/ro/"):
+novaic-logicalfs/logicalfs/authority.py:72:        rel = logical.removeprefix("/ro/").lstrip("/")
+novaic-logicalfs/logicalfs/authority.py:73:        return f"{base}{ro}/{rel}"
+novaic-logicalfs/logicalfs/authority.py:74:    if logical.startswith("/rw/"):
+novaic-logicalfs/logicalfs/authority.py:75:        rel = logical.removeprefix("/rw/").lstrip("/")
+novaic-logicalfs/logicalfs/authority.py:76:        return f"{base}{rw}/{rel}"
+novaic-logicalfs/logicalfs/authority.py:77:    raise ValueError(f"path must start with /ro/ or /rw/: {path!r}")
+novaic-logicalfs/logicalfs/authority.py:81:    """Live /ro and /rw authority backed by a generic object store."""
+novaic-logicalfs/logicalfs/authority.py:87:    @property
+novaic-logicalfs/logicalfs/authority.py:98:    async def write_bytes(self, path: str, data: bytes, content_type: str = "") -> None:
+novaic-logicalfs/logicalfs/authority.py:101:    async def write_text(self, path: str, content: str) -> None:
+novaic-logicalfs/logicalfs/authority.py:104:    async def write_json(self, path: str, obj: dict) -> None:
+novaic-logicalfs/logicalfs/authority.py:111:    async def read_bytes(self, path: str) -> bytes:
+novaic-logicalfs/logicalfs/authority.py:114:    async def read_text(self, path: str, encoding: str = "utf-8") -> str:
+novaic-logicalfs/logicalfs/authority.py:117:    async def exists(self, path: str) -> bool:
+novaic-logicalfs/logicalfs/authority.py:120:    async def delete(self, path: str) -> None:
+novaic-logicalfs/logicalfs/authority.py:123:    async def append_line(self, path: str, line: str) -> None:
+novaic-logicalfs/logicalfs/authority.py:126:    async def append_lines(self, path: str, lines: str) -> None:
+novaic-logicalfs/logicalfs/authority.py:130:        except KeyError:
+novaic-logicalfs/logicalfs/authority.py:134:    async def list_tree_bytes(
+novaic-logicalfs/logicalfs/authority.py:143:        async def read_one(key: str) -> tuple[str, bytes] | None:
+novaic-logicalfs/logicalfs/authority.py:154:            sem = asyncio.Semaphore(max(1, int(concurrency)))
+novaic-logicalfs/logicalfs/authority.py:156:            async def limited_read(key: str) -> tuple[str, bytes] | None:
+novaic-logicalfs/logicalfs/authority.py:157:                async with sem:
+novaic-logicalfs/logicalfs/authority.py:160:            results = await asyncio.gather(*(limited_read(key) for key in keys))
+novaic-logicalfs/logicalfs/authority.py:163:    async def list_dir(self, path: str) -> list[LogicalFSDirectoryEntry]:
+novaic-logicalfs/logicalfs/authority.py:169:        entries: list[LogicalFSDirectoryEntry] = []
+novaic-logicalfs/logicalfs/authority.py:176:                LogicalFSDirectoryEntry(
+novaic-logicalfs/logicalfs/authority.py:185:    async def move_tree(self, src_path: str, dst_path: str) -> int:
+novaic-logicalfs/logicalfs/authority.py:188:    async def list_object_keys(self, path: str) -> list[str]:
+novaic-logicalfs/logicalfs/authority.py:191:    async def initialize_layout(self, logical_dirs: Iterable[str]) -> None:
+novaic-logicalfs/logicalfs/authority.py:193:            directory = _normalize_logical_path(logical_dir).rstrip("/")
+novaic-logicalfs/logicalfs/authority.py:194:            await self.write_bytes(f"{directory}/.keep", b"")

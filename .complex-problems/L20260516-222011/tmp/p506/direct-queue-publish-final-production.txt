@@ -1,0 +1,34 @@
+# direct-queue-publish final production guard
+pattern: \.publish\(|publish_task|queue\.put|send_task|enqueue|outbox.*dispatch|dispatcher.*publish
+created: 2026-05-17T12:33:01Z
+
+novaic-agent-runtime/queue_service/routes.py:217:    def publish_task(req: PublishRequest, request: Request):
+novaic-agent-runtime/queue_service/routes.py:219:        task_id = queue.publish(
+novaic-agent-runtime/queue_service/session_outbox.py:1:"""Durable session outbox dispatcher."""
+novaic-agent-runtime/queue_service/session_outbox.py:21:class SessionOutboxDispatcher:
+novaic-agent-runtime/queue_service/session_outbox.py:212:        self.queue.publish(
+novaic-agent-runtime/queue_service/session_outbox.py:255:        task_id = self.queue.publish(
+novaic-agent-runtime/queue_service/main.py:183:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/main.py:191:session_outbox_dispatcher = SessionOutboxDispatcher(
+novaic-agent-runtime/queue_service/main.py:202:    outbox_dispatcher=session_outbox_dispatcher,
+novaic-agent-runtime/task_queue/client.py:36:        task_id = client.publish("my_topic", {"key": "value"})
+novaic-agent-runtime/queue_service/task_fsm.py:41:    PUBLISH_TASK = "publish_task"
+novaic-agent-runtime/queue_service/task_fsm.py:128:            action=TaskLifecycleAction.PUBLISH_TASK,
+novaic-agent-runtime/task_queue/workers/saga_effects.py:35:        task_id = self.task_client.publish(
+novaic-agent-runtime/task_queue/workers/task_effects.py:84:        task_id = self.client.publish(
+novaic-agent-runtime/queue_service/queue_db.py:75:        task_id = queue.publish("my_topic", {"key": "value"})
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:254:    from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:288:        dispatcher=SessionOutboxDispatcher(
+novaic-agent-runtime/queue_service/session_wake_plan.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_wake_plan.py:77:            effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/queue_service/session_wake_plan.py:114:            effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:8:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_outbox_worker.py:32:    """Drain durable session outbox rows through an explicit dispatcher port."""
+novaic-agent-runtime/queue_service/session_outbox_worker.py:37:        dispatcher: SessionOutboxDispatcher,
+novaic-agent-runtime/queue_service/session_repo.py:42:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_repo.py:110:        outbox_dispatcher: SessionOutboxDispatcher,
+novaic-agent-runtime/queue_service/session_repo.py:120:        self.outbox_dispatcher = outbox_dispatcher
+novaic-agent-runtime/queue_service/session_repo.py:455:                effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/queue_service/session_repo.py:930:                effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/queue_service/saga_repo.py:1184:          1. WAKE/think/actions saga fails → enqueue wake_finalize creation.
+novaic-agent-runtime/queue_service/saga_repo.py:1185:          2. wake_finalize itself fails → enqueue session suspected-dead event.

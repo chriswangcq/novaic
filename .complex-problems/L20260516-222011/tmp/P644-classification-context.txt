@@ -1,0 +1,226 @@
+=== novaic-cortex/tests/test_workspace.py lines 1-30 ===
+     1	"""Async tests for Workspace on MemoryStore."""
+     2	
+     3	from __future__ import annotations
+     4	
+     5	import json
+     6	import hashlib
+     7	
+     8	import pytest
+     9	
+    10	from novaic_cortex import blob_payload
+    11	from cortex_tests.workspace_test_utils import make_workspace_with_store
+    12	
+    13	
+    14	@pytest.mark.asyncio
+    15	async def test_initialize_creates_layout() -> None:
+    16	    ws, store = make_workspace_with_store("agent-1")
+    17	    await ws.initialize()
+    18	    ap = "agents/agent-1/"
+    19	    for sub in ("ro/active", "ro/config", "ro/skills", "ro/scopes", "ro/knowledge"):
+    20	        assert await store.exists(f"{ap}{sub}/.keep")
+    21	    assert not await store.exists(f"{ap}rw/scratch/.keep")
+    22	
+    23	
+    24	@pytest.mark.asyncio
+    25	async def test_create_scope_returns_path_and_append_under_scope() -> None:
+    26	    ws, store = make_workspace_with_store("a2")
+    27	    await ws.initialize()
+    28	    base = await ws.create_scope("s1", "Scope One", skill="demo")
+    29	    assert base == "/ro/active/s1"
+    30	    assert await store.exists("agents/a2/ro/active/s1/meta.json")
+
+=== novaic-cortex/novaic_cortex/logical_fs.py lines 200-275 ===
+   200	        must not become proportional to all historical RW files, so only direct
+   201	        root files and explicit shared/current-subagent work directories are
+   202	        mounted by default. Any new file the command writes under /rw is still
+   203	        persisted on release.
+   204	        """
+   205	
+   206	        await self._add_directory_files(files, "/rw/")
+   207	        for logical_prefix in (
+   208	            "/rw/public/",
+   209	            "/rw/system/",
+   210	        ):
+   211	            await self._add_tree(files, logical_prefix)
+   212	
+   213	        subagent_id = _safe_subagent_path_component((extra_env or {}).get("NOVAIC_SUBAGENT_ID"), "main")
+   214	        await self._add_tree(files, f"/rw/subagents/{subagent_id}/")
+   215	
+   216	    async def _workspace_snapshot(
+   217	        self,
+   218	        *,
+   219	        generated_rw_files: Mapping[str, bytes],
+   220	        extra_env: Mapping[str, str] | None,
+   221	    ) -> LogicalFSSnapshot:
+   222	        files: dict[tuple[bool, str], LogicalFSFile] = {}
+   223	
+   224	        # Keep shell startup bounded. The previous implementation recursively
+   225	        # materialized all of /ro, which made every shell call proportional to
+   226	        # total agent history. Shell does not need the runtime tool-schema
+   227	        # store or the installed skill library as local files; capability CLIs
+   228	        # are generated into /cortex/bin and call Cortex/Business APIs when
+   229	        # they need agent-harness data. Historical or broad reads must be
+   230	        # explicit API reads, not implicit full mounts.
+   231	        await self._add_file_if_exists(files, "/ro/config/engine.json")
+   232	        await self._add_file_if_exists(files, "/ro/config/tools/_index.json")
+   233	
+   234	        scope_id = str((extra_env or {}).get("NOVAIC_SCOPE_ID") or "").strip()
+   235	        wake_scope_path = str((extra_env or {}).get("NOVAIC_WAKE_SCOPE_PATH") or "").strip().rstrip("/")
+   236	        if scope_id:
+   237	            root_path = f"/ro/active/{scope_id}"
+   238	            await self._add_file_if_exists(files, f"{root_path}/meta.json")
+   239	            await self._add_file_if_exists(files, f"{root_path}/steps/_index.jsonl")
+   240	            await self._add_file_if_exists(files, f"{root_path}/context_events/events.jsonl")
+   241	            if wake_scope_path and (
+   242	                wake_scope_path == root_path or wake_scope_path.startswith(root_path + "/")
+   243	            ):
+   244	                await self._add_tree(files, wake_scope_path + "/")
+   245	
+   246	        await self._add_rw_working_set(files, extra_env=extra_env)
+   247	        for relpath, data in generated_rw_files.items():
+   248	            files[(True, relpath.lstrip("/"))] = LogicalFSFile(
+   249	                path=relpath.lstrip("/"),
+   250	                data=data,
+   251	                writable=True,
+   252	            )
+   253	        return LogicalFSSnapshot(files=tuple(files.values()))
+   254	
+   255	    @staticmethod
+   256	    def _snapshot_bytes(snapshot: LogicalFSSnapshot) -> int:
+   257	        return sum(len(item.data) for item in snapshot.files)
+   258	
+   259	    def _rw_layout(self, extra_env: Mapping[str, str] | None) -> LogicalFSLayout:
+   260	        subagent_id = _safe_subagent_path_component((extra_env or {}).get("NOVAIC_SUBAGENT_ID"), "main")
+   261	        writable_env = {
+   262	            "RW_PUBLIC": f"{STABLE_CORTEX_RW}/public",
+   263	            "RW_SELF": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}",
+   264	            "RW_TMP": f"{STABLE_CORTEX_RW}/tmp",
+   265	            "RW_ARTIFACTS": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/artifacts",
+   266	            "RW_SCRATCH": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/scratch",
+   267	        }
+   268	        return LogicalFSLayout(
+   269	            paths=StableLogicalPaths(
+   270	                root=STABLE_CORTEX_ROOT,
+   271	                ro=STABLE_CORTEX_RO,
+   272	                rw=STABLE_CORTEX_RW,
+   273	                bin=STABLE_CORTEX_BIN,
+   274	            ),
+   275	            writable_env=writable_env,
+
+=== novaic-cortex/tests/test_sandboxd_wiring.py lines 132-152 ===
+   132	
+   133	@pytest.mark.asyncio
+   134	async def test_sandbox_materializes_scoped_rw_working_set_only() -> None:
+   135	    ws, store = make_workspace_with_store("sandboxd-scoped-rw")
+   136	    await ws.initialize()
+   137	    await ws.write_bytes("/rw/root-note.txt", b"root")
+   138	    await ws.write_bytes("/rw/public/shared.txt", b"shared")
+   139	    await ws.write_bytes("/rw/system/state.txt", b"system")
+   140	    await ws.write_bytes("/rw/tmp/temp.txt", b"stale tmp")
+   141	    await ws.write_bytes("/rw/subagents/main/scratch/current.txt", b"current")
+   142	    await ws.write_bytes("/rw/subagents/sub-other/scratch/other.txt", b"other")
+   143	    await ws.write_bytes("/rw/old-large-tree/nested/hidden.txt", b"hidden")
+   144	
+   145	    def inspect_view(spec: SandboxExecSpec) -> None:
+   146	        assert spec.mount is not None
+   147	        root = Path(spec.mount.source_root)
+   148	        assert (root / "rw/root-note.txt").read_bytes() == b"root"
+   149	        assert (root / "rw/public/shared.txt").read_bytes() == b"shared"
+   150	        assert (root / "rw/system/state.txt").read_bytes() == b"system"
+   151	        assert not (root / "rw/tmp/temp.txt").exists()
+   152	        assert (root / "rw/subagents/main/scratch/current.txt").read_bytes() == b"current"
+
+=== novaic-logicalfs/tests/test_logicalfs.py lines 20-50 ===
+    20	                LogicalFSFile(path="config/tool.json", data=b"ro"),
+    21	                LogicalFSFile(path="scratch/existing.txt", data=b"rw", writable=True),
+    22	            )
+    23	        ),
+    24	        root=tmp_path,
+    25	        layout=LogicalFSLayout(
+    26	            paths=StableLogicalPaths(),
+    27	            writable_env={
+    28	                "RW_SELF": "/cortex/rw/subagents/sub-1",
+    29	                "RW_TMP": "/cortex/rw/tmp",
+    30	            },
+    31	            writable_dirs=("/cortex/rw/system",),
+    32	        ),
+    33	        env=LogicalFSEnv({"NOVAIC_TOKEN": "token-1", "NOVAIC_API": "http://cortex"}),
+    34	        cwd="scratch",
+    35	    )
+    36	
+    37	    assert (view.ro / "config/tool.json").read_bytes() == b"ro"
+    38	    assert (view.rw / "scratch/existing.txt").read_bytes() == b"rw"
+    39	    assert (view.rw / "subagents/sub-1").is_dir()
+    40	    assert (view.rw / "tmp").is_dir()
+    41	    assert (view.rw / "system").is_dir()
+    42	    assert view.stable_cwd == "/cortex/rw/scratch"
+    43	    assert view.env["RW_SELF"] == "/cortex/rw/subagents/sub-1"
+    44	    assert view.env["NOVAIC_TOKEN"] == "token-1"
+    45	
+    46	
+    47	def test_observe_patch_reports_upserts_and_deletes(tmp_path) -> None:
+    48	    provider = LocalLogicalFSProvider()
+    49	    view = provider.materialize(
+    50	        snapshot=LogicalFSSnapshot(
+
+=== novaic-logicalfs/tests/test_authority.py lines 64-122 ===
+    64	        LogicalFileAuthorityLayout(owner_prefix="owners/o1"),
+    65	    )
+    66	
+    67	
+    68	def test_maps_logical_paths_from_explicit_layout() -> None:
+    69	    layout = LogicalFileAuthorityLayout(owner_prefix="owners/o1", ro_prefix="readonly", rw_prefix="writeable")
+    70	
+    71	    assert logical_to_object_key(layout, "/ro/config/tool.json") == "owners/o1/readonly/config/tool.json"
+    72	    assert logical_to_object_key(layout, "rw/scratch/a.txt") == "owners/o1/writeable/scratch/a.txt"
+    73	
+    74	
+    75	@pytest.mark.asyncio
+    76	async def test_read_write_append_exists_delete_roundtrip() -> None:
+    77	    fs = authority()
+    78	
+    79	    await fs.write_text("/rw/scratch/a.txt", "one")
+    80	    await fs.append_line("/rw/scratch/a.txt", "two")
+    81	
+    82	    assert await fs.exists("/rw/scratch/a.txt")
+    83	    assert await fs.read_text("/rw/scratch/a.txt") == "onetwo\n"
+    84	
+    85	    await fs.delete("/rw/scratch/a.txt")
+    86	
+    87	    assert not await fs.exists("/rw/scratch/a.txt")
+    88	
+    89	
+    90	@pytest.mark.asyncio
+    91	async def test_lists_directory_entries_and_tree_bytes() -> None:
+    92	    fs = authority()
+    93	    await fs.write_text("/ro/config/tool.json", "{}")
+    94	    await fs.write_text("/ro/config/nested/a.txt", "a")
+    95	
+    96	    entries = await fs.list_dir("/ro/config/")
+    97	
+    98	    assert [(entry.name, entry.path, entry.is_dir) for entry in entries] == [
+    99	        ("nested", "/ro/config/nested/", True),
+   100	        ("tool.json", "/ro/config/tool.json", False),
+   101	    ]
+   102	    assert await fs.list_tree_bytes("/ro/config") == [
+   103	        ("nested/a.txt", b"a"),
+   104	        ("tool.json", b"{}"),
+   105	    ]
+   106	
+   107	
+   108	@pytest.mark.asyncio
+   109	async def test_moves_tree_and_initializes_layout() -> None:
+   110	    fs = authority()
+   111	    await fs.write_text("/ro/active/s1/meta.json", "{}")
+   112	    await fs.initialize_layout(("/ro/config/tools", "/rw/scratch"))
+   113	
+   114	    moved = await fs.move_tree("/ro/active/s1", "/ro/scopes/s1")
+   115	
+   116	    assert moved == 1
+   117	    assert await fs.read_text("/ro/scopes/s1/meta.json") == "{}"
+   118	    assert await fs.exists("/ro/config/tools/.keep")
+   119	    assert await fs.exists("/rw/scratch/.keep")
+   120	
+   121	
+   122	@pytest.mark.asyncio

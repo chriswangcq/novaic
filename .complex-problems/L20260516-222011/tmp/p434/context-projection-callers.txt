@@ -1,0 +1,108 @@
+./novaic-cortex/novaic_cortex/workspace.py:856:    async def read_context(self, scope_path: str) -> List[Dict[str, Any]]:
+./novaic-cortex/novaic_cortex/workspace.py:886:    async def append_context_projection(self, scope_path: str, message: Dict[str, Any]) -> int:
+./novaic-cortex/novaic_cortex/workspace.py:890:    async def append_context_batch(self, scope_path: str, messages: List[Dict[str, Any]]) -> None:
+./novaic-cortex/novaic_cortex/workspace.py:900:    async def append_context_batch_projection(
+./novaic-cortex/novaic_cortex/workspace.py:906:        await self.append_context_batch(scope_path, messages)
+./novaic-cortex/novaic_cortex/api.py:886:@app.post("/v1/context/read")
+./novaic-cortex/novaic_cortex/api.py:887:async def context_read(req: ContextScopeRequest):
+./novaic-cortex/novaic_cortex/api.py:895:    messages = await ws.read_context(scope_path)
+./novaic-cortex/novaic_cortex/api.py:899:@app.post("/v1/context/append")
+./novaic-cortex/novaic_cortex/api.py:900:async def context_append(req: ContextAppendRequest):
+./novaic-cortex/novaic_cortex/api.py:903:    async with _scope_lock_cm(req.user_id, req.agent_id, req.scope_id, op="context_append"):
+./novaic-cortex/novaic_cortex/api.py:918:        await ws.append_context_projection(scope_path, req.message)
+./novaic-cortex/novaic_cortex/api.py:922:@app.post("/v1/context/batch")
+./novaic-cortex/novaic_cortex/api.py:923:async def context_batch(req: ContextBatchRequest):
+./novaic-cortex/novaic_cortex/api.py:924:    async with _scope_lock_cm(req.user_id, req.agent_id, req.scope_id, op="context_batch"):
+./novaic-cortex/novaic_cortex/api.py:941:        await ws.append_context_batch_projection(scope_path, req.messages)
+./novaic-cortex/novaic_cortex/api.py:2330:# ``/v1/context/append`` use, so stack pushes/pops, step writes, and
+./novaic-business/tests/test_pr118_subagent_context_removed.py:28:        "context_append",
+./novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:17:    context_append,
+./novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:64:    await context_append(ContextAppendRequest(
+./novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:81:    await context_append(ContextAppendRequest(
+./novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:131:    await context_append(ContextAppendRequest(
+./novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:142:    await context_append(ContextAppendRequest(
+./novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:185:    await context_append(ContextAppendRequest(
+./novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:313:    from .context_handlers import handle_context_read
+./novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:314:    read_result = handle_context_read({
+./novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:157:        bridge.append_context_batch(
+./novaic-cortex/tests/test_pr234_control_stack.py:12:    context_append,
+./novaic-cortex/tests/test_pr234_control_stack.py:58:    await context_append(ContextAppendRequest(
+./novaic-cortex/tests/test_pr234_control_stack.py:73:    await context_append(ContextAppendRequest(
+./novaic-agent-runtime/task_queue/handlers/context_handlers.py:27:# Prior to PR-46, ``handle_context_read`` merged input messages by
+./novaic-agent-runtime/task_queue/handlers/context_handlers.py:82:def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+./novaic-agent-runtime/task_queue/handlers/context_handlers.py:104:    context = bridge.read_context(cortex_scope_id, scope_path=scope_path)
+./novaic-agent-runtime/task_queue/handlers/context_handlers.py:144:        "[context.read] event=context_read kind=environment_notifications scope=%s agent=%s "
+./novaic-agent-runtime/task_queue/handlers/context_handlers.py:149:    metric_inc("context_read_assembly_total", kind="environment_notifications")
+./novaic-agent-runtime/task_queue/handlers/context_handlers.py:178:def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+./novaic-cortex/tests/test_context_event_write_authority.py:14:    context_append,
+./novaic-cortex/tests/test_context_event_write_authority.py:15:    context_batch,
+./novaic-cortex/tests/test_context_event_write_authority.py:82:    await context_append(
+./novaic-cortex/tests/test_context_event_write_authority.py:97:    await context_batch(
+./novaic-cortex/tests/test_context_event_api_context_writes.py:9:    context_append,
+./novaic-cortex/tests/test_context_event_api_context_writes.py:10:    context_batch,
+./novaic-cortex/tests/test_context_event_api_context_writes.py:60:async def test_context_append_emits_context_message_event() -> None:
+./novaic-cortex/tests/test_context_event_api_context_writes.py:65:    await context_append(
+./novaic-cortex/tests/test_context_event_api_context_writes.py:82:    assert await ws.read_context(wake["scope_path"]) == [{"role": "user", "content": "hi"}]
+./novaic-cortex/tests/test_context_event_api_context_writes.py:86:async def test_context_batch_emits_ordered_message_and_assistant_tool_events() -> None:
+./novaic-cortex/tests/test_context_event_api_context_writes.py:96:    await context_batch(
+./novaic-cortex/tests/test_context_event_api_context_writes.py:120:async def test_context_append_keyed_retry_dedupes_event_but_preserves_context_projection() -> None:
+./novaic-cortex/tests/test_context_event_api_context_writes.py:133:    await context_append(req)
+./novaic-cortex/tests/test_context_event_api_context_writes.py:134:    await context_append(req)
+./novaic-cortex/tests/test_context_event_api_context_writes.py:138:    assert [m["content"] for m in await ws.read_context(wake["scope_path"])] == ["same", "same"]
+./novaic-cortex/tests/test_context_event_api_context_writes.py:142:async def test_context_append_without_key_keeps_identical_events_distinct() -> None:
+./novaic-cortex/tests/test_context_event_api_context_writes.py:154:    await context_append(req)
+./novaic-cortex/tests/test_context_event_api_context_writes.py:155:    await context_append(req)
+./novaic-cortex/tests/test_context_event_api_context_writes.py:171:        await ws.read_context(wake["scope_path"])
+./novaic-agent-runtime/task_queue/utils/cortex_bridge.py:159:    def read_context(self, scope_id: str, *, scope_path: str | None = None) -> list[dict]:
+./novaic-agent-runtime/task_queue/utils/cortex_bridge.py:164:        result = self._post("/v1/context/read", payload)
+./novaic-agent-runtime/task_queue/utils/cortex_bridge.py:178:        self._post("/v1/context/append", payload)
+./novaic-agent-runtime/task_queue/utils/cortex_bridge.py:180:    def append_context_batch(
+./novaic-agent-runtime/task_queue/utils/cortex_bridge.py:193:        self._post("/v1/context/batch", payload)
+./novaic-cortex/tests/test_context_event_api_contract.py:8:def test_context_append_request_accepts_optional_event_idempotency_key() -> None:
+./novaic-cortex/tests/test_context_event_api_contract.py:20:def test_context_batch_request_accepts_optional_per_message_event_keys() -> None:
+./novaic-cortex/tests/test_context_event_api_contract.py:35:def test_context_batch_request_rejects_mismatched_event_key_count() -> None:
+./novaic-cortex/tests/test_pr67_wake_child_api.py:16:    context_batch,
+./novaic-cortex/tests/test_pr67_wake_child_api.py:101:    await context_batch(ContextBatchRequest(
+./novaic-cortex/tests/test_pr67_wake_child_api.py:108:    assert [m["content"] for m in await ws.read_context(wake)] == ["current wake input"]
+./novaic-cortex/tests/test_pr67_wake_child_api.py:109:    assert await ws.read_context(root) == []
+./novaic-cortex/tests/test_pr67_wake_child_api.py:248:    await context_batch(ContextBatchRequest(
+./novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:8:from task_queue.handlers.context_handlers import handle_context_read
+./novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:72:def test_context_read_uses_input_ids_without_history_replay(monkeypatch):
+./novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:88:    result = handle_context_read(
+./novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:347:        bridge.read_context("scope-1")
+./novaic-agent-runtime/tests/test_pr165c_notification_lifecycle_guardrails.py:10:def test_context_read_has_no_raw_message_fetch_or_ui_receipt_path():
+./novaic-agent-runtime/tests/test_pr193_activity_projection.py:9:from task_queue.handlers.context_handlers import handle_context_append
+./novaic-agent-runtime/tests/test_pr193_activity_projection.py:150:def test_context_append_materializes_assistant_projection(mock_get_bridge):
+./novaic-agent-runtime/tests/test_pr193_activity_projection.py:155:    result = handle_context_append(
+./novaic-agent-runtime/tests/test_pr193_activity_projection.py:205:def test_context_append_materializes_tool_step_projection(mock_get_bridge):
+./novaic-agent-runtime/tests/test_pr193_activity_projection.py:211:    result = handle_context_append(
+./novaic-agent-runtime/tests/test_pr193_activity_projection.py:241:    result = handle_context_append(
+./novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:16:def _patch_context_read(monkeypatch):
+./novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:18:        "task_queue.handlers.context_handlers.handle_context_read",
+./novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:40:    _patch_context_read(monkeypatch)
+./novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:88:    _patch_context_read(monkeypatch)
+./novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:115:    _patch_context_read(monkeypatch)
+./novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:131:def test_prepare_llm_context_uses_prepare_snapshot_not_context_read_projection(monkeypatch):
+./novaic-agent-runtime/tests/test_context_read_ordering.py:13:1. `handle_context_read` MUST NOT scan message rows via ``entity_list``.
+./novaic-agent-runtime/tests/test_context_read_ordering.py:21:from task_queue.handlers.context_handlers import handle_context_read
+./novaic-agent-runtime/tests/test_context_read_ordering.py:25:def test_context_read_does_not_scan_unread_rows(mock_get_bridge):
+./novaic-agent-runtime/tests/test_context_read_ordering.py:36:    handle_context_read(
+./novaic-agent-runtime/tests/test_context_read_ordering.py:64:    result = handle_context_read(
+./novaic-agent-runtime/tests/test_context_read_ordering.py:97:    handle_context_read(
+./novaic-agent-runtime/tests/test_context_read_by_ids.py:7:from task_queue.handlers.context_handlers import handle_context_read
+./novaic-agent-runtime/tests/test_context_read_by_ids.py:19:def test_context_read_appends_notification_hints_from_meta(mock_get_bridge):
+./novaic-agent-runtime/tests/test_context_read_by_ids.py:27:    result = handle_context_read(
+./novaic-agent-runtime/tests/test_context_read_by_ids.py:61:    result = handle_context_read(
+./novaic-agent-runtime/tests/test_context_read_by_ids.py:83:    result = handle_context_read(
+./novaic-agent-runtime/tests/test_context_read_by_ids.py:113:    handle_context_read(
+./novaic-agent-runtime/tests/test_context_read_by_ids.py:134:    handle_context_read(
+./novaic-agent-runtime/tests/test_context_read_by_ids.py:155:    result = handle_context_read(
+./novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:50:    bridge.append_context_batch.assert_called_once()
+./novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:51:    assert bridge.append_context_batch.call_args.args[0] == "agent-root-main-agent"
+./novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:52:    assert bridge.append_context_batch.call_args.kwargs["scope_path"].endswith("/0001_scope_wake-1")
+./novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:84:def test_prepare_context_reads_wake_child_but_prepares_agent_root(monkeypatch):
+./novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:104:    def fake_context_read(payload, ctx):
+./novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:109:        "task_queue.handlers.context_handlers.handle_context_read",
+./novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:110:        fake_context_read,
+./novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:14:from task_queue.handlers.context_handlers import handle_context_read
+./novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:27:    context_result = handle_context_read(

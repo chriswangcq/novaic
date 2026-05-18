@@ -1,0 +1,10 @@
+=== command: rg -n "/rw/scratch" target runtime/tool files || true ===
+
+=== command: rg -n "/rw/tmp" target runtime/tool files || true ===
+novaic-cortex/tests/test_tool_metrics.py:29:    await cortex.tool_write("/rw/tmp/metrics_probe.txt", "ok")
+novaic-cortex/tests/test_runtime.py:43:        f"agents/{agent_id}/rw/tmp/big.txt",
+novaic-cortex/tests/test_runtime.py:49:    out = await cortex.tool_read("/rw/tmp/big.txt")
+novaic-cortex/tests/test_cortex_chaos.py:76:            scratch_path = f"/rw/tmp/{sid}/chunk.txt"
+novaic-cortex/tests/test_wave4_metrics.py:29:    await cortex.tool_write("/rw/tmp/wave4.txt", "wave4")
+novaic-cortex/tests/test_wave4_metrics.py:30:    assert await cortex.tool_read("/rw/tmp/wave4.txt") == "wave4"
+novaic-cortex/tests/test_hooks_limits.py:115:    await cortex.tool_write("/rw/tmp/mono_probe.txt", "x")

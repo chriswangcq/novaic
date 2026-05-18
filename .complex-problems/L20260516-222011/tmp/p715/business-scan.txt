@@ -1,0 +1,785 @@
+novaic-business/conftest.py:9:* ``entangled.*``  → ``../Entangled/packages/server-python``
+novaic-business/conftest.py:13:    PYTHONPATH=.:../novaic-common:../Entangled/packages/server-python pytest tests/
+novaic-business/conftest.py:40:    _REPO_ROOT / "Entangled" / "packages" / "server-python",
+novaic-business/business/internal/factory_client.py:5:API keys live exclusively in Factory; Entangled holds only visible metadata.
+novaic-business/business/internal/factory_client.py:35:    Reads agents.model_id (Factory UUID) + user_id from Entangled.
+novaic-business/business/model_actions.py:4:All model CRUD flows through Factory. Entangled stores visible metadata
+novaic-business/business/model_actions.py:10:  models.add_custom          — Create custom model in Factory + Entangled
+novaic-business/business/model_actions.py:12:  api-key-models.remove      — Delete binding from Factory + Entangled
+novaic-business/business/model_actions.py:13:  available-models.toggle    — Toggle model availability in Factory + Entangled
+novaic-business/business/model_actions.py:37:    """models.add_custom — Add a custom model to Factory + Entangled."""
+novaic-business/business/model_actions.py:147:    """api-key-models.remove — Delete binding from Entangled; optionally remove from Factory."""
+novaic-business/business/model_actions.py:185:    """available-models.toggle — Toggle model in Factory + Entangled."""
+novaic-business/main_business.py:2:NovAIC Business Service — Entity action hooks for non-PC-dependent entities.
+novaic-business/main_business.py:8:Gateway imports eliminated — only common.* and entangled.sql.* used externally.
+novaic-business/main_business.py:18:if __name__ == "__main__":
+novaic-business/main_business.py:24:    _parser.add_argument("--entangled-url", required=True, help="Entangled Service URL")
+novaic-business/main_business.py:25:    _parser.add_argument("--gateway-url", default="http://127.0.0.1:19999", help="Gateway URL (for cross-service calls)")
+novaic-business/main_business.py:88:# Only novaic-common (common.*) and Entangled library (entangled.sql.*) needed.
+novaic-business/main_business.py:95:_entangled_lib_path = str(Path(__file__).parent.parent / "Entangled" / "packages" / "server-python")
+novaic-business/main_business.py:99:# ── FastAPI App ──────────────────────────────────────────────────────────────
+novaic-business/main_business.py:100:import uvicorn
+novaic-business/main_business.py:101:from fastapi import FastAPI, HTTPException, Request
+novaic-business/main_business.py:108:# Environment notification dispatch is owned by the standalone subscriber
+novaic-business/main_business.py:109:# process. Business serves action hooks and internal APIs only; it does not
+novaic-business/main_business.py:110:# run agent-loop dispatch inside the FastAPI lifespan.
+novaic-business/main_business.py:113:async def lifespan(app: FastAPI):
+novaic-business/main_business.py:127:    logger.info("Business entity schemas pushed to Entangled")
+novaic-business/main_business.py:129:    logger.info("environment notification dispatch is owned by main_subscriber.py")
+novaic-business/main_business.py:138:app = FastAPI(
+novaic-business/main_business.py:140:    description="All business logic: entity action hooks + internal API",
+novaic-business/main_business.py:161:# ── Internal API (moved from Gateway) ────────────────────────────────────────
+novaic-business/main_business.py:162:from business.internal import router as internal_router
+novaic-business/main_business.py:164:app.include_router(internal_router)
+novaic-business/main_business.py:303:    """Entangled action hook callback — dispatches to registered handler."""
+novaic-business/main_business.py:337:if __name__ == "__main__":
+novaic-business/main_business.py:338:    uvicorn.run(
+novaic-business/main_subscriber.py:1:"""NovAIC Dispatch Subscriber — standalone Environment notification worker.
+novaic-business/main_subscriber.py:3:One subscriber process per host. Drains dispatchable Environment notifications
+novaic-business/main_subscriber.py:5:them on Queue Service). Runs as an independent subprocess,
+novaic-business/main_subscriber.py:11:    python main_subscriber.py \
+novaic-business/main_subscriber.py:36:    parser = argparse.ArgumentParser(description="NovAIC Dispatch Subscriber")
+novaic-business/main_subscriber.py:38:    parser.add_argument("--entangled-url", required=True, help="Entangled Service URL for Business entity storage")
+novaic-business/main_subscriber.py:40:    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL (/api/queue/dispatch)")
+novaic-business/main_subscriber.py:41:    # Expose subscriber metrics on a loopback port so the on-host scraper
+novaic-business/main_subscriber.py:43:    # near the Business 19998 / Entangled 19900 cluster and is not claimed
+novaic-business/main_subscriber.py:45:    # ``--metrics-host 0.0.0.0`` is *not* the default — the subscriber
+novaic-business/main_subscriber.py:47:    parser.add_argument("--metrics-host", default="127.0.0.1", help="Host to bind subscriber /metrics server")
+novaic-business/main_subscriber.py:48:    parser.add_argument("--metrics-port", type=int, default=19985, help="Port for subscriber /metrics server (0=disabled)")
+novaic-business/main_subscriber.py:59:    log_file = log_dir / f"subscriber-{stamp}.log"
+novaic-business/main_subscriber.py:61:    # Use the common log format so subscriber lines carry scope_id,
+novaic-business/main_subscriber.py:77:    _bind_logctx(caller="subscriber")
+novaic-business/main_subscriber.py:78:    return logging.getLogger("subscriber")
+novaic-business/main_subscriber.py:85:def main() -> int:
+novaic-business/main_subscriber.py:106:    # process is required; a missing subscriber is a deployment/runtime
+novaic-business/main_subscriber.py:111:        "subscriber startup data_dir=%s business_url=%s queue_url=%s entangled_url=%s pid=%d",
+novaic-business/main_subscriber.py:124:    from business.environment import EnvironmentRepository, EnvironmentService
+novaic-business/main_subscriber.py:125:    from business.subscribers.dispatch_subscriber import (
+novaic-business/main_subscriber.py:126:        DispatchSubscriber,
+novaic-business/main_subscriber.py:127:        EnvironmentDispatchSource,
+novaic-business/main_subscriber.py:128:        load_im_aggregation_config_from_env,
+novaic-business/main_subscriber.py:132:    environment_source = EnvironmentDispatchSource(
+novaic-business/main_subscriber.py:133:        EnvironmentService(EnvironmentRepository(store)),
+novaic-business/main_subscriber.py:137:    subscriber = DispatchSubscriber(
+novaic-business/main_subscriber.py:140:        aggregation_config=load_im_aggregation_config_from_env(os.environ),
+novaic-business/main_subscriber.py:153:            "subscriber /metrics listening on http://%s:%d",
+novaic-business/main_subscriber.py:158:        logger.info("subscriber received signal=%d; initiating graceful stop", signum)
+novaic-business/main_subscriber.py:159:        subscriber.stop()
+novaic-business/main_subscriber.py:165:        subscriber.run()
+novaic-business/main_subscriber.py:173:    logger.info("subscriber exited cleanly pid=%d", os.getpid())
+novaic-business/main_subscriber.py:177:if __name__ == "__main__":
+novaic-business/business/internal/helpers.py:19:    Legacy implicit continuity fields are intentionally omitted. Cortex
+novaic-business/business/internal/helpers.py:37:# ==================== SubAgent Resolution (B2: Gateway owns subagent) ====================
+novaic-business/business/internal/helpers.py:41:    Resolve agent_id from subagent_id via EntityStore (B2: Gateway owns subagent).
+novaic-business/business/internal/helpers.py:43:    For Gateway business APIs that accept subagent_id-only input.
+novaic-business/business/internal/signaling.py:4:Gateway → Business → Device Service  (forward path: offer, ICE)
+novaic-business/business/internal/signaling.py:5:Device Service → Business → Gateway  (return path: answer, ICE, push events)
+novaic-business/business/internal/signaling.py:12:from fastapi import APIRouter
+novaic-business/business/internal/signaling.py:21:router = APIRouter(prefix="/signaling", tags=["internal-signaling"])
+novaic-business/business/internal/signaling.py:26:# ── Forward path (Gateway → Business → Device) ───────────────────────────────
+novaic-business/business/internal/signaling.py:28:@router.get("/connected-devices")
+novaic-business/business/internal/signaling.py:30:    """Return connected PC devices for a user (delegates to Device Service)."""
+novaic-business/business/internal/signaling.py:35:@router.post("/relay-to-device")
+novaic-business/business/internal/signaling.py:37:    """Push a signaling message to a connected device via Device Service.
+novaic-business/business/internal/signaling.py:50:# ── Return path (Device → Business → Gateway) ────────────────────────────────
+novaic-business/business/internal/signaling.py:52:@router.post("/push-to-user")
+novaic-business/business/internal/signaling.py:54:    """Forward a push event to Gateway's /api/app/push endpoint.
+novaic-business/business/internal/signaling.py:75:        logger.warning("[Signaling] push-to-user via Gateway failed: %s", e)
+novaic-business/business/prompt_defaults.py:42:每次 session 你都是全新醒来的；系统会在提示词里自动提供 Cortex 的长期 skill 树。Business 可能附加显式产品上下文作为辅助输入；它不是 Cortex 记忆，也不能替代 skill summary。当前 wake skill 是本轮真实工作容器；回复用户后用 `skill_end(report=...)` 关闭当前 wake skill 并写入本轮 `summary.md`，后续 wake 会看到这个折叠摘要。
+novaic-business/business/prompt_defaults.py:80:1. **观察消息** → 如果本轮上下文出现 `[Environment notification]`，先通过 `shell` 执行 `agentctl im read --notification-id ...` 读取正文；不要在读取前猜测消息内容
+novaic-business/business/agent_actions.py:72:    The App's local Entangled cache is a read-only projection. Agent deletion
+novaic-business/business/agent_actions.py:73:    therefore happens as one server-side action, then Entangled change events
+novaic-business/business/agent_actions.py:110:    Agent processing state belongs to Environment notifications; ``messages``
+novaic-business/business/agent_actions.py:168:        logger.error("[interrupt_action] Queue cancel-all failed: %s", e)
+novaic-business/business/internal/subagent_utils.py:2:SubAgent utility functions — all operations go through EntityStore (Entangled).
+novaic-business/business/internal/subagent_utils.py:134:    """Add a runtime to HRL (Hot Runtime List). Idempotent.
+novaic-business/business/entity_store.py:2:Business Service Entity Store — thin wrapper over EntangledServiceClient.
+novaic-business/business/entity_store.py:5:Pure HTTP CRUD against standalone Entangled service.
+novaic-business/business/entity_store.py:20:    """Definition view for Entangled entities not declared in Business schema."""
+novaic-business/business/entity_store.py:28:    """Lightweight entity store backed entirely by Entangled HTTP."""
+novaic-business/business/entity_store.py:36:            from common.entangled_client import EntangledServiceClient
+novaic-business/business/entity_store.py:37:            self._ec = EntangledServiceClient(service_name="business")
+novaic-business/business/entity_store.py:80:    def batch_update(self, entity: str, user_id: str, entity_ids: List[str],
+novaic-business/business/entity_store.py:82:        return self._ent.batch_update(entity, entity_ids, data, user_id=user_id, **kw)
+novaic-business/business/internal/files.py:3:Business owns the ``files`` entity shape. Gateway may proxy file bytes, but it
+novaic-business/business/internal/files.py:13:from fastapi import APIRouter, HTTPException, Request
+novaic-business/business/internal/files.py:20:router = APIRouter(prefix="/files", tags=["internal-files"])
+novaic-business/business/internal/files.py:27:@router.post("/register")
+novaic-business/business/internal/files.py:59:@router.get("/{file_id}")
+novaic-business/business/internal/files.py:70:@router.delete("/{file_id}")
+novaic-business/business/device_client.py:2:HTTP client for calling Device Service.
+novaic-business/business/device_client.py:4:Business Service calls Device Service via this HTTP client for:
+novaic-business/business/device_client.py:5:- Device registry queries
+novaic-business/business/device_client.py:27:# ── Device Registry ──────────────────────────────────────────────────────────
+novaic-business/business/device_client.py:30:    """Get connected device states for a user from Device Service registry."""
+novaic-business/business/device_client.py:37:        logger.warning("[DeviceClient] get_connected_devices failed: %s", e)
+novaic-business/business/device_client.py:42:    """Get a device's state from Device Service in-memory registry."""
+novaic-business/business/device_client.py:50:        logger.warning("[DeviceClient] get_device_state(%s) failed: %s", device_id, e)
+novaic-business/business/device_client.py:55:    """Send a push message to a connected device via Device Service."""
+novaic-business/business/device_client.py:65:        logger.warning("[DeviceClient] send_push_to_device(%s) failed: %s", device_id, e)
+novaic-business/business/device_client.py:72:    """Resolve agent's device binding, mounted tools, and subject via Device Service."""
+novaic-business/business/device_client.py:83:        logger.warning("[DeviceClient] resolve_agent_runtime_context(%s) failed: %s", agent_id, e)
+novaic-business/business/device_client.py:95:        logger.warning("[DeviceClient] get_available_tools(%s) failed: %s", agent_id, e)
+novaic-business/business/device_client.py:102:    """Check if VmControl is healthy via Device Service."""
+novaic-business/business/device_client.py:109:        logger.warning("[DeviceClient] vmcontrol_health failed: %s", e)
+novaic-business/business/device_client.py:238:    """POST to /internal/hardware/{action} on Device Service."""
+novaic-business/business/device_client.py:251:        logger.warning("[DeviceClient] hw_%s failed (%s): %s", action, e.response.status_code, detail)
+novaic-business/business/device_client.py:255:        logger.warning("[DeviceClient] hw_%s failed: %s", action, e)
+novaic-business/tests/test_im_aggregation.py:1:"""PR-50 Wave 2 — IM burst aggregation unit tests.
+novaic-business/tests/test_im_aggregation.py:4:``DispatchSubscriber``. The tests exercise ``_group_for_aggregation`` +
+novaic-business/tests/test_im_aggregation.py:18:* Retry rows are not eligible for aggregation, so dispatch retries stay
+novaic-business/tests/test_im_aggregation.py:19:  paced by the Environment notification lease rather than grouping.
+novaic-business/tests/test_im_aggregation.py:22:  Runtime ``session.init``.
+novaic-business/tests/test_im_aggregation.py:31:from business.subscribers.dispatch_subscriber import (
+novaic-business/tests/test_im_aggregation.py:32:    DispatchSubscriber,
+novaic-business/tests/test_im_aggregation.py:34:    load_im_aggregation_config_from_env,
+novaic-business/tests/test_im_aggregation.py:62:    source.claim_batch.return_value = []
+novaic-business/tests/test_im_aggregation.py:87:def _subscriber(
+novaic-business/tests/test_im_aggregation.py:92:    max_batch: int = 10,
+novaic-business/tests/test_im_aggregation.py:94:) -> DispatchSubscriber:
+novaic-business/tests/test_im_aggregation.py:95:    return DispatchSubscriber(
+novaic-business/tests/test_im_aggregation.py:100:        aggregation_config=IMAggregationConfig(
+novaic-business/tests/test_im_aggregation.py:102:            max_batch=max_batch,
+novaic-business/tests/test_im_aggregation.py:107:# ─── _group_for_aggregation ────────────────────────────────────────────
+novaic-business/tests/test_im_aggregation.py:113:    """IM_AGGREGATION_WINDOW_SEC=0 disables aggregation wholesale."""
+novaic-business/tests/test_im_aggregation.py:115:    sub = _subscriber(mock_assembler, mock_dispatch_source, window_seconds=0)
+novaic-business/tests/test_im_aggregation.py:121:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:129:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:135:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:146:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:153:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:171:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:177:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:184:def test_group_max_batch_caps_and_spills(
+novaic-business/tests/test_im_aggregation.py:189:    sub = _subscriber(mock_assembler, mock_dispatch_source, window_seconds=300, max_batch=3)
+novaic-business/tests/test_im_aggregation.py:194:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:195:    # First group of 3 hits max_batch; remaining 2 form a second group.
+novaic-business/tests/test_im_aggregation.py:206:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:212:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:213:    # Because of contiguity requirement, no aggregation fires — the
+novaic-business/tests/test_im_aggregation.py:223:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:228:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:232:def test_group_mixed_batch_preserves_order(
+novaic-business/tests/test_im_aggregation.py:239:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:246:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:259:    """Three-row aggregation issues **one** assemble_sync + dispatch_sync
+novaic-business/tests/test_im_aggregation.py:263:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:286:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:295:def test_aggregated_does_not_transition_messages_in_subscriber(
+novaic-business/tests/test_im_aggregation.py:298:    """Subscriber aggregation does not own message lifecycle claims.
+novaic-business/tests/test_im_aggregation.py:300:    The aggregated message_ids travel in Queue metadata and Runtime
+novaic-business/tests/test_im_aggregation.py:304:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:313:def test_retry_row_is_not_eligible_for_aggregation(
+novaic-business/tests/test_im_aggregation.py:318:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:323:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:333:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:352:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:361:    """Dispatch aggregation should not stitch cross-wake continuity metadata.
+novaic-business/tests/test_im_aggregation.py:363:    Cross-wake continuity belongs to Cortex's agent-root scope assembly, not
+novaic-business/tests/test_im_aggregation.py:364:    the Environment subscriber. The hot path must not fetch ``subagents`` just to
+novaic-business/tests/test_im_aggregation.py:368:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:386:    scope), Subscriber leaves ownership in Queue pending metadata for the
+novaic-business/tests/test_im_aggregation.py:387:    restarted Runtime ``session.init``. It must not append to the
+novaic-business/tests/test_im_aggregation.py:401:    sub = _subscriber(asm, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:427:    mock_dispatch_source.claim_batch.side_effect = [burst] + [[]] * 20
+novaic-business/tests/test_im_aggregation.py:429:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:456:    mock_dispatch_source.claim_batch.side_effect = [burst] + [[]] * 20
+novaic-business/tests/test_im_aggregation.py:458:    sub = _subscriber(mock_assembler, mock_dispatch_source, window_seconds=0)
+novaic-business/tests/test_im_aggregation.py:476:def test_aggregation_enabled_window_env():
+novaic-business/tests/test_im_aggregation.py:477:    config = load_im_aggregation_config_from_env({"IM_AGGREGATION_WINDOW_SEC": "30"})
+novaic-business/tests/test_im_aggregation.py:482:def test_aggregation_disabled_on_zero_window():
+novaic-business/tests/test_im_aggregation.py:483:    assert load_im_aggregation_config_from_env({"IM_AGGREGATION_WINDOW_SEC": "0"}).enabled is False
+novaic-business/tests/test_im_aggregation.py:486:def test_aggregation_invalid_env_falls_back_to_default():
+novaic-business/tests/test_im_aggregation.py:487:    config = load_im_aggregation_config_from_env({
+novaic-business/tests/test_im_aggregation.py:492:    assert config.max_batch == 10
+novaic-business/tests/test_im_aggregation.py:495:def test_aggregation_max_batch_minimum_one():
+novaic-business/tests/test_im_aggregation.py:496:    assert load_im_aggregation_config_from_env({"IM_AGGREGATION_MAX_BATCH": "0"}).max_batch == 1
+novaic-business/tests/test_im_aggregation.py:503:    sub = _subscriber(mock_assembler, mock_dispatch_source, window_seconds=60)
+novaic-business/tests/test_im_aggregation.py:508:    units = sub._group_for_aggregation(rows)
+novaic-business/business/skill_actions.py:2:business/skill_actions.py — Skills entity actions (Entangled hooks).
+novaic-business/business/environment.py:1:"""Environment persistence repository.
+novaic-business/business/environment.py:3:Environment is the agent's outside-world event surface. It owns event
+novaic-business/business/environment.py:5:resource references. Chat ``messages`` are a UI projection only; Environment
+novaic-business/business/environment.py:29:class EnvironmentEvent:
+novaic-business/business/environment.py:46:class EnvironmentMessage:
+novaic-business/business/environment.py:64:class EnvironmentNotification:
+novaic-business/business/environment.py:81:class EnvironmentResourceRef:
+novaic-business/business/environment.py:90:class EnvironmentRepository:
+novaic-business/business/environment.py:91:    """Persistence adapter for Environment-owned records.
+novaic-business/business/environment.py:93:    The dedicated Environment entities are the canonical read/write path. The
+novaic-business/business/environment.py:112:            raise ValueError("Environment id_provider returned an empty id")
+novaic-business/business/environment.py:118:            raise ValueError("Environment clock returned an empty timestamp")
+novaic-business/business/environment.py:144:    ) -> EnvironmentMessage:
+novaic-business/business/environment.py:148:            raise ValueError(f"invalid Environment IM message_type: {message_type}")
+novaic-business/business/environment.py:262:    ) -> EnvironmentEvent:
+novaic-business/business/environment.py:264:            raise ValueError(f"invalid Environment event_kind: {event_kind}")
+novaic-business/business/environment.py:266:            raise ValueError(f"invalid Environment sender_kind: {sender_kind}")
+novaic-business/business/environment.py:299:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:301:            raise ValueError(f"invalid Environment notification recipient_kind: {recipient_kind}")
+novaic-business/business/environment.py:333:    ) -> list[EnvironmentNotification]:
+novaic-business/business/environment.py:335:            raise ValueError(f"invalid Environment notification state: {state}")
+novaic-business/business/environment.py:359:    ) -> list[EnvironmentNotification]:
+novaic-business/business/environment.py:373:        dispatchable: list[EnvironmentNotification] = []
+novaic-business/business/environment.py:394:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:399:            raise KeyError(f"Environment notification not found: {notification_id}")
+novaic-business/business/environment.py:440:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:443:            raise KeyError(f"Environment notification not found: {notification_id}")
+novaic-business/business/environment.py:477:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:478:        """Record that Subscriber durably handed this notification to Queue.
+novaic-business/business/environment.py:481:        row stays ``pending`` so Runtime ``session.init`` or
+novaic-business/business/environment.py:482:        ``session.attach_input`` can still claim it for the Cortex scope; the
+novaic-business/business/environment.py:483:        delivered marker only removes it from Subscriber's retry surface after
+novaic-business/business/environment.py:484:        Queue has accepted the input into its durable inbox/outbox.
+novaic-business/business/environment.py:488:            raise KeyError(f"Environment notification not found: {notification_id}")
+novaic-business/business/environment.py:525:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:528:            raise KeyError(f"Environment notification not found: {notification_id}")
+novaic-business/business/environment.py:554:    def get_event(self, *, agent_id: str, event_id: str) -> EnvironmentEvent | None:
+novaic-business/business/environment.py:565:    def get_message(self, *, agent_id: str, message_id: str) -> EnvironmentMessage | None:
+novaic-business/business/environment.py:581:    ) -> list[EnvironmentMessage]:
+novaic-business/business/environment.py:582:        messages: list[EnvironmentMessage] = []
+novaic-business/business/environment.py:598:    ) -> list[EnvironmentMessage]:
+novaic-business/business/environment.py:630:    ) -> list[EnvironmentMessage]:
+novaic-business/business/environment.py:650:    ) -> list[EnvironmentMessage]:
+novaic-business/business/environment.py:653:            raise KeyError(f"Environment IM message not found: {anchor_message_id}")
+novaic-business/business/environment.py:680:    ) -> EnvironmentNotification | None:
+novaic-business/business/environment.py:699:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:702:            raise KeyError(f"Environment notification not found: {notification_id}")
+novaic-business/business/environment.py:761:    def _event_from_row(row: dict[str, Any]) -> EnvironmentEvent:
+novaic-business/business/environment.py:764:            raise ValueError(f"invalid Environment event_kind in row: {event_kind}")
+novaic-business/business/environment.py:767:            raise ValueError(f"invalid Environment sender_kind in row: {sender_kind}")
+novaic-business/business/environment.py:772:            raise ValueError("Environment event resource_refs must be a list")
+novaic-business/business/environment.py:774:        return EnvironmentEvent(
+novaic-business/business/environment.py:791:    def _message_from_row(row: dict[str, Any]) -> EnvironmentMessage:
+novaic-business/business/environment.py:800:            raise ValueError("Environment message attachments must be a list")
+novaic-business/business/environment.py:805:            raise ValueError(f"invalid Environment sender_kind in row: {sender_kind}")
+novaic-business/business/environment.py:807:            raise ValueError("missing Environment sender_label in row")
+novaic-business/business/environment.py:812:            raise ValueError(f"invalid Environment recipient_kind in row: {recipient_kind}")
+novaic-business/business/environment.py:818:            raise ValueError("Environment message text must be a string")
+novaic-business/business/environment.py:820:        return EnvironmentMessage(
+novaic-business/business/environment.py:838:    def _notification_from_row(row: dict[str, Any]) -> EnvironmentNotification:
+novaic-business/business/environment.py:841:            raise ValueError(f"invalid Environment notification state: {state}")
+novaic-business/business/environment.py:843:        return EnvironmentNotification(
+novaic-business/business/environment.py:863:        raise ValueError(f"invalid Environment notification state: {current}")
+novaic-business/business/environment.py:865:        raise ValueError(f"invalid Environment notification target: {target}")
+novaic-business/business/environment.py:867:        raise ValueError(f"invalid Environment notification transition: {current}->{target}")
+novaic-business/business/environment.py:871:    notification: EnvironmentNotification,
+novaic-business/business/environment.py:890:def validate_environment_resource_ref(ref: dict[str, Any]) -> EnvironmentResourceRef:
+novaic-business/business/environment.py:893:        raise ValueError(f"missing Environment resource_ref fields: {sorted(missing)}")
+novaic-business/business/environment.py:895:    return EnvironmentResourceRef(
+novaic-business/business/environment.py:949:class EnvironmentService:
+novaic-business/business/environment.py:950:    """Business-owned Environment domain service.
+novaic-business/business/environment.py:953:    delegates persistence details to EnvironmentRepository and keeps Cortex,
+novaic-business/business/environment.py:957:    def __init__(self, repository: EnvironmentRepository):
+novaic-business/business/environment.py:974:    ) -> EnvironmentEvent:
+novaic-business/business/environment.py:998:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:1016:    ) -> list[EnvironmentNotification]:
+novaic-business/business/environment.py:1033:    ) -> list[EnvironmentNotification]:
+novaic-business/business/environment.py:1049:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:1063:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:1076:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:1089:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:1096:    def get_event(self, *, agent_id: str, event_id: str) -> EnvironmentEvent | None:
+novaic-business/business/environment.py:1104:    ) -> EnvironmentNotification | None:
+novaic-business/business/environment.py:1113:    ) -> list[EnvironmentMessage]:
+novaic-business/business/environment.py:1114:        messages: list[EnvironmentMessage] = []
+novaic-business/business/environment.py:1130:    ) -> list[EnvironmentMessage]:
+novaic-business/business/environment.py:1148:    ) -> list[EnvironmentMessage]:
+novaic-business/business/environment.py:1164:    ) -> list[EnvironmentMessage]:
+novaic-business/business/environment.py:1172:    def get_message(self, *, agent_id: str, message_id: str) -> EnvironmentMessage | None:
+novaic-business/business/environment.py:1183:    ) -> EnvironmentMessage:
+novaic-business/business/environment.py:1202:    ) -> EnvironmentMessage:
+novaic-business/business/environment.py:1224:    ) -> EnvironmentMessage:
+novaic-business/business/environment.py:1241:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:1243:            raise ValueError("scope_id is required to claim an Environment notification")
+novaic-business/business/environment.py:1258:    ) -> EnvironmentNotification:
+novaic-business/business/environment.py:1273:    ) -> EnvironmentNotification:
+novaic-business/business/skill_repository.py:5:All CRUD goes through BusinessEntityStore (Entangled HTTP).
+novaic-business/business/skill_repository.py:40:    """Skills data access — backed by Entangled via BusinessEntityStore."""
+novaic-business/business/internal/__init__.py:3:from fastapi import APIRouter
+novaic-business/business/internal/__init__.py:5:from .agent import router as agent_router
+novaic-business/business/internal/__init__.py:6:from .config import router as config_router
+novaic-business/business/internal/__init__.py:7:from .entity import router as entity_router
+novaic-business/business/internal/__init__.py:8:from .environment import router as environment_router
+novaic-business/business/internal/__init__.py:9:from .files import router as files_router
+novaic-business/business/internal/__init__.py:10:from .health import router as health_router
+novaic-business/business/internal/__init__.py:11:from .message import router as message_router
+novaic-business/business/internal/__init__.py:12:from .signaling import router as signaling_router
+novaic-business/business/internal/__init__.py:13:from .subagent import router as subagent_router
+novaic-business/business/internal/__init__.py:15:router = APIRouter(prefix="/internal", tags=["internal"])
+novaic-business/business/internal/__init__.py:17:router.include_router(agent_router)
+novaic-business/business/internal/__init__.py:18:router.include_router(config_router)
+novaic-business/business/internal/__init__.py:19:router.include_router(entity_router)
+novaic-business/business/internal/__init__.py:20:router.include_router(environment_router)
+novaic-business/business/internal/__init__.py:21:router.include_router(files_router)
+novaic-business/business/internal/__init__.py:22:router.include_router(health_router)
+novaic-business/business/internal/__init__.py:23:router.include_router(message_router)
+novaic-business/business/internal/__init__.py:24:router.include_router(signaling_router)
+novaic-business/business/internal/__init__.py:25:router.include_router(subagent_router)
+novaic-business/business/auth.py:2:Business-level agent access check — no FastAPI dependency.
+novaic-business/business/internal/entity.py:2:Internal Entity API — thin CRUD proxy so all services access Entangled
+novaic-business/business/internal/entity.py:5:No authentication. Entangled handles notifications (notify=True by default).
+novaic-business/business/internal/entity.py:7:IMPORTANT: Entangled uses two separate header channels:
+novaic-business/business/internal/entity.py:11:as a separate argument to EntangledServiceClient methods.
+novaic-business/business/internal/entity.py:20:from fastapi import APIRouter, HTTPException, Request
+novaic-business/business/internal/entity.py:22:from common.entangled_client import EntangledClientError, EntangledServiceClient
+novaic-business/business/internal/entity.py:27:router = APIRouter(prefix="/entities", tags=["internal-entities"])
+novaic-business/business/internal/entity.py:31:    """Extract Entangled-specific scope fields from a merged params dict.
+novaic-business/business/internal/entity.py:35:    Entangled protocol:
+novaic-business/business/internal/entity.py:51:@router.get("/{entity}")
+novaic-business/business/internal/entity.py:69:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:95:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:99:@router.get("/{entity}/count")
+novaic-business/business/internal/entity.py:107:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:110:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:114:@router.get("/{entity}/{item_id}")
+novaic-business/business/internal/entity.py:123:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:133:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:139:@router.post("/{entity}")
+novaic-business/business/internal/entity.py:150:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:156:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:162:@router.patch("/{entity}/{item_id}")
+novaic-business/business/internal/entity.py:209:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:214:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:220:@router.put("/{entity}/{item_id}")
+novaic-business/business/internal/entity.py:230:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:233:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:239:@router.delete("/{entity}/{item_id}")
+novaic-business/business/internal/entity.py:248:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:251:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:255:@router.post("/{entity}/delete-where")
+novaic-business/business/internal/entity.py:266:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:269:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:275:@router.post("/{entity}/batch-update")
+novaic-business/business/internal/entity.py:276:async def internal_batch_update(
+novaic-business/business/internal/entity.py:287:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:288:            affected = client.batch_update(entity, ids, data, user_id=user_id, params=params or None, notify=notify)
+novaic-business/business/internal/entity.py:290:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:294:@router.post("/{entity}/update-where")
+novaic-business/business/internal/entity.py:306:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:309:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:313:@router.post("/{entity}/cas-update")
+novaic-business/business/internal/entity.py:325:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/entity.py:328:    except (ValueError, EntangledClientError) as e:
+novaic-business/business/internal/entity.py:334:@router.post("/schema/register")
+novaic-business/business/internal/entity.py:336:    """Proxy schema registration to Entangled /v1/schema/register.
+novaic-business/business/internal/entity.py:338:    Allows Device Service (and others) to register schemas without knowing
+novaic-business/business/internal/entity.py:339:    the Entangled URL directly.
+novaic-business/business/internal/entity.py:363:        logger.error("[SchemaProxy] Entangled rejected schema: %s", detail)
+novaic-business/business/message_actions.py:14:from business.environment import EnvironmentRepository
+novaic-business/business/message_actions.py:57:    Environment notification creation is the only Agent-loop trigger. The
+novaic-business/business/message_actions.py:105:    EnvironmentRepository(
+novaic-business/business/subscribers/dispatch_subscriber.py:1:"""DispatchSubscriber — Environment notification drain worker, sync-only.
+novaic-business/business/subscribers/dispatch_subscriber.py:3:This class deliberately runs outside the Business FastAPI lifespan. Two
+novaic-business/business/subscribers/dispatch_subscriber.py:8:   Business kept serving API traffic while the subscriber silently stopped.
+novaic-business/business/subscribers/dispatch_subscriber.py:10:2. **Async coloring** — keeping the subscriber async forced
+novaic-business/business/subscribers/dispatch_subscriber.py:15:The subscriber is an **independent subprocess** (see
+novaic-business/business/subscribers/dispatch_subscriber.py:16:``novaic-business/main_subscriber.py`` + ``scripts/start.sh`` block
+novaic-business/business/subscribers/dispatch_subscriber.py:17:``start_subscriber``) with a plain ``while not stop: do_work; time.sleep``
+novaic-business/business/subscribers/dispatch_subscriber.py:19:``start.sh`` restart complains, and the Canary runbook's "subscriber
+novaic-business/business/subscribers/dispatch_subscriber.py:27:* ``self.dispatch_source`` is a sync Environment adapter; all claims and
+novaic-business/business/subscribers/dispatch_subscriber.py:32:Environment notifications are the source of wake triggers. The subscriber
+novaic-business/business/subscribers/dispatch_subscriber.py:34:notification's source message to ``DispatchAssembler``. After Queue durably
+novaic-business/business/subscribers/dispatch_subscriber.py:35:accepts the dispatch, Subscriber records a dispatch-only acknowledgement so
+novaic-business/business/subscribers/dispatch_subscriber.py:37:lifecycle is still owned by the Runtime wake scope: subscriber dispatch does
+novaic-business/business/subscribers/dispatch_subscriber.py:54:from business.environment import EnvironmentMessage, EnvironmentNotification, EnvironmentService
+novaic-business/business/subscribers/dispatch_subscriber.py:64:# Cross-wake continuity is assembled by Cortex from ContextEvents and folded summaries.
+novaic-business/business/subscribers/dispatch_subscriber.py:65:# Subscriber only drains Environment notifications into Queue triggers; it does
+novaic-business/business/subscribers/dispatch_subscriber.py:66:# not mutate Cortex scope input ownership.
+novaic-business/business/subscribers/dispatch_subscriber.py:69:# IM burst aggregation.
+novaic-business/business/subscribers/dispatch_subscriber.py:72:# Environment may hold three consecutive notifications for the same ``agent_id``.
+novaic-business/business/subscribers/dispatch_subscriber.py:73:# Grouping **within the claim batch** (the claim endpoint already
+novaic-business/business/subscribers/dispatch_subscriber.py:74:# returns up to ``batch_size=50`` rows in id-ASC order — a natural
+novaic-business/business/subscribers/dispatch_subscriber.py:90:# Kill switch: ``IM_AGGREGATION_WINDOW_SEC=0`` disables aggregation
+novaic-business/business/subscribers/dispatch_subscriber.py:91:# entirely; rows go one-by-one. The subscriber entrypoint
+novaic-business/business/subscribers/dispatch_subscriber.py:92:# parses the max-batch + window knobs once and injects them as an explicit
+novaic-business/business/subscribers/dispatch_subscriber.py:102:    max_batch: int = 10
+novaic-business/business/subscribers/dispatch_subscriber.py:109:def _parse_im_aggregation_window(environ: Mapping[str, str]) -> int:
+novaic-business/business/subscribers/dispatch_subscriber.py:116:def _parse_im_aggregation_max_batch(environ: Mapping[str, str]) -> int:
+novaic-business/business/subscribers/dispatch_subscriber.py:123:def load_im_aggregation_config_from_env(
+novaic-business/business/subscribers/dispatch_subscriber.py:127:        window_seconds=_parse_im_aggregation_window(environ),
+novaic-business/business/subscribers/dispatch_subscriber.py:128:        max_batch=_parse_im_aggregation_max_batch(environ),
+novaic-business/business/subscribers/dispatch_subscriber.py:132:class EnvironmentDispatchSource:
+novaic-business/business/subscribers/dispatch_subscriber.py:133:    """Adapter from Environment notifications to subscriber dispatch rows."""
+novaic-business/business/subscribers/dispatch_subscriber.py:135:    def __init__(self, service: EnvironmentService, store):
+novaic-business/business/subscribers/dispatch_subscriber.py:139:    def claim_batch(
+novaic-business/business/subscribers/dispatch_subscriber.py:143:        batch_size: int,
+novaic-business/business/subscribers/dispatch_subscriber.py:149:            if len(rows) >= batch_size:
+novaic-business/business/subscribers/dispatch_subscriber.py:155:                limit=batch_size - len(rows),
+novaic-business/business/subscribers/dispatch_subscriber.py:185:                if len(rows) >= batch_size:
+novaic-business/business/subscribers/dispatch_subscriber.py:187:        metric_set("environment_notification_dispatch_batch_size", float(len(rows)))
+novaic-business/business/subscribers/dispatch_subscriber.py:197:                dispatch_claim_id="delivered:subscriber",
+novaic-business/business/subscribers/dispatch_subscriber.py:226:    def _row_from_notification(self, note: EnvironmentNotification) -> dict:
+novaic-business/business/subscribers/dispatch_subscriber.py:229:                f"unsupported Environment notification source_kind: {note.source_kind}",
+novaic-business/business/subscribers/dispatch_subscriber.py:235:                f"Environment message not found: {note.source_id}",
+novaic-business/business/subscribers/dispatch_subscriber.py:256:def _trigger_for_message(message: EnvironmentMessage) -> TriggerType:
+novaic-business/business/subscribers/dispatch_subscriber.py:264:        f"unsupported Environment IM message_type for dispatch: {message.message_type}",
+novaic-business/business/subscribers/dispatch_subscriber.py:280:class DispatchSubscriber:
+novaic-business/business/subscribers/dispatch_subscriber.py:281:    """Environment notification subscriber. One instance per subprocess.
+novaic-business/business/subscribers/dispatch_subscriber.py:283:    Drains dispatchable Environment notifications and hands each to
+novaic-business/business/subscribers/dispatch_subscriber.py:293:        dispatch_source: EnvironmentDispatchSource,
+novaic-business/business/subscribers/dispatch_subscriber.py:296:        batch_size: int = 50,
+novaic-business/business/subscribers/dispatch_subscriber.py:300:        aggregation_config: IMAggregationConfig = IMAggregationConfig(),
+novaic-business/business/subscribers/dispatch_subscriber.py:306:        self.batch_size = batch_size
+novaic-business/business/subscribers/dispatch_subscriber.py:314:            raise ValueError("DispatchSubscriber requires worker_id or worker_id_provider")
+novaic-business/business/subscribers/dispatch_subscriber.py:315:        self.aggregation_config = aggregation_config
+novaic-business/business/subscribers/dispatch_subscriber.py:326:        This is the subprocess entry point — ``main_subscriber.py`` calls
+novaic-business/business/subscribers/dispatch_subscriber.py:329:        logger.info("dispatch_subscriber starting worker_id=%s", self.worker_id)
+novaic-business/business/subscribers/dispatch_subscriber.py:332:                result = self._claim_batch()
+novaic-business/business/subscribers/dispatch_subscriber.py:350:                for unit in self._group_for_aggregation(result):
+novaic-business/business/subscribers/dispatch_subscriber.py:359:                logger.exception("subscriber tick crashed; sleeping")
+novaic-business/business/subscribers/dispatch_subscriber.py:361:        logger.info("dispatch_subscriber stopped worker_id=%s", self.worker_id)
+novaic-business/business/subscribers/dispatch_subscriber.py:363:    def _claim_batch(self) -> Optional[list[dict]]:
+novaic-business/business/subscribers/dispatch_subscriber.py:372:            rows = self.dispatch_source.claim_batch(
+novaic-business/business/subscribers/dispatch_subscriber.py:374:                batch_size=self.batch_size,
+novaic-business/business/subscribers/dispatch_subscriber.py:378:            metric_observe("environment_notification_claim_batch_size", float(len(rows)))
+novaic-business/business/subscribers/dispatch_subscriber.py:381:                    "subscriber claim recovered after %d consecutive failures",
+novaic-business/business/subscribers/dispatch_subscriber.py:391:                logger.exception("Failed to claim Environment notifications")
+novaic-business/business/subscribers/dispatch_subscriber.py:395:                    "subscriber claim still failing streak=%d last_error=%s",
+novaic-business/business/subscribers/dispatch_subscriber.py:406:            metric_inc("subscriber_failed_total", kind="bad_argument")
+novaic-business/business/subscribers/dispatch_subscriber.py:407:            metric_inc("dispatch_failed_total", caller="subscriber", kind="bad_argument")
+novaic-business/business/subscribers/dispatch_subscriber.py:440:            logger.info("event=subscriber_delivered id=%s trigger=%s action=%s",
+novaic-business/business/subscribers/dispatch_subscriber.py:442:            metric_inc("subscriber_delivered_total", trigger=str(row["trigger_type"]))
+novaic-business/business/subscribers/dispatch_subscriber.py:444:            # Message input ownership belongs to Runtime session.init or
+novaic-business/business/subscribers/dispatch_subscriber.py:445:            # session.attach_input. Subscriber only acknowledges that the
+novaic-business/business/subscribers/dispatch_subscriber.py:446:            # Environment delivery envelope reached Queue's durable boundary.
+novaic-business/business/subscribers/dispatch_subscriber.py:453:                logger.error("subscriber permanent fail id=%s kind=%s attempts=%d error=%s",
+novaic-business/business/subscribers/dispatch_subscriber.py:456:                # ``subscriber_failed_total`` counts a delivery that will
+novaic-business/business/subscribers/dispatch_subscriber.py:457:                # never retry. ``dispatch_failed_total{caller=subscriber}``
+novaic-business/business/subscribers/dispatch_subscriber.py:459:                metric_inc("subscriber_failed_total", kind=str(e.kind))
+novaic-business/business/subscribers/dispatch_subscriber.py:460:                metric_inc("dispatch_failed_total", caller="subscriber", kind=str(e.kind))
+novaic-business/business/subscribers/dispatch_subscriber.py:463:                logger.warning("subscriber transient fail id=%s kind=%s attempts=%d retry_in=%dms error=%s",
+novaic-business/business/subscribers/dispatch_subscriber.py:466:                metric_inc("subscriber_retry_total", kind=str(e.kind))
+novaic-business/business/subscribers/dispatch_subscriber.py:471:                logger.error("subscriber permanent network fail id=%s attempts=%d error=%s",
+novaic-business/business/subscribers/dispatch_subscriber.py:474:                metric_inc("subscriber_failed_total", kind="network")
+novaic-business/business/subscribers/dispatch_subscriber.py:475:                metric_inc("dispatch_failed_total", caller="subscriber", kind="network")
+novaic-business/business/subscribers/dispatch_subscriber.py:478:                logger.warning("subscriber transient network fail id=%s attempts=%d retry_in=%dms error=%s",
+novaic-business/business/subscribers/dispatch_subscriber.py:481:                metric_inc("subscriber_retry_total", kind="network")
+novaic-business/business/subscribers/dispatch_subscriber.py:484:    # IM burst aggregation
+novaic-business/business/subscribers/dispatch_subscriber.py:487:    def _group_for_aggregation(self, rows: list[dict]) -> list[dict]:
+novaic-business/business/subscribers/dispatch_subscriber.py:488:        """Split a claimed batch into aggregatable units.
+novaic-business/business/subscribers/dispatch_subscriber.py:496:          ``agent_id`` + ``trigger_type``, within window, ≤ max batch).
+novaic-business/business/subscribers/dispatch_subscriber.py:498:        We walk the claim batch in its native notification order and
+novaic-business/business/subscribers/dispatch_subscriber.py:502:        their original position) and keeps aggregation a *local*
+novaic-business/business/subscribers/dispatch_subscriber.py:505:        ``claim_batch`` ticks don't aggregate, but with ``batch_size=50``
+novaic-business/business/subscribers/dispatch_subscriber.py:507:        overwhelmingly co-batched. Waiting for cross-tick aggregation would
+novaic-business/business/subscribers/dispatch_subscriber.py:508:        require a broader Environment peek API and is intentionally outside
+novaic-business/business/subscribers/dispatch_subscriber.py:509:        this local claim-batch decision.
+novaic-business/business/subscribers/dispatch_subscriber.py:511:        aggregation = self.aggregation_config
+novaic-business/business/subscribers/dispatch_subscriber.py:512:        if not rows or not aggregation.enabled:
+novaic-business/business/subscribers/dispatch_subscriber.py:515:        window_ms = aggregation.window_seconds * 1000
+novaic-business/business/subscribers/dispatch_subscriber.py:516:        max_batch = aggregation.max_batch
+novaic-business/business/subscribers/dispatch_subscriber.py:528:                # don't want a single bad row to crash the whole batch.
+novaic-business/business/subscribers/dispatch_subscriber.py:545:            while j < n and len(group) < max_batch:
+novaic-business/business/subscribers/dispatch_subscriber.py:591:          aggregation. The group planner routes them into single units
+novaic-business/business/subscribers/dispatch_subscriber.py:596:        On success we ack dispatch for all notification ids. Runtime
+novaic-business/business/subscribers/dispatch_subscriber.py:598:        and the Environment notification semantic claim.
+novaic-business/business/subscribers/dispatch_subscriber.py:619:                    error="malformed payload_json in aggregation group",
+novaic-business/business/subscribers/dispatch_subscriber.py:622:                metric_inc("subscriber_failed_total", kind="bad_argument")
+novaic-business/business/subscribers/dispatch_subscriber.py:623:                metric_inc("dispatch_failed_total", caller="subscriber", kind="bad_argument")
+novaic-business/business/subscribers/dispatch_subscriber.py:669:                    self.aggregation_config.window_seconds,
+novaic-business/business/subscribers/dispatch_subscriber.py:679:                    "subscriber_delivered_total",
+novaic-business/business/subscribers/dispatch_subscriber.py:683:                # Message input ownership belongs to Runtime. Subscriber only
+novaic-business/business/subscribers/dispatch_subscriber.py:684:                # acknowledges Environment-to-Queue delivery for this burst.
+novaic-business/business/subscribers/dispatch_subscriber.py:723:                metric_inc("subscriber_failed_total", kind=str(kind))
+novaic-business/business/subscribers/dispatch_subscriber.py:724:                metric_inc("dispatch_failed_total", caller="subscriber", kind=str(kind))
+novaic-business/business/subscribers/dispatch_subscriber.py:726:                metric_inc("subscriber_retry_total", kind=str(kind))
+novaic-business/tests/test_pr152_file_metadata_boundary.py:3:from fastapi import FastAPI
+novaic-business/tests/test_pr152_file_metadata_boundary.py:7:from business.internal.files import router
+novaic-business/tests/test_pr152_file_metadata_boundary.py:10:app = FastAPI()
+novaic-business/tests/test_pr152_file_metadata_boundary.py:11:app.include_router(router)
+novaic-business/business/internal/health.py:1:"""Internal health router.
+novaic-business/business/internal/health.py:7:from fastapi import APIRouter
+novaic-business/business/internal/health.py:9:router = APIRouter(tags=["internal"])
+novaic-business/business/internal/config.py:4:Reads agent configuration and LLM config from Entangled entity store.
+novaic-business/business/internal/config.py:7:from fastapi import APIRouter, HTTPException
+novaic-business/business/internal/config.py:12:router = APIRouter(tags=["internal"])
+novaic-business/business/internal/config.py:16:@router.get("/config/agent/{agent_id}")
+novaic-business/business/internal/config.py:32:@router.get("/config/ports/by-agent/{agent_id}")
+novaic-business/business/internal/config.py:36:    Reads device/port info from Entangled entities.
+novaic-business/business/internal/config.py:61:@router.get("/config/llm/agent/{agent_id}")
+novaic-business/business/internal/config.py:73:@router.get("/config/llm/agent/{agent_id}/audio")
+novaic-business/business/internal/subagent.py:7:from fastapi import APIRouter, HTTPException, Query
+novaic-business/business/internal/subagent.py:19:router = APIRouter(tags=["internal"])
+novaic-business/business/internal/subagent.py:35:@router.get("/subagents/list")
+novaic-business/business/internal/subagent.py:64:@router.get("/subagents/due-wake")
+novaic-business/business/internal/subagent.py:87:@router.get("/subagents/{agent_id}/main")
+novaic-business/business/internal/subagent.py:96:@router.get("/subagents/by-id/{subagent_id}")
+novaic-business/business/internal/subagent.py:110:@router.get("/subagents/{agent_id}/{subagent_id}/state-history")
+novaic-business/business/internal/subagent.py:118:    This endpoint returns append-only rows from Entangled's
+novaic-business/business/internal/subagent.py:133:    from common.entangled_client import EntangledServiceClient
+novaic-business/business/internal/subagent.py:135:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/subagent.py:147:@router.get("/subagents/{agent_id}/{subagent_id}")
+novaic-business/business/internal/subagent.py:163:# are now handled via EntityStore entity_update through Task Queue handlers
+novaic-business/business/internal/subagent.py:167:@router.patch("/subagents/{agent_id}/{subagent_id}")
+novaic-business/business/internal/subagent.py:171:    Cortex folded scope summaries are the only active continuity surface.
+novaic-business/business/internal/subagent.py:242:@router.post("/subagents/{agent_id}/spawn")
+novaic-business/business/internal/subagent.py:245:    Spawn a new SubAgent and its Runtime (async mode).
+novaic-business/business/internal/subagent.py:294:    from business.environment import EnvironmentRepository
+novaic-business/business/internal/subagent.py:295:    msg = EnvironmentRepository(
+novaic-business/business/internal/subagent.py:316:    logger.info("[Gateway] Created SUBAGENT_SEND task message %s for subagent %s", msg.message_id, sub_id)
+novaic-business/business/internal/subagent.py:318:    # store.append emits the subagent_send outbox row; DispatchSubscriber
+novaic-business/business/internal/subagent.py:327:@router.delete("/subagents/{agent_id}/{subagent_id}")
+novaic-business/business/internal/subagent.py:338:@router.get("/subagents/{agent_id}/{subagent_id}/hrl")
+novaic-business/business/internal/subagent.py:340:    """Get Hot Runtime List for a SubAgent."""
+novaic-business/business/internal/subagent.py:351:@router.post("/subagents/{agent_id}/{subagent_id}/hrl/add")
+novaic-business/business/internal/subagent.py:372:@router.get("/subagents/{agent_id}/{subagent_id}/summary-lock")
+novaic-business/business/internal/subagent.py:381:@router.post("/subagents/{agent_id}/{subagent_id}/summary-lock/acquire")
+novaic-business/business/internal/subagent.py:389:@router.post("/subagents/{agent_id}/{subagent_id}/summary-lock/release")
+novaic-business/business/internal/subagent.py:397:@router.get("/agents/{agent_id}/info")
+novaic-business/business/schema_push.py:2:Push business-owned entity schemas to Entangled from Business Service.
+novaic-business/business/schema_push.py:4:Device-owned entities are pushed by Device Service.
+novaic-business/business/schema_push.py:5:Gateway no longer pushes product schemas; it only keeps LOCAL_ONLY auth
+novaic-business/business/schema_push.py:414:# ── Environment domain entities ──────────────────────────────────────────────
+novaic-business/business/schema_push.py:585:    """POST all entity schemas to Entangled's /v1/schema/register.
+novaic-business/business/schema_push.py:587:    All action hook URLs point to BUSINESS_URL.
+novaic-business/business/schema_push.py:599:            spec["action_hooks"] = hooks
+novaic-business/business/schema_push.py:624:            raise RuntimeError(f"Business schema registration returned errors: {errors}")
+novaic-business/business/schema_push.py:630:            raise RuntimeError(
+novaic-business/business/internal/environment.py:1:"""Internal Environment API.
+novaic-business/business/internal/environment.py:3:These routes are the Business boundary used by Runtime Environment shell
+novaic-business/business/internal/environment.py:11:from fastapi import APIRouter, HTTPException
+novaic-business/business/internal/environment.py:15:from business.environment import EnvironmentRepository, EnvironmentService, EnvironmentMessage
+novaic-business/business/internal/environment.py:17:router = APIRouter(tags=["internal"])
+novaic-business/business/internal/environment.py:69:def _get_environment_service() -> EnvironmentService:
+novaic-business/business/internal/environment.py:70:    return EnvironmentService(EnvironmentRepository(get_entity_store()))
+novaic-business/business/internal/environment.py:73:def _message_to_dict(message: EnvironmentMessage) -> dict[str, Any]:
+novaic-business/business/internal/environment.py:99:@router.post("/environment/{agent_id}/im/read")
+novaic-business/business/internal/environment.py:117:@router.post("/environment/{agent_id}/im/history")
+novaic-business/business/internal/environment.py:138:@router.post("/environment/{agent_id}/im/search")
+novaic-business/business/internal/environment.py:162:@router.post("/environment/{agent_id}/im/context")
+novaic-business/business/internal/environment.py:185:@router.post("/environment/{agent_id}/im/reply")
+novaic-business/business/internal/environment.py:209:@router.post("/environment/{agent_id}/im/send")
+novaic-business/business/internal/environment.py:235:@router.post("/environment/{agent_id}/notifications/list")
+novaic-business/business/internal/environment.py:252:@router.post("/environment/{agent_id}/notifications/{notification_id}/claim")
+novaic-business/business/internal/environment.py:272:@router.post("/environment/{agent_id}/notifications/{notification_id}/processed")
+novaic-business/business/internal/environment.py:292:@router.post("/environment/{agent_id}/notifications/{notification_id}/failed")
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:31:    with pytest.raises(RuntimeError, match="returned errors"):
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:44:    with pytest.raises(RuntimeError, match="registration mismatch"):
+novaic-business/business/device_orchestrator.py:2:Device action handlers on the Business Service layer.
+novaic-business/business/device_orchestrator.py:4:Each handler is an Entangled action-hook callback with the standard signature:
+novaic-business/business/device_orchestrator.py:8:to Device Service via device_client.hw_*() calls.
+novaic-business/business/device_orchestrator.py:19:# ── Device Lifecycle ──────────────────────────────────────────────────────────
+novaic-business/business/internal/agent.py:7:from fastapi import APIRouter, HTTPException, Request
+novaic-business/business/internal/agent.py:21:router = APIRouter(tags=["internal"])
+novaic-business/business/internal/agent.py:32:@router.post("/agents/{agent_id}/system-prompt")
+novaic-business/business/internal/agent.py:44:@router.get("/agents/setup-complete")
+novaic-business/business/internal/agent.py:57:@router.post("/agents/{agent_id}/awake")
+novaic-business/business/internal/agent.py:80:@router.post("/agents/{agent_id}/sleep")
+novaic-business/business/internal/agent.py:104:@router.get("/agents/{agent_id}/owner")
+novaic-business/business/internal/agent.py:129:@router.get("/agents/{agent_id}")
+novaic-business/business/internal/agent.py:255:    # Binding + mount maps from Device Service (HTTP)
+novaic-business/business/internal/agent.py:324:@router.get("/agents/{agent_id}/builtin-tools")
+novaic-business/business/api_key_actions.py:4:All key material flows through Factory; Entangled only stores visible metadata
+novaic-business/business/api_key_actions.py:9:  api-keys.add      — Create key in Factory, write metadata to Entangled
+novaic-business/business/api_key_actions.py:11:  api-keys.save     — Save key changes in Factory + Entangled metadata
+novaic-business/business/api_key_actions.py:12:  api-keys.remove   — Remove from Factory (cascade) + Entangled
+novaic-business/business/api_key_actions.py:24:    """api-keys.add — Create API key in Factory, store metadata in Entangled."""
+novaic-business/business/api_key_actions.py:70:    """api-keys.save — Save API key changes in Factory + Entangled metadata."""
+novaic-business/business/api_key_actions.py:100:    """api-keys.remove — Remove from Factory (cascades models) + Entangled."""
+novaic-business/business/api_key_actions.py:113:        logger.warning("[api-keys.remove] Entangled remove failed: %s", e)
+novaic-business/tests/test_pr116_messages_read_removed.py:21:    route_paths = {getattr(route, "path", "") for route in internal_message.router.routes}
+novaic-business/business/internal/message.py:3:Agent-loop delivery and lifecycle are owned by Environment notifications.
+novaic-business/business/internal/message.py:14:from fastapi import APIRouter, HTTPException
+novaic-business/business/internal/message.py:23:router = APIRouter(tags=["internal"])
+novaic-business/business/internal/message.py:55:@router.post("/agents/{agent_id}/interrupt")
+novaic-business/business/internal/message.py:99:        logger.error("[interrupt_agent] Failed to call cancel-all on Queue Service: %s", e)
+novaic-business/business/internal/message.py:120:        "note": "Cancellation executed directly via Queue Service",
+novaic-business/business/internal/message.py:124:@router.post("/messages")
+novaic-business/business/internal/message.py:137:@router.post("/agents/{agent_id}/chat/event")
+novaic-business/business/internal/message.py:173:@router.get("/agents/{agent_id}/chat/message/{message_id}")
+novaic-business/business/internal/subagent_state.py:19:  ``entangled.sql.subagent_state``. Entangled validates every transition inside
+novaic-business/business/internal/subagent_state.py:27:  Entangled handles this server-side, the client just forwards the dict.
+novaic-business/business/internal/subagent_state.py:32:  via ``EntangledServiceClient.history_subagent_transitions``.
+novaic-business/business/internal/subagent_state.py:35:  on both sides (client-side in this module, server-side in Entangled).
+novaic-business/business/internal/subagent_state.py:40:  ``progress``, ``need_rest``). Entangled intersects those with its
+novaic-business/business/internal/subagent_state.py:60:    """Raised when Entangled rejects a transition or a target status is unknown."""
+novaic-business/business/internal/subagent_state.py:72:# ``EntangledServiceClient.history_subagent_transitions``.
+novaic-business/business/internal/subagent_state.py:76:# filter) and it's cheap. Entangled emits its own mirror log line from
+novaic-business/business/internal/subagent_state.py:117:    """Atomically move a subagent to ``to`` via the Entangled chokepoint.
+novaic-business/business/internal/subagent_state.py:141:    The Entangled endpoint re-validates against its own
+novaic-business/business/internal/subagent_state.py:157:        EntangledServiceClient,
+novaic-business/business/internal/subagent_state.py:163:        with EntangledServiceClient(service_name="business") as client:
+novaic-business/business/internal/subagent_state.py:175:        # Entangled client layer.
+novaic-business/business/factory_admin_client.py:8:Entangled stores only the visible metadata (name, provider, has_api_key flag).
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:1:"""PR-153C — Subscriber must not own wake input lifecycle writes."""
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:7:SUBSCRIBER_SOURCE = REPO_ROOT / "business" / "subscribers" / "dispatch_subscriber.py"
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:8:MAIN_SUBSCRIBER_SOURCE = REPO_ROOT / "main_subscriber.py"
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:11:def test_subscriber_has_no_scope_input_or_message_transition_write_path():
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:20:        "subscriber_append_input",
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:21:        "subscriber_transition",
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py:1:"""PR-186B — Business Environment hot-path acceptance."""
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py:8:from business.environment import EnvironmentRepository, EnvironmentService
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py:55:    service = EnvironmentService(EnvironmentRepository(store))
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py:88:    service = EnvironmentService(EnvironmentRepository(store))
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py:115:    source = inspect.getsource(environment_module.EnvironmentRepository)
+novaic-business/business/prompt_builder.py:4:through Business/Entangled. Runtime only asks Business for the assembled prompt
+novaic-business/business/prompt_builder.py:5:and writes it into Cortex.
+novaic-business/business/prompt_builder.py:279:系统会在每次唤醒时把 Cortex 长期 skill 树放进提示词；Business 可能附加显式产品上下文作为辅助输入。已关闭的 skill 会以 `summary.md` 折叠摘要呈现，帮助你跨对话保持连续性。当前 wake skill 是本轮工作容器，回复用户后应使用 `skill_end(report=...)` 关闭并写入本轮摘要。你只能使用本轮 `tools` 数组真实提供的工具。底层参数名仍叫 `scope_id`，把它当作 skill 的技术 id，按 Active skill stack 原样复制即可。
+novaic-business/business/prompt_builder.py:285:## Environment notification 阅读约定
+novaic-business/business/prompt_builder.py:287:系统可能在上下文中放入 Environment notification，例如：
+novaic-business/business/prompt_builder.py:290:[Environment notification]
+novaic-business/tests/test_environment_internal_api.py:1:from fastapi import FastAPI
+novaic-business/tests/test_environment_internal_api.py:5:from business.internal.environment import router
+novaic-business/tests/test_environment_internal_api.py:46:    app = FastAPI()
+novaic-business/tests/test_environment_internal_api.py:47:    app.include_router(router, prefix="/internal")
+novaic-business/tests/test_assembler_factory.py:6:failed" and aborted the subscriber's dispatch loop.
+novaic-business/tests/test_pr111_system_prompt_builder.py:96:    assert "[Environment notification]" in prompt
+novaic-business/tests/test_environment_repository.py:8:    EnvironmentRepository,
+novaic-business/tests/test_environment_repository.py:9:    EnvironmentService,
+novaic-business/tests/test_environment_repository.py:57:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:123:    repo = EnvironmentRepository(
+novaic-business/tests/test_environment_repository.py:150:    repo = EnvironmentRepository(
+novaic-business/tests/test_environment_repository.py:177:    source = inspect.getsource(environment_module.EnvironmentRepository)
+novaic-business/tests/test_environment_repository.py:187:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:208:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:237:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:278:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:334:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:382:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:411:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:429:        dispatch_claim_id="delivered:subscriber",
+novaic-business/tests/test_environment_repository.py:434:    assert acked.dispatch_claim_id == "delivered:subscriber"
+novaic-business/tests/test_environment_repository.py:450:    repo = EnvironmentRepository(_Store())
+novaic-business/tests/test_environment_repository.py:452:    with pytest.raises(ValueError, match="invalid Environment event_kind"):
+novaic-business/tests/test_environment_repository.py:483:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:504:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:524:    repo = EnvironmentRepository(store)
+novaic-business/tests/test_environment_repository.py:526:    with pytest.raises(ValueError, match="invalid Environment notification state"):
+novaic-business/tests/test_environment_repository.py:557:    with pytest.raises(ValueError, match="missing Environment resource_ref fields"):
+novaic-business/tests/test_environment_repository.py:579:    service = EnvironmentService(EnvironmentRepository(store))
+novaic-business/tests/test_environment_repository.py:621:    service = EnvironmentService(EnvironmentRepository(store))
+novaic-business/tests/test_environment_repository.py:661:    service = EnvironmentService(EnvironmentRepository(store))
+novaic-business/tests/test_pr117_task_proxy_removed.py:1:"""PR-117 — Business does not proxy Queue TaskManager routes."""
+novaic-business/tests/test_pr117_task_proxy_removed.py:7:from business.internal import router as internal_router
+novaic-business/tests/test_pr117_task_proxy_removed.py:11:    route_paths = {getattr(route, "path", "") for route in internal_router.routes}
+novaic-business/tests/test_pr115_unread_routes_removed.py:4:part of the Cortex minimal context path. Keep this guardrail narrow: Business
+novaic-business/tests/test_pr115_unread_routes_removed.py:14:from business.internal.message import router
+novaic-business/tests/test_pr115_unread_routes_removed.py:18:    route_paths = {getattr(route, "path", "") for route in router.routes}
+novaic-business/tests/test_subagent_state.py:4:Entangled; Business's ``transition()`` is now a thin HTTP-client
+novaic-business/tests/test_subagent_state.py:18:The transition matrix itself lives in Entangled. Business tests pin request
+novaic-business/tests/test_subagent_state.py:43:#     with EntangledServiceClient(...) as client:
+novaic-business/tests/test_subagent_state.py:60:        "common.entangled_client.EntangledServiceClient",
+novaic-business/tests/test_subagent_state.py:67:    """Shape of the Entangled transition endpoint's response body."""
+novaic-business/tests/test_subagent_state.py:119:# ── Error mapping from Entangled ────────────────────────────────────────────
+novaic-business/tests/test_subagent_state.py:153:    breadcrumb log line. Keeps subscriber redeliveries / recovery
+novaic-business/tests/test_subagent_state.py:281:    from fastapi import FastAPI, Request
+novaic-business/tests/test_subagent_state.py:284:    from business.internal.entity import router
+novaic-business/tests/test_subagent_state.py:286:    app = FastAPI()
+novaic-business/tests/test_subagent_state.py:293:    app.include_router(router, prefix="/internal")
+novaic-business/tests/test_subagent_state.py:300:    # ``entity.router`` still resolves a store for non-status PATCHes —
+novaic-business/tests/test_subagent_state.py:301:    # stub it out so the test doesn't require a live Entangled.
+novaic-business/tests/test_subagent_state.py:321:    from fastapi import FastAPI, Request
+novaic-business/tests/test_subagent_state.py:324:    from business.internal.entity import router
+novaic-business/tests/test_subagent_state.py:327:    app = FastAPI()
+novaic-business/tests/test_subagent_state.py:334:    app.include_router(router, prefix="/internal")
+novaic-business/tests/test_subagent_state.py:354:    from fastapi import FastAPI, Request
+novaic-business/tests/test_subagent_state.py:357:    from business.internal.entity import router
+novaic-business/tests/test_subagent_state.py:359:    app = FastAPI()
+novaic-business/tests/test_subagent_state.py:366:    app.include_router(router, prefix="/internal")
+novaic-business/tests/test_schema_invariants.py:5:``default=...``. The Entangled generic CRUD proxy
+novaic-business/tests/test_schema_invariants.py:9:HTTP 400 while the Queue task still marked "complete" — the exact
+novaic-business/tests/test_schema_invariants.py:12:The *mechanism* fix lives in Entangled (``SqlEntityStore._apply_defaults``
+novaic-business/tests/test_schema_invariants.py:34:sys.path.insert(0, str(_WORKSPACE_ROOT / "Entangled" / "packages" / "server-python"))
+novaic-business/tests/test_schema_invariants.py:108:def test_business_action_hooks_do_not_use_entangled_crud_reserved_names():
+novaic-business/tests/test_schema_invariants.py:109:    """Business action hooks must not shadow Entangled's built-in CRUD ops."""
+novaic-business/tests/test_schema_invariants.py:119:        "Business action hooks must use product verbs, not Entangled CRUD "
+novaic-business/tests/test_schema_invariants.py:121:        "request routes through the Business action hook.\n  Violations:\n    "
+novaic-business/tests/test_schema_invariants.py:157:    """Business schema definitions must be real Entangled DDL, not just JSON.
+novaic-business/tests/test_internal_agents.py:2:from fastapi import FastAPI, Request
+novaic-business/tests/test_internal_agents.py:6:from business.internal.agent import router
+novaic-business/tests/test_internal_agents.py:8:app = FastAPI()
+novaic-business/tests/test_internal_agents.py:16:app.include_router(router)
+novaic-business/tests/test_pr100_app_entity_schema_contract.py:1:"""PR-100 — App-consumed Entangled schemas match the shared contract."""
+novaic-business/tests/test_pr72_prompt_defaults_contract.py:26:    assert "如果本轮上下文出现 `[Environment notification]`" in combined
+novaic-business/tests/test_pr118_subagent_context_removed.py:9:from business.internal.subagent import router
+novaic-business/tests/test_pr118_subagent_context_removed.py:13:    route_paths = {getattr(route, "path", "") for route in router.routes}
+novaic-business/tests/test_pr159_product_context_boundary.py:28:    assert "它不是 Cortex 记忆，也不能替代 skill summary" in prompt
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:5:from business.internal import router as internal_router
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:21:    paths = {getattr(route, "path", "") for route in internal_router.routes}
+novaic-business/tests/test_dispatch_subscriber.py:1:"""DispatchSubscriber unit tests — sync-only post PR-34 34d.
+novaic-business/tests/test_dispatch_subscriber.py:6:* ``MagicMock`` for assembler and Environment dispatch source (sync methods).
+novaic-business/tests/test_dispatch_subscriber.py:7:* Direct calls to ``sub._claim_batch()`` / ``sub._deliver_one(row)`` for
+novaic-business/tests/test_dispatch_subscriber.py:10:  by driving the subscriber from a background thread until ``stop()`` is
+novaic-business/tests/test_dispatch_subscriber.py:27:from business.environment import EnvironmentRepository, EnvironmentService
+novaic-business/tests/test_dispatch_subscriber.py:28:from business.subscribers.dispatch_subscriber import DispatchSubscriber, EnvironmentDispatchSource
+novaic-business/tests/test_dispatch_subscriber.py:46:    source.claim_batch.return_value = []
+novaic-business/tests/test_dispatch_subscriber.py:64:def _subscriber(assembler, dispatch_source, **kwargs):
+novaic-business/tests/test_dispatch_subscriber.py:66:    return DispatchSubscriber(assembler, dispatch_source, **kwargs)
+novaic-business/tests/test_dispatch_subscriber.py:101:def test_claim_batch_returns_rows_on_success(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:102:    mock_dispatch_source.claim_batch.return_value = [_make_row()]
+novaic-business/tests/test_dispatch_subscriber.py:103:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:104:    rows = sub._claim_batch()
+novaic-business/tests/test_dispatch_subscriber.py:112:    service = EnvironmentService(EnvironmentRepository(store))
+novaic-business/tests/test_dispatch_subscriber.py:119:    source = EnvironmentDispatchSource(service, store)
+novaic-business/tests/test_dispatch_subscriber.py:120:    rows = source.claim_batch(
+novaic-business/tests/test_dispatch_subscriber.py:121:        worker_id="subscriber-1",
+novaic-business/tests/test_dispatch_subscriber.py:122:        batch_size=10,
+novaic-business/tests/test_dispatch_subscriber.py:136:    assert note.dispatch_claim_id == "subscriber-1"
+novaic-business/tests/test_dispatch_subscriber.py:142:    service = EnvironmentService(EnvironmentRepository(store))
+novaic-business/tests/test_dispatch_subscriber.py:149:    source = EnvironmentDispatchSource(service, store)
+novaic-business/tests/test_dispatch_subscriber.py:150:    rows = source.claim_batch(
+novaic-business/tests/test_dispatch_subscriber.py:151:        worker_id="subscriber-1",
+novaic-business/tests/test_dispatch_subscriber.py:152:        batch_size=10,
+novaic-business/tests/test_dispatch_subscriber.py:162:    assert acked.dispatch_claim_id == "delivered:subscriber"
+novaic-business/tests/test_dispatch_subscriber.py:178:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:191:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:207:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:220:    """Regression: subscriber MUST pass ``msg:{message_id}`` as idempotency_key.
+novaic-business/tests/test_dispatch_subscriber.py:227:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:236:    the canonical target session for Runtime dispatch.
+novaic-business/tests/test_dispatch_subscriber.py:245:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:265:    mock_dispatch_source.claim_batch.side_effect = RuntimeError("environment unavailable")
+novaic-business/tests/test_dispatch_subscriber.py:267:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:268:    caplog.set_level(logging.DEBUG, logger="business.subscribers.dispatch_subscriber")
+novaic-business/tests/test_dispatch_subscriber.py:271:        result = sub._claim_batch()
+novaic-business/tests/test_dispatch_subscriber.py:279:        and "Failed to claim Environment notifications" in r.getMessage()
+novaic-business/tests/test_dispatch_subscriber.py:292:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.1)
+novaic-business/tests/test_dispatch_subscriber.py:308:    mock_dispatch_source.claim_batch.side_effect = [[row], [], [], []]
+novaic-business/tests/test_dispatch_subscriber.py:310:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:331:    assert not inspect.iscoroutinefunction(DispatchSubscriber.run), (
+novaic-business/tests/test_dispatch_subscriber.py:332:        "DispatchSubscriber.run must stay sync — async would reintroduce the "
+novaic-business/tests/test_dispatch_subscriber.py:335:    assert not inspect.iscoroutinefunction(DispatchSubscriber._claim_batch)
+novaic-business/tests/test_dispatch_subscriber.py:336:    assert not inspect.iscoroutinefunction(DispatchSubscriber._deliver_one)
+novaic-business/tests/test_dispatch_subscriber.py:337:    assert not inspect.iscoroutinefunction(DispatchSubscriber._mark_dispatched)
+novaic-business/tests/test_dispatch_subscriber.py:338:    assert not inspect.iscoroutinefunction(DispatchSubscriber._mark_failed)
+novaic-business/tests/test_dispatch_subscriber.py:342:    """The subscriber module must not carry any asyncio surface.
+novaic-business/tests/test_dispatch_subscriber.py:344:    Direct regression test for the §C.1 "no async outside FastAPI edge"
+novaic-business/tests/test_dispatch_subscriber.py:348:    import business.subscribers.dispatch_subscriber as mod
+novaic-business/tests/test_dispatch_subscriber.py:350:        "dispatch_subscriber.py re-imported asyncio after PR-34 34d — see "
+novaic-business/tests/test_dispatch_subscriber.py:355:def test_subscriber_has_no_message_lifecycle_probe_path():
+novaic-business/tests/test_dispatch_subscriber.py:356:    import business.subscribers.dispatch_subscriber as mod
+novaic-business/tests/test_dispatch_subscriber.py:358:    source = inspect.getsource(mod.DispatchSubscriber)
+novaic-business/tests/test_dispatch_subscriber.py:369:# ─── main_subscriber.py subprocess entry smoke test ─────────────────────
+novaic-business/tests/test_dispatch_subscriber.py:372:# ── PR-168C (2026-05-02) — subscriber is not input owner ─────────────────────
+novaic-business/tests/test_dispatch_subscriber.py:377:    ``scope_id=None`` keeps the old response shape covered, but Subscriber
+novaic-business/tests/test_dispatch_subscriber.py:378:    must not write Cortex input ownership in either case."""
+novaic-business/tests/test_dispatch_subscriber.py:380:    # assemble_sync returns an object with a .user_id attribute; Subscriber
+novaic-business/tests/test_dispatch_subscriber.py:381:    # should still assemble normally even though Runtime owns input claims.
+novaic-business/tests/test_dispatch_subscriber.py:394:def test_subscriber_constructor_has_no_cortex_dependency():
+novaic-business/tests/test_dispatch_subscriber.py:395:    """Subscriber only drains Environment notifications into Queue triggers.
+novaic-business/tests/test_dispatch_subscriber.py:397:    Runtime owns wake scope input and Cortex writes. Keeping this constructor
+novaic-business/tests/test_dispatch_subscriber.py:398:    free of Cortex clients prevents the old side channel from growing back.
+novaic-business/tests/test_dispatch_subscriber.py:400:    signature = inspect.signature(DispatchSubscriber)
+novaic-business/tests/test_dispatch_subscriber.py:405:def test_subscriber_worker_id_provider_is_explicit(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:406:    sub = DispatchSubscriber(
+novaic-business/tests/test_dispatch_subscriber.py:416:def test_dispatch_results_do_not_transition_messages_in_subscriber(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:417:    """All message lifecycle claiming is centralized in Runtime
+novaic-business/tests/test_dispatch_subscriber.py:418:    ``session.init``. Subscriber must not call message transition endpoints
+novaic-business/tests/test_dispatch_subscriber.py:420:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:425:    sub = _subscriber(buffered, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:436:    sub = _subscriber(asm, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:441:def test_subscriber_stays_functional_without_cortex_dependency(mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:442:    """Buffered dispatches must not need any Cortex-side write access."""
+novaic-business/tests/test_dispatch_subscriber.py:444:    sub = _subscriber(asm, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:449:def test_main_subscriber_module_imports_clean():
+novaic-business/tests/test_dispatch_subscriber.py:450:    """main_subscriber.py must be importable without running.
+novaic-business/tests/test_dispatch_subscriber.py:452:    The module's ``if __name__ == '__main__':`` guards the CLI so
+novaic-business/tests/test_dispatch_subscriber.py:453:    ``import main_subscriber`` is side-effect-free (no argparse, no logging
+novaic-business/tests/test_dispatch_subscriber.py:461:    _sys.modules.pop("main_subscriber", None)
+novaic-business/tests/test_dispatch_subscriber.py:462:    mod = importlib.import_module("main_subscriber")
+novaic-business/tests/test_dispatch_subscriber.py:463:    assert hasattr(mod, "main"), "main_subscriber.py must expose main() for start.sh"
+novaic-business/tests/test_pr124_subagent_spawn_im.py:122:    route_paths = {getattr(route, "path", "") for route in agent_mod.router.routes}
+novaic-business/tests/test_pr141_compat_cleanup.py:11:    route_paths = {getattr(route, "path", "") for route in internal_agent.router.routes}
+novaic-business/tests/test_pr141_compat_cleanup.py:18:    route_paths = {getattr(route, "path", "") for route in internal_agent.router.routes}
+novaic-business/tests/test_pr141_compat_cleanup.py:31:    route_paths = {getattr(route, "path", "") for route in internal_health.router.routes}
+novaic-business/tests/test_pr193_no_activity_timeline_action.py:1:"""PR-193 — Agent Monitor does not use a Business action/Cortex HTTP read path."""

@@ -1,0 +1,206 @@
+        name: str,
+        skill: str = "",
+        parent_path: str | None = None,
+    ) -> str:
+        """Materialize a scope projection after its event has been accepted.
+
+        The filesystem scope tree is a transitional read projection during the
+        event-source cutover. Active API write paths should call this projection
+        method so generic structural writes are not mistaken for source-of-truth
+        updates.
+        """
+        return await self.create_scope(scope_id, name, skill, parent_path)
+
+    async def complete_child_scope(self, scope_path: str, summary: str) -> None:
+        """Mark a child scope as completed (Cortex system operation).
+
+        Writes the ``summary.md`` projection artifact and routes the phase flip through
+        :func:`scope_state.transition` so INV-5/6 are structurally enforced
+        (idempotent self-loop on re-entry; ARCHIVED is terminal — no
+        ``archived -> executing`` regression can slip through a raw
+        ``meta["phase"]`` write).
+        """
+        from novaic_cortex import scope_state
+
+        operational_store = Workspace._require_operational_store(self)
+        await self._sys_write(f"{scope_path}/summary.md", summary)
+        ended_at = self._now()
+        await scope_state.mark_archived(
+            self, scope_path,
+            reason="scope_end_child", actor="cortex.workspace",
+            ended_at=ended_at,
+            operational_store=operational_store,
+            created_at_ms=int(ended_at * 1000),
+        )
+        log_cortex("scope.child_completed", scope_path=scope_path)
+
+    async def complete_child_scope_projection(self, scope_path: str, summary: str) -> None:
+        """Materialize a child-scope close projection after close event append."""
+        await self.complete_child_scope(scope_path, summary)
+
+    async def _build_archive_scope_index_projection(
+        self,
+        scope_path: str,
+        depth: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Build `/ro/scopes/_index.jsonl` archive projection entries.
+
+        This helper is intentionally archive/debug projection-only. Runtime
+        scope lookup and active-stack decisions must use operational SQLite
+        projections instead of walking workspace files.
+        """
+        entries: List[Dict[str, Any]] = []
+
+        meta_logical = f"{scope_path}/meta.json"
+        try:
+            raw = await self.read(meta_logical)
+            meta = json.loads(raw)
+        except (KeyError, FileNotFoundError):
+            meta = {}
+
+        scope_id_from_path = scope_path.rstrip("/").split("/")[-1]
+        if scope_id_from_path.startswith(tuple(f"{i:04d}_scope_" for i in range(10000))):
+            scope_id_from_path = scope_id_from_path.split("_scope_", 1)[-1]
+
+        entries.append({
+            "scope_id": scope_id_from_path,
+            "path": scope_path + "/",
+            "name": meta.get("name", ""),
+            "depth": depth,
+            "ts": meta.get("ended_at") or meta.get("start_time", 0),
+        })
+
+        steps_dir = f"{scope_path}/steps/"
+        try:
+            step_entries = await self.list_dir(steps_dir)
+        except (KeyError, FileNotFoundError):
+            step_entries = []
+
+        for entry in step_entries:
+            if entry.is_dir and "_scope_" in entry.name:
+                child_path = f"{scope_path}/steps/{entry.name}"
+                child_entries = await self._build_archive_scope_index_projection(
+                    child_path,
+                    depth + 1,
+                )
+                if child_entries:
+                    child_entries[0]["parent"] = scope_id_from_path
+                entries.extend(child_entries)
+
+        return entries
+
+    async def _auto_close_open_children(self, scope_path: str) -> int:
+        """Recursively close any still-open child scopes under scope_path.
+
+        When the agent rests (root archival) without explicitly closing every
+        skill, we auto-archive the leftover nested scopes so the archive is
+        phase-consistent. Returns the number of scopes auto-closed.
+        """
+        closed = 0
+        steps_dir = f"{scope_path}/steps/"
+        try:
+            step_entries = await self.list_dir(steps_dir)
+        except (KeyError, FileNotFoundError):
+            return 0
+
+        for entry in step_entries:
+            if not (entry.is_dir and "_scope_" in entry.name):
+                continue
+            child_path = f"{scope_path}/steps/{entry.name}"
+            child_meta_path = f"{child_path}/meta.json"
+            try:
+                raw = await self.read(child_meta_path)
+                child_meta = json.loads(raw)
+            except (KeyError, FileNotFoundError, json.JSONDecodeError):
+                continue
+
+            closed += await self._auto_close_open_children(child_path)
+
+            if child_meta.get("phase") != "archived":
+                await self.complete_child_scope_projection(child_path, "")
+                closed += 1
+        return closed
+
+    async def archive_root_scope(self, scope_id: str, summary: str) -> str:
+        """Archive a root scope: move from /ro/active/ to /ro/scopes/.
+
+        Both are Cortex-managed zones. Active → archived is just a path change.
+        Returns the archive path (e.g. "/ro/scopes/task-001/").
+        """
+        active_path = f"/ro/active/{scope_id}"
+        if not await self._files.exists(f"{active_path}/meta.json"):
+            raise FileNotFoundError(f"no active root scope {scope_id!r}")
+
+        auto_closed = await self._auto_close_open_children(active_path)
+        if auto_closed:
+            log_cortex(
+                "scope.auto_closed_children",
+                scope_id=scope_id,
+                count=auto_closed,
+            )
+
+        from novaic_cortex import scope_state
+
+        operational_store = Workspace._require_operational_store(self)
+        await self._sys_write(f"{active_path}/summary.md", summary)
+        ended_at = self._now()
+        await scope_state.mark_archived(
+            self, active_path,
+            reason="scope_end_root", actor="cortex.workspace",
+            ended_at=ended_at,
+            operational_store=operational_store,
+            created_at_ms=int(ended_at * 1000),
+        )
+
+        scope_entries = await self._build_archive_scope_index_projection(active_path)
+
+        await self._files.move_tree(f"{active_path}/", f"/ro/scopes/{scope_id}/")
+
+        archive_base = f"/ro/scopes/{scope_id}"
+        for entry in scope_entries:
+            old_path = entry["path"]
+            if old_path.startswith(active_path):
+                entry["path"] = archive_base + old_path[len(active_path):]
+            root_scope_id, current_scope_id, parent_scope_id, stack_depth = _scope_projection_identity(
+                entry["path"].rstrip("/")
+            )
+            operational_store.upsert_scope_projection(
+                root_scope_id=root_scope_id,
+                scope_id=current_scope_id,
+                scope_path=entry["path"].rstrip("/"),
+                parent_scope_id=parent_scope_id,
+                phase="archived",
+                stack_depth=stack_depth,
+                generation=int(ended_at * 1000),
+                name=entry.get("name"),
+                closed_at_ms=int(ended_at * 1000),
+                close_reason="scope_end_root",
+            )
+
+        try:
+            prev = await self._files.read_bytes("/ro/scopes/_index.jsonl")
+        except KeyError:
+            prev = b""
+        lines = []
+        for entry in scope_entries:
+            lines.append(json.dumps(entry, ensure_ascii=False))
+        new_content = prev + ("\n".join(lines) + "\n").encode("utf-8")
+        await self._files.write_bytes("/ro/scopes/_index.jsonl", new_content)
+
+        await self._emit("on_scope_archived", scope_id, summary, f"/ro/scopes/{scope_id}/")
+        log_cortex(
+            "scope.archived",
+            scope_id=scope_id,
+            summary_len=len(summary),
+        )
+        return f"/ro/scopes/{scope_id}/"
+
+    async def archive_root_scope_projection(self, scope_id: str, summary: str) -> str:
+        """Materialize a root-scope archive projection after archive event append."""
+        return await self.archive_root_scope(scope_id, summary)
+
+    # ── Steps (unified timeline) ──
+
+    async def write_payload(
+        self,
+        scope_path: str,

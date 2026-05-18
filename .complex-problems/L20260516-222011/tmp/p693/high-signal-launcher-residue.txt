@@ -1,0 +1,4 @@
+scripts/ci/test_no_legacy_file_hot_paths.py:48:    "Start all backend services",
+scripts/ci/test_no_legacy_file_hot_paths.py:50:    "All backends started",
+scripts/ci/test_no_legacy_file_hot_paths.py:51:    "AGENT_RUNTIME_PORT",
+scripts/ci/test_no_legacy_file_hot_paths.py:52:    "Started Agent Runtime on",

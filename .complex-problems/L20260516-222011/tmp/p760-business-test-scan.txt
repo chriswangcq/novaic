@@ -1,0 +1,567 @@
+## Business test files
+novaic-business/tests/test_business_action_dependencies.py
+novaic-business/tests/test_im_aggregation.py
+novaic-business/tests/test_pr152_file_metadata_boundary.py
+novaic-business/tests/test_pr194_schema_push_fail_fast.py
+novaic-business/tests/test_environment_repository.py
+novaic-business/tests/test_pr72_prompt_defaults_contract.py
+novaic-business/tests/test_pr141_compat_cleanup.py
+novaic-business/tests/test_pr193_no_activity_timeline_action.py
+novaic-business/tests/test_internal_agents.py
+novaic-business/tests/test_pr159_product_context_boundary.py
+novaic-business/tests/test_pr100_app_entity_schema_contract.py
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py
+novaic-business/tests/test_pr111_system_prompt_builder.py
+novaic-business/tests/test_schema_invariants.py
+novaic-business/tests/test_subagent_state.py
+novaic-business/tests/__init__.py
+novaic-business/tests/test_pr157_device_vm_prep_actions.py
+novaic-business/tests/test_pr124_subagent_spawn_im.py
+novaic-business/tests/test_pr144_prompt_memory_boundary.py
+novaic-business/tests/test_pr116_messages_read_removed.py
+novaic-business/tests/test_pr153_lifecycle_guardrails.py
+novaic-business/tests/test_pr151_device_binding_contract.py
+novaic-business/tests/test_assembler_factory.py
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py
+novaic-business/tests/test_pr160_message_content_shape.py
+novaic-business/tests/test_agent_delete_cascade.py
+novaic-business/tests/test_pr117_task_proxy_removed.py
+novaic-business/tests/test_environment_internal_api.py
+novaic-business/tests/test_pr166c_no_log_payloads.py
+novaic-business/tests/test_environment_message_actions_projection.py
+novaic-business/tests/test_pr115_unread_routes_removed.py
+novaic-business/tests/test_pr102_message_projection_contract.py
+novaic-business/tests/test_dispatch_subscriber.py
+novaic-business/tests/test_environment_schema_contracts.py
+novaic-business/tests/test_pr118_subagent_context_removed.py
+
+## Business suspicious hits in test-like files
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:1:"""PR-194: Business schema push must fail fast on partial registration."""
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:22:def test_business_schema_push_rejects_registration_errors(monkeypatch):
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:23:    from business import schema_push
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:32:        schema_push.push_business_schemas("http://entangled.test")
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:35:def test_business_schema_push_rejects_partial_registered_set(monkeypatch):
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:36:    from business import schema_push
+novaic-business/tests/test_pr194_schema_push_fail_fast.py:45:        schema_push.push_business_schemas("http://entangled.test")
+novaic-business/tests/test_pr193_no_activity_timeline_action.py:1:"""PR-193 — Agent Monitor does not use a Business action/Cortex HTTP read path."""
+novaic-business/tests/test_pr193_no_activity_timeline_action.py:7:from business import agent_actions, schema_push
+novaic-business/tests/test_pr159_product_context_boundary.py:3:from business.prompt_builder import build_system_prompt, build_wake_message
+novaic-business/tests/test_pr159_product_context_boundary.py:27:    assert "Business 可能附加显式产品上下文作为辅助输入" in prompt
+novaic-business/tests/test_business_action_dependencies.py:1:from business.action_deps import BusinessActionDependencies
+novaic-business/tests/test_business_action_dependencies.py:2:from business import agent_actions
+novaic-business/tests/test_business_action_dependencies.py:3:from business import api_key_actions
+novaic-business/tests/test_business_action_dependencies.py:4:from business import model_actions
+novaic-business/tests/test_business_action_dependencies.py:5:from business.skill_repository import SkillRepository
+novaic-business/tests/test_business_action_dependencies.py:54:    deps = BusinessActionDependencies(
+novaic-business/tests/test_business_action_dependencies.py:79:    deps = BusinessActionDependencies(
+novaic-business/tests/test_business_action_dependencies.py:116:    deps = BusinessActionDependencies(
+novaic-business/tests/test_business_action_dependencies.py:130:def test_api_key_save_is_a_business_action(monkeypatch):
+novaic-business/tests/test_business_action_dependencies.py:146:            "provider": "openai-compatible",
+novaic-business/tests/test_business_action_dependencies.py:158:                "provider": "openai-compatible",
+novaic-business/tests/test_business_action_dependencies.py:171:                "provider": "openai-compatible",
+novaic-business/tests/test_business_action_dependencies.py:180:def test_api_key_remove_cascades_through_business(monkeypatch):
+novaic-business/tests/test_business_action_dependencies.py:207:    monkeypatch.setattr("business.skill_repository.get_entity_store", lambda: store)
+novaic-business/tests/test_pr141_compat_cleanup.py:5:from business.internal import agent as internal_agent
+novaic-business/tests/test_pr141_compat_cleanup.py:6:from business.internal import health as internal_health
+novaic-business/tests/test_pr141_compat_cleanup.py:7:from business.internal.helpers import _subagent_to_dict
+novaic-business/tests/test_pr141_compat_cleanup.py:10:def test_retired_tools_config_route_is_not_registered():
+novaic-business/tests/test_pr141_compat_cleanup.py:11:    route_paths = {getattr(route, "path", "") for route in internal_agent.router.routes}
+novaic-business/tests/test_pr141_compat_cleanup.py:13:    assert "/agents/{agent_id}/tools-config" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:14:    assert "/agents/{agent_id}/builtin-tools" in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:17:def test_business_device_proxy_routes_are_not_registered():
+novaic-business/tests/test_pr141_compat_cleanup.py:18:    route_paths = {getattr(route, "path", "") for route in internal_agent.router.routes}
+novaic-business/tests/test_pr141_compat_cleanup.py:20:    assert "/agents/{agent_id}/qemu/status" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:21:    assert "/agents/{agent_id}/qemu/ssh-exec" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:22:    assert "/agents/{agent_id}/qemu/start" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:23:    assert "/agents/{agent_id}/qemu/shutdown" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:24:    assert "/agents/{agent_id}/qemu/restart" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:25:    assert "/agents/{agent_id}/vm/{path:path}" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:26:    assert "/agents/{agent_id}/mobile/{path:path}" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:27:    assert "/agents/{agent_id}/hd/{path:path}" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:30:def test_retired_business_health_stub_routes_are_not_registered():
+novaic-business/tests/test_pr141_compat_cleanup.py:31:    route_paths = {getattr(route, "path", "") for route in internal_health.router.routes}
+novaic-business/tests/test_pr141_compat_cleanup.py:33:    assert "/health/app-ws-push" not in route_paths
+novaic-business/tests/test_pr141_compat_cleanup.py:34:    assert "/health/stuck-sending" not in route_paths
+novaic-business/tests/test_pr152_file_metadata_boundary.py:7:from business.internal.files import router
+novaic-business/tests/test_pr152_file_metadata_boundary.py:11:app.include_router(router)
+novaic-business/tests/test_pr152_file_metadata_boundary.py:15:def test_register_file_metadata_uses_business_files_entity() -> None:
+novaic-business/tests/test_pr152_file_metadata_boundary.py:23:    with patch("business.internal.files.get_entity_store", return_value=store):
+novaic-business/tests/test_pr152_file_metadata_boundary.py:60:    with patch("business.internal.files.get_entity_store", return_value=store):
+novaic-business/tests/test_pr100_app_entity_schema_contract.py:5:from business.schema_push import ALL_BUSINESS_ENTITIES, ENTITY_ACTIONS
+novaic-business/tests/test_pr100_app_entity_schema_contract.py:13:def test_business_schema_matches_app_entity_contract():
+novaic-business/tests/test_pr100_app_entity_schema_contract.py:15:        spec = ALL_BUSINESS_ENTITIES[entity].to_spec()
+novaic-business/tests/test_internal_agents.py:6:from business.internal.agent import router
+novaic-business/tests/test_internal_agents.py:16:app.include_router(router)
+novaic-business/tests/test_internal_agents.py:22:    with patch("business.entity_store.get_entity_store") as mock_get_store:
+novaic-business/tests/test_internal_agents.py:73:def test_internal_agent_memory_tool_routes_are_not_exposed():
+novaic-business/tests/test_internal_agents.py:74:    routes = {
+novaic-business/tests/test_internal_agents.py:75:        getattr(route, "path", "")
+novaic-business/tests/test_internal_agents.py:76:        for route in app.routes
+novaic-business/tests/test_internal_agents.py:79:    assert "/agents/{agent_id}/memory/all" not in routes
+novaic-business/tests/test_internal_agents.py:80:    assert "/agents/{agent_id}/memory/save" not in routes
+novaic-business/tests/test_internal_agents.py:81:    assert "/agents/{agent_id}/memory/delete" not in routes
+novaic-business/tests/test_internal_agents.py:82:    assert "/agents/{agent_id}/memory/namespaces" not in routes
+novaic-business/tests/test_internal_agents.py:83:    assert "/agents/{agent_id}/memory/task/log" not in routes
+novaic-business/tests/test_internal_agents.py:84:    assert "/agents/{agent_id}/memory/task/history" not in routes
+novaic-business/tests/test_pr72_prompt_defaults_contract.py:1:from business.prompt_defaults import (
+novaic-business/tests/test_environment_repository.py:6:import business.environment as environment_module
+novaic-business/tests/test_environment_repository.py:7:from business.environment import (
+novaic-business/tests/test_environment_repository.py:148:def test_dispatch_claim_ttl_uses_injected_clock():
+novaic-business/tests/test_environment_repository.py:164:        "dispatch_claim_id": "lease-1",
+novaic-business/tests/test_environment_repository.py:165:        "dispatch_claimed_at": "2026-05-05T00:00:00Z",
+novaic-business/tests/test_environment_repository.py:166:        "dispatch_attempts": 1,
+novaic-business/tests/test_environment_repository.py:167:        "dispatch_error": "",
+novaic-business/tests/test_environment_repository.py:171:    available = repo.list_dispatchable_notifications(agent_id="agent-1", claim_ttl_ms=30_000)
+novaic-business/tests/test_environment_repository.py:332:def test_repository_dispatch_claims_pending_notifications_without_scope_claiming():
+novaic-business/tests/test_environment_repository.py:354:    assert [n.notification_id for n in repo.list_dispatchable_notifications(agent_id="agent-1")] == ["n1"]
+novaic-business/tests/test_environment_repository.py:356:    claimed = repo.claim_notification_for_dispatch(
+novaic-business/tests/test_environment_repository.py:359:        dispatch_claim_id="worker-1",
+novaic-business/tests/test_environment_repository.py:364:    assert claimed.dispatch_claim_id == "worker-1"
+novaic-business/tests/test_environment_repository.py:365:    assert claimed.dispatch_attempts == 1
+novaic-business/tests/test_environment_repository.py:366:    assert repo.list_dispatchable_notifications(agent_id="agent-1") == []
+novaic-business/tests/test_environment_repository.py:368:    released = repo.release_notification_dispatch_claim(
+novaic-business/tests/test_environment_repository.py:371:        error="queue unavailable",
+novaic-business/tests/test_environment_repository.py:375:    assert released.dispatch_claim_id == ""
+novaic-business/tests/test_environment_repository.py:376:    assert released.dispatch_error == "queue unavailable"
+novaic-business/tests/test_environment_repository.py:377:    assert [n.notification_id for n in repo.list_dispatchable_notifications(agent_id="agent-1")] == ["n1"]
+novaic-business/tests/test_environment_repository.py:380:def test_repository_dispatch_claim_ttl_releases_stale_claims():
+novaic-business/tests/test_environment_repository.py:390:        "dispatch_claim_id": "dead-worker",
+novaic-business/tests/test_environment_repository.py:391:        "dispatch_claimed_at": "2000-01-01T00:00:00.000Z",
+novaic-business/tests/test_environment_repository.py:392:        "dispatch_attempts": 1,
+novaic-business/tests/test_environment_repository.py:396:    stale = repo.list_dispatchable_notifications(agent_id="agent-1", claim_ttl_ms=1)
+novaic-business/tests/test_environment_repository.py:399:    claimed = repo.claim_notification_for_dispatch(
+novaic-business/tests/test_environment_repository.py:402:        dispatch_claim_id="new-worker",
+novaic-business/tests/test_environment_repository.py:405:    assert claimed.dispatch_claim_id == "new-worker"
+novaic-business/tests/test_environment_repository.py:406:    assert claimed.dispatch_attempts == 2
+novaic-business/tests/test_environment_repository.py:409:def test_dispatch_ack_is_durable_delivery_not_semantic_claim():
+novaic-business/tests/test_environment_repository.py:419:        "dispatch_claim_id": "worker-1",
+novaic-business/tests/test_environment_repository.py:420:        "dispatch_claimed_at": "2000-01-01T00:00:00.000Z",
+novaic-business/tests/test_environment_repository.py:421:        "dispatch_attempts": 1,
+novaic-business/tests/test_environment_repository.py:422:        "dispatch_error": "previous transient error",
+novaic-business/tests/test_environment_repository.py:426:    acked = repo.ack_notification_dispatch(
+novaic-business/tests/test_environment_repository.py:429:        dispatch_claim_id="delivered:subscriber",
+novaic-business/tests/test_environment_repository.py:434:    assert acked.dispatch_claim_id == "delivered:subscriber"
+novaic-business/tests/test_environment_repository.py:435:    assert acked.dispatch_error == ""
+novaic-business/tests/test_environment_repository.py:436:    assert repo.list_dispatchable_notifications(agent_id="agent-1", claim_ttl_ms=1) == []
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:1:"""PR-153C — Subscriber must not own wake input lifecycle writes."""
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:7:SUBSCRIBER_SOURCE = REPO_ROOT / "business" / "subscribers" / "dispatch_subscriber.py"
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:8:MAIN_SUBSCRIBER_SOURCE = REPO_ROOT / "main_subscriber.py"
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:11:def test_subscriber_has_no_scope_input_or_message_transition_write_path():
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:12:    source = SUBSCRIBER_SOURCE.read_text() + "\n" + MAIN_SUBSCRIBER_SOURCE.read_text()
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:20:        "subscriber_append_input",
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:21:        "subscriber_transition",
+novaic-business/tests/test_im_aggregation.py:1:"""PR-50 Wave 2 — IM burst aggregation unit tests.
+novaic-business/tests/test_im_aggregation.py:4:``DispatchSubscriber``. The tests exercise ``_group_for_aggregation`` +
+novaic-business/tests/test_im_aggregation.py:5:``_deliver_aggregated`` directly so we can assert the invariants
+novaic-business/tests/test_im_aggregation.py:10:* Kill switch (``IM_AGGREGATION_WINDOW_SEC=0``) reverts to pre-Wave-2
+novaic-business/tests/test_im_aggregation.py:18:* Retry rows are not eligible for aggregation, so dispatch retries stay
+novaic-business/tests/test_im_aggregation.py:20:* Aggregated dispatch emits one ``assemble_sync`` / ``dispatch_sync`` and
+novaic-business/tests/test_im_aggregation.py:21:  records the dispatch lease ids. Message lifecycle claiming is owned by
+novaic-business/tests/test_im_aggregation.py:31:from business.subscribers.dispatch_subscriber import (
+novaic-business/tests/test_im_aggregation.py:32:    DispatchSubscriber,
+novaic-business/tests/test_im_aggregation.py:33:    IMAggregationConfig,
+novaic-business/tests/test_im_aggregation.py:34:    load_im_aggregation_config_from_env,
+novaic-business/tests/test_im_aggregation.py:36:from common.wake.assembler import DispatchResult
+novaic-business/tests/test_im_aggregation.py:37:from common.wake.errors import DispatchError
+novaic-business/tests/test_im_aggregation.py:46:    asm.dispatch_sync.return_value = DispatchResult(
+novaic-business/tests/test_im_aggregation.py:47:        action="wake_start_queued",
+novaic-business/tests/test_im_aggregation.py:51:            "action": "wake_start_queued",
+novaic-business/tests/test_im_aggregation.py:60:def mock_dispatch_source():
+novaic-business/tests/test_im_aggregation.py:87:def _subscriber(
+novaic-business/tests/test_im_aggregation.py:89:    dispatch_source,
+novaic-business/tests/test_im_aggregation.py:94:) -> DispatchSubscriber:
+novaic-business/tests/test_im_aggregation.py:95:    return DispatchSubscriber(
+novaic-business/tests/test_im_aggregation.py:97:        dispatch_source,
+novaic-business/tests/test_im_aggregation.py:100:        aggregation_config=IMAggregationConfig(
+novaic-business/tests/test_im_aggregation.py:107:# ─── _group_for_aggregation ────────────────────────────────────────────
+novaic-business/tests/test_im_aggregation.py:111:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:113:    """IM_AGGREGATION_WINDOW_SEC=0 disables aggregation wholesale."""
+novaic-business/tests/test_im_aggregation.py:114:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-business/tests/test_im_aggregation.py:115:    sub = _subscriber(mock_assembler, mock_dispatch_source, window_seconds=0)
+novaic-business/tests/test_im_aggregation.py:121:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:126:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:128:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:129:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:135:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:142:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:145:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:146:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:153:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:163:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:170:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:171:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:177:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:185:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:187:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "300")
+novaic-business/tests/test_im_aggregation.py:188:    monkeypatch.setenv("IM_AGGREGATION_MAX_BATCH", "3")
+novaic-business/tests/test_im_aggregation.py:189:    sub = _subscriber(mock_assembler, mock_dispatch_source, window_seconds=300, max_batch=3)
+novaic-business/tests/test_im_aggregation.py:194:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:203:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:205:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:206:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:212:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:213:    # Because of contiguity requirement, no aggregation fires — the
+novaic-business/tests/test_im_aggregation.py:219:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:222:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:223:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:228:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:233:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:238:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:239:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:246:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:256:def test_aggregated_dispatch_single_assemble_with_multi_ids(
+novaic-business/tests/test_im_aggregation.py:257:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:259:    """Three-row aggregation issues **one** assemble_sync + dispatch_sync
+novaic-business/tests/test_im_aggregation.py:262:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:263:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:272:    assert mock_assembler.dispatch_sync.call_count == 1
+novaic-business/tests/test_im_aggregation.py:282:def test_aggregated_records_dispatched_with_all_ids(
+novaic-business/tests/test_im_aggregation.py:283:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:285:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:286:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:292:    mock_dispatch_source.mark_dispatched.assert_called_once_with([11, 22], agent_id="agt_1")
+novaic-business/tests/test_im_aggregation.py:295:def test_aggregated_does_not_transition_messages_in_subscriber(
+novaic-business/tests/test_im_aggregation.py:296:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:298:    """Subscriber aggregation does not own message lifecycle claims.
+novaic-business/tests/test_im_aggregation.py:300:    The aggregated message_ids travel in Queue metadata and Runtime
+novaic-business/tests/test_im_aggregation.py:303:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:304:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:310:    mock_dispatch_source.mark_failed.assert_not_called()
+novaic-business/tests/test_im_aggregation.py:313:def test_retry_row_is_not_eligible_for_aggregation(
+novaic-business/tests/test_im_aggregation.py:314:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:316:    """Any attempts>0 in a burst splits the group before dispatch."""
+novaic-business/tests/test_im_aggregation.py:317:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:318:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:323:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_im_aggregation.py:327:def test_aggregated_dispatch_error_marks_group_failed(
+novaic-business/tests/test_im_aggregation.py:328:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:330:    """Aggregated dispatch raises → mark the aggregate rows failed."""
+novaic-business/tests/test_im_aggregation.py:331:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:332:    mock_assembler.dispatch_sync.side_effect = DispatchError(kind="queue_5xx", msg="boom")
+novaic-business/tests/test_im_aggregation.py:333:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:340:    assert mock_dispatch_source.mark_failed.call_count == 2
+novaic-business/tests/test_im_aggregation.py:341:    assert {c.args[0] for c in mock_dispatch_source.mark_failed.call_args_list} == {1, 2}
+novaic-business/tests/test_im_aggregation.py:342:    assert all(c.kwargs["kind"] == "queue_5xx" for c in mock_dispatch_source.mark_failed.call_args_list)
+novaic-business/tests/test_im_aggregation.py:346:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:349:    to _deliver_one so we don't double-dispatch or emit ``agg:`` keys for
+novaic-business/tests/test_im_aggregation.py:351:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:352:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:359:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:361:    """Dispatch aggregation should not stitch cross-wake continuity metadata.
+novaic-business/tests/test_im_aggregation.py:364:    the Environment subscriber. The hot path must not fetch ``subagents`` just to
+novaic-business/tests/test_im_aggregation.py:367:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:368:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:375:    mock_dispatch_source.get.assert_not_called()
+novaic-business/tests/test_im_aggregation.py:383:    mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:385:    """When the aggregated dispatch is ``buffered`` (already-running
+novaic-business/tests/test_im_aggregation.py:386:    scope), Subscriber leaves ownership in Queue pending metadata for the
+novaic-business/tests/test_im_aggregation.py:390:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:395:    asm.dispatch_sync.return_value = DispatchResult(
+novaic-business/tests/test_im_aggregation.py:401:    sub = _subscriber(asm, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:407:    mock_dispatch_source.mark_dispatched.assert_called_once_with([1, 2], agent_id="agt_1")
+novaic-business/tests/test_im_aggregation.py:414:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:417:    assemble_sync + one dispatch record with all 3 ids."""
+novaic-business/tests/test_im_aggregation.py:421:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:427:    mock_dispatch_source.claim_batch.side_effect = [burst] + [[]] * 20
+novaic-business/tests/test_im_aggregation.py:429:    sub = _subscriber(mock_assembler, mock_dispatch_source)
+novaic-business/tests/test_im_aggregation.py:443:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:451:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-business/tests/test_im_aggregation.py:456:    mock_dispatch_source.claim_batch.side_effect = [burst] + [[]] * 20
+novaic-business/tests/test_im_aggregation.py:458:    sub = _subscriber(mock_assembler, mock_dispatch_source, window_seconds=0)
+novaic-business/tests/test_im_aggregation.py:476:def test_aggregation_enabled_window_env():
+novaic-business/tests/test_im_aggregation.py:477:    config = load_im_aggregation_config_from_env({"IM_AGGREGATION_WINDOW_SEC": "30"})
+novaic-business/tests/test_im_aggregation.py:482:def test_aggregation_disabled_on_zero_window():
+novaic-business/tests/test_im_aggregation.py:483:    assert load_im_aggregation_config_from_env({"IM_AGGREGATION_WINDOW_SEC": "0"}).enabled is False
+novaic-business/tests/test_im_aggregation.py:486:def test_aggregation_invalid_env_falls_back_to_default():
+novaic-business/tests/test_im_aggregation.py:487:    config = load_im_aggregation_config_from_env({
+novaic-business/tests/test_im_aggregation.py:488:        "IM_AGGREGATION_WINDOW_SEC": "not-a-number",
+novaic-business/tests/test_im_aggregation.py:489:        "IM_AGGREGATION_MAX_BATCH": "xxx",
+novaic-business/tests/test_im_aggregation.py:495:def test_aggregation_max_batch_minimum_one():
+novaic-business/tests/test_im_aggregation.py:496:    assert load_im_aggregation_config_from_env({"IM_AGGREGATION_MAX_BATCH": "0"}).max_batch == 1
+novaic-business/tests/test_im_aggregation.py:500:    mock_assembler, mock_dispatch_source, monkeypatch,
+novaic-business/tests/test_im_aggregation.py:502:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-business/tests/test_im_aggregation.py:503:    sub = _subscriber(mock_assembler, mock_dispatch_source, window_seconds=60)
+novaic-business/tests/test_im_aggregation.py:508:    units = sub._group_for_aggregation(rows)
+novaic-business/tests/test_subagent_state.py:1:"""PR-28 + PR-31b + PR-31c — Tests for Business's subagent state-machine client.
+novaic-business/tests/test_subagent_state.py:4:Entangled; Business's ``transition()`` is now a thin HTTP-client
+novaic-business/tests/test_subagent_state.py:18:The transition matrix itself lives in Entangled. Business tests pin request
+novaic-business/tests/test_subagent_state.py:27:from business.internal.subagent_state import (
+novaic-business/tests/test_subagent_state.py:144:    enum coercion catches them in Business."""
+novaic-business/tests/test_subagent_state.py:153:    breadcrumb log line. Keeps subscriber redeliveries / recovery
+novaic-business/tests/test_subagent_state.py:163:                                  logger="business.internal.subagent_state"):
+novaic-business/tests/test_subagent_state.py:170:    # keeps Business from needing to GET first just to short-circuit.
+novaic-business/tests/test_subagent_state.py:242:        mark_cancelled("sub-1", "a-1", reason="user", actor="business")
+novaic-business/tests/test_subagent_state.py:275:# ``PATCH /internal/entities/subagents/{id}`` must route status writes
+novaic-business/tests/test_subagent_state.py:284:    from business.internal.entity import router
+novaic-business/tests/test_subagent_state.py:293:    app.include_router(router, prefix="/internal")
+novaic-business/tests/test_subagent_state.py:300:    # ``entity.router`` still resolves a store for non-status PATCHes —
+novaic-business/tests/test_subagent_state.py:304:         patch("business.internal.entity.get_entity_store",
+novaic-business/tests/test_subagent_state.py:324:    from business.internal.entity import router
+novaic-business/tests/test_subagent_state.py:334:    app.include_router(router, prefix="/internal")
+novaic-business/tests/test_subagent_state.py:342:         patch("business.internal.entity.get_entity_store",
+novaic-business/tests/test_subagent_state.py:357:    from business.internal.entity import router
+novaic-business/tests/test_subagent_state.py:366:    app.include_router(router, prefix="/internal")
+novaic-business/tests/test_pr116_messages_read_removed.py:7:from business import agent_actions, message_actions, schema_push
+novaic-business/tests/test_pr116_messages_read_removed.py:8:from business.internal import agent as internal_agent
+novaic-business/tests/test_pr116_messages_read_removed.py:9:from business.internal import message as internal_message
+novaic-business/tests/test_pr116_messages_read_removed.py:10:from business.internal import subagent as internal_subagent
+novaic-business/tests/test_pr116_messages_read_removed.py:14:    messages = schema_push.ALL_BUSINESS_ENTITIES["messages"]
+novaic-business/tests/test_pr116_messages_read_removed.py:20:def test_business_message_read_routes_are_not_registered():
+novaic-business/tests/test_pr116_messages_read_removed.py:21:    route_paths = {getattr(route, "path", "") for route in internal_message.router.routes}
+novaic-business/tests/test_pr116_messages_read_removed.py:23:    assert "/chat/clear" not in route_paths
+novaic-business/tests/test_pr116_messages_read_removed.py:26:def test_business_code_does_not_write_chat_messages_read():
+novaic-business/tests/test_schema_invariants.py:9:HTTP 400 while the Queue task still marked "complete" — the exact
+novaic-business/tests/test_schema_invariants.py:15:business schema must carry a ``default=...`` so the mechanism can activate.
+novaic-business/tests/test_schema_invariants.py:18:``messages.agent_id``) are caller-must-provide business invariants with no
+novaic-business/tests/test_schema_invariants.py:36:from business.schema_push import ALL_BUSINESS_ENTITIES, ENTITY_ACTIONS  # noqa: E402
+novaic-business/tests/test_schema_invariants.py:63:    for entity_name, defn in ALL_BUSINESS_ENTITIES.items():
+novaic-business/tests/test_schema_invariants.py:89:    messages = ALL_BUSINESS_ENTITIES["messages"]
+novaic-business/tests/test_schema_invariants.py:100:    subagents = ALL_BUSINESS_ENTITIES["subagents"]
+novaic-business/tests/test_schema_invariants.py:101:    agent_state = ALL_BUSINESS_ENTITIES["agent-state"]
+novaic-business/tests/test_schema_invariants.py:108:def test_business_action_hooks_do_not_use_entangled_crud_reserved_names():
+novaic-business/tests/test_schema_invariants.py:109:    """Business action hooks must not shadow Entangled's built-in CRUD ops."""
+novaic-business/tests/test_schema_invariants.py:119:        "Business action hooks must use product verbs, not Entangled CRUD "
+novaic-business/tests/test_schema_invariants.py:121:        "request routes through the Business action hook.\n  Violations:\n    "
+novaic-business/tests/test_schema_invariants.py:156:def test_all_business_entity_schemas_execute_in_sqlite():
+novaic-business/tests/test_schema_invariants.py:157:    """Business schema definitions must be real Entangled DDL, not just JSON.
+novaic-business/tests/test_schema_invariants.py:166:    for entity_name, defn in ALL_BUSINESS_ENTITIES.items():
+novaic-business/tests/test_pr111_system_prompt_builder.py:8:from business import prompt_builder
+novaic-business/tests/test_pr111_system_prompt_builder.py:9:from business.prompt_builder import (
+novaic-business/tests/test_pr111_system_prompt_builder.py:68:    monkeypatch.setattr("business.prompt_builder.SkillRepository", lambda: _SkillRepo())
+novaic-business/tests/test_pr111_system_prompt_builder.py:118:def test_system_prompt_contract_names_agent_root_not_legacy_prev_blocks(monkeypatch):
+novaic-business/tests/test_pr111_system_prompt_builder.py:153:    assert "Business 可能附加显式产品上下文作为辅助输入" in prompt
+novaic-business/tests/test_pr111_system_prompt_builder.py:186:def test_wake_message_is_business_owned(monkeypatch):
+novaic-business/tests/test_pr111_system_prompt_builder.py:205:    from business.agent_actions import prompts_preview_action
+novaic-business/tests/test_pr111_system_prompt_builder.py:208:    assert "task_queue" not in src
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:5:from business.internal import router as internal_router
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:6:from business.schema_push import ALL_BUSINESS_ENTITIES
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:12:def test_retired_entities_are_not_in_business_schema():
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:15:    assert ALL_BUSINESS_ENTITIES.keys().isdisjoint(retired)
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:16:    assert "growth_log" not in ALL_BUSINESS_ENTITIES["agent-tools"].field_map
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:17:    assert "drive_config" not in ALL_BUSINESS_ENTITIES["agent-tools"].field_map
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:20:def test_retired_internal_routes_are_not_registered():
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:21:    paths = {getattr(route, "path", "") for route in internal_router.routes}
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:46:    assert not (REPO_ROOT / "business" / "internal" / "task.py").exists()
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:49:def test_active_business_code_has_no_retired_entity_writes():
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:63:        REPO_ROOT / "business" / "internal" / "agent.py",
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:64:        REPO_ROOT / "business" / "internal" / "subagent.py",
+novaic-business/tests/test_pr149_retired_agent_selfdrive_surfaces.py:65:        REPO_ROOT / "business" / "schema_push.py",
+novaic-business/tests/test_pr124_subagent_spawn_im.py:4:from business.action_deps import BusinessActionDependencies
+novaic-business/tests/test_pr124_subagent_spawn_im.py:29:    import business.entity_store as entity_store
+novaic-business/tests/test_pr124_subagent_spawn_im.py:36:    from business.internal import subagent as subagent_mod
+novaic-business/tests/test_pr124_subagent_spawn_im.py:82:    from business.internal import subagent as subagent_mod
+novaic-business/tests/test_pr124_subagent_spawn_im.py:86:    deps = BusinessActionDependencies(
+novaic-business/tests/test_pr124_subagent_spawn_im.py:110:def test_spawn_subagent_does_not_append_messages_directly():
+novaic-business/tests/test_pr124_subagent_spawn_im.py:111:    from business.internal import subagent as subagent_mod
+novaic-business/tests/test_pr124_subagent_spawn_im.py:118:def test_agent_scoped_subagent_spawn_route_removed():
+novaic-business/tests/test_pr124_subagent_spawn_im.py:119:    """SubAgent spawn has one canonical Business endpoint."""
+novaic-business/tests/test_pr124_subagent_spawn_im.py:120:    from business.internal import agent as agent_mod
+novaic-business/tests/test_pr124_subagent_spawn_im.py:122:    route_paths = {getattr(route, "path", "") for route in agent_mod.router.routes}
+novaic-business/tests/test_pr124_subagent_spawn_im.py:123:    assert "/agents/{agent_id}/subagent/spawn" not in route_paths
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:1:"""PR-157A — Business owns VM prep action orchestration, not App HTTP."""
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:11:def test_business_registers_vm_prep_actions() -> None:
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:12:    main = (ROOT / "main_business.py").read_text(encoding="utf-8")
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:13:    orchestrator = (ROOT / "business/device_orchestrator.py").read_text(encoding="utf-8")
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:30:def test_business_device_client_routes_vm_prep_to_hardware_api() -> None:
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:31:    device_client = (ROOT / "business/device_client.py").read_text(encoding="utf-8")
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:33:    assert '_hw_post("environment-check"' in device_client
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:34:    assert '_hw_post("cloud-image-check"' in device_client
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:35:    assert '_hw_post("cloud-image-download"' in device_client
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:36:    assert "/api/vm/cloud-image" not in device_client
+novaic-business/tests/test_pr157_device_vm_prep_actions.py:37:    assert "/api/vm/environment" not in device_client
+novaic-business/tests/test_pr144_prompt_memory_boundary.py:3:from business.prompt_builder import build_system_prompt, build_wake_message
+novaic-business/tests/test_pr144_prompt_memory_boundary.py:8:def test_business_prompt_names_product_context_not_memory_or_profile(monkeypatch):
+novaic-business/tests/__init__.py:1:"""Local business test helpers package."""
+novaic-business/tests/test_pr102_message_projection_contract.py:1:"""PR-102 — Business message projection stays a chat transcript only."""
+novaic-business/tests/test_pr102_message_projection_contract.py:5:from business.schema_push import MESSAGES_DEF
+novaic-business/tests/test_pr115_unread_routes_removed.py:1:"""PR-115 — unread zombie routes stay physically removed.
+novaic-business/tests/test_pr115_unread_routes_removed.py:3:These routes used ``messages.read`` as an input queue, which is no longer
+novaic-business/tests/test_pr115_unread_routes_removed.py:4:part of the Cortex minimal context path. Keep this guardrail narrow: Business
+novaic-business/tests/test_pr115_unread_routes_removed.py:13:from business.internal import message as message_module
+novaic-business/tests/test_pr115_unread_routes_removed.py:14:from business.internal.message import router
+novaic-business/tests/test_pr115_unread_routes_removed.py:17:def test_unread_zombie_routes_are_not_registered():
+novaic-business/tests/test_pr115_unread_routes_removed.py:18:    route_paths = {getattr(route, "path", "") for route in router.routes}
+novaic-business/tests/test_pr115_unread_routes_removed.py:27:    assert route_paths.isdisjoint(retired_paths)
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py:1:"""PR-186B — Business Environment hot-path acceptance."""
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py:7:import business.environment as environment_module
+novaic-business/tests/test_pr186_environment_hot_path_acceptance.py:8:from business.environment import EnvironmentRepository, EnvironmentService
+novaic-business/tests/test_pr151_device_binding_contract.py:1:"""PR-151 — Business must expose only canonical device binding shape."""
+novaic-business/tests/test_pr151_device_binding_contract.py:11:def test_business_has_no_mounted_tools_normalization_rpc() -> None:
+novaic-business/tests/test_pr151_device_binding_contract.py:12:    device_client = (ROOT / "business/device_client.py").read_text(encoding="utf-8")
+novaic-business/tests/test_pr151_device_binding_contract.py:13:    schema_push = (ROOT / "business/schema_push.py").read_text(encoding="utf-8")
+novaic-business/tests/test_pr151_device_binding_contract.py:15:    assert "normalize-mounted-tools" not in device_client
+novaic-business/tests/test_pr151_device_binding_contract.py:16:    assert "normalize_mounted_tools" not in device_client
+novaic-business/tests/test_pr117_task_proxy_removed.py:1:"""PR-117 — Business does not proxy Queue TaskManager routes."""
+novaic-business/tests/test_pr117_task_proxy_removed.py:7:from business.internal import router as internal_router
+novaic-business/tests/test_pr117_task_proxy_removed.py:10:def test_queue_taskmanager_proxy_routes_are_not_registered():
+novaic-business/tests/test_pr117_task_proxy_removed.py:11:    route_paths = {getattr(route, "path", "") for route in internal_router.routes}
+novaic-business/tests/test_pr117_task_proxy_removed.py:22:    assert route_paths.isdisjoint(retired_paths)
+novaic-business/tests/test_pr117_task_proxy_removed.py:25:def test_queue_forwarding_helpers_are_not_in_task_module():
+novaic-business/tests/test_pr117_task_proxy_removed.py:26:    import business.internal
+novaic-business/tests/test_pr117_task_proxy_removed.py:28:    source = inspect.getsource(business.internal)
+novaic-business/tests/test_pr117_task_proxy_removed.py:34:        "QUEUE_SERVICE_URL",
+novaic-business/tests/test_assembler_factory.py:3:`get_assembler()` used to read a non-existent `ServiceConfig.BUSINESS_INTERNAL_URL`
+novaic-business/tests/test_assembler_factory.py:4:attribute, silently defaulting to `http://localhost:8200`. In prod business is
+novaic-business/tests/test_assembler_factory.py:6:failed" and aborted the subscriber's dispatch loop.
+novaic-business/tests/test_assembler_factory.py:9:`ServiceConfig.BUSINESS_URL` instead, matching the agent-runtime factory.
+novaic-business/tests/test_assembler_factory.py:19:for rel in ("novaic-common", "novaic-business"):
+novaic-business/tests/test_assembler_factory.py:27:    import business.wake.assembler_factory as factory
+novaic-business/tests/test_assembler_factory.py:34:def test_factory_uses_service_config_business_url(monkeypatch):
+novaic-business/tests/test_assembler_factory.py:36:    import business.wake.assembler_factory as factory
+novaic-business/tests/test_assembler_factory.py:38:    monkeypatch.setattr(ServiceConfig, "BUSINESS_URL", "http://127.0.0.1:19998")
+novaic-business/tests/test_assembler_factory.py:39:    monkeypatch.setattr(ServiceConfig, "QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
+novaic-business/tests/test_assembler_factory.py:48:    resolver_base = assembler._resolver._business_base_url.rstrip("/")
+novaic-business/tests/test_assembler_factory.py:49:    queue_base = assembler._queue_base_url.rstrip("/")
+novaic-business/tests/test_assembler_factory.py:52:        f"resolver must target BUSINESS_URL; got {resolver_base}. "
+novaic-business/tests/test_assembler_factory.py:53:        "Regression: BUSINESS_INTERNAL_URL default dropped dispatch to :8200."
+novaic-business/tests/test_assembler_factory.py:55:    assert queue_base == "http://127.0.0.1:19997"
+novaic-business/tests/test_assembler_factory.py:60:    import business.wake.assembler_factory as factory
+novaic-business/tests/test_assembler_factory.py:62:    monkeypatch.setattr(ServiceConfig, "BUSINESS_URL", "http://127.0.0.1:19998")
+novaic-business/tests/test_assembler_factory.py:63:    monkeypatch.setattr(ServiceConfig, "QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
+novaic-business/tests/test_environment_schema_contracts.py:4:    environment_notification_dispatch_fields,
+novaic-business/tests/test_environment_schema_contracts.py:7:from business.schema_push import ALL_BUSINESS_ENTITIES
+novaic-business/tests/test_environment_schema_contracts.py:13:    assert names <= set(ALL_BUSINESS_ENTITIES)
+novaic-business/tests/test_environment_schema_contracts.py:20:        entity = ALL_BUSINESS_ENTITIES[entity_name]
+novaic-business/tests/test_environment_schema_contracts.py:26:        entity = ALL_BUSINESS_ENTITIES[entity_name]
+novaic-business/tests/test_environment_schema_contracts.py:36:    notifications = ALL_BUSINESS_ENTITIES["environment-notifications"]
+novaic-business/tests/test_environment_schema_contracts.py:45:def test_environment_notification_dispatch_lease_fields_are_registered():
+novaic-business/tests/test_environment_schema_contracts.py:46:    notifications = ALL_BUSINESS_ENTITIES["environment-notifications"]
+novaic-business/tests/test_environment_schema_contracts.py:48:    assert environment_notification_dispatch_fields() <= set(notifications.field_map)
+novaic-business/tests/test_environment_schema_contracts.py:52:    resource_refs = ALL_BUSINESS_ENTITIES["environment-resource-refs"]
+novaic-business/tests/test_environment_schema_contracts.py:60:    resource_refs = ALL_BUSINESS_ENTITIES["environment-resource-refs"]
+novaic-business/tests/test_pr118_subagent_context_removed.py:1:"""PR-118 — deprecated Business subagent_context path stays removed."""
+novaic-business/tests/test_pr118_subagent_context_removed.py:7:from business.internal import subagent as subagent_module
+novaic-business/tests/test_pr118_subagent_context_removed.py:8:from business.internal import subagent_utils
+novaic-business/tests/test_pr118_subagent_context_removed.py:9:from business.internal.subagent import router
+novaic-business/tests/test_pr118_subagent_context_removed.py:12:def test_subagent_context_routes_are_not_registered():
+novaic-business/tests/test_pr118_subagent_context_removed.py:13:    route_paths = {getattr(route, "path", "") for route in router.routes}
+novaic-business/tests/test_pr118_subagent_context_removed.py:15:    assert "/subagents/{agent_id}/{subagent_id}/history" not in route_paths
+novaic-business/tests/test_pr118_subagent_context_removed.py:16:    assert "/subagents/{agent_id}/{subagent_id}/context/append" not in route_paths
+novaic-business/tests/test_pr118_subagent_context_removed.py:17:    assert "/subagents/{agent_id}/{subagent_id}/state-history" in route_paths
+novaic-business/tests/test_pr118_subagent_context_removed.py:20:def test_subagent_context_wrappers_are_not_in_business_code():
+novaic-business/tests/test_agent_delete_cascade.py:3:from business.agent_actions import delete_cascade_action
+novaic-business/tests/test_agent_delete_cascade.py:4:from business.schema_push import ENTITY_ACTIONS
+novaic-business/tests/test_environment_message_actions_projection.py:1:from business import message_actions
+novaic-business/tests/test_environment_message_actions_projection.py:2:from business.action_deps import BusinessActionDependencies
+novaic-business/tests/test_environment_message_actions_projection.py:55:    deps = BusinessActionDependencies(
+novaic-business/tests/test_environment_internal_api.py:4:from business.internal import environment as environment_api
+novaic-business/tests/test_environment_internal_api.py:5:from business.internal.environment import router
+novaic-business/tests/test_environment_internal_api.py:47:    app.include_router(router, prefix="/internal")
+novaic-business/tests/test_environment_internal_api.py:52:def test_environment_im_reply_route(monkeypatch):
+novaic-business/tests/test_environment_internal_api.py:92:def test_environment_im_send_route(monkeypatch):
+novaic-business/tests/test_environment_internal_api.py:130:def test_environment_im_read_route(monkeypatch):
+novaic-business/tests/test_environment_internal_api.py:166:def test_environment_notification_lifecycle_routes(monkeypatch):
+novaic-business/tests/test_pr160_message_content_shape.py:5:from business.internal import message as message_api
+novaic-business/tests/test_pr166c_no_log_payloads.py:5:from business.schema_push import ALL_BUSINESS_ENTITIES, ENTITY_ACTIONS
+novaic-business/tests/test_pr166c_no_log_payloads.py:8:def test_diagnostic_log_entities_absent_from_active_business_schema_and_actions():
+novaic-business/tests/test_pr166c_no_log_payloads.py:9:    assert "log-payloads" not in ALL_BUSINESS_ENTITIES
+novaic-business/tests/test_pr166c_no_log_payloads.py:10:    assert "execution-logs" not in ALL_BUSINESS_ENTITIES
+novaic-business/tests/test_dispatch_subscriber.py:1:"""DispatchSubscriber unit tests — sync-only post PR-34 34d.
+novaic-business/tests/test_dispatch_subscriber.py:6:* ``MagicMock`` for assembler and Environment dispatch source (sync methods).
+novaic-business/tests/test_dispatch_subscriber.py:7:* Direct calls to ``sub._claim_batch()`` / ``sub._deliver_one(row)`` for
+novaic-business/tests/test_dispatch_subscriber.py:10:  by driving the subscriber from a background thread until ``stop()`` is
+novaic-business/tests/test_dispatch_subscriber.py:13:The contract tests below (``assemble_sync`` / ``dispatch_sync`` called,
+novaic-business/tests/test_dispatch_subscriber.py:27:from business.environment import EnvironmentRepository, EnvironmentService
+novaic-business/tests/test_dispatch_subscriber.py:28:from business.subscribers.dispatch_subscriber import DispatchSubscriber, EnvironmentDispatchSource
+novaic-business/tests/test_dispatch_subscriber.py:29:from common.wake.assembler import DispatchResult
+novaic-business/tests/test_dispatch_subscriber.py:30:from common.wake.errors import DispatchError
+novaic-business/tests/test_dispatch_subscriber.py:36:    asm.dispatch_sync.return_value = DispatchResult(
+novaic-business/tests/test_dispatch_subscriber.py:37:        action="wake_start_queued", saga_id=None, scope_id="scope-1",
+novaic-business/tests/test_dispatch_subscriber.py:38:        raw={"action": "wake_start_queued", "scope_id": "scope-1", "outbox_id": "outbox-1"},
+novaic-business/tests/test_dispatch_subscriber.py:44:def mock_dispatch_source():
+novaic-business/tests/test_dispatch_subscriber.py:64:def _subscriber(assembler, dispatch_source, **kwargs):
+novaic-business/tests/test_dispatch_subscriber.py:66:    return DispatchSubscriber(assembler, dispatch_source, **kwargs)
+novaic-business/tests/test_dispatch_subscriber.py:101:def test_claim_batch_returns_rows_on_success(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:102:    mock_dispatch_source.claim_batch.return_value = [_make_row()]
+novaic-business/tests/test_dispatch_subscriber.py:103:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:110:def test_environment_dispatch_source_claims_im_notification_rows():
+novaic-business/tests/test_dispatch_subscriber.py:119:    source = EnvironmentDispatchSource(service, store)
+novaic-business/tests/test_dispatch_subscriber.py:121:        worker_id="subscriber-1",
+novaic-business/tests/test_dispatch_subscriber.py:136:    assert note.dispatch_claim_id == "subscriber-1"
+novaic-business/tests/test_dispatch_subscriber.py:140:def test_environment_dispatch_source_ack_blocks_redelivery_but_keeps_runtime_claim():
+novaic-business/tests/test_dispatch_subscriber.py:149:    source = EnvironmentDispatchSource(service, store)
+novaic-business/tests/test_dispatch_subscriber.py:151:        worker_id="subscriber-1",
+novaic-business/tests/test_dispatch_subscriber.py:158:    source.mark_dispatched([msg.message_id], agent_id="agt_1")
+novaic-business/tests/test_dispatch_subscriber.py:162:    assert acked.dispatch_claim_id == "delivered:subscriber"
+novaic-business/tests/test_dispatch_subscriber.py:163:    assert service.list_dispatchable_notifications(
+novaic-business/tests/test_dispatch_subscriber.py:177:def test_deliver_one_marks_dispatched_on_success(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:178:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:182:    mock_assembler.dispatch_sync.assert_called_once()
+novaic-business/tests/test_dispatch_subscriber.py:184:    mock_dispatch_source.mark_dispatched.assert_called_once_with([7], agent_id="agt_1")
+novaic-business/tests/test_dispatch_subscriber.py:187:def test_deliver_one_transient_failure_records_error(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:188:    mock_assembler.dispatch_sync.side_effect = DispatchError(
+novaic-business/tests/test_dispatch_subscriber.py:189:        kind="queue_5xx", msg="Service Unavailable",
+novaic-business/tests/test_dispatch_subscriber.py:191:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:194:    mock_dispatch_source.mark_failed.assert_called_once_with(
+novaic-business/tests/test_dispatch_subscriber.py:197:        kind="queue_5xx",
+novaic-business/tests/test_dispatch_subscriber.py:203:def test_deliver_one_permanent_failure_marks_permanent(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:204:    mock_assembler.dispatch_sync.side_effect = DispatchError(
+novaic-business/tests/test_dispatch_subscriber.py:207:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:210:    mock_dispatch_source.mark_failed.assert_called_once_with(
+novaic-business/tests/test_dispatch_subscriber.py:219:def test_deliver_one_passes_idempotency_key(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:220:    """Regression: subscriber MUST pass ``msg:{message_id}`` as idempotency_key.
+novaic-business/tests/test_dispatch_subscriber.py:222:    Shared with the dispatch dedup ledger — if this drifts, duplicate
+novaic-business/tests/test_dispatch_subscriber.py:223:    dispatch is only caught by the session coordinator (``action=buffered``) instead
+novaic-business/tests/test_dispatch_subscriber.py:227:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:234:def test_deliver_one_routes_subagent_send_to_payload_subagent(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:236:    the canonical target session for Runtime dispatch.
+novaic-business/tests/test_dispatch_subscriber.py:245:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:258:def test_claim_backoff_rate_limited_logging(mock_assembler, mock_dispatch_source, caplog):
+novaic-business/tests/test_dispatch_subscriber.py:265:    mock_dispatch_source.claim_batch.side_effect = RuntimeError("environment unavailable")
+novaic-business/tests/test_dispatch_subscriber.py:267:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:268:    caplog.set_level(logging.DEBUG, logger="business.subscribers.dispatch_subscriber")
+novaic-business/tests/test_dispatch_subscriber.py:284:def test_run_stops_promptly_on_event_set(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:289:    immediately on set(), so the worst-case exit latency is one in-flight
+novaic-business/tests/test_dispatch_subscriber.py:292:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.1)
+novaic-business/tests/test_dispatch_subscriber.py:301:def test_run_iterates_and_marks_dispatched(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:302:    """End-to-end: one notification claimed → assemble_sync + dispatch_sync + mark dispatched.
+novaic-business/tests/test_dispatch_subscriber.py:308:    mock_dispatch_source.claim_batch.side_effect = [[row], [], [], []]
+novaic-business/tests/test_dispatch_subscriber.py:310:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:319:    mock_assembler.dispatch_sync.assert_called_once()
+novaic-business/tests/test_dispatch_subscriber.py:320:    mock_dispatch_source.mark_dispatched.assert_called_with([11], agent_id="agt_1")
+novaic-business/tests/test_dispatch_subscriber.py:331:    assert not inspect.iscoroutinefunction(DispatchSubscriber.run), (
+novaic-business/tests/test_dispatch_subscriber.py:332:        "DispatchSubscriber.run must stay sync — async would reintroduce the "
+novaic-business/tests/test_dispatch_subscriber.py:335:    assert not inspect.iscoroutinefunction(DispatchSubscriber._claim_batch)
+novaic-business/tests/test_dispatch_subscriber.py:336:    assert not inspect.iscoroutinefunction(DispatchSubscriber._deliver_one)
+novaic-business/tests/test_dispatch_subscriber.py:337:    assert not inspect.iscoroutinefunction(DispatchSubscriber._mark_dispatched)
+novaic-business/tests/test_dispatch_subscriber.py:338:    assert not inspect.iscoroutinefunction(DispatchSubscriber._mark_failed)
+novaic-business/tests/test_dispatch_subscriber.py:342:    """The subscriber module must not carry any asyncio surface.
+novaic-business/tests/test_dispatch_subscriber.py:344:    Direct regression test for the §C.1 "no async outside FastAPI edge"
+novaic-business/tests/test_dispatch_subscriber.py:348:    import business.subscribers.dispatch_subscriber as mod
+novaic-business/tests/test_dispatch_subscriber.py:350:        "dispatch_subscriber.py re-imported asyncio after PR-34 34d — see "
+novaic-business/tests/test_dispatch_subscriber.py:355:def test_subscriber_has_no_message_lifecycle_probe_path():
+novaic-business/tests/test_dispatch_subscriber.py:356:    import business.subscribers.dispatch_subscriber as mod
+novaic-business/tests/test_dispatch_subscriber.py:358:    source = inspect.getsource(mod.DispatchSubscriber)
+novaic-business/tests/test_dispatch_subscriber.py:369:# ─── main_subscriber.py subprocess entry smoke test ─────────────────────
+novaic-business/tests/test_dispatch_subscriber.py:372:# ── PR-168C (2026-05-02) — subscriber is not input owner ─────────────────────
+novaic-business/tests/test_dispatch_subscriber.py:376:    """Build an assembler mock that returns a buffered DispatchResult.
+novaic-business/tests/test_dispatch_subscriber.py:377:    ``scope_id=None`` keeps the old response shape covered, but Subscriber
+novaic-business/tests/test_dispatch_subscriber.py:378:    must not write Cortex input ownership in either case."""
+novaic-business/tests/test_dispatch_subscriber.py:380:    # assemble_sync returns an object with a .user_id attribute; Subscriber
+novaic-business/tests/test_dispatch_subscriber.py:385:    asm.dispatch_sync.return_value = DispatchResult(
+novaic-business/tests/test_dispatch_subscriber.py:394:def test_subscriber_constructor_has_no_cortex_dependency():
+novaic-business/tests/test_dispatch_subscriber.py:395:    """Subscriber only drains Environment notifications into Queue triggers.
+novaic-business/tests/test_dispatch_subscriber.py:400:    signature = inspect.signature(DispatchSubscriber)
+novaic-business/tests/test_dispatch_subscriber.py:405:def test_subscriber_worker_id_provider_is_explicit(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:406:    sub = DispatchSubscriber(
+novaic-business/tests/test_dispatch_subscriber.py:408:        mock_dispatch_source,
+novaic-business/tests/test_dispatch_subscriber.py:416:def test_dispatch_results_do_not_transition_messages_in_subscriber(mock_assembler, mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:418:    ``session.init``. Subscriber must not call message transition endpoints
+novaic-business/tests/test_dispatch_subscriber.py:419:    for queued/buffered/deduped dispatch results."""
+novaic-business/tests/test_dispatch_subscriber.py:420:    sub = _subscriber(mock_assembler, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:422:    mock_dispatch_source.mark_failed.assert_not_called()
+novaic-business/tests/test_dispatch_subscriber.py:425:    sub = _subscriber(buffered, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:427:    mock_dispatch_source.mark_failed.assert_not_called()
+novaic-business/tests/test_dispatch_subscriber.py:432:    asm.dispatch_sync.return_value = DispatchResult(
+novaic-business/tests/test_dispatch_subscriber.py:436:    sub = _subscriber(asm, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:438:    mock_dispatch_source.mark_failed.assert_not_called()
+novaic-business/tests/test_dispatch_subscriber.py:441:def test_subscriber_stays_functional_without_cortex_dependency(mock_dispatch_source):
+novaic-business/tests/test_dispatch_subscriber.py:442:    """Buffered dispatches must not need any Cortex-side write access."""
+novaic-business/tests/test_dispatch_subscriber.py:444:    sub = _subscriber(asm, mock_dispatch_source, poll_interval=0.01)
+novaic-business/tests/test_dispatch_subscriber.py:446:    mock_dispatch_source.mark_dispatched.assert_called_once()
+novaic-business/tests/test_dispatch_subscriber.py:449:def test_main_subscriber_module_imports_clean():
+novaic-business/tests/test_dispatch_subscriber.py:450:    """main_subscriber.py must be importable without running.
+novaic-business/tests/test_dispatch_subscriber.py:453:    ``import main_subscriber`` is side-effect-free (no argparse, no logging
+novaic-business/tests/test_dispatch_subscriber.py:461:    _sys.modules.pop("main_subscriber", None)
+novaic-business/tests/test_dispatch_subscriber.py:462:    mod = importlib.import_module("main_subscriber")
+novaic-business/tests/test_dispatch_subscriber.py:463:    assert hasattr(mod, "main"), "main_subscriber.py must expose main() for start.sh"

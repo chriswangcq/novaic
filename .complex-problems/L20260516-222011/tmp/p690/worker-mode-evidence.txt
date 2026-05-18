@@ -1,0 +1,382 @@
+novaic-agent-runtime/main_novaic.py:21:    novaic-backend gateway --host HOST --port PORT --data-dir PATH --queue-service-url URL --vmcontrol-url URL --blob-service-url URL
+novaic-agent-runtime/main_novaic.py:22:    novaic-backend queue-service --host HOST --port PORT --data-dir PATH
+novaic-agent-runtime/main_novaic.py:23:    novaic-backend task-worker --queue-service-url URL --num-workers N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:24:    novaic-backend saga-worker --queue-service-url URL --max-concurrent N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:25:    novaic-backend session-outbox-worker --data-dir PATH
+novaic-agent-runtime/main_novaic.py:26:    novaic-backend saga-outbox-worker --data-dir PATH
+novaic-agent-runtime/main_novaic.py:27:    novaic-backend health --queue-service-url URL --task-timeout N --saga-timeout N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:28:    novaic-backend scheduler --business-url URL --queue-service-url URL --data-dir PATH
+novaic-agent-runtime/main_novaic.py:38:# (task/saga/health/scheduler + queue_service when launched here) pick
+novaic-agent-runtime/main_novaic.py:55:    novaic-backend queue-service [options] Queue Service (Task/Saga 队列)
+novaic-agent-runtime/main_novaic.py:56:    novaic-backend task-worker [options]   Task Worker (任务执行)
+novaic-agent-runtime/main_novaic.py:57:    novaic-backend saga-worker [options]   Saga Worker (流程编排)
+novaic-agent-runtime/main_novaic.py:58:    novaic-backend session-outbox-worker [options] Session Outbox Worker (session durable side effects)
+novaic-agent-runtime/main_novaic.py:59:    novaic-backend saga-outbox-worker [options] Saga Outbox Worker (saga durable compensation effects)
+novaic-agent-runtime/main_novaic.py:60:    novaic-backend health [options]        Health Worker (超时回收)
+novaic-agent-runtime/main_novaic.py:61:    novaic-backend scheduler [options]     Scheduler Worker (定时唤醒)
+novaic-agent-runtime/main_novaic.py:65:    novaic-backend queue-service --host 127.0.0.1 --port 19997 --data-dir /Users/me/.novaic
+novaic-agent-runtime/main_novaic.py:66:    novaic-backend gateway --host 127.0.0.1 --port 19999 --data-dir /Users/me/.novaic --queue-service-url http://127.0.0.1:19997 --vmcontrol-url http://127.0.0.1:19996 --blob-service-url http://127.0.0.1:19995
+novaic-agent-runtime/main_novaic.py:67:    novaic-backend task-worker --queue-service-url http://127.0.0.1:19997 --num-workers 5 --data-dir /Users/me/.novaic
+novaic-agent-runtime/main_novaic.py:80:    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+novaic-agent-runtime/main_novaic.py:138:def run_worker_mode_if_registered(mode: str, argv: list[str]) -> bool:
+novaic-agent-runtime/main_novaic.py:233:                    f"http://{args.host}:{args.port}/api/health",
+novaic-agent-runtime/main_novaic.py:339:    elif mode == "queue-service":
+novaic-agent-runtime/main_novaic.py:341:    elif run_worker_mode_if_registered(mode, sys.argv[1:]):
+novaic-agent-runtime/queue_service/main.py:34:LOG_FILE = os.path.join(LOG_DIR, f"queue-service-{datetime.utcnow().strftime('%Y%m%d')}.log")
+novaic-agent-runtime/queue_service/main.py:37:# so ``rg scope_id=$SID queue-service*.log`` works cross-service.
+novaic-agent-runtime/queue_service/main.py:108:# ``X-Internal-Key``. ``/health`` and ``/`` remain open for LB probes.
+novaic-agent-runtime/queue_service/main.py:110:_QUEUE_PUBLIC_PATHS = ("/health", "/ready", "/")
+novaic-agent-runtime/queue_service/main.py:224:@app.get("/health")
+novaic-agent-runtime/queue_service/main.py:225:def health_check():
+novaic-agent-runtime/queue_service/main.py:228:        "status": "healthy",
+novaic-agent-runtime/queue_service/main.py:229:        "service": "queue-service",
+novaic-agent-runtime/queue_service/main.py:237:    """Readiness probe — deep health (P3-8).
+novaic-agent-runtime/queue_service/main.py:309:        "service": "queue-service",
+novaic-agent-runtime/queue_service/main.py:327:            "health": "/health",
+novaic-agent-runtime/queue_service/worker/generic_worker.py:4:is a task, saga, outbox effect, scheduler tick, or health tick.
+novaic-agent-runtime/queue_service/saga_repo.py:1149:    Saga lifecycle coordinator for queue-service-owned failure handling.
+novaic-agent-runtime/main_novaic.py:21:    novaic-backend gateway --host HOST --port PORT --data-dir PATH --queue-service-url URL --vmcontrol-url URL --blob-service-url URL
+novaic-agent-runtime/main_novaic.py:22:    novaic-backend queue-service --host HOST --port PORT --data-dir PATH
+novaic-agent-runtime/main_novaic.py:23:    novaic-backend task-worker --queue-service-url URL --num-workers N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:24:    novaic-backend saga-worker --queue-service-url URL --max-concurrent N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:25:    novaic-backend session-outbox-worker --data-dir PATH
+novaic-agent-runtime/main_novaic.py:26:    novaic-backend saga-outbox-worker --data-dir PATH
+novaic-agent-runtime/main_novaic.py:27:    novaic-backend health --queue-service-url URL --task-timeout N --saga-timeout N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:28:    novaic-backend scheduler --business-url URL --queue-service-url URL --data-dir PATH
+novaic-agent-runtime/main_novaic.py:38:# (task/saga/health/scheduler + queue_service when launched here) pick
+novaic-agent-runtime/main_novaic.py:55:    novaic-backend queue-service [options] Queue Service (Task/Saga 队列)
+novaic-agent-runtime/main_novaic.py:56:    novaic-backend task-worker [options]   Task Worker (任务执行)
+novaic-agent-runtime/main_novaic.py:57:    novaic-backend saga-worker [options]   Saga Worker (流程编排)
+novaic-agent-runtime/main_novaic.py:58:    novaic-backend session-outbox-worker [options] Session Outbox Worker (session durable side effects)
+novaic-agent-runtime/main_novaic.py:59:    novaic-backend saga-outbox-worker [options] Saga Outbox Worker (saga durable compensation effects)
+novaic-agent-runtime/main_novaic.py:60:    novaic-backend health [options]        Health Worker (超时回收)
+novaic-agent-runtime/main_novaic.py:61:    novaic-backend scheduler [options]     Scheduler Worker (定时唤醒)
+novaic-agent-runtime/main_novaic.py:65:    novaic-backend queue-service --host 127.0.0.1 --port 19997 --data-dir /Users/me/.novaic
+novaic-agent-runtime/main_novaic.py:66:    novaic-backend gateway --host 127.0.0.1 --port 19999 --data-dir /Users/me/.novaic --queue-service-url http://127.0.0.1:19997 --vmcontrol-url http://127.0.0.1:19996 --blob-service-url http://127.0.0.1:19995
+novaic-agent-runtime/main_novaic.py:67:    novaic-backend task-worker --queue-service-url http://127.0.0.1:19997 --num-workers 5 --data-dir /Users/me/.novaic
+novaic-agent-runtime/main_novaic.py:80:    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+novaic-agent-runtime/main_novaic.py:138:def run_worker_mode_if_registered(mode: str, argv: list[str]) -> bool:
+novaic-agent-runtime/main_novaic.py:233:                    f"http://{args.host}:{args.port}/api/health",
+novaic-agent-runtime/main_novaic.py:339:    elif mode == "queue-service":
+novaic-agent-runtime/main_novaic.py:341:    elif run_worker_mode_if_registered(mode, sys.argv[1:]):
+novaic-agent-runtime/task_queue/workers/command_specs.py:65:class WorkerRegistry:
+novaic-agent-runtime/task_queue/workers/scheduled_wake.py:12:from task_queue.workers.scheduler_action_specs import (
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:23:    "task-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:24:    "saga-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:25:    "session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:26:    "saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:27:    "health",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:28:    "scheduler",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:34:        label="task-worker control",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:35:        pattern="main_novaic.py task-worker .*--pool control",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:37:        log_files=("task-worker-control-1.log", "task-worker-control-2.log"),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:39:            '$PY $MAIN task-worker $TASK_WORKER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:41:            '>> "$LOG_DIR/task-worker-control-1.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:42:            '$PY $MAIN task-worker $TASK_WORKER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:44:            '>> "$LOG_DIR/task-worker-control-2.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:48:        label="task-worker execution",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:49:        pattern="main_novaic.py task-worker .*--pool execution",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:51:        log_files=("task-worker-execution-1.log", "task-worker-execution-2.log"),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:53:            '$PY $MAIN task-worker $TASK_WORKER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:55:            '>> "$LOG_DIR/task-worker-execution-1.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:56:            '$PY $MAIN task-worker $TASK_WORKER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:58:            '>> "$LOG_DIR/task-worker-execution-2.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:62:        label="saga-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:63:        pattern="main_novaic.py saga-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:65:        log_files=("saga-worker-1.log", "saga-worker-2.log"),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:67:            '$PY $MAIN saga-worker $SAGA_WORKER_ARGS --max-concurrent 4 '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:68:            '>> "$LOG_DIR/saga-worker-1.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:69:            '$PY $MAIN saga-worker $SAGA_WORKER_ARGS --max-concurrent 4 '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:70:            '>> "$LOG_DIR/saga-worker-2.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:74:        label="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:75:        pattern="main_novaic.py session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:77:        log_files=("session-outbox-worker.log",),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:79:            '$PY $MAIN session-outbox-worker --data-dir "$DATA_DIR" '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:80:            '>> "$LOG_DIR/session-outbox-worker.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:84:        label="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:85:        pattern="main_novaic.py saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:87:        log_files=("saga-outbox-worker.log",),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:89:            '$PY $MAIN saga-outbox-worker --data-dir "$DATA_DIR" '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:90:            '>> "$LOG_DIR/saga-outbox-worker.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:94:        label="health",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:95:        pattern="main_novaic.py health",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:97:        log_files=("health.log",),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:99:            '$PY $MAIN health --queue-service-url "$QS_URL" --data-dir "$DATA_DIR" '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:100:            '>> "$LOG_DIR/health.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:104:        label="scheduler",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:105:        pattern="main_novaic.py scheduler",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:107:        log_files=("scheduler.log",),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:109:            '$PY $MAIN scheduler $SCHEDULER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:110:            '>> "$LOG_DIR/scheduler.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:127:            '--queue-service-url "$QS_URL" '
+novaic-agent-runtime/task_queue/workers/health_effects.py:25:            "health.recover_all": self._recover_all,
+novaic-agent-runtime/task_queue/workers/health_effects.py:40:                service_name="runtime-health",
+novaic-agent-runtime/task_queue/workers/health_action_specs.py:1:"""Pure health recovery action specs."""
+novaic-agent-runtime/task_queue/workers/health_action_specs.py:31:        "health.recover_all",
+novaic-agent-runtime/task_queue/workers/scheduler_effects.py:23:            "scheduler.get_due_for_wake": self._get_due_for_wake,
+novaic-agent-runtime/task_queue/workers/scheduler_effects.py:24:            "scheduler.dispatch_wake": self._dispatch_wake,
+novaic-agent-runtime/task_queue/workers/registry.py:11:    WorkerRegistry,
+novaic-agent-runtime/task_queue/workers/registry.py:17:    assemble_health_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:20:    assemble_scheduler_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:26:def build_runtime_worker_registry() -> WorkerRegistry:
+novaic-agent-runtime/task_queue/workers/registry.py:29:    return WorkerRegistry(_runtime_worker_commands())
+novaic-agent-runtime/task_queue/workers/registry.py:34:        "task-worker": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:35:            mode="task-worker",
+novaic-agent-runtime/task_queue/workers/registry.py:39:                WorkerOption(("--queue-service-url",), default=config_default("QUEUE_SERVICE_URL"), help="Queue Service URL"),
+novaic-agent-runtime/task_queue/workers/registry.py:52:        "saga-worker": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:53:            mode="saga-worker",
+novaic-agent-runtime/task_queue/workers/registry.py:56:                WorkerOption(("--queue-service-url",), default=config_default("QUEUE_SERVICE_URL"), help="Queue Service URL"),
+novaic-agent-runtime/task_queue/workers/registry.py:63:        "session-outbox-worker": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:64:            mode="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/registry.py:73:        "saga-outbox-worker": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:74:            mode="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/registry.py:83:        "health": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:84:            mode="health",
+novaic-agent-runtime/task_queue/workers/registry.py:87:                WorkerOption(("--queue-service-url",), default=config_default("QUEUE_SERVICE_URL"), help="Queue Service URL"),
+novaic-agent-runtime/task_queue/workers/registry.py:94:            build_process=assemble_health_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:96:        "scheduler": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:97:            mode="scheduler",
+novaic-agent-runtime/task_queue/workers/registry.py:101:                WorkerOption(("--queue-service-url",), default=config_default("QUEUE_SERVICE_URL"), help="Queue Service URL"),
+novaic-agent-runtime/task_queue/workers/registry.py:107:            build_process=assemble_scheduler_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:114:    registry: WorkerRegistry,
+novaic-agent-runtime/task_queue/workers/__init__.py:11:from .health_worker import HealthRecoveryHandler
+novaic-agent-runtime/task_queue/workers/__init__.py:12:from .scheduler_worker import ScheduledWakeHandler
+novaic-agent-runtime/task_queue/workers/task_worker.py:34:    name = "task-worker"
+novaic-agent-runtime/task_queue/workers/scheduler_worker.py:17:    name = "scheduler"
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:1:"""Process-wide DispatchAssembler factory for the runtime scheduler worker."""
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:28:        service_name="runtime-scheduler",
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:16:    assemble_health_worker as _assemble_health_worker,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:19:    assemble_scheduler_worker as _assemble_scheduler_worker,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:36:    WorkerAssemblySpec(mode="task-worker", build_process=_assemble_task_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:37:    WorkerAssemblySpec(mode="saga-worker", build_process=_assemble_saga_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:38:    WorkerAssemblySpec(mode="session-outbox-worker", build_process=_assemble_session_outbox_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:39:    WorkerAssemblySpec(mode="saga-outbox-worker", build_process=_assemble_saga_outbox_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:40:    WorkerAssemblySpec(mode="health", build_process=_assemble_health_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:41:    WorkerAssemblySpec(mode="scheduler", build_process=_assemble_scheduler_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:67:    return assemble_worker_process("task-worker", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:74:    return assemble_worker_process("saga-worker", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:81:    return assemble_worker_process("session-outbox-worker", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:88:    return assemble_worker_process("saga-outbox-worker", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:91:def assemble_health_worker(
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:95:    return assemble_worker_process("health", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:98:def assemble_scheduler_worker(
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:102:    return assemble_worker_process("scheduler", args, deps)
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:63:    deps.setup_worker_logging("task-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:75:    deps.printer(f"[task-worker] Pool={args.pool}, subscribed to {len(topics)} topics: {sorted(topics)}")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:77:    bundle = WorkerRuntimeBundle.system("task-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:134:        label="task-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:137:            "[task-worker] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:138:            f"[task-worker] Worker ID: {worker_id}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:139:            f"[task-worker] Pool: {args.pool}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:140:            f"[task-worker] Business URL: {args.business_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:141:            f"[task-worker] Queue Service URL: {args.queue_service_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:142:            f"[task-worker] Num workers: {args.num_workers} (reserved)",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:158:    deps.setup_worker_logging("saga-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:174:    bundle = WorkerRuntimeBundle.system("saga-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:203:        deps.printer(f"[saga-worker] Registered: {saga_def.name} ({len(saga_def.steps)} steps)")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:223:        label="saga-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:226:            "[saga-worker] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:227:            f"[saga-worker] Worker ID: {worker_id}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:228:            f"[saga-worker] Queue Service URL: {args.queue_service_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:229:            f"[saga-worker] Saga types: {saga_types}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:230:            f"[saga-worker] Max concurrent: {args.max_concurrent}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:246:    deps.setup_worker_logging("session-outbox-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:267:        label="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:300:        log_error=lambda message: logging.getLogger("session-outbox-worker").error(message),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:307:        reporter=result_logging_reporter(runtime=runtime, label="session-outbox-worker"),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:308:        name="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:311:        label="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:314:            "[session-outbox-worker] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:315:            f"[session-outbox-worker] Database: {db_path}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:316:            f"[session-outbox-worker] Batch size: {args.batch_size}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:317:            f"[session-outbox-worker] Poll interval: {args.poll_interval}s",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:333:    deps.setup_worker_logging("saga-outbox-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:353:        label="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:381:        log_error=lambda message: logging.getLogger("saga-outbox-worker").error(message),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:388:        reporter=result_logging_reporter(runtime=runtime, label="saga-outbox-worker"),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:389:        name="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:392:        label="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:395:            "[saga-outbox-worker] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:396:            f"[saga-outbox-worker] Database: {db_path}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:397:            f"[saga-outbox-worker] Batch size: {args.batch_size}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:398:            f"[saga-outbox-worker] Poll interval: {args.poll_interval}s",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:405:def assemble_health_worker(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:414:    deps.setup_worker_logging("health")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:415:    cfg.log_startup_snapshot(logging.getLogger("health"))
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:418:    from task_queue.workers.health_effects import HealthRecoveryEffectAdapter
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:419:    from task_queue.workers.health_recovery import HealthRecoveryEngine, HealthWorkerMetrics
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:420:    from task_queue.workers.health_worker import HEALTH_RECOVERY_TICK_JOB, HealthRecoveryHandler
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:422:    bundle = WorkerRuntimeBundle.system("health-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:426:    health_effects = HealthRecoveryEffectAdapter(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:431:        effect_executor=health_effects.executor(),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:456:        deps.printer(f"[health] /metrics listening on http://{args.metrics_host}:{args.metrics_port}")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:459:        health_effects.close()
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:467:        label="health",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:470:            "[health] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:471:            f"[health] Worker ID: {worker_id}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:472:            f"[health] Queue Service URL: {args.queue_service_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:479:def assemble_scheduler_worker(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:488:    deps.setup_worker_logging("scheduler")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:489:    cfg.log_startup_snapshot(logging.getLogger("scheduler"))
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:493:    from task_queue.workers.scheduler_effects import ScheduledWakeEffectAdapter
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:495:    from task_queue.workers.scheduler_worker import SCHEDULED_WAKE_TICK_JOB, ScheduledWakeHandler
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:498:    bundle = WorkerRuntimeBundle.system("scheduler")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:503:        service_name="runtime-scheduler",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:510:    scheduler_effects = ScheduledWakeEffectAdapter(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:516:        effect_executor=scheduler_effects.executor(),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:539:        deps.printer(f"[scheduler] /metrics listening on http://{args.metrics_host}:{args.metrics_port}")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:550:        label="scheduler",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:553:            "[scheduler] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:554:            f"[scheduler] Worker ID: {worker_id}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:555:            f"[scheduler] Business URL: {args.business_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:556:            f"[scheduler] Queue Service URL: {args.queue_service_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:557:            f"[scheduler] Check interval: {cfg.SCHEDULER_POLL_INTERVAL_SECONDS}s",
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:20:def test_scheduler_wake_metadata_does_not_promote_last_scope_id():
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:33:def test_health_worker_no_longer_has_continuity_resolver():
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:34:    from task_queue.workers.health_worker import HealthRecoveryHandler
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py:54:    assert worker.name == "saga-worker"
+novaic-agent-runtime/tests/test_pr334_worker_process_runner.py:75:    assert main_novaic.run_worker_mode_if_registered("task-worker", ["--help"]) is True
+novaic-agent-runtime/tests/test_pr334_worker_process_runner.py:76:    assert calls == [(registry, "task-worker", ["--help"], deps)]
+novaic-agent-runtime/tests/test_pr334_worker_process_runner.py:84:    assert main_novaic.run_worker_mode_if_registered("unknown", []) is False
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:23:        worker_id_provider=lambda: "saga-worker-test",
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:38:        worker_id="saga-worker-test",
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:45:        worker_id="saga-worker-test",
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:108:        worker_id="saga-worker-test",
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:25:    return WorkerEffect("scheduler.get_due_for_wake")
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:47:        "scheduler.dispatch_wake",
+novaic-agent-runtime/task_queue/workers/health_worker.py:4:from task_queue.workers.health_recovery import HealthRecoveryEngine, HealthWorkerMetrics
+novaic-agent-runtime/task_queue/workers/health_worker.py:7:HEALTH_RECOVERY_TICK_JOB = WorkerJobSpec(kind="health_recovery")
+novaic-agent-runtime/task_queue/workers/health_worker.py:11:    """Typed health recovery tick boundary.
+novaic-agent-runtime/task_queue/workers/health_worker.py:18:    name = "health-worker"
+novaic-agent-runtime/task_queue/workers/health_recovery.py:10:from task_queue.workers.health_action_specs import (
+novaic-agent-runtime/task_queue/workers/saga_worker.py:30:    name = "saga-worker"
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:9:    Path("task_queue/workers/health_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:10:    Path("task_queue/workers/scheduler_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:52:    "health-worker-" + "sync",
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:53:    "scheduler-" + "sync",
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:107:def test_health_and_scheduler_handlers_do_not_construct_action_clients_or_engines():
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:127:        Path("task_queue/workers/health_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:128:        Path("task_queue/workers/scheduler_worker.py"),
+novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py:165:        w = _make_worker("task-worker", client=client)
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:20:        worker_id_provider=lambda: "task-worker-test",
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:29:        worker_id="task-worker-test",
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:119:    assert 'mode="task-worker", build_process=_assemble_task_worker' in assembly_registry_source
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:120:    assert 'assemble_worker_process("task-worker", args, deps)' in assembly_registry_source
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:1:"""PR-328 - health worker uses generic tick substrate."""
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:6:from task_queue.workers.health_recovery import HealthRecoveryEngine, HealthWorkerMetrics
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:7:from task_queue.workers.health_worker import HEALTH_RECOVERY_TICK_JOB, HealthRecoveryHandler
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:17:        worker_id_provider=lambda: "health-sync-test",
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:27:            "health.recover_all": lambda _effect: {
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:34:        worker_id="health-test",
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:41:        worker_id="health-test",
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:47:def test_health_worker_lifecycle_is_component_assembly_owned():
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:48:    handler_source = Path("task_queue/workers/health_worker.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:62:    assert "build_process=assemble_health_worker" in registry_source
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:70:def test_health_handler_returns_worker_result(monkeypatch):
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:78:    result = worker.handle(HEALTH_RECOVERY_TICK_JOB.build(id="health-test"))
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:85:def test_health_handler_rejects_wrong_job_kind():
+novaic-agent-runtime/tests/test_pr340_assembly_helpers.py:128:        "task_queue.workers.health_recovery",
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:1:"""Scheduler and health action specs are explicit pure helpers."""
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:8:from task_queue.workers.health_action_specs import (
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:12:from task_queue.workers.scheduler_action_specs import (
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:22:def test_scheduler_scan_effect_is_explicit():
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:25:    assert effect.kind == "scheduler.get_due_for_wake"
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:39:    assert effect.kind == "scheduler.dispatch_wake"
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:139:def test_health_recover_all_effect_is_explicit():
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:142:    assert effect.kind == "health.recover_all"
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:146:def test_health_recovery_snapshot_normalizes_success_and_failure():
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:14:    RUNTIME_ROOT / "task_queue/workers/health_worker.py",
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:15:    RUNTIME_ROOT / "task_queue/workers/scheduler_worker.py",
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:49:    assert "run_worker_mode_if_registered(mode, sys.argv[1:])" in main_novaic
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:65:    assert "session-outbox-worker" in source
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:66:    assert "saga-outbox-worker" in source
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:73:    assert "health_worker_sync" not in source
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:74:    assert "scheduler_worker_sync" not in source
+novaic-agent-runtime/tests/test_pr339_worker_startup_db_retry.py:38:        label="saga-outbox-worker",
+novaic-agent-runtime/tests/test_pr339_worker_startup_db_retry.py:50:        "[saga-outbox-worker] Queue DB locked during startup; retry 1/5",
+novaic-agent-runtime/tests/test_pr339_worker_startup_db_retry.py:51:        "[saga-outbox-worker] Queue DB locked during startup; retry 2/5",
+novaic-agent-runtime/tests/test_pr339_worker_startup_db_retry.py:62:            label="session-outbox-worker",
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:21:    assert 'assemble_worker_process("session-outbox-worker", args, deps)' in wrapper_section
+novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py:70:        "$PY $MAIN session-outbox-worker",
+novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py:71:        "$PY $MAIN saga-outbox-worker",
+novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py:72:        "$PY $MAIN health",
+novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py:73:        "$PY $MAIN scheduler",
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:43:        claimed_saga = saga_repo.claim(["test_saga"], "saga-worker")
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:28:    assert "run_worker_mode_if_registered(mode, sys.argv[1:])" in main_source
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:30:    assert 'mode="session-outbox-worker"' in registry_source
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:45:    assert any("$MAIN session-outbox-worker" in command for command in runtime_launch_commands())
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:46:    assert "session-outbox-worker.log" in runtime_log_files()
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:48:        role.label == "session-outbox-worker"
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:49:        and role.pattern == "main_novaic.py session-outbox-worker"
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:17:from task_queue.workers.scheduler_effects import ScheduledWakeEffectAdapter
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:19:from task_queue.workers.scheduler_worker import ScheduledWakeHandler
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:43:        worker_id="scheduler-test",
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:48:        worker_id="scheduler-test",
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:68:def test_scheduler_worker_sync_dispatch(mock_assembler):
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:100:def test_scheduler_worker_counts_pending_wake_as_queued_success():
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:142:    import task_queue.workers.scheduler_worker as mod
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:144:        "scheduler_worker.py must not import asyncio after PR-34 34e "
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:1:"""PR-329 - scheduler worker uses generic tick substrate."""
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:8:from task_queue.workers.scheduler_effects import ScheduledWakeEffectAdapter
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:10:from task_queue.workers.scheduler_worker import SCHEDULED_WAKE_TICK_JOB, ScheduledWakeHandler
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:33:        worker_id="scheduler-test",
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:38:        worker_id="scheduler-test",
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:44:def test_scheduler_worker_lifecycle_is_component_assembly_owned():
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:45:    handler_source = Path("task_queue/workers/scheduler_worker.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:59:    assert "build_process=assemble_scheduler_worker" in registry_source
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:67:def test_scheduler_handler_returns_tick_delta(monkeypatch):
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:87:def test_scheduler_handler_rejects_wrong_job_kind():
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:3:User IMs delivered during a healthy active wake attach to that wake through a
+novaic-agent-runtime/tests/test_health_dispatch.py:18:from task_queue.workers.health_effects import HealthRecoveryEffectAdapter
+novaic-agent-runtime/tests/test_health_dispatch.py:19:from task_queue.workers.health_recovery import HealthRecoveryEngine, HealthWorkerMetrics
+novaic-agent-runtime/tests/test_health_dispatch.py:20:from task_queue.workers.health_worker import HealthRecoveryHandler
+novaic-agent-runtime/tests/test_health_dispatch.py:29:        worker_id_provider=lambda: "health-sync-test",
+novaic-agent-runtime/tests/test_health_dispatch.py:44:        worker_id="health-test",
+novaic-agent-runtime/tests/test_health_dispatch.py:51:        worker_id="health-test",
+novaic-agent-runtime/tests/test_health_dispatch.py:60:def test_health_worker_injects_internal_key_header(monkeypatch):
+novaic-agent-runtime/tests/test_health_dispatch.py:73:        "task_queue.workers.health_effects.internal_sync_client",
+novaic-agent-runtime/tests/test_health_dispatch.py:82:    assert captured["service_name"] == "runtime-health"
+novaic-agent-runtime/tests/test_health_dispatch.py:87:def test_health_worker_skips_key_header_when_secret_missing(monkeypatch):
+novaic-agent-runtime/tests/test_health_dispatch.py:98:        "task_queue.workers.health_effects.internal_sync_client",
+novaic-agent-runtime/tests/test_health_dispatch.py:113:def test_health_worker_no_scan_unhandled_messages():
+novaic-agent-runtime/tests/test_health_dispatch.py:120:def test_health_worker_has_no_message_lifecycle_recovery_surface():
+novaic-agent-runtime/tests/test_health_dispatch.py:133:def test_health_worker_perform_check_calls_recover_only(monkeypatch):
+novaic-agent-runtime/tests/test_health_dispatch.py:153:        effect_executor=EffectExecutor({"health.recover_all": recover_all}),
+novaic-agent-runtime/tests/test_health_dispatch.py:181:    import task_queue.workers.health_worker as mod
+novaic-agent-runtime/tests/test_health_dispatch.py:183:        "health_worker.py must not import asyncio after PR-34 34b "
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:12:HEALTH_ENGINE = Path("task_queue/workers/health_recovery.py")
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:20:HEALTH_EFFECTS = Path("task_queue/workers/health_effects.py")
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:21:SCHEDULER_EFFECTS = Path("task_queue/workers/scheduler_effects.py")
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:147:    assert "health_effects.executor()" in source
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:150:    assert "scheduler_effects.executor()" in source
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:201:        "task_queue.workers.health_recovery",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:217:        "task_queue.workers.health_recovery",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:255:def test_health_engine_owns_no_concrete_http_protocol():
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:275:def test_scheduler_engine_owns_no_concrete_scan_or_dispatch_collaborators():
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:30:        "queue-service",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:31:        "task-worker",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:32:        "saga-worker",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:33:        "session-outbox-worker",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:34:        "saga-outbox-worker",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:35:        "health",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:36:        "scheduler",
+novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py:26:        "novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py",
+novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py:27:        "novaic-agent-runtime/task_queue/workers/health_action_specs.py",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:55:        "task-worker": ["--business-url", "--queue-service-url", "--pool"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:56:        "saga-worker": ["--queue-service-url", "--max-concurrent"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:57:        "session-outbox-worker": ["--data-dir", "--poll-interval", "--batch-size"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:58:        "saga-outbox-worker": ["--data-dir", "--poll-interval", "--batch-size"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:59:        "health": ["--queue-service-url", "--task-timeout", "--saga-timeout"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:60:        "scheduler": ["--business-url", "--queue-service-url", "--cortex-url"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:90:        "def run_health",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:91:        "def run_scheduler",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:92:        'elif mode == "task-worker"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:93:        'elif mode == "saga-worker"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:94:        'elif mode == "session-outbox-worker"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:95:        'elif mode == "saga-outbox-worker"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:96:        'elif mode == "health"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:97:        'elif mode == "scheduler"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:102:    assert "run_worker_mode_if_registered(mode, sys.argv[1:])" in source
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:76:        r"def assemble_saga_outbox_worker\(.*?def assemble_health_worker\(",
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:82:        r"def assemble_saga_outbox_worker\(.*?def assemble_health_worker\(",
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:87:    assert 'assemble_worker_process("saga-outbox-worker", args, deps)' in wrapper_section

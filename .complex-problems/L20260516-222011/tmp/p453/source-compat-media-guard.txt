@@ -1,0 +1,76 @@
+=== source legacy/compat/fallback/projection/media guard ===
+novaic-cortex/novaic_cortex/api.py:70:# Every mutating endpoint (skill_begin/end, steps/write, context/append,
+novaic-cortex/novaic_cortex/api.py:71:# context/batch, meta/counter_inc, meta/advance_round) holds a distributed
+novaic-cortex/novaic_cortex/api.py:886:@app.post("/v1/context/read")
+novaic-cortex/novaic_cortex/api.py:891:    ``/v1/context/prepare_for_llm`` and the ContextEvent read model.
+novaic-cortex/novaic_cortex/api.py:904:@app.post("/v1/context/append")
+novaic-cortex/novaic_cortex/api.py:928:@app.post("/v1/context/batch")
+novaic-cortex/novaic_cortex/api.py:978:@app.post("/v1/context/prepare_for_llm")
+novaic-cortex/novaic_cortex/api.py:979:async def context_prepare_for_llm(req: PrepareForLLMRequest):
+novaic-cortex/novaic_cortex/api.py:1831:    """Read a step and return its result formatted as _mcp_content for LLM."""
+novaic-cortex/novaic_cortex/api.py:1835:        format_for_display_perception_llm,
+novaic-cortex/novaic_cortex/api.py:1850:    if projection == "display_perception":
+novaic-cortex/novaic_cortex/api.py:1851:        content = format_for_display_perception_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1862:                "allowed": ["history", "current_tool_result", "display_perception"],
+novaic-cortex/novaic_cortex/api.py:1961:        "_mcp_content": [{"type": "text", "text": sliced["text"]}],
+novaic-cortex/novaic_cortex/api.py:2009:        "_mcp_content": [{"type": "text", "text": summary}],
+novaic-cortex/novaic_cortex/api.py:2170:        "_mcp_content": [{"type": "text", "text": interpreted_text}],
+novaic-cortex/novaic_cortex/api.py:2337:# ``/v1/context/append`` use, so stack pushes/pops, step writes, and
+novaic-cortex/novaic_cortex/scope_locks.py:4:(``skill_begin`` / ``skill_end`` / ``steps/write`` / ``context/append`` /
+novaic-cortex/novaic_cortex/scope_locks.py:5:``context/batch`` / ``meta/advance_round`` / ``meta/counter_inc``) under a
+novaic-cortex/novaic_cortex/step_result_projection.py:122:    if raw.get("version") == "tool-output.v1":
+novaic-cortex/novaic_cortex/step_result_projection.py:143:    content = raw.get("content") or raw.get("_mcp_content")
+novaic-cortex/novaic_cortex/step_result_projection.py:154:                # 支持 URL 形式或直接的 data(base64) 形式
+novaic-cortex/novaic_cortex/step_result_projection.py:164:                        "url": f"data:{mime};base64,{item['data']}",
+novaic-cortex/novaic_cortex/step_result_projection.py:185:    # 5. Unknown dict fallback: diagnostic text only, bounded so unexpected
+novaic-cortex/novaic_cortex/step_result_projection.py:202:def _format_mcp_content(
+novaic-cortex/novaic_cortex/step_result_projection.py:244:    return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
+novaic-cortex/novaic_cortex/step_result_projection.py:254:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:264:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:267:def format_for_display_perception_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:274:    return _format_mcp_content(
+novaic-cortex/novaic_cortex/shell_capabilities.py:40:import base64
+novaic-cortex/novaic_cortex/shell_capabilities.py:87:Media/file outputs are stored as blob:// artifacts in tool-output.v1
+novaic-cortex/novaic_cortex/shell_capabilities.py:88:manifests. Do not print or paste raw base64; use the artifact manifest and
+novaic-cortex/novaic_cortex/shell_capabilities.py:124:  base64 into normal shell output, replies, or context.
+novaic-cortex/novaic_cortex/shell_capabilities.py:329:        "version": "tool-output.v1",
+novaic-cortex/novaic_cortex/shell_capabilities.py:370:        return base64.b64decode(value.encode("ascii"), validate=True)
+novaic-cortex/novaic_cortex/shell_capabilities.py:372:        print(f"{{COMMAND}}: invalid base64 {{field}} in device response: {{exc}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:422:    if result.get("success") is False or not result.get("data") or result.get("is_base64") is not True:
+novaic-cortex/novaic_cortex/shell_capabilities.py:879:                            "data": base64.b64encode(audio_data).decode("ascii"),
+novaic-cortex/novaic_cortex/shell_capabilities.py:904:        "_mcp_content": [{{"type": "text", "text": answer}}],
+novaic-cortex/novaic_cortex/auth.py:12:import base64
+novaic-cortex/novaic_cortex/auth.py:32:    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+novaic-cortex/novaic_cortex/auth.py:39:    return base64.urlsafe_b64decode(s)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:336:    prepare_result = bridge.prepare_for_llm(prepare_input.agent_root_scope_id)
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:132:    # ``context.prepare_for_llm`` starts from ``agent_root_scope_id``.
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:14:import base64
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:95:        and isinstance(result.get("_mcp_content"), list)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:135:        if key == "_mcp_content" and isinstance(value, list):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:143:    mcp_content = result.get("_mcp_content")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:371:                "data": base64.b64encode(data).decode("ascii"),
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:396:        "_mcp_content": content,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:165:    if content.get("version") != "tool-output.v1":
+novaic-agent-runtime/task_queue/tool_output.py:15:TOOL_OUTPUT_VERSION = "tool-output.v1"
+novaic-agent-runtime/task_queue/utils/context.py:203:    Only current-turn ``display_perception`` tool messages may be converted to
+novaic-agent-runtime/task_queue/utils/context.py:220:            if projection != "display_perception":
+novaic-agent-runtime/task_queue/utils/user_content.py:5:附件不直接塞 base64，而是告知 Agent 有哪些文件可用，Agent 需要时调用对应工具查看。
+novaic-agent-runtime/task_queue/utils/user_content.py:30:    不再拉取附件 base64，只返回文本 + 附件描述。
+novaic-agent-runtime/task_queue/utils/__init__.py:6:- multimodal: display_perception 专用的当前轮图片投影
+novaic-agent-runtime/task_queue/utils/multimodal.py:4:``display_perception`` tool messages may carry ``_mcp_content`` media into this
+novaic-agent-runtime/task_queue/utils/multimodal.py:22:    """Extract text/images from the current display ``_mcp_content`` contract."""
+novaic-agent-runtime/task_queue/utils/multimodal.py:25:    mcp_content = result.get("_mcp_content")
+novaic-agent-runtime/task_queue/utils/multimodal.py:49:    """Return whether a display ``_mcp_content`` result contains image data."""
+novaic-agent-runtime/task_queue/utils/multimodal.py:50:    mcp_content = result.get("_mcp_content", [])
+novaic-agent-runtime/task_queue/utils/multimodal.py:72:        data_url = f"data:{img['mime_type']};base64,{img['data']}"
+novaic-agent-runtime/task_queue/utils/multimodal.py:101:                "type": "base64",
+novaic-agent-runtime/task_queue/utils/multimodal.py:137:        if key == "_mcp_content":
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:164:        result = self._post("/v1/context/read", payload)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:178:        self._post("/v1/context/append", payload)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:193:        self._post("/v1/context/batch", payload)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:448:        """Read a step and get its result formatted as _mcp_content JSON."""
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:490:    def prepare_for_llm(self, scope_id: str) -> dict:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:498:        return self._post("/v1/context/prepare_for_llm", {
+novaic-agent-runtime/task_queue/utils/step_result_client.py:29:    """Resolve a Cortex tool step to _mcp_content JSON for LLM injection."""
+novaic-agent-runtime/task_queue/utils/step_result_client.py:138:        return "display_perception"
+novaic-agent-runtime/task_queue/utils/step_result_client.py:175:    """Expand tool messages: step_ref -> _mcp_content for LLM."""

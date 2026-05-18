@@ -1,0 +1,22 @@
+present: active_sessions
+present: tq_active_sessions
+present: active_session
+present: legacy_active
+present: SagaOrchestrator\.create
+present: create_saga\(
+present: publish\(
+present: enqueue_task\(
+present: insert into tq_tasks
+present: insert into tq_sagas
+present: if .*no_active
+present: if .*active
+present: suspected_dead
+present: recovering
+present: SessionDecision
+present: remaining_stack
+present: deprecated
+present: compat
+present: legacy
+present: fallback
+present: best_effort
+present: optional

@@ -1,0 +1,22 @@
+
+==================================== ERRORS ====================================
+________ ERROR collecting tests/test_workspace_registry_dependencies.py ________
+ImportError while importing test module '/Users/wangchaoqun/new-build-novaic/novaic-cortex/tests/test_workspace_registry_dependencies.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/anaconda3/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_workspace_registry_dependencies.py:9: in <module>
+    from novaic_cortex import registry as registry_module
+novaic_cortex/__init__.py:20: in <module>
+    from novaic_cortex.runtime import Cortex
+novaic_cortex/runtime.py:18: in <module>
+    from novaic_cortex.sandbox import Sandbox
+novaic_cortex/sandbox.py:20: in <module>
+    from sandbox_sdk import SandboxExecResult, SandboxExecSpec
+E   ModuleNotFoundError: No module named 'sandbox_sdk'
+=========================== short test summary info ============================
+ERROR tests/test_workspace_registry_dependencies.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.10s

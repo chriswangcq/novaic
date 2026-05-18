@@ -1,0 +1,143 @@
+docs/gateway/cloudbridge-vm.md:11:App → Gateway (App WS signaling) → Business → Device Service → CloudBridge (typed WS) → VmControl
+docs/gateway/README.md:9:Gateway 完成了从 "God Module" 到薄边缘服务的拆分。当前数据面是 App 直连 Entangled sync WS；业务动作由 Entangled action 分发到 Business；Gateway 只做用户接入边界。
+docs/gateway/README.md:49:| [entangled-hooks.md](entangled-hooks.md) | Business 侧 Entangled action hooks：Gateway 不继承 Entangled，不拥有业务 hook。 |
+docs/gateway/app-ws-and-signaling.md:7:`/api/app/ws` 是 Gateway 保留的用户边缘长连接。它不是业务实体同步通道，也不是 schema source。
+docs/gateway/app-ws-and-signaling.md:42:Gateway 只承担 App 侧中继和 TURN 凭证注入，不拥有 Device、CloudBridge、VmControl 或业务状态。
+docs/gateway/entangled-hooks.md:5:> Gateway 仅保留 `AuthEntityStore` 管理本地 auth 实体。业务 Hook 逻辑见 `novaic-business/main_business.py`。
+docs/gateway/entangled-hooks.md:26:> ~~旧架构~~：Gateway 曾派生 `GatewayEntityStore(SqlEntityStore)` 直接继承 Entangled SQL 存储。当前架构中 Gateway 仅保留 `AuthEntityStore`（管理 users/tokens/api-keys 等本地 auth 实体），不再参与业务 Hook。
+docs/gateway/internal-and-workers.md:9:- WebRTC signaling 相关 App WS handler：App 侧 offer/ICE 进入 Gateway，再转发到 Business signaling API。
+docs/gateway-architecture.md:4:在当前架构下，Gateway 不再承担业务逻辑、设备通信或 Entangled schema/action 权威；它只负责用户接入层的认证、App WS 信令/推送、Entangled sync endpoint discovery、TURN 与 Blob edge。
+docs/gateway-architecture.md:28:  - 作为 WebRTC 信令中继的前半段（App ↔ Gateway ↔ Business）
+docs/gateway-architecture.md:31:- **无业务转发通用层**：Gateway 不再保留 generic Business entity client；产品 entity CRUD / action 由 App ↔ Entangled ↔ Business 处理。
+docs/gateway-architecture.md:36:- 原 Gateway 业务实体存储层已不存在。Gateway 不再是 Entangled 的宿主。
+docs/gateway-architecture.md:43:App (WS) → Gateway → Business /internal/signaling → Device → CloudBridge → VmControl
+docs/gateway-architecture.md:66:- **无状态（接近）**：除本地 SQLite 中的 auth 数据外，Gateway 不持有任何业务状态。
+docs/entangled-architecture.md:39:> **⚠️ 2026-04-16 更新**：Entangled 服务端的唯一 HTTP 消费者已从 Gateway 迁移至 **Business Service (:19998)**。
+docs/entangled-architecture.md:47:当前架构中，Business Service 通过 `EntangledServiceClient` 直连 Entangled HTTP API，所有业务实体 CRUD 统一经 Business `/internal/entities/*` 代理端点。其余服务（Device、Workers、Gateway）均通过 Business 间接访问 Entangled，不再直连。
+docs/entangled-architecture.md:50:- **App WS 仍在 Gateway 上**：Gateway 在 `AppBridge WS` 数据通道（`gateway/api/app_client.py`）只承载信令、业务动作（如 interrupt、WebRTC Offer）和 Entangled endpoint discovery。
+docs/entangled-architecture.md:51:- 但所有实体 CRUD 写操作经 Gateway 鉴权后转发至 **Business Service `/internal/entities/*`**，由 Business 代理写入 Entangled。
+docs/architecture/gateway-decomposition-roadmap.md:30:Gateway 不再是用户消息、Agent 状态、SubAgent 生命周期或工具执行的业务中心。
+docs/architecture/gateway-decomposition-roadmap.md:34:早期 Gateway 同时承担了 HTTP edge、WebSocket、业务实体、Runtime 调度、工具透传和部分设备通信。
+docs/architecture/gateway-decomposition-roadmap.md:38:- 以为 Gateway 是业务 entity / schema 的权威。
+docs/architecture/gateway-decomposition-roadmap.md:40:- 以为 Gateway DB 是 Agent / message 的业务主表。
+docs/architecture/gateway-decomposition-roadmap.md:54:- 不新增 Gateway 业务 entity proxy。
+docs/architecture/gateway-decomposition-roadmap.md:57:- 不通过 Gateway REST 发用户聊天消息；聊天动作走 Entangled action + Business hook。
+docs/architecture/gateway-decomposition-roadmap.md:58:- 不把 Gateway 本地 DB 当业务状态源。
+docs/architecture/entangled-action-hook-gap.md:3:> 历史 gap 已关闭。当前实现不再是 “Entangled 回调 Gateway hook”；action hook 统一由 Business 处理。
+docs/architecture/entangled-schema-ssot.md:13:Gateway is not a schema authority. Gateway may only tell the App where the direct Entangled WS endpoint is.
+docs/architecture/entangled-schema-ssot.md:17:- No Gateway REST schema endpoint.
+docs/architecture/entangled-schema-ssot.md:18:- No Gateway AppWS schema payload.
+docs/architecture/entangled-schema-ssot.md:42:- App startup must never call Gateway REST for Entangled schema.
+docs/architecture/entangled-schema-ssot.md:43:- Gateway AppWS must not serialize `entities` or `syncContractVersion` for Entangled schema.
+docs/architecture/entangled-schema-ssot.md:46:- Tests must catch reintroduction of REST schema routes, Gateway schema pushes, and hardcoded id-field fallback.
+docs/architecture/service-topology.md:125:| App 通过 Gateway REST 发聊天消息 | App 通过 Entangled action `messages.send` 进入 Business |
+docs/architecture/service-topology.md:126:| Gateway 负责 entity sync/schema | Entangled 负责 sync/schema；Gateway 只做 endpoint discovery |
+docs/architecture/service-topology.md:127:| Queue DB 在 Gateway | Queue Service 拥有 `queue.db` |
+docs/architecture/service-topology.md:128:| Runtime 通过 Gateway 取业务状态 | Runtime 通过 Business/Cortex/Factory/Queue 按职责取数据 |
+docs/architecture/service-topology.md:129:| Device action hook 在 Gateway | Business 处理 devices action hook，Device 只执行硬件 |
+docs/architecture/attention-points.md:96:| `gateway.entity.sync_contract` | 已删除 | Gateway 不再持有 Entangled schema / sync contract 版本 |
+docs/architecture/attention-points.md:162:- Gateway 顶层 docstring、启动日志、API 描述改为准确表述：`/internal/auth/*` 仍在 Gateway，其余 domain internal API 由 Business / Device 直连
+docs/architecture/attention-points.md:187:所有 Python 服务（Gateway/Business/Device/Cortex）统一改为 `uvicorn.run(app, ...)` 直传 app 对象模式，不再使用字符串 import path `"module:app"`。这避免了 uvicorn worker 进程 re-import 模块导致 `_cli_args` 为 `None` 的问题。
+docs/architecture/entangled-store-and-app-ws.md:3:> 当前主路径：Entangled 负责实体同步，Gateway App WS 负责 push/signaling/endpoint discovery。两者不要混成一条业务数据通道。
+docs/architecture/authentication.md:11:     → Gateway Depends(get_current_user) → 业务按 user_id 过滤
+docs/architecture/agent-loop-control-plane-consistency.md:1090:- 访问 Cortex/Gateway/Business。
+docs/architecture/data-ownership.md:19:若他处仍写「Gateway 本地 `chat_messages` INSERT」或「Business outbox」：那是旧文档口径，不是当前控制流。
+docs/architecture/data-ownership.md:26:| Gateway `gateway.db` | **运维表 only** | v63 见 `schema.py` |
+docs/runbooks/local-backends.md:16:该脚本当前只启动本地桌面核心子集：Gateway 19999、Queue Service 19997、Blob Service 19995，以及 Agent Runtime workers。它**不会**启动 Entangled、Business、Device、Cortex 或 Sandboxd；如果要测试依赖这些服务的 agent/runtime 流程，需要先用其他方式启动这些服务，否则 workers 会在日志里出现连接错误。完整逻辑以 `novaic-app/scripts/start-backends.sh` 文件注释为准。
+docs/roadmap/blob-large-file-multipart-audio.md:22:  `/blob/` edge, then Gateway `/api/blobs/register` to preserve Business file
+docs/roadmap/entangled_standalone_checklist.md:26:| A4 | JWT / 服务 token 注入 Entangled 与 Gateway | 环境变量 | `[x]` | `start.sh` `JWT_SECRET`、`ENTANGLED_SERVICE_TOKEN`；Entangled schema registration 用 `ENTANGLED_SERVICE_TOKEN` 或 `JWT_SECRET`（`main_gateway.py` lifespan） |
+docs/roadmap/entangled_standalone_checklist.md:51:| C6 | 远端写操作抑制 Entangled 进程内 notify、由 Gateway `_notify_change` 推 App WS | `EntangledServiceClient` `notify=False` + `EntityStore` 包装 | `[x]` | `RemoteEntityStore` + `internal/entities` + `GatewayBusinessClient` 写路径一致 |
+docs/roadmap/entangled_standalone_checklist.md:72:| E1 | `GatewayBusinessClient` 实体 CRUD 走 `EntangledServiceClient` | `task_queue/client.py` | `[x]` | `entity_get/update/list/create/append` + Remote 下 **`sync-notify`** |
+docs/roadmap/entangled_standalone_checklist.md:74:| E3 | 文档/注释与「走 Entangled」一致 | 读类注释 | `[x]` | `GatewayBusinessClient` 类注释已写明 Entangled HTTP + `/internal/entangled/sync-notify` |
+docs/roadmap/entangled_standalone_checklist.md:82:| F1 | Worker 直写 Entangled 后，桌面/App **仍能**收到与 Gateway 相同的 sync 帧 | 端到端 | `[x]` | **`GatewayBusinessClient`**：`notify=False` + **`POST /internal/entangled/sync-notify`**；其它直连 Entangled 的调用方须自行中继或改用 `/internal/entities/*` |
+docs/roadmap/entangled_standalone_checklist.md:84:| F3 | Gateway AppWS 下发 `entangledWsUrl` endpoint-only | `app_client.py` | `[x]` | schema 不经过 Gateway；App Rust 连接 `/v1/sync` 后接收 schema 首帧 |
+docs/roadmap/entangled_standalone_checklist.md:110:| I1 | Gateway endpoint-only guardrail | `tests/unit/gateway/test_entangled_endpoint_only.py` | `[x]` | Gateway AppWS 不再推 schema |
+docs/roadmap/entangled_standalone_checklist.md:120:3. ~~**产品/协议**：F1 — Worker：`notify=False` + `/internal/entangled/sync-notify`；`GatewayBusinessClient` 自动中继~~（已做）  
+docs/runtime/tool-chain-dispatch.md:17:current path. Gateway remains a thin edge service; Business is the domain hub;
+docs/roadmap/backend-architecture-optimization-recommendations.md:34:| Gateway | Auth, App WS push/signaling, Entangled endpoint discovery, TURN, Blob edge | Agent wake, entity schema authority, tool registry, business orchestration |
+docs/roadmap/gateway-decomposition.md:19:- Gateway does not own entity schema authority, Agent wake orchestration,
+docs/runtime-architecture.md:3:`novaic-agent-runtime` 是 Agent loop 的执行层。它不拥有产品实体数据库，也不承担 Gateway 的接入职责；它围绕 Queue Service、Saga/Task Workers、Cortex、Business 和 LLM Factory 组合出可恢复的异步执行管线。
+docs/runtime-architecture.md:81:- Gateway 不是 Runtime 的业务回调目标；用户可见消息和 activity 投影经 Business/Entangled 落地。
+docs/entangled/client-ws-strategy.md:9:| **Gateway AppWS** | `wss://<gateway>/app/ws` | 信令入口：WebRTC、业务 request/response、Entangled endpoint discovery。 |
+docs/entangled/client-ws-strategy.md:12:`entangledWsUrl` 由 Gateway AppWS 的 `event=entangled_endpoint` 下发；schema 不经过 Gateway。
+docs/entangled/client-ws-strategy.md:28:- [ ] 从 Gateway endpoint event 读取 `entangledWsUrl`，再由 Entangled WS schema 首帧注册 schema。
+docs/roadmap/tickets/PR-167A-environment-entity-schema-contracts.md:54:- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, Storage, Cortex, workers, and Relay healthy.
+docs/entangled/gateway-integration.md:3:Gateway 现在不是 Entangled 的宿主、HTTP client、schema authority 或 action owner。
+docs/entangled/gateway-integration.md:29:- Gateway App WS 不承载 entity sync 或 schema 首帧。
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:1:# PR-152 — Gateway / Business / Entangled Boundary Review
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:13:Confirm and enforce the boundary that Gateway is only a thin edge layer: sync endpoint discovery, Auth, App WS, file proxy, and WebRTC signaling. Gateway must not regrow schema authority, business orchestration, entity semantics, or Entangled fallback paths.
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:17:Gateway sits at the boundary between the app, business APIs, and Entangled sync. If it starts duplicating Business or Entangled responsibilities, old schema fallback and proxy branches can silently return.
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:50:- [x] [PR-152A — Remove Gateway Startup Business State Mutation](PR-152A-remove-gateway-startup-business-state.md)
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:51:- [x] [PR-152B — Replace Gateway Generic Business Entity Client](PR-152B-replace-gateway-generic-business-entity-client.md)
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:58:1. Gateway already has good Entangled endpoint guardrails: App WS sends only `entangled_endpoint`, not schema, and Gateway has no Entangled HTTP/schema library dependency.
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:59:2. Gateway startup still lists `agents` through Business and upserts `agent-state`, which is business lifecycle mutation.
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:60:3. Gateway still contains a generic `GatewayBusinessEntityClient` for `/internal/entities/*`; live usage is file metadata plus an unused agent access helper.
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:73:- Gateway: `python3 -m pytest tests/test_pr152_gateway_boundary.py tests/test_pr121_gateway_entangled_boundary.py tests/unit/gateway/test_entangled_endpoint_only.py tests/test_pr119_no_legacy_api_schemas.py tests/test_pr141_no_db_access_alias.py` — 18 passed.
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:86:- `./deploy gateway` restarted Entangled, Gateway, Business, Device, Queue, File Service, and Cortex successfully.
+docs/roadmap/tickets/PR-134-cortex-step-result-projection-sole-path.md:55:- `./deploy status` green for Entangled, Gateway, Business, Device, Queue, File, Cortex, and workers.
+docs/roadmap/tickets/PR-75-remove-cortex-business-proxy-memory-task.md:70:- `./deploy status` healthy: Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex; 8 workers; relay active.
+docs/roadmap/tickets/PR-152B-replace-gateway-generic-business-entity-client.md:1:# PR-152B — Replace Gateway Generic Business Entity Client
+docs/roadmap/tickets/PR-152B-replace-gateway-generic-business-entity-client.md:13:Remove Gateway's generic Business entity CRUD client and replace the remaining file metadata use case with an explicit Business file-metadata boundary.
+docs/roadmap/tickets/PR-152B-replace-gateway-generic-business-entity-client.md:25:5. [x] Add guardrail that Gateway active code cannot call Business `/internal/entities/*`.
+docs/roadmap/tickets/PR-152B-replace-gateway-generic-business-entity-client.md:33:  - Gateway: `python3 -m pytest tests/test_pr152_gateway_boundary.py tests/test_pr121_gateway_entangled_boundary.py tests/unit/gateway/test_entangled_endpoint_only.py tests/test_pr119_no_legacy_api_schemas.py tests/test_pr141_no_db_access_alias.py` → 18 passed.
+docs/roadmap/tickets/PR-198C-app-file-doc-terminology.md:23:App/file docs now distinguish Gateway file proxy from Entangled product actions and Business skill/tool ownership.
+docs/roadmap/tickets/PR-198C-app-file-doc-terminology.md:25:Additional cleanup folded in: Entangled/Gateway boundary docs were rewritten so `RemoteEntityStore` and `GatewayBusinessEntityClient` only appear as retired concepts, not current paths.
+docs/roadmap/tickets/PR-157-app-gateway-vm-http-residue-review.md:7:| Parent | Gateway / Business / Entangled boundary cleanup |
+docs/roadmap/tickets/PR-157-app-gateway-vm-http-residue-review.md:17:- Device/VmControl 的 `/api/vm*` 只允许存在于设备执行侧或 CloudBridge 内部协议，不允许作为 App → Gateway 业务通路。
+docs/roadmap/tickets/PR-72-agent-root-prompt-contract-cleanup.md:93:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
+docs/roadmap/tickets/PR-197B-app-ws-signaling-doc.md:15:- App WS carries WebRTC offer/answer/ICE signaling through Gateway → Business → Device.
+docs/roadmap/tickets/PR-166B-app-monitor-activity-phase-rendering.md:70:- Status: `./deploy status` showed Entangled, Gateway, Business, Device, Queue, Storage, Cortex, workers, and Relay healthy.
+docs/roadmap/tickets/PR-152A-remove-gateway-startup-business-state.md:1:# PR-152A — Remove Gateway Startup Business State Mutation
+docs/roadmap/tickets/PR-152A-remove-gateway-startup-business-state.md:13:Delete Gateway startup logic that lists agents through Business and upserts `agent-state`.
+docs/roadmap/tickets/PR-152A-remove-gateway-startup-business-state.md:17:Gateway startup must not mutate Agent business state. Gateway should be a thin edge process; Agent lifecycle belongs to Business/Queue/Runtime/Cortex.
+docs/roadmap/tickets/PR-152A-remove-gateway-startup-business-state.md:23:3. [x] Add/adjust Gateway boundary guardrails so startup cannot call Business entity CRUD for Agent state.
+docs/roadmap/tickets/PR-152A-remove-gateway-startup-business-state.md:28:- [x] Existing Gateway boundary tests pass: `python3 -m pytest tests/test_pr152_gateway_boundary.py tests/test_pr121_gateway_entangled_boundary.py tests/unit/gateway/test_entangled_endpoint_only.py tests/test_pr119_no_legacy_api_schemas.py tests/test_pr141_no_db_access_alias.py` → 17 passed.
+docs/roadmap/tickets/PR-221-doc-script-drift-cleanup.md:30:- Objective: update active docs so Gateway, Business, Entangled, and App
+docs/roadmap/tickets/PR-161C-delete-gateway-legacy-data-replayer-scripts.md:13:删除旧 Gateway DB 时代的数据迁移、file backfill、runtime replay 脚本。当前 Gateway 边界已收口为 Auth/App WS/file proxy/WebRTC signaling/sync endpoint discovery；这些脚本继续存在会误导人回到旧业务通路。
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:9:| **Invariant** | Gateway is transport discovery only; it is not an Entangled schema source. |
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:13:Gateway AppWS currently pushes `event=schema` with `entities`, `hash`, `syncContractVersion`, and `entangledWsUrl`. That makes Gateway a competing schema authority.
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:17:- Replace Gateway AppWS schema push with an endpoint-only event.
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:19:- Remove Gateway sync-contract parity tests and schema-push wording from active code paths.
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:23:- [x] Remove Gateway AppWS schema serialization.
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:26:- [x] Add tests/guardrails that Gateway AppWS does not push schema entities.
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:34:Completed 2026-04-29. Gateway AppWS now sends only `entangled_endpoint`; `gateway.entity.sync_contract` and obsolete AppWS sync/schema tests were physically removed.
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:39:- `rg -n "event.*schema|syncContractVersion|get_schema\\(" novaic-gateway/gateway/api novaic-app/src-tauri/src/core/app_bridge.rs` must not show Gateway schema bootstrap.
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:40:- Production/browser console must not show `/api/entangled/schema` or Gateway schema 404.
+docs/roadmap/tickets/PR-73-folded-scope-rendering-and-empty-summary-policy.md:78:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
+docs/roadmap/tickets/PR-121-gateway-entangled-sync-discovery-boundary.md:21:这两者都超出了 Gateway 的职责。Gateway 应只是 thin edge：auth、AppWS、file proxy、internal auth。本票把 Entangled 相关依赖收口为 **sync endpoint discovery**，并把本地 auth schema 类型改为 Gateway 自己的极小 metadata。
+docs/roadmap/tickets/PR-121-gateway-entangled-sync-discovery-boundary.md:27:- `scripts/start.sh` 自己从端口拼出 `ws://127.0.0.1:19900/v1/sync` 传给 Gateway；Business / Subscriber 继续使用 `--entangled-url`。
+docs/roadmap/tickets/PR-121-gateway-entangled-sync-discovery-boundary.md:35:- [x] 移除 Gateway 对 Entangled schema 类型库的 import / sys.path / test path 依赖。
+docs/roadmap/tickets/PR-121-gateway-entangled-sync-discovery-boundary.md:36:- [x] 更新 Gateway entity docs，明确非 auth entity 通过 Business 边界。
+docs/roadmap/tickets/PR-121-gateway-entangled-sync-discovery-boundary.md:60:- [x] 线上代码 grep：Gateway 无旧 Entangled HTTP/schema 类型依赖；启动参数为 `--entangled-sync-ws-url`。
+docs/roadmap/tickets/PR-121-gateway-entangled-sync-discovery-boundary.md:64:- `./deploy status`: Entangled/Gateway/Business/Device/Queue/File/Cortex 全部监听，Workers 8 进程。
+docs/roadmap/tickets/PR-105-remove-ts-rest-schema-bootstrap.md:13:Frontend bootstrap still calls Gateway REST `/api/entangled/schema`, falls back to `/api/entangled-schema`, and invokes `entangled_set_sync_contract_version`. This is old code and masks source-of-truth drift.
+docs/roadmap/tickets/PR-105-remove-ts-rest-schema-bootstrap.md:27:- [x] Update docs that still describe Gateway REST/AppWS schema parity.
+docs/roadmap/tickets/PR-77-llm-tool-description-child-skill-contract.md:71:- `./deploy status` healthy: Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex; 8 workers; relay active.
+docs/roadmap/tickets/PR-197A-gateway-readme-boundary.md:22:- Grep docs for Gateway owning all entity CRUD or Entangled schema/action logic.
+docs/roadmap/tickets/PR-135-delete-obsolete-packaged-result-artifacts.md:47:- `./deploy status` green for Entangled, Gateway, Business, Device, Queue, File, Cortex, workers, and relay.
+docs/roadmap/tickets/PR-167B-environment-dedicated-repository.md:46:- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, Storage, Cortex, workers, and Relay healthy.
+docs/roadmap/tickets/README.md:243:| PR-152 | `[deployed]` | [Gateway / Business / Entangled Boundary Review](PR-152-gateway-business-entangled-boundary-review.md) | PR-151 | Boundary cleanup | multi-step | Closed: Gateway kept to edge boundary, Business file metadata explicit, stale AppBridge request permission removed |
+docs/roadmap/tickets/PR-74-cortex-delete-compactor-auto-summary.md:76:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
+docs/roadmap/tickets/PR-233-active-im-delivery-vs-wake-creation.md:97:- `./deploy status` reported Entangled, Gateway, Business, Device, Queue
+docs/roadmap/tickets/PR-71-no-tool-retry-private-context-cleanup.md:71:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:18:The migration spans App, Gateway, Business, Runtime, Cortex, and Blob Service. Unit tests are necessary but not sufficient; a cross-service smoke is required.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:55:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service,
+docs/roadmap/tickets/PR-153-queue-session-subscriber-lifecycle-review.md:85:- Final deploy smoke: `./deploy gateway` and `./deploy status` show Entangled, Gateway, Business, Device, Queue, Storage, Cortex, Workers, Subscriber, and relay healthy.
+docs/roadmap/tickets/PR-196-runtime-queue-gateway-centric-doc-cleanup.md:12:Some Runtime and Queue documentation/comments still describe the old world where Gateway owned task DBs, handler execution, business entry, or Runtime inputs/outputs. The live path is Environment notification → Subscriber → Queue Service → Runtime workers, with Cortex and Business as explicit service boundaries.
+docs/roadmap/tickets/PR-119-active-code-zombie-path-audit.md:24:   - First delete-now batch: obsolete external result CLI flags, parent dev script callers, and Gateway's unused legacy `gateway/api/schemas.py` module.
+docs/roadmap/tickets/PR-197-gateway-entangled-boundary-doc-cleanup.md:12:Several Gateway docs still describe App WS as the entity sync channel, Gateway as inheriting/hosting Entangled, or every entity CRUD path as proxied through Business. The live path is: App connects directly to Entangled sync WS after Gateway endpoint discovery; Gateway only owns auth, App WS signaling/push, file proxy, TURN, and internal auth.
+docs/roadmap/tickets/PR-197-gateway-entangled-boundary-doc-cleanup.md:22:Gateway docs now state App entity sync is direct Entangled WS after Gateway endpoint discovery. App WS docs no longer claim schema/entity sync. Gateway README and Nginx example no longer advertise RemoteEntityStore or unified entity WS.
+docs/roadmap/tickets/PR-197-gateway-entangled-boundary-doc-cleanup.md:26:- Gateway docs no longer say Gateway is Entangled host/schema/action owner.
+docs/roadmap/tickets/PR-153B-centralize-buffered-input-ownership.md:45:- Deploy smoke: `./deploy gateway` restarted Entangled, Gateway, Business, Device, Queue, Storage, Cortex and required Subscriber; `./deploy status` shows all backend ports healthy and relay active.
+docs/roadmap/tickets/reviews/PR-05-t1-rejection.md:103:**后果**：business 调用任何 entity 相关接口（创建 agent、列 agent、取 scope、...）全部 crash。这些接口是 Gateway→Business 的主链路，意味着**整个前端读写实体都会炸**。
+docs/roadmap/tickets/PR-122-entangled-public-ws-url-ssot.md:67:- `./deploy status`: Entangled/Gateway/Business/Device/Queue/File/Cortex 全部监听，Workers 8 进程。
+docs/roadmap/tickets/PR-197C-entangled-hooks-nginx-readme.md:19:- Grep active docs/source for “Gateway unified WS (entity sync” and “RemoteEntityStore”.
+docs/roadmap/tickets/PR-167C-environment-domain-service-state-machine.md:41:- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, Storage, Cortex, workers, and Relay healthy.
+docs/roadmap/tickets/PR-168A-environment-notification-internal-api.md:35:- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, Storage, Cortex, workers, and Relay healthy.
+docs/roadmap/tickets/PR-193-agent-monitor-entangled-projection-cutover.md:57:Production smoke: `./deploy status` reported Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex, 8 workers, and Relay healthy. Remote Cortex `POST /v1/trace/project` returns `404`; deployed Business schema contains `agent-activity-records` and `agent-activity-participants`, and no longer registers `activity_timeline`.
+docs/roadmap/tickets/PR-198B-overview-dataflow-alignment.md:13:- Gateway provides Entangled sync endpoint discovery, not entity sync itself.
+docs/roadmap/tickets/PR-198-global-service-topology-doc-cleanup.md:12:Global architecture docs mix current and historical call graphs. Some still show App messages entering through Gateway REST, Workers only calling Business, Gateway as entity proxy, or LLM config owned by Gateway. These docs should present one current topology.
+docs/roadmap/tickets/PR-102-message-lifecycle-enum-ssot.md:70:- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex, workers, and Relay running.
+docs/roadmap/tickets/PR-158A-tool-product-semantics-contract.md:50:- Deploy: `./deploy runtime` restarted all backend services; `./deploy status` confirmed Entangled, Gateway, Business, Device, Queue Service, Blob Service, Cortex, workers, and Relay running.
+docs/roadmap/tickets/PR-145-entangled-schema-config-ssot-residue-scan.md:24:- Current architecture doc says the intended SSOT clearly: Entangled direct WS sends schema, Gateway only discovers/syncs endpoint, and there is no REST schema fallback.
+docs/roadmap/tickets/PR-33-env-shrink.md:102:每个 Python 进程（Gateway / Business / agent-runtime Worker / Queue Service / Cortex / File / Device）在 `main_*.py` lifespan 起始处必须打印一行 INFO 日志：

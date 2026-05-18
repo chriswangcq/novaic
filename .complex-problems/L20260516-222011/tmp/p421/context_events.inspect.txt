@@ -1,0 +1,196 @@
+"""Append-only Cortex context event domain model.
+
+This module is intentionally pure: no workspace IO, clocks, ids, env reads, or
+filesystem access live here. Event stores assign generated fields before
+constructing a validated ``ContextEvent``.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from typing import Any, ClassVar
+
+
+CONTEXT_EVENT_SCHEMA_VERSION = 1
+
+CONTEXT_EVENT_TYPES = frozenset(
+    {
+        "RootInitialized",
+        "WakeStarted",
+        "WakeArchived",
+        "SystemPromptAdded",
+        "ContextMessageAppended",
+        "InputNotificationAttached",
+        "SkillScopeOpened",
+        "SkillScopeClosed",
+        "AssistantToolCallRecorded",
+        "ToolStepRecorded",
+    }
+)
+
+
+class ContextEventError(ValueError):
+    """Raised when a context event envelope is invalid."""
+
+
+@dataclass(frozen=True)
+class ContextEvent:
+    """Validated source-of-truth event for one Cortex root stream."""
+
+    schema_version: int
+    event_id: str
+    stream_id: str
+    root_scope_id: str
+    seq: int
+    idempotency_key: str | None
+    occurred_at: str
+    actor: str
+    type: str
+    payload: dict[str, Any]
+
+    REQUIRED_STRING_FIELDS: ClassVar[tuple[str, ...]] = (
+        "event_id",
+        "stream_id",
+        "root_scope_id",
+        "occurred_at",
+        "actor",
+        "type",
+    )
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        event_id: str,
+        stream_id: str,
+        root_scope_id: str,
+        seq: int,
+        occurred_at: str,
+        actor: str,
+        type: str,
+        payload: dict[str, Any],
+        idempotency_key: str | None = None,
+        schema_version: int = CONTEXT_EVENT_SCHEMA_VERSION,
+    ) -> "ContextEvent":
+        event = cls(
+            schema_version=schema_version,
+            event_id=event_id,
+            stream_id=stream_id,
+            root_scope_id=root_scope_id,
+            seq=seq,
+            idempotency_key=idempotency_key,
+            occurred_at=occurred_at,
+            actor=actor,
+            type=type,
+            payload=payload,
+        )
+        event.validate()
+        return event
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ContextEvent":
+        if not isinstance(data, dict):
+            raise ContextEventError("context event row must be an object")
+        try:
+            event = cls(
+                schema_version=data["schema_version"],
+                event_id=data["event_id"],
+                stream_id=data["stream_id"],
+                root_scope_id=data["root_scope_id"],
+                seq=data["seq"],
+                idempotency_key=data.get("idempotency_key"),
+                occurred_at=data["occurred_at"],
+                actor=data["actor"],
+                type=data["type"],
+                payload=data["payload"],
+            )
+        except KeyError as exc:
+            raise ContextEventError(f"missing context event field: {exc.args[0]}") from exc
+        event.validate()
+        return event
+
+    def validate(self) -> None:
+        if self.schema_version != CONTEXT_EVENT_SCHEMA_VERSION:
+            raise ContextEventError(
+                f"unsupported context event schema_version: {self.schema_version!r}"
+            )
+        for field_name in self.REQUIRED_STRING_FIELDS:
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ContextEventError(f"{field_name} must be a non-empty string")
+        if not isinstance(self.seq, int) or self.seq <= 0:
+            raise ContextEventError("seq must be a positive integer")
+        if self.type not in CONTEXT_EVENT_TYPES:
+            raise ContextEventError(f"unknown context event type: {self.type!r}")
+        if self.idempotency_key is not None and (
+            not isinstance(self.idempotency_key, str) or not self.idempotency_key.strip()
+        ):
+            raise ContextEventError("idempotency_key must be null or a non-empty string")
+        if not isinstance(self.payload, dict):
+            raise ContextEventError("payload must be an object")
+        parts = self.stream_id.split("/")
+        if len(parts) != 3 or any(not part for part in parts):
+            raise ContextEventError(
+                "stream_id must be exactly 'user_id/agent_id/root_scope_id'"
+            )
+        parsed_root_scope_id = parts[2]
+        if parsed_root_scope_id != self.root_scope_id:
+            raise ContextEventError(
+                "stream_id root segment must equal root_scope_id for this root stream"
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        self.validate()
+        return {
+            "schema_version": self.schema_version,
+            "event_id": self.event_id,
+            "stream_id": self.stream_id,
+            "root_scope_id": self.root_scope_id,
+            "seq": self.seq,
+            "idempotency_key": self.idempotency_key,
+            "occurred_at": self.occurred_at,
+            "actor": self.actor,
+            "type": self.type,
+            "payload": self.payload,
+        }
+
+    def canonical_semantic_body(self) -> dict[str, Any]:
+        """Return retry-comparison body excluding generated event fields."""
+
+        self.validate()
+        return {
+            "schema_version": self.schema_version,
+            "stream_id": self.stream_id,
+            "root_scope_id": self.root_scope_id,
+            "actor": self.actor,
+            "type": self.type,
+            "payload": self.payload,
+        }
+
+    def canonical_semantic_json(self) -> str:
+        return stable_json(self.canonical_semantic_body())
+
+    def to_json_line(self) -> str:
+        return stable_json(self.to_dict())
+
+
+def build_stream_id(*, user_id: str, agent_id: str, root_scope_id: str) -> str:
+    for field_name, value in (
+        ("user_id", user_id),
+        ("agent_id", agent_id),
+        ("root_scope_id", root_scope_id),
+    ):
+        _validate_stream_segment(field_name, value)
+    return f"{user_id}/{agent_id}/{root_scope_id}"
+
+
+def stable_json(value: dict[str, Any]) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _validate_stream_segment(field_name: str, value: str) -> None:
+    if not isinstance(value, str) or not value.strip():
+        raise ContextEventError(f"{field_name} must be a non-empty string")
+    if "/" in value:
+        raise ContextEventError(f"{field_name} must not contain '/'")

@@ -1,0 +1,76 @@
+    notification_id = _required_payload_str(event, "notification_id")
+    source_kind = _required_payload_str(event, "source_kind")
+    return {
+        "role": "system",
+        "content": (
+            "[Environment notification]\n"
+            f"notification_id={notification_id}\n"
+            f"source={source_kind}\n"
+            f'Use shell(command="agentctl im read --notification-id {notification_id}") '
+            "to observe the message content before replying or making claims about it."
+        ),
+        "_message_type": "ENVIRONMENT_NOTIFICATION",
+        "_metadata": {
+            "origin": "environment",
+            "notification_id": notification_id,
+            "source_kind": source_kind,
+        },
+    }
+
+
+def _tool_result_message(
+    event: ContextEvent,
+    *,
+    call_id: str,
+    orphan: bool,
+) -> dict[str, Any]:
+    observation = event.payload.get("observation")
+    step_ref = event.payload.get("step_ref")
+    payload_ref = event.payload.get("payload_ref")
+    content = _tool_result_content(observation, payload_ref=payload_ref)
+    metadata = {
+        "call_id": call_id,
+        "tool": event.payload.get("tool"),
+        "status": event.payload.get("status"),
+        "payload_ref": payload_ref,
+    }
+    if step_ref is not None:
+        metadata["step_ref"] = step_ref
+    if orphan:
+        metadata["orphan"] = True
+    message = {
+        "role": "tool",
+        "tool_call_id": call_id,
+        "content": content,
+        "_message_type": "TOOL_RESULT",
+        "_metadata": metadata,
+    }
+    lookup_ref = step_ref if isinstance(step_ref, str) and step_ref else payload_ref
+    if isinstance(lookup_ref, str) and lookup_ref:
+        message["step_ref"] = lookup_ref
+    return message
+
+
+def _tool_result_content(observation: Any, *, payload_ref: Any = None) -> str:
+    if isinstance(observation, dict):
+        for key in ("preview", "summary", "head"):
+            value = observation.get(key)
+            if isinstance(value, str):
+                return value
+        ref = payload_ref if isinstance(payload_ref, str) and payload_ref.strip() else None
+        keys = ", ".join(sorted(str(key) for key in observation.keys())[:8])
+        detail = f"; keys={keys}" if keys else ""
+        if ref:
+            return f"[Tool result omitted from context; inspect payload_ref={ref}{detail}]"
+        return f"[Tool result omitted from context{detail}]"
+    if observation is None:
+        return ""
+    return str(observation)
+
+
+def _tool_call_ids(message: dict[str, Any]) -> list[str]:
+    tool_calls = message.get("tool_calls")
+    if not isinstance(tool_calls, list):
+        return []
+    ids: list[str] = []
+    for call in tool_calls:

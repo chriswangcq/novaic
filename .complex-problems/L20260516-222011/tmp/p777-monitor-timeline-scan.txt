@@ -1,0 +1,172 @@
+## Monitor/timeline relevant files
+novaic-app/src/data/entities/agentActivity.ts
+novaic-app/src/data/entities/agentToolsConfig.ts
+novaic-app/src/components/Console/ConsoleToolbar.tsx
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts
+novaic-app/src/components/Visual/ActivityTimeline.tsx
+novaic-app/src/components/Visual/SmartValue.tsx
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx
+novaic-app/src/components/Visual/AgentMonitorCapsule.test.tsx
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx
+novaic-app/src/components/hooks/useActivityTimeline.ts
+novaic-app/src/components/hooks/useActivityTimeline.test.ts
+novaic-app/src/components/Agent/AgentToolsPanel.tsx
+novaic-app/src/components/Agent/ToolCategorySection.tsx
+novaic-app/src/components/Agent/MountedToolsSection.tsx
+novaic-app/src/types/activityTimeline.ts
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts
+
+## High-signal monitor/timeline hits
+novaic-app/src/components/hooks/useSettings.ts:29:    addApiKey:            (data: any) => entangledMethod('api-keys', 'add', { payload: data }),
+novaic-app/src/components/hooks/useSettings.ts:30:    updateApiKey:         (id: string, data: any) => entangledMethod('api-keys', 'save', { payload: { key_id: id, ...data } }),
+novaic-app/src/components/hooks/useSettings.ts:31:    deleteApiKey:         (id: string) => entangledMethod('api-keys', 'remove', { payload: { key_id: id } }),
+novaic-app/src/components/hooks/useSettings.ts:33:    testApiKey:           (id: string) => entangledMethod('api-keys', 'test', { payload: { key_id: id } }),
+novaic-app/src/components/hooks/useSettings.ts:34:    initAgent:            (agentId?: string) => entangledMethod('agents', 'init', { payload: { agent_id: agentId } }),
+novaic-app/src/components/hooks/useSettings.ts:38:      entangledMethod('user-preferences', 'cleanup', { payload: options || {} }),
+novaic-app/src/types/index.ts:84:  display_num: number;
+novaic-app/src/types/index.ts:179:// Message status for local delivery display.
+novaic-app/src/types/index.ts:223:  /** Stable BlobRef locator (`blob://...`) resolved through Gateway. */
+novaic-app/src/types/index.ts:225:  /** Display locator. New attachments use the same `blob://...` value. */
+novaic-app/src/types/index.ts:263:  drawerWidth: number;
+novaic-app/src/types/index.ts:265:  drawerOpen: boolean;
+novaic-app/src/types/index.ts:276:  drawerWidth: number;
+novaic-app/src/types/index.ts:278:  drawerOpen: boolean;
+novaic-app/src/types/index.ts:284:// UI display status (derived from VM status)
+novaic-app/src/types/index.ts:285:export type AgentDisplayStatus =
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:6:  it('does not contain raw diagnostic rendering vocabulary', () => {
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:9:    expect(source).not.toContain('result_id');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:10:    expect(source).not.toContain('_mcp_content');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:25:    expect(source).toContain('has_payload');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:31:    expect(source).not.toContain('result_id');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:32:    expect(source).not.toContain('_mcp_content');
+novaic-app/src/types/appCompatGuard.test.ts:97:  it('does not expose raw Entangled cache clear without resubscribe', () => {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:38:const DATA_IMAGE_BASE64_PATTERN = /\bdata:image\/[a-z0-9.+-]+;base64,/i;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:39:const BINARY_BASE64_PREFIX_PATTERN = /^(\/9j\/|iVBORw0KGgo|R0lGODlh|UklGR)/;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:40:const RAW_PAYLOAD_DETAIL = '输出包含较大的原始文件数据，已在监控中隐藏。';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:98:function publicFullDetail(record: ActivityTimelineRecord): string | undefined {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:100:  if (!text) return record.has_payload ? '结果已保存，需要时可以继续查看细节' : undefined;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:101:  if (looksLikeRawPayloadText(text)) return RAW_PAYLOAD_DETAIL;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:108:function looksLikeRawPayloadText(text: string): boolean {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:109:  if (DATA_IMAGE_BASE64_PATTERN.test(text)) return true;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:112:  if (BINARY_BASE64_PREFIX_PATTERN.test(compact)) return true;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:116:function publicPreviewDetail(record: ActivityTimelineRecord): string | undefined {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:117:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:124:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:127:  return Boolean(record.truncated || fullDetail.includes('\n') || oneLine.length > DETAIL_PREVIEW_LIMIT);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:145:  const previousDetail = publicPreviewDetail(previous) ?? '';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:146:  const currentDetail = publicPreviewDetail(current) ?? '';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:153:export function projectActivityTimelineRecords(records: ActivityTimelineRecord[]): ActivityTimelineRecord[] {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:169:  const previewDetail = publicPreviewDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:170:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:196:          <span className="text-[13px] font-medium text-nb-text truncate">{title}</span>
+novaic-app/src/components/Visual/ActivityTimeline.tsx:210:            {detail}{record.truncated && !expanded ? '…' : ''}
+novaic-app/src/components/Visual/ActivityTimeline.tsx:218:            {detail}{record.truncated ? '…' : ''}
+novaic-app/src/components/Visual/ActivityTimeline.tsx:234:  const displayRecords = useMemo(() => projectActivityTimelineRecords(records), [records]);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:235:  const latestRecord = displayRecords[displayRecords.length - 1] ?? null;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:242:    if (!element || displayRecords.length === 0 || !shouldFollowBottomRef.current) return;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:247:  }, [displayRecords.length, latestRecordKey]);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:279:        ) : displayRecords.length === 0 ? (
+novaic-app/src/components/Visual/ActivityTimeline.tsx:293:            {displayRecords.map((record, index) => (
+novaic-app/src/components/Visual/ActivityTimeline.tsx:297:                isLast={index === displayRecords.length - 1}
+novaic-app/src/components/Visual/ActivityTimeline.tsx:316:  const publicRecords = projectActivityTimelineRecords(records);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:336:            <div className="text-sm font-medium text-nb-text truncate">{participantLabel}</div>
+novaic-app/src/components/Visual/ActivityTimeline.tsx:337:            <div className="text-tiny text-nb-text-secondary truncate">{statusLabel}</div>
+novaic-app/src/data/entities/entangledEntityContracts.ts:52:      truncated: 'BOOL',
+novaic-app/src/data/entities/entangledEntityContracts.ts:55:      has_payload: 'BOOL',
+novaic-app/src/types/api.ts:2: * Product API entity and action payload types.
+novaic-app/src/types/api.ts:145:  display_num?: number;
+novaic-app/src/components/Visual/SmartValue.tsx:2: * SmartValue - 智能值渲染组件
+novaic-app/src/components/Visual/SmartValue.tsx:15:  if (value.startsWith('blob://')) return true;
+novaic-app/src/components/Visual/SmartValue.tsx:111:  const displayText = shouldCollapse && !isExpanded 
+novaic-app/src/components/Visual/SmartValue.tsx:118:        {displayText}
+novaic-app/src/components/Visual/SmartValue.tsx:132:interface JsonTreeProps {
+novaic-app/src/components/Visual/SmartValue.tsx:138:function JsonTree({ data, level = 0, defaultExpanded = true }: JsonTreeProps) {
+novaic-app/src/components/Visual/SmartValue.tsx:186:                <JsonTree data={item} level={level + 1} />
+novaic-app/src/components/Visual/SmartValue.tsx:214:                <JsonTree data={value} level={level + 1} />
+novaic-app/src/components/Visual/SmartValue.tsx:228:interface SmartValueProps {
+novaic-app/src/components/Visual/SmartValue.tsx:234:export function SmartValue({ value, isError = false, copyable = true }: SmartValueProps) {
+novaic-app/src/components/Visual/SmartValue.tsx:266:        <JsonTree data={value} defaultExpanded={true} />
+novaic-app/src/components/Visual/SmartValue.tsx:272:export { ImagePreview, CollapsibleText, JsonTree };
+novaic-app/src/components/hooks/useAuth.ts:22:  register: (email: string, password: string, displayName?: string) => Promise<UserInfo | null>;
+novaic-app/src/components/hooks/useAuth.ts:67:    displayName?: string,
+novaic-app/src/components/hooks/useAuth.ts:72:      const user = await authRegister(email, password, displayName);
+novaic-app/src/types/activityTimeline.ts:9:  truncated?: boolean;
+novaic-app/src/types/activityTimeline.ts:12:  has_payload?: boolean;
+novaic-app/src/data/entities/user.ts:19:  display_name: string;
+novaic-app/src/components/hooks/useLayout.ts:11:  const drawerOpen       = useAppStore(s => s.drawerOpen);
+novaic-app/src/components/hooks/useLayout.ts:12:  const drawerWidth      = useAppStore(s => s.drawerWidth);
+novaic-app/src/components/hooks/useLayout.ts:21:    layoutMode, leftPanelWidth, drawerOpen, drawerWidth,
+novaic-app/src/components/hooks/useLayout.ts:27:    setDrawerOpen:      (v: boolean)       => svc.setDrawerOpen(v),
+novaic-app/src/components/hooks/useLayout.ts:28:    setDrawerWidth:     (w: number)        => svc.setDrawerWidth(w),
+novaic-app/src/components/hooks/useLayout.ts:34:    /** Reset drawer width to default */
+novaic-app/src/components/hooks/useLayout.ts:35:    resetDrawerWidth:   ()                 => svc.resetDrawerWidth(),
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx:108:              <span className="truncate max-w-[130px] font-medium">{label}</span>
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx:109:              <span className={`text-[11px] tabular-nums truncate ${selectedActivityTitle && selected ? 'max-w-[170px]' : ''} ${
+novaic-app/src/data/entities/messages.ts:10: *   4. send → optimistic temp item displayed immediately → server confirm → real item via delta
+novaic-app/src/data/entities/messages.ts:74:    transformPayload: (data, params) => ({
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:17:  const raw = JSON.parse(readFileSync(
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:21:  return raw.entities;
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:42:  it('does not expose retired diagnostic payload entities', () => {
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:45:    expect(backend).not.toHaveProperty('log-payloads');
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:48:    expect(APP_ENTANGLED_ENTITY_CONTRACTS).not.toHaveProperty('log-payloads');
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:53:  it('exposes only product projection entities for Agent Monitor', () => {
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:59:      _mcp_content: [{ type: 'text', text: 'raw' }],
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:68:      truncated: undefined,
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:71:      has_payload: undefined,
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:74:    expect(JSON.stringify(normalized)).not.toContain('_mcp_content');
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:86:      wake_triggers: [{ type: 'raw' }],
+novaic-app/src/components/hooks/useAgent.ts:5: * Deletes: AgentService.delete (server-side cascade; local cache is read-only projection).
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:279:          {/* Latency display */}
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:430:  const displayAspect = rect.width / rect.height;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:433:  let offsetX = 0, offsetY = 0, displayW = rect.width, displayH = rect.height;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:434:  if (videoAspect > displayAspect) {
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:435:    displayH = rect.width / videoAspect;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:436:    offsetY = (rect.height - displayH) / 2;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:438:    displayW = rect.height * videoAspect;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:439:    offsetX = (rect.width - displayW) / 2;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:443:  const pixelX = offsetX + x * displayW;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:444:  const pixelY = offsetY + y * displayH;
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:202:  it('hides raw image data urls from timeline details', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:211:            title: 'display 完成',
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:212:            text: `data:image/jpeg;base64,${'A'.repeat(400)}SECRET_IMAGE_PAYLOAD`,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:219:    expect(screen.queryByText(/SECRET_IMAGE_PAYLOAD/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:220:    expect(screen.queryByText(/data:image/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:224:  it('hides long jpeg-like base64 text from expanded timeline details', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:225:    const jpegLikePayload = `/9j/${'A'.repeat(220)}+/${'B'.repeat(220)}=SECRET_RAW`;
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:235:            title: 'display 完成',
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:236:            text: jpegLikePayload,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:237:            has_payload: true,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:244:    expect(screen.queryByText(/SECRET_RAW/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:261:            _mcp_content: [{ type: 'text', text: 'raw' }],
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:270:    expect(screen.queryByText(/_mcp_content/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:271:    expect(screen.queryByText(/raw/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:274:  it('does not expose raw transport errors in the normal monitor', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:334:            result_id: 'debug-payload-ref',
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:335:            _mcp_content: [{ type: 'text', text: 'raw mcp' }],
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:342:    expect(screen.queryByText(/debug-payload-ref/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:343:    expect(screen.queryByText(/raw mcp/)).toBeNull();
+novaic-app/src/data/entities/agentActivity.ts:2: * Agent Monitor product projection stores.
+novaic-app/src/data/entities/agentActivity.ts:25:  truncated?: boolean;
+novaic-app/src/data/entities/agentActivity.ts:28:  has_payload?: boolean;
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx:61:    expect(screen.queryByText(/result_id/i)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx:62:    expect(screen.queryByText(/_mcp_content/i)).toBeNull();
+novaic-app/src/components/hooks/useActivityTimeline.ts:36:    truncated: typeof record.truncated === 'boolean' ? record.truncated : undefined,
+novaic-app/src/components/hooks/useActivityTimeline.ts:39:    has_payload: typeof record.has_payload === 'boolean' ? record.has_payload : undefined,
+
+## Focused monitor/timeline files
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx
+novaic-app/src/components/Visual/ActivityTimeline.tsx
+novaic-app/src/components/Visual/SmartValue.tsx
+novaic-app/src/components/hooks/useActivityTimeline.test.ts
+novaic-app/src/components/hooks/useActivityTimeline.ts
+novaic-app/src/components/hooks/useSettings.ts
+novaic-app/src/data/entities/agentActivity.ts
+novaic-app/src/data/entities/entangledEntityContracts.test.ts
+novaic-app/src/data/entities/entangledEntityContracts.ts
+novaic-app/src/data/entities/messages.ts
+novaic-app/src/types/activityTimeline.ts
+novaic-app/src/types/api.ts
+novaic-app/src/types/index.ts

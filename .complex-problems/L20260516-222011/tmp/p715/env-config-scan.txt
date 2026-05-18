@@ -1,0 +1,69 @@
+novaic-business/main_subscriber.py:140:        aggregation_config=load_im_aggregation_config_from_env(os.environ),
+novaic-business/business/subscribers/dispatch_subscriber.py:74:# returns up to ``batch_size=50`` rows in id-ASC order — a natural
+novaic-business/business/subscribers/dispatch_subscriber.py:81:#   * the group size is ≥ 2 and ≤ ``IM_AGGREGATION_MAX_BATCH``,
+novaic-business/business/subscribers/dispatch_subscriber.py:83:#     ``IM_AGGREGATION_WINDOW_SEC`` seconds,
+novaic-business/business/subscribers/dispatch_subscriber.py:90:# Kill switch: ``IM_AGGREGATION_WINDOW_SEC=0`` disables aggregation
+novaic-business/business/subscribers/dispatch_subscriber.py:109:def _parse_im_aggregation_window(environ: Mapping[str, str]) -> int:
+novaic-business/business/subscribers/dispatch_subscriber.py:111:        return max(0, int(environ.get("IM_AGGREGATION_WINDOW_SEC", "60")))
+novaic-business/business/subscribers/dispatch_subscriber.py:118:        return max(1, int(environ.get("IM_AGGREGATION_MAX_BATCH", "10")))
+novaic-business/business/subscribers/dispatch_subscriber.py:127:        window_seconds=_parse_im_aggregation_window(environ),
+novaic-business/business/subscribers/dispatch_subscriber.py:143:        batch_size: int,
+novaic-business/business/subscribers/dispatch_subscriber.py:149:            if len(rows) >= batch_size:
+novaic-business/business/subscribers/dispatch_subscriber.py:155:                limit=batch_size - len(rows),
+novaic-business/business/subscribers/dispatch_subscriber.py:185:                if len(rows) >= batch_size:
+novaic-business/business/subscribers/dispatch_subscriber.py:187:        metric_set("environment_notification_dispatch_batch_size", float(len(rows)))
+novaic-business/business/subscribers/dispatch_subscriber.py:296:        batch_size: int = 50,
+novaic-business/business/subscribers/dispatch_subscriber.py:306:        self.batch_size = batch_size
+novaic-business/business/subscribers/dispatch_subscriber.py:374:                batch_size=self.batch_size,
+novaic-business/business/subscribers/dispatch_subscriber.py:378:            metric_observe("environment_notification_claim_batch_size", float(len(rows)))
+novaic-business/business/subscribers/dispatch_subscriber.py:505:        ``claim_batch`` ticks don't aggregate, but with ``batch_size=50``
+novaic-business/tests/test_im_aggregation.py:10:* Kill switch (``IM_AGGREGATION_WINDOW_SEC=0``) reverts to pre-Wave-2
+novaic-business/tests/test_im_aggregation.py:113:    """IM_AGGREGATION_WINDOW_SEC=0 disables aggregation wholesale."""
+novaic-business/tests/test_im_aggregation.py:114:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-business/tests/test_im_aggregation.py:128:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:145:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:170:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:187:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "300")
+novaic-business/tests/test_im_aggregation.py:188:    monkeypatch.setenv("IM_AGGREGATION_MAX_BATCH", "3")
+novaic-business/tests/test_im_aggregation.py:205:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:222:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:238:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:262:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:285:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:303:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:317:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:331:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:351:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:367:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:390:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:421:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "60")
+novaic-business/tests/test_im_aggregation.py:451:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-business/tests/test_im_aggregation.py:477:    config = load_im_aggregation_config_from_env({"IM_AGGREGATION_WINDOW_SEC": "30"})
+novaic-business/tests/test_im_aggregation.py:483:    assert load_im_aggregation_config_from_env({"IM_AGGREGATION_WINDOW_SEC": "0"}).enabled is False
+novaic-business/tests/test_im_aggregation.py:488:        "IM_AGGREGATION_WINDOW_SEC": "not-a-number",
+novaic-business/tests/test_im_aggregation.py:489:        "IM_AGGREGATION_MAX_BATCH": "xxx",
+novaic-business/tests/test_im_aggregation.py:496:    assert load_im_aggregation_config_from_env({"IM_AGGREGATION_MAX_BATCH": "0"}).max_batch == 1
+novaic-business/tests/test_im_aggregation.py:502:    monkeypatch.setenv("IM_AGGREGATION_WINDOW_SEC", "0")
+novaic-business/business/subscribers/dispatch_subscriber.py:74:# returns up to ``batch_size=50`` rows in id-ASC order — a natural
+novaic-business/business/subscribers/dispatch_subscriber.py:81:#   * the group size is ≥ 2 and ≤ ``IM_AGGREGATION_MAX_BATCH``,
+novaic-business/business/subscribers/dispatch_subscriber.py:83:#     ``IM_AGGREGATION_WINDOW_SEC`` seconds,
+novaic-business/business/subscribers/dispatch_subscriber.py:90:# Kill switch: ``IM_AGGREGATION_WINDOW_SEC=0`` disables aggregation
+novaic-business/business/subscribers/dispatch_subscriber.py:109:def _parse_im_aggregation_window(environ: Mapping[str, str]) -> int:
+novaic-business/business/subscribers/dispatch_subscriber.py:111:        return max(0, int(environ.get("IM_AGGREGATION_WINDOW_SEC", "60")))
+novaic-business/business/subscribers/dispatch_subscriber.py:118:        return max(1, int(environ.get("IM_AGGREGATION_MAX_BATCH", "10")))
+novaic-business/business/subscribers/dispatch_subscriber.py:127:        window_seconds=_parse_im_aggregation_window(environ),
+novaic-business/business/subscribers/dispatch_subscriber.py:143:        batch_size: int,
+novaic-business/business/subscribers/dispatch_subscriber.py:149:            if len(rows) >= batch_size:
+novaic-business/business/subscribers/dispatch_subscriber.py:155:                limit=batch_size - len(rows),
+novaic-business/business/subscribers/dispatch_subscriber.py:185:                if len(rows) >= batch_size:
+novaic-business/business/subscribers/dispatch_subscriber.py:187:        metric_set("environment_notification_dispatch_batch_size", float(len(rows)))
+novaic-business/business/subscribers/dispatch_subscriber.py:296:        batch_size: int = 50,
+novaic-business/business/subscribers/dispatch_subscriber.py:306:        self.batch_size = batch_size
+novaic-business/business/subscribers/dispatch_subscriber.py:374:                batch_size=self.batch_size,
+novaic-business/business/subscribers/dispatch_subscriber.py:378:            metric_observe("environment_notification_claim_batch_size", float(len(rows)))
+novaic-business/business/subscribers/dispatch_subscriber.py:505:        ``claim_batch`` ticks don't aggregate, but with ``batch_size=50``
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:7:SUBSCRIBER_SOURCE = REPO_ROOT / "business" / "subscribers" / "dispatch_subscriber.py"
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:8:MAIN_SUBSCRIBER_SOURCE = REPO_ROOT / "main_subscriber.py"
+novaic-business/tests/test_pr153_lifecycle_guardrails.py:12:    source = SUBSCRIBER_SOURCE.read_text() + "\n" + MAIN_SUBSCRIBER_SOURCE.read_text()
+novaic-business/tests/test_dispatch_subscriber.py:122:        batch_size=10,
+novaic-business/tests/test_dispatch_subscriber.py:152:        batch_size=10,

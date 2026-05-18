@@ -1,0 +1,61 @@
+            payload["scope_path"] = scope_path
+        if session_generation is not None:
+            payload["session_generation"] = require_positive_session_generation_value(
+                session_generation,
+                "CortexBridge.scope_end",
+            )
+        if finalize_reason is not None:
+            payload["finalize_reason"] = finalize_reason
+        if remaining_stack is not None:
+            payload["remaining_stack"] = dict(remaining_stack)
+        if round_num is not None:
+            payload["round_num"] = int(round_num)
+        result = self._post("/v1/scope/end", payload)
+        archive_path = result.get("archive_path")
+        logger.info("[CortexBridge] scope.archived scope_id=%s path=%s", scope_id, archive_path)
+        return archive_path
+
+    # ── Session context (conversation history) ───────────────────────────
+
+    def read_context(self, scope_id: str, *, scope_path: str | None = None) -> list[dict]:
+        """Read the materialized context projection (fail closed)."""
+        payload = {**self._tenant(), "scope_id": scope_id}
+        if scope_path:
+            payload["scope_path"] = scope_path
+        result = self._post("/v1/context/read", payload)
+        return result.get("messages", [])
+
+    def append_context(
+        self,
+        scope_id: str,
+        message: dict,
+        *,
+        scope_path: str | None = None,
+    ) -> None:
+        """Append a message (WRITE — failures raise)."""
+        payload = {**self._tenant(), "scope_id": scope_id, "message": message}
+        if scope_path:
+            payload["scope_path"] = scope_path
+        self._post("/v1/context/append", payload)
+
+    def append_context_batch(
+        self,
+        scope_id: str,
+        messages: list[dict],
+        *,
+        scope_path: str | None = None,
+    ) -> None:
+        """Batch-append messages (WRITE — failures raise)."""
+        if not messages:
+            return
+        payload = {**self._tenant(), "scope_id": scope_id, "messages": messages}
+        if scope_path:
+            payload["scope_path"] = scope_path
+        self._post("/v1/context/batch", payload)
+
+    # ── Session metadata ─────────────────────────────────────────────────
+
+    def read_session_meta(
+        self,
+        scope_id: str,
+        *,

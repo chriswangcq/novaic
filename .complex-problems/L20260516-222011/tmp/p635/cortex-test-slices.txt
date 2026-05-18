@@ -1,0 +1,147 @@
+    35	async def test_tool_read_truncates_per_micro_max_tool_output_chars() -> None:
+    36	    store = MemoryStore()
+    37	    agent_id = "rt-micro-read"
+    38	    await store.put(
+    39	        f"agents/{agent_id}/ro/config/engine.json",
+    40	        json.dumps({"micro_max_tool_output_chars": 20}).encode("utf-8"),
+    41	    )
+    42	    await store.put(
+    43	        f"agents/{agent_id}/rw/scratch/big.txt",
+    44	        b"x" * 100,
+    45	    )
+    46	    cortex, store = make_cortex_with_store(agent_id, store=store)
+    47	    await cortex.initialize()
+    48	
+    49	    out = await cortex.tool_read("/rw/scratch/big.txt")
+    50	    assert "truncated" in out
+    51	    assert len(out) <= 80
+     1	"""Workspace edge cases: missing paths, path normalization, binary I/O."""
+     2	
+     3	from __future__ import annotations
+     4	
+     5	import pytest
+     6	
+     7	from novaic_cortex.store import MemoryStore
+     8	from novaic_cortex.workspace import Workspace
+     9	from cortex_tests.workspace_test_utils import make_workspace_with_store
+    10	
+    11	
+    12	@pytest.mark.asyncio
+    13	async def test_missing_path_read_and_read_bytes_both_raise_keyerror_same_store_key() -> None:
+    14	    """Store backends use KeyError for missing objects; Workspace.read* both surface it."""
+    15	    ws, store = make_workspace_with_store("lim-1")
+    16	    await ws.initialize()
+    17	    missing = "/rw/scratch/no-such-file.txt"
+    18	    assert await ws.exists(missing) is False
+    19	    with pytest.raises(KeyError) as ei:
+    20	        await ws.read(missing)
+    21	    key = ei.value.args[0]
+    22	    with pytest.raises(KeyError) as ei2:
+    23	        await ws.read_bytes(missing)
+    24	    assert ei2.value.args[0] == key
+    25	
+    26	
+    27	@pytest.mark.asyncio
+    28	async def test_archive_missing_scope_raises_file_not_found_not_keyerror() -> None:
+    29	    """Scope lifecycle uses FileNotFoundError; plain reads use KeyError (documented split)."""
+    30	    ws, store = make_workspace_with_store("lim-2")
+    31	    await ws.initialize()
+    32	    with pytest.raises(FileNotFoundError, match="no active root scope"):
+    33	        await ws.archive_root_scope("nope", "summary")
+    34	
+    35	
+    36	@pytest.mark.asyncio
+    37	async def test_list_dir_ro_root_with_or_without_trailing_slash_same_entries() -> None:
+    38	    ws, store = make_workspace_with_store("lim-3")
+    39	    await ws.initialize()
+    40	    a = await ws.list_dir("/ro")
+    41	    b = await ws.list_dir("/ro/")
+    42	    assert sorted((e.name, e.is_dir) for e in a) == sorted((e.name, e.is_dir) for e in b)
+    43	
+    44	
+    45	@pytest.mark.asyncio
+    46	async def test_list_dir_double_slash_after_segment_normalizes_like_single_slash() -> None:
+    47	    """_key collapses '//'; list_dir must still resolve the same logical tree."""
+    48	    ws, store = make_workspace_with_store("lim-4")
+    49	    await ws.initialize()
+    50	    clean = await ws.list_dir("/ro/skills/")
+    51	    doubled = await ws.list_dir("/ro//skills/")
+    52	    assert sorted((e.name, e.path, e.is_dir) for e in clean) == sorted(
+    53	        (e.name, e.path, e.is_dir) for e in doubled
+    54	    )
+    55	
+    56	
+    57	@pytest.mark.asyncio
+    58	async def test_read_bytes_round_trip_after_write_bytes() -> None:
+    59	    ws, store = make_workspace_with_store("lim-5")
+    60	    await ws.initialize()
+    61	    data = b"\x00\xff\xfe" + bytes(range(256))
+    62	    path = "/rw/scratch/payload.bin"
+    63	    await ws.write_bytes(path, data)
+    64	    assert await ws.read_bytes(path) == data
+    65	
+    66	
+    67	@pytest.mark.asyncio
+    68	async def test_read_tree_bytes_returns_relative_logical_file_entries() -> None:
+    69	    ws, store = make_workspace_with_store("lim-6")
+    70	    await ws.initialize()
+    71	    await ws.write_bytes("/rw/scratch/a.txt", b"a")
+    72	    await ws.write_bytes("/rw/scratch/nested/b.txt", b"b")
+    73	
+    74	    rows = await ws.read_tree_bytes("/rw/scratch/")
+    75	
+    76	    assert rows == [
+    77	        (".keep", b""),
+    78	        ("a.txt", b"a"),
+    79	        ("nested/b.txt", b"b"),
+    80	    ]
+    12	
+    13	
+    14	@pytest.mark.asyncio
+    15	async def test_initialize_creates_layout() -> None:
+    16	    ws, store = make_workspace_with_store("agent-1")
+    17	    await ws.initialize()
+    18	    ap = "agents/agent-1/"
+    19	    for sub in ("ro/active", "ro/config", "ro/skills", "ro/scopes", "ro/knowledge", "rw/scratch"):
+    20	        assert await store.exists(f"{ap}{sub}/.keep")
+    21	
+    22	
+    23	@pytest.mark.asyncio
+    24	async def test_create_scope_returns_path_and_append_under_scope() -> None:
+    25	    ws, store = make_workspace_with_store("a2")
+    26	    await ws.initialize()
+    27	    base = await ws.create_scope("s1", "Scope One", skill="demo")
+    28	    assert base == "/ro/active/s1"
+    29	    assert await store.exists("agents/a2/ro/active/s1/meta.json")
+    30	    assert await store.exists("agents/a2/ro/active/s1/steps/_index.jsonl")
+    31	
+    32	    log_path = "/rw/scratch/run.log"
+    33	    await ws.append_line(log_path, "first")
+    34	    await ws.append_line(log_path, "second")
+    35	
+    36	    raw = await ws.read(log_path)
+    37	    assert raw == "first\nsecond\n"
+    38	
+   134	async def test_sandbox_materializes_scoped_rw_working_set_only() -> None:
+   135	    ws, store = make_workspace_with_store("sandboxd-scoped-rw")
+   136	    await ws.initialize()
+   137	    await ws.write_bytes("/rw/root-note.txt", b"root")
+   138	    await ws.write_bytes("/rw/public/shared.txt", b"shared")
+   139	    await ws.write_bytes("/rw/system/state.txt", b"system")
+   140	    await ws.write_bytes("/rw/tmp/temp.txt", b"stale tmp")
+   141	    await ws.write_bytes("/rw/subagents/main/scratch/current.txt", b"current")
+   142	    await ws.write_bytes("/rw/subagents/sub-other/scratch/other.txt", b"other")
+   143	    await ws.write_bytes("/rw/old-large-tree/nested/hidden.txt", b"hidden")
+   144	
+   145	    def inspect_view(spec: SandboxExecSpec) -> None:
+   146	        assert spec.mount is not None
+   147	        root = Path(spec.mount.source_root)
+   148	        assert (root / "rw/root-note.txt").read_bytes() == b"root"
+   149	        assert (root / "rw/public/shared.txt").read_bytes() == b"shared"
+   150	        assert (root / "rw/system/state.txt").read_bytes() == b"system"
+   151	        assert not (root / "rw/tmp/temp.txt").exists()
+   152	        assert (root / "rw/subagents/main/scratch/current.txt").read_bytes() == b"current"
+   153	        assert not (root / "rw/subagents/sub-other/scratch/other.txt").exists()
+   154	        assert not (root / "rw/old-large-tree/nested/hidden.txt").exists()
+   155	        (root / "rw/new-root.txt").write_bytes(b"new")
+   156	

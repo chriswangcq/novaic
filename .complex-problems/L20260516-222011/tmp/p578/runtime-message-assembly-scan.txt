@@ -1,0 +1,855 @@
+## Runtime message/context assembly terms
+novaic-agent-runtime/queue_service/main.py:56:from fastapi.responses import JSONResponse
+novaic-agent-runtime/queue_service/worker/contracts.py:22:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/worker/contracts.py:23:    metadata: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/worker/contracts.py:45:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/worker/sources.py:22:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/worker/sources.py:23:    metadata: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/worker/effects.py:15:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/worker/effects.py:39:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/task_fsm.py:60:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/task_fsm.py:67:    event_payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/saga_fsm.py:68:    step_results: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/saga_fsm.py:70:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/saga_fsm.py:77:    event_payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/fsm/core.py:21:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/fsm/core.py:27:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/fsm/core.py:37:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/fsm/core.py:47:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/fsm/runner.py:21:    payload: dict[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/fsm/runner.py:36:    identity: dict[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/queue_service/fsm/runner.py:37:    state_values: dict[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/novaic-agent-runtime.spec:22:        'fastapi', 'fastapi.applications', 'fastapi.routing', 'fastapi.responses',
+novaic-agent-runtime/novaic-agent-runtime.spec:27:        'starlette', 'starlette.responses',
+novaic-agent-runtime/main_novaic.py:17:Worker 主要通过 Queue Service、Business、Cortex 和 LLM Factory 通信；Gateway
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py:3:from task_queue.business.llm import LLMBusiness
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py:8:    assert not hasattr(TaskTopics, "LLM_CALL_SUMMARY")
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py:13:    assert not hasattr(LLMBusiness, "generate_summary")
+novaic-agent-runtime/README.md:3:Task / Saga workers、队列消费、LLM 调用与工具分发（`task_queue/`、`queue_service/`）。与 Queue Service、Business、Cortex、LLM Factory 通过 HTTP 协作；Gateway 只在边缘广播/信令场景作为配置存在。
+novaic-agent-runtime/task_queue/utils/no_tool_warning.py:1:"""Transient LLM warning for no-tool retries."""
+novaic-agent-runtime/task_queue/utils/no_tool_warning.py:8:    "如果用户已收到回复、当前只需要结束本轮，请根据 Active skill stack "
+novaic-agent-runtime/task_queue/handlers/validation.py:82:                error_messages = []
+novaic-agent-runtime/task_queue/business/llm.py:2:LLM Business - LLM 调用
+novaic-agent-runtime/task_queue/business/llm.py:5:- 调用 LLM transport client
+novaic-agent-runtime/task_queue/business/llm.py:14:class LLMCallResult:
+novaic-agent-runtime/task_queue/business/llm.py:15:    """LLM 调用结果"""
+novaic-agent-runtime/task_queue/business/llm.py:21:class LLMBusiness:
+novaic-agent-runtime/task_queue/business/llm.py:23:    Thin LLM transport wrapper.
+novaic-agent-runtime/task_queue/business/llm.py:30:        >>> from task_queue.business import LLMBusiness
+novaic-agent-runtime/task_queue/business/llm.py:31:        >>> llm_biz = LLMBusiness(db, llm_client)
+novaic-agent-runtime/task_queue/business/llm.py:52:    ) -> LLMCallResult:
+novaic-agent-runtime/task_queue/business/llm.py:54:        调用 LLM
+novaic-agent-runtime/task_queue/business/llm.py:63:            LLMCallResult
+novaic-agent-runtime/task_queue/business/llm.py:66:            return LLMCallResult(success=False, error="LLM client not configured")
+novaic-agent-runtime/task_queue/business/llm.py:75:            return LLMCallResult(success=True, response=response)
+novaic-agent-runtime/task_queue/business/llm.py:78:            return LLMCallResult(success=False, error=str(e))
+novaic-agent-runtime/task_queue/business/llm.py:82:        从 LLM 响应中提取 tool_calls
+novaic-agent-runtime/task_queue/business/llm.py:85:            response: LLM 响应
+novaic-agent-runtime/task_queue/business/llm.py:95:        从 LLM 响应中提取文本内容
+novaic-agent-runtime/task_queue/business/llm.py:98:            response: LLM 响应
+novaic-agent-runtime/task_queue/business/llm.py:108:        从 LLM 响应中提取推理内容
+novaic-agent-runtime/task_queue/business/llm.py:113:            response: LLM 响应
+novaic-agent-runtime/task_queue/utils/context.py:4:用于 LLM 调用前的消息预处理：
+novaic-agent-runtime/task_queue/utils/context.py:21:    这对 LLM 调用很重要，否则 LLM 可能报错。
+novaic-agent-runtime/task_queue/utils/context.py:38:        >>> messages = [
+novaic-agent-runtime/task_queue/utils/context.py:40:        ...     {"role": "assistant", "tool_calls": [{"id": "call_1", "function": {"name": "test"}}]},
+novaic-agent-runtime/task_queue/utils/context.py:42:        ...     {"role": "tool", "tool_call_id": "call_1", "content": "result"},
+novaic-agent-runtime/task_queue/utils/context.py:67:        if role not in ("tool", "tool_result"):
+novaic-agent-runtime/task_queue/utils/context.py:71:            if role == "assistant" and tool_calls:
+novaic-agent-runtime/task_queue/utils/context.py:86:            "tool_call_id",
+novaic-agent-runtime/task_queue/utils/context.py:91:        if role in ("tool", "tool_result") and "_projection" in msg:
+novaic-agent-runtime/task_queue/utils/context.py:101:    other_messages = []  # (original_idx, msg)
+novaic-agent-runtime/task_queue/utils/context.py:107:        if role == "assistant" and msg.get("tool_calls"):
+novaic-agent-runtime/task_queue/utils/context.py:116:        elif role == "tool_result" or role == "tool":
+novaic-agent-runtime/task_queue/utils/context.py:117:            tc_id = msg.get("tool_call_id")
+novaic-agent-runtime/task_queue/utils/context.py:151:                                "role": "tool",
+novaic-agent-runtime/task_queue/utils/context.py:152:                                "tool_call_id": tc_id,
+novaic-agent-runtime/task_queue/utils/context.py:174:                            "role": "tool",
+novaic-agent-runtime/task_queue/utils/context.py:175:                            "tool_call_id": tc_id,
+novaic-agent-runtime/task_queue/utils/context.py:191:    （因为 LLM API 不支持在 tool result 中放图片）
+novaic-agent-runtime/task_queue/utils/context.py:198:        provider: LLM 提供商 ("openai" 或 "anthropic")
+novaic-agent-runtime/task_queue/utils/context.py:217:        if role in ("tool_result", "tool"):
+novaic-agent-runtime/task_queue/utils/context.py:256:            # User message: 若有 {text, attachments} 格式，转为 LLM content 数组
+novaic-agent-runtime/task_queue/utils/context.py:263:                # 有附件，转为 LLM 格式（文本 + 附件描述）
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:11:def test_build_pending_restart_saga_decodes_metadata_and_preserves_context_shape():
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:443:        tool_call_id: str,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:448:        """Read a step and get its result formatted as _mcp_content JSON."""
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:453:                "tool_call_id": tool_call_id,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:468:        tool_call_id: str,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:477:                "tool_call_id": tool_call_id,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:491:        """Prepare messages for LLM via Cortex's ContextEvent read model.
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:493:        If this fails we must NOT silently return empty context — the LLM
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:516:            child_scope_id: globally-unique id for the new scope (LLM-chosen).
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:567:        Missing schemas will make the LLM see no tools; callers that depend
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:26:    factory_source = _read(RUNTIME / "task_queue" / "workers" / "assembly_factories.py")
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:33:    assert "build_synthetic_worker_with_runtime(" in factory_source
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:34:    assert "SessionOutboxHandler(" in factory_source
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:44:        "tool_call_id": "call_x",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:91:    assert "tool_call_id=call_x" in msg
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:1:"""Explicit-input contract tests for Runtime LLM/saga assembly."""
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:12:    LLMCallInput,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:13:    LLMTransportConfig,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:26:    build_prepare_context_payload,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:50:    assert build_prepare_context_payload(source) == {
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:62:        "messages": [{"role": "system", "content": "prepared"}],
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:68:    assert call_payload["messages"] == [{"role": "system", "content": "prepared"}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:87:        "step_results": {"prepare_context": {"tool_names": ["old_tool"]}},
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:103:        prepare_context_result={"tool_names": ["shell"]},
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:124:        "prepare_context": {"tool_names": []},
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:156:        return messages + [{"role": "tool", "tool_call_id": "tc", "content": "expanded"}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:160:        return messages + [{"role": "system", "content": "sanitized"}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:164:        return messages + [{"role": "system", "content": "processed"}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:167:        LLMCallInput.from_payload({
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:176:        LLMTransportConfig(
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:177:            factory_url="https://factory",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:188:    assert prepared.messages[-1] == {"role": "system", "content": "processed"}
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:207:        build_save_results_tasks(source, [{"tool_call_id": "call-1", "content": "ok"}])
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:251:        "tool_call_id": "shell:1",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:328:    assert "LLMCallInput.from_payload" in handler_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:348:    assert "TaskTopics.CORTEX_PREPARE_LLM_CONTEXT" in think_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:349:    assert "TaskTopics.LLM_CALL" in think_source
+novaic-agent-runtime/task_queue/utils/multimodal.py:1:"""Display-only multimodal conversion for LLM calls.
+novaic-agent-runtime/task_queue/utils/multimodal.py:4:``display_perception`` tool messages may carry ``_mcp_content`` media into this
+novaic-agent-runtime/task_queue/utils/multimodal.py:22:    """Extract text/images from the current display ``_mcp_content`` contract."""
+novaic-agent-runtime/task_queue/utils/multimodal.py:25:    mcp_content = result.get("_mcp_content")
+novaic-agent-runtime/task_queue/utils/multimodal.py:49:    """Return whether a display ``_mcp_content`` result contains image data."""
+novaic-agent-runtime/task_queue/utils/multimodal.py:50:    mcp_content = result.get("_mcp_content", [])
+novaic-agent-runtime/task_queue/utils/multimodal.py:125:                    "_note": "Image data provided separately to LLM"
+novaic-agent-runtime/task_queue/utils/multimodal.py:137:        if key == "_mcp_content":
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:1:"""Cortex Handlers — Cortex scope lifecycle + LLM context assembly
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:8:                              compact to budget, load tools → ready for LLM call
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:21:    LLMContextAssemblySnapshot,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:22:    LLMPrepareContextInput,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:33:    Normal system shutdown is not an LLM-authored summary path. Durable
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:34:    folded memory must come from an active scope the LLM closes with
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:258:    """Check Cortex skill stack depth. Used to decide finalize vs continue."""
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:293:# ── LLM Context assembly (Context Stack v2) ──
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:296:@register_handler(TaskTopics.CORTEX_PREPARE_LLM_CONTEXT)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:298:    """Collect explicit LLM assembly inputs and invoke the pure assembler.
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:308:        prepare_input = LLMPrepareContextInput.from_mapping(payload)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:359:        LLMContextAssemblySnapshot(
+novaic-agent-runtime/tests/test_session_init_message_ids.py:107:    """Replace the real CortexBridge factory with a MagicMock so we can
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:153:    factory_source = Path("task_queue/workers/assembly_factories.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:173:    assert "SagaLaunchHandler(" in factory_source
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:174:    assert "build_concurrent_worker(" in factory_source
+novaic-agent-runtime/task_queue/workers/task_execution.py:235:        real_payload = self._build_saga_step_payload(step, context, step_results, depends_on)
+novaic-agent-runtime/task_queue/workers/task_execution.py:271:            tasks_config = step.build_tasks(context, prev_result)
+novaic-agent-runtime/task_queue/workers/task_execution.py:273:            tasks_config = step.build_tasks(context)
+novaic-agent-runtime/task_queue/workers/task_execution.py:294:                unique_id = payload.get("tool_call_id") or payload.get("idempotency_key") or str(i)
+novaic-agent-runtime/task_queue/workers/task_execution.py:364:        if step.step_type == StepType.SAGA and step.build_saga_context:
+novaic-agent-runtime/task_queue/workers/task_execution.py:365:            return step.build_saga_context(ctx_with_results, prev_result)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:4:Cortex stores tool steps and knows how to format their payloads for LLM
+novaic-agent-runtime/task_queue/utils/step_result_client.py:6:provider-shaped tool-result content just before the LLM call.
+novaic-agent-runtime/task_queue/utils/step_result_client.py:27:    tool_call_id: Optional[str] = None,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:29:    """Resolve a Cortex tool step to _mcp_content JSON for LLM injection."""
+novaic-agent-runtime/task_queue/utils/step_result_client.py:31:    if not tool_call_id:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:32:        raise ValueError(f"Tool result resolution requires tool_call_id for {step_ref}")
+novaic-agent-runtime/task_queue/utils/step_result_client.py:35:        tool_call_id,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:52:    tool_call_id: Optional[str] = None,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:62:        tool_call_id=tool_call_id,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:75:    tool_call_id = str(msg.get("tool_call_id") or "").strip()
+novaic-agent-runtime/task_queue/utils/step_result_client.py:80:        or tool_names_by_id.get(tool_call_id)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:85:def _latest_tool_call_ids(messages: List[Dict[str, Any]]) -> set[str]:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:112:            tool_call_id = str(tc.get("id") or "").strip()
+novaic-agent-runtime/task_queue/utils/step_result_client.py:114:            if tool_call_id and tool_name:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:115:                names[tool_call_id] = tool_name
+novaic-agent-runtime/task_queue/utils/step_result_client.py:124:    latest_tool_call_ids: set[str],
+novaic-agent-runtime/task_queue/utils/step_result_client.py:127:    tool_call_id = str(msg.get("tool_call_id") or "").strip()
+novaic-agent-runtime/task_queue/utils/step_result_client.py:131:        or (not msg_round_id and tool_call_id in latest_tool_call_ids)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:148:    tool_call_id: Optional[str] = None,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:153:    if not tool_call_id:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:154:        raise ValueError(f"Tool result preview requires tool_call_id for {step_ref}")
+novaic-agent-runtime/task_queue/utils/step_result_client.py:157:        tool_call_id,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:175:    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+novaic-agent-runtime/task_queue/utils/step_result_client.py:178:    latest_tool_call_ids = _latest_tool_call_ids(messages)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:182:        tool_call_id = msg.get("tool_call_id")
+novaic-agent-runtime/task_queue/utils/step_result_client.py:183:        if role in ("tool", "tool_result"):
+novaic-agent-runtime/task_queue/utils/step_result_client.py:191:                latest_tool_call_ids=latest_tool_call_ids,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:200:                tool_call_id=tool_call_id,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:227:        tool_call_id = msg.get("tool_call_id")
+novaic-agent-runtime/task_queue/utils/step_result_client.py:228:        if role in ("tool", "tool_result"):
+novaic-agent-runtime/task_queue/utils/step_result_client.py:237:                tool_call_id=tool_call_id,
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:22:        "tool_call_id": "shell-call-1",
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:47:            "factory_url": "http://factory.local",
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:48:            "user_id": "factory-user",
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:117:    assert env["NOVAIC_PAYLOAD_FACTORY_URL"] == "http://factory.local"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:118:    assert env["NOVAIC_PAYLOAD_FACTORY_USER_ID"] == "factory-user"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:169:    assert "_mcp_content" not in content
+novaic-agent-runtime/task_queue/utils/user_content.py:2:User message content 转 LLM 格式
+novaic-agent-runtime/task_queue/utils/user_content.py:28:    将 user message 的 {text, attachments} 转为 LLM content 数组。
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:1:from task_queue.factory_client import FactoryLLMClient
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:15:def test_factory_client_preserves_structured_image_content(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:45:        "task_queue.factory_client.internal_sync_client",
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:50:    messages = [
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:60:    client = FactoryLLMClient(
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:61:        "http://factory.test",
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:72:    assert captured["url"] == "http://factory.test/v1/chat/completions"
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:14:    factory_source = Path("task_queue/workers/assembly_factories.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:17:        factory_source,
+novaic-agent-runtime/tests/test_health_dispatch.py:66:    def fake_client_factory(service_name, base_url, headers=None, timeout=None):
+novaic-agent-runtime/tests/test_health_dispatch.py:74:        fake_client_factory,
+novaic-agent-runtime/tests/test_health_dispatch.py:93:    def fake_client_factory(service_name, base_url, headers=None, timeout=None):
+novaic-agent-runtime/tests/test_health_dispatch.py:99:        fake_client_factory,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:39:    """Create Cortex scope, build system prompt, write context.jsonl.
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:132:    # ``context.prepare_for_llm`` starts from ``agent_root_scope_id``.
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:184:    # _build_session_init_payload from saga context, which in turn got
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:5:    LLMCallInput,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:6:    LLMTransportConfig,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:15:        "role": "tool",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:16:        "tool_call_id": "call-1",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:19:            "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:32:    assert processed[0]["role"] == "tool"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:43:    assert processed[0]["role"] == "tool"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:55:    assert processed[0]["role"] == "tool"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:58:    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:67:            "role": "tool",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:68:            "tool_call_id": "display:large-text",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:71:                "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:82:    text = tool_payload["_mcp_content"][0]["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:93:            "role": "tool",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:94:            "tool_call_id": "display:unsupported-content",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:108:    assert processed[0]["role"] == "tool"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:115:            "role": "tool",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:116:            "tool_call_id": "display:nested",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:121:                    "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:133:    assert processed[0]["role"] == "tool"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:138:    messages = [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:156:    assert [message["role"] for message in processed] == ["assistant", "tool", "user"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:159:    image_item = tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:174:        "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:183:    assert public_content["_mcp_content"][1]["type"] == "image"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:184:    assert public_content["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:185:    assert "data" not in public_content["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:190:    assert llm_content["_mcp_content"][1]["data"] == "YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:194:            "role": "tool",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:195:            "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:203:    assert [message["role"] for message in processed] == ["tool", "user"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:205:    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:206:    assert "data" not in tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:216:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:217:            calls.append({"scope_id": scope_id, "tool_call_id": tool_call_id, **kwargs})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:219:                "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:231:        LLMCallInput(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:252:                    "role": "tool",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:253:                    "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:259:                    "content": "[Active skill stack] this system message follows the display result",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:263:        LLMTransportConfig(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:264:            factory_url="http://factory.test",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:276:    assert [message["role"] for message in prepared.messages] == [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:283:    image_placeholder = tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:308:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:309:            calls.append({"scope_id": scope_id, "tool_call_id": tool_call_id, **kwargs})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:311:            if tool_call_id == "shell:1":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:313:                return json.dumps({"_mcp_content": [{"type": "text", "text": shell_manifest_text}]})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:314:            if tool_call_id == "display:2" and projection == "display_perception":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:316:                    "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:321:            if tool_call_id == "display:2" and projection == "history":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:322:                return json.dumps({"_mcp_content": [{"type": "text", "text": "desktop screenshot"}]})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:323:            raise AssertionError(f"unexpected read_step_formatted call: {tool_call_id=} {projection=}")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:330:    messages = [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:344:            "role": "tool",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:345:            "tool_call_id": "shell:1",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:363:            "role": "tool",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:364:            "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:371:            "content": "[Active skill stack] this system message follows the display result",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:376:        LLMCallInput(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:385:        LLMTransportConfig(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:386:            factory_url="http://factory.test",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:399:    assert shell_payload["_mcp_content"][0]["type"] == "text"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:402:        in shell_payload["_mcp_content"][0]["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:406:    assert [message["role"] for message in current.messages] == [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:414:    current_image_messages = [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:427:        LLMCallInput(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:436:        LLMTransportConfig(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:437:            factory_url="http://factory.test",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:455:    assert replay_display_payload["_mcp_content"] == [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:467:        {"_mcp_content": [{"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"}]},
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:20:    logger_args: tuple[Any, ...] = field(default_factory=tuple)
+novaic-agent-runtime/task_queue/workers/saga_launch_plans.py:45:    dag_tasks = tuple(build_dag(definition, saga_id, context))
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:41:        "tool_call_id": "display:0",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:65:def test_display_fetches_blob_service_image_as_mcp_content(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:90:    item = result["_mcp_content"][0]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:97:    public_item = public["_mcp_content"][0]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:101:    assert wrapped["durable_payload"]["llm_content"]["_mcp_content"][0]["data"] == item["data"]
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:156:    factory_source = ASSEMBLY_FACTORIES.read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:161:    assert "build_generic_worker(" in factory_source
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:162:    assert "build_concurrent_worker(" in factory_source
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:163:    assert "build_synthetic_worker(" in factory_source
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:164:    assert "build_synthetic_worker_with_runtime(" in factory_source
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:22:        {"role": "system", "content": "SYSTEM"},
+novaic-agent-runtime/task_queue/tool_output.py:3:The LLM-facing representation is a projection, not the durable contract.  This
+novaic-agent-runtime/task_queue/tool_output.py:36:    extra: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/task_queue/tool_output.py:58:    source: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/task_queue/tool_output.py:59:    access: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/task_queue/tool_output.py:60:    projection: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/task_queue/tool_output.py:61:    retention: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/task_queue/tool_output.py:100:    payload: Mapping[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/task_queue/tool_output.py:123:    diagnostics: ToolDiagnostics = field(default_factory=ToolDiagnostics)
+novaic-agent-runtime/task_queue/business/__init__.py:5:- llm: LLM calls
+novaic-agent-runtime/task_queue/business/__init__.py:8:from .llm import LLMBusiness
+novaic-agent-runtime/task_queue/business/__init__.py:11:    "LLMBusiness",
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:1:"""PR-85: smoke guardrails for the LLM request contract."""
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:8:from task_queue.business.llm import LLMBusiness
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:27:            {"role": "system", "content": "[系统] stable system prompt"},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:28:            {"role": "system", "content": "[Skill 'user conversation' completed]\nUser prefers 大哥."},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:58:    assert "Active skill stack" in contents[-1]
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:81:        "messages": [{"role": "system", "content": "[系统] stable system prompt"}],
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:92:            raise AssertionError("mounted device schemas must not be fetched for LLM context")
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:173:def test_known_tool_names_come_only_from_prepare_context_result():
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:176:        "step_results": {"prepare_context": {"tool_names": ["shell"]}},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:188:    assert "LLMContextAssemblySnapshot(" in source
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:192:def test_tool_result_step_preserves_tool_call_id_and_step_ref():
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:205:                "tool_call_id": "call_abc123",
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:226:    biz = LLMBusiness(gateway_url="unused", llm_client=None)
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:496:    from task_queue.workers.wake.assembler_factory import get_assembler
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:6:The current wake scope is now a real LLM-closable scope. A shell reply
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:7:round with a non-empty Cortex stack should continue thinking so the LLM can
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:176:    """If LLM calls shell im reply AND something else in the same round
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:3:The only LLM-authored durable summary path is:
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:325:        _build_session_ended_payload(dict(base_context))
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:327:        _build_cortex_scope_end_payload(dict(base_context))
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:329:        _build_set_sleeping_payload(dict(base_context))
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:331:        _build_set_subagent_completed_payload(dict(base_context))
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:350:        _build_session_ended_payload(dict(base_context))
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:352:        _build_cortex_scope_end_payload(dict(base_context))
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:1:"""Process-wide DispatchAssembler factory for the runtime scheduler worker."""
+novaic-agent-runtime/task_queue/topics.py:27:    # LLM Tasks
+novaic-agent-runtime/task_queue/topics.py:28:    LLM_CALL = "llm.call"
+novaic-agent-runtime/task_queue/topics.py:37:    # Cortex Tasks — scope lifecycle + LLM context assembly
+novaic-agent-runtime/task_queue/topics.py:41:    CORTEX_PREPARE_LLM_CONTEXT = "cortex.prepare_llm_context"
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:78:    think_payload = _build_trigger_think_payload(ctx)["context"]
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:84:def test_prepare_context_reads_wake_child_but_prepares_agent_root(monkeypatch):
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:2:LLM Handlers - LLM 调用（纯传输层）
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:5:- llm.call: 调用 LLM
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:10:- 调用 LLM API 并返回原始响应
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:11:- 不决定"给 LLM 哪些工具"（由 Cortex 负责）
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:14:- task_queue.business.LLMBusiness 业务逻辑层
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:19:from ..business import LLMBusiness
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:21:    LLMCallInput,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:22:    LLMTransportConfig,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:30:def _create_factory_client(
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:31:    llm_config: LLMTransportConfig,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:35:    """创建 Factory LLM Client（不持有 api_key）"""
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:36:    from ..factory_client import FactoryLLMClient
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:38:    return FactoryLLMClient(
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:51:    """Fetch LLM config from Business internal API."""
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:55:        raise ValidationError("Missing required field: agent_id for LLM config lookup")
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:68:@register_handler(TaskTopics.LLM_CALL)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:71:    调用 LLM
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:78:    幂等性：LLM 调用是无状态的，天然幂等
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:93:        call_input = LLMCallInput.from_payload(payload)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:109:            "error": llm_config.get("error", "Failed to get LLM config"),
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:113:        transport_config = LLMTransportConfig.from_mapping(llm_config)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:129:    llm_client = _create_factory_client(
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:134:    biz = LLMBusiness(biz_url, llm_client)
+novaic-agent-runtime/task_queue/saga.py:37:    "build_saga_context",
+novaic-agent-runtime/task_queue/saga.py:78:    build_saga_context: Optional[Callable] = None
+novaic-agent-runtime/task_queue/saga.py:103:    build_saga_context: Optional[Callable] = None
+novaic-agent-runtime/task_queue/saga.py:111:    steps: List[SagaStep] = field(default_factory=list)
+novaic-agent-runtime/task_queue/saga.py:173:        build_saga_context: Callable,
+novaic-agent-runtime/task_queue/saga.py:181:            build_saga_context=build_saga_context,
+novaic-agent-runtime/task_queue/saga.py:236:                        build_saga_context=branch.build_saga_context,
+novaic-agent-runtime/task_queue/saga.py:253:                build_saga_context=step.build_saga_context,
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:16:    Path("task_queue/workers/wake/assembler_factory.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:152:    factory_source = Path("task_queue/workers/assembly_factories.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:162:        assert handler_name in factory_source
+novaic-agent-runtime/tests/test_pr340_saga_launch_plans.py:78:        "build_saga_context",
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:75:    bridge.read_materialized_context_projection.return_value = [{"role": "system", "content": "SYSTEM"}]
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:48:    factory_source = Path("task_queue/workers/assembly_factories.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:61:    assert "ScheduledWakeHandler(" in factory_source
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:62:    assert "build_synthetic_worker(" in factory_source
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:95:        and isinstance(result.get("_mcp_content"), list)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:128:            "_note": "Image data provided separately to LLM",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:135:        if key == "_mcp_content" and isinstance(value, list):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:143:    mcp_content = result.get("_mcp_content")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:245:def _ok(scope_id, round_id, tool_call_id, tool_name, result):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:254:        "tool_call_id": tool_call_id, "tool_name": tool_name,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:266:def _err(scope_id, round_id, tool_call_id, tool_name, error):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:270:        "tool_call_id": tool_call_id, "tool_name": tool_name,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:278:# deps 包含 gw_client, bridge, agent_id, subagent_id, tool_call_id 等
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:283:    logger.info(f"[tool] sleep: {secs}s ({deps['tool_call_id']})")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:309:                "NOVAIC_PAYLOAD_FACTORY_URL": model_config["factory_url"],
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:310:                "NOVAIC_PAYLOAD_FACTORY_USER_ID": model_config["factory_user_id"],
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:396:        "_mcp_content": content,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:426:    """skill_begin → create child skill. LLM must supply a unique scope_id."""
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:466:        return {"success": False, "error": f"{tool_name} requires agent_id to resolve LLM config"}
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:479:        error = llm_config.get("error") if isinstance(llm_config, dict) else "invalid LLM config"
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:483:    factory_url = (llm_config.get("factory_url") or ServiceConfig.LLM_FACTORY_URL).rstrip("/")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:484:    factory_user_id = llm_config.get("user_id") or user_id
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:487:    if not factory_url:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:488:        return {"success": False, "error": "Payload interpretation model config missing factory_url"}
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:489:    if not factory_user_id:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:495:        "factory_url": factory_url,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:496:        "factory_user_id": factory_user_id,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:500:# Runtime finalization is system-driven after the active skill stack drains.
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:501:# There is no LLM-facing finalize/rest tool and no tool-side summary path.
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:504:def _tool_step_ref(scope_id: str, round_id: str, tool_call_id: str) -> str:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:509:    return f"step-ref:{scope_id}:{round_label}:{tool_call_id}"
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:532:    for field in ("round_id", "tool_call_id", "tool_name"):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:539:    tool_call_id = payload["tool_call_id"]
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:555:        logger.warning(f"[tool] Unknown tool: {tool_name} ({tool_call_id})")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:557:        step_ref = _tool_step_ref(scope_id, round_id, tool_call_id)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:558:        tool_result = _err(scope_id, round_id, tool_call_id, tool_name, err_msg)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:567:        "tool_call_id": tool_call_id,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:583:        step_ref = _tool_step_ref(scope_id, round_id, tool_call_id)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:584:        tool_result = _ok(scope_id, round_id, tool_call_id, tool_name, result)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:598:            "tool_call_id=%s reason_type=%s reason=%s",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:600:            tool_call_id, reason_type, reason_msg,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:602:        step_ref = _tool_step_ref(scope_id, round_id, tool_call_id)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:603:        tool_result = _err(scope_id, round_id, tool_call_id, tool_name, e)
+novaic-agent-runtime/task_queue/sagas/react_think.py:5:1. Cortex assembles LLM context (ContextEvent read model + tools + transient warning)
+novaic-agent-runtime/task_queue/sagas/react_think.py:6:2. Call LLM (with messages + tools from Step 1)
+novaic-agent-runtime/task_queue/sagas/react_think.py:7:3. Save LLM response to context.jsonl (filter unknown tool_calls)
+novaic-agent-runtime/task_queue/sagas/react_think.py:22:    build_prepare_context_payload,
+novaic-agent-runtime/task_queue/sagas/react_think.py:45:    """Get valid tool names from the explicit prepare_context step result."""
+novaic-agent-runtime/task_queue/sagas/react_think.py:49:def _build_prepare_context_payload(ctx):
+novaic-agent-runtime/task_queue/sagas/react_think.py:54:    return build_prepare_context_payload(ReactThinkInput.from_context(ctx))
+novaic-agent-runtime/task_queue/sagas/react_think.py:58:    return build_llm_call_payload(ReactThinkInput.from_context(ctx), prev_result or {})
+novaic-agent-runtime/task_queue/sagas/react_think.py:73:    """Persist only LLM responses that are part of canonical dialogue state.
+novaic-agent-runtime/task_queue/sagas/react_think.py:77:    LLM context. Raw payloads remain available through execution logs.
+novaic-agent-runtime/task_queue/sagas/react_think.py:89:    P0-5 / INV-2 — **never finalize with a non-empty stack.** When the LLM returns
+novaic-agent-runtime/task_queue/sagas/react_think.py:95:      (bounded by ``MAX_STACK_HOLD_RETRIES``) so the LLM gets a chance to emit
+novaic-agent-runtime/task_queue/sagas/react_think.py:105:        prepare_context_result=(results or {}).get("prepare_context") or {},
+novaic-agent-runtime/task_queue/sagas/react_think.py:142:    return build_trigger_actions(ReactThinkInput.from_context(ctx), decision or {})
+novaic-agent-runtime/task_queue/sagas/react_think.py:146:    return build_trigger_retry_think(ReactThinkInput.from_context(ctx), decision or {})
+novaic-agent-runtime/task_queue/sagas/react_think.py:155:    return build_trigger_finalize(ReactThinkInput.from_context(ctx), decision or {})
+novaic-agent-runtime/task_queue/sagas/react_think.py:161:    name="prepare_context",
+novaic-agent-runtime/task_queue/sagas/react_think.py:162:    topic=TaskTopics.CORTEX_PREPARE_LLM_CONTEXT,
+novaic-agent-runtime/task_queue/sagas/react_think.py:163:    build_payload=_build_prepare_context_payload,
+novaic-agent-runtime/task_queue/sagas/react_think.py:168:    topic=TaskTopics.LLM_CALL,
+novaic-agent-runtime/task_queue/sagas/react_think.py:186:    build_payload=lambda ctx: build_check_skill_stack_payload(ReactThinkInput.from_context(ctx)),
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:21:        "tool_call_id": "call-skill-end",
+novaic-agent-runtime/task_queue/contracts/react_think.py:34:    tools: list[dict[str, Any]] = field(default_factory=list)
+novaic-agent-runtime/task_queue/contracts/react_think.py:37:    step_results: dict[str, Any] = field(default_factory=dict)
+novaic-agent-runtime/task_queue/contracts/react_think.py:77:    prepare_context_result: dict[str, Any]
+novaic-agent-runtime/task_queue/contracts/react_think.py:84:    prepare_result = (step_results or {}).get("prepare_context") or {}
+novaic-agent-runtime/task_queue/contracts/react_think.py:100:def build_prepare_context_payload(source: ReactThinkInput) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/contracts/react_think.py:115:    prepare_context_result: dict[str, Any],
+novaic-agent-runtime/task_queue/contracts/react_think.py:122:        "messages": deepcopy((prepare_context_result or {}).get("messages") or []),
+novaic-agent-runtime/task_queue/contracts/react_think.py:124:        "tools": deepcopy((prepare_context_result or {}).get("tools") or []),
+novaic-agent-runtime/task_queue/contracts/react_think.py:134:        error_msg = (call_result or {}).get("error", "Unknown LLM error")
+novaic-agent-runtime/task_queue/contracts/react_think.py:135:        return {"role": "assistant", "content": f"[LLM Error] {error_msg}"}
+novaic-agent-runtime/task_queue/contracts/react_think.py:140:        return {"role": "assistant", "content": "[No response from LLM]"}
+novaic-agent-runtime/task_queue/contracts/react_think.py:230:    known = known_tool_names_from_prepare_result(decision_input.prepare_context_result)
+novaic-agent-runtime/task_queue/factory_client.py:2:Factory LLM Client - 通过 Factory /v1/chat/completions 代理 LLM 调用
+novaic-agent-runtime/task_queue/factory_client.py:4:所有 LLM 调用通过 Factory 代理，不直接持有 api_key。
+novaic-agent-runtime/task_queue/factory_client.py:16:DEFAULT_TIMEOUT = 300.0  # LLM 调用可能很慢
+novaic-agent-runtime/task_queue/factory_client.py:20:class FactoryLLMClient:
+novaic-agent-runtime/task_queue/factory_client.py:21:    """通过 Factory 代理的 LLM Client，接口兼容 OpenAIClient.chat()"""
+novaic-agent-runtime/task_queue/factory_client.py:23:    def __init__(self, factory_url: str, model_id: str, user_id: str,
+novaic-agent-runtime/task_queue/factory_client.py:25:        self.factory_url = factory_url.rstrip("/")
+novaic-agent-runtime/task_queue/factory_client.py:41:        """调用 Factory /v1/chat/completions
+novaic-agent-runtime/task_queue/factory_client.py:56:            "x_factory": {
+novaic-agent-runtime/task_queue/factory_client.py:68:        url = f"{self.factory_url}/v1/chat/completions"
+novaic-agent-runtime/task_queue/factory_client.py:78:                raise RuntimeError(f"Factory LLM call failed ({status}): {body}")
+novaic-agent-runtime/task_queue/factory_client.py:92:            raise RuntimeError(f"Factory LLM call failed ({e.response.status_code}): {detail}") from e
+novaic-agent-runtime/task_queue/factory_client.py:96:            raise RuntimeError(f"Factory LLM call failed: {e}") from e
+novaic-agent-runtime/task_queue/workers/process_runner.py:22:    startup_lines: Iterable[str] = field(default_factory=tuple)
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:80:    factory_source = Path("task_queue/workers/assembly_factories.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:83:        factory_source,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:7:3. Check Cortex skill stack depth
+novaic-agent-runtime/task_queue/sagas/react_actions.py:40:# The current wake scope is now a real LLM-closable scope. A reply-only round
+novaic-agent-runtime/task_queue/sagas/react_actions.py:48:#   REPLY_NO_FOLLOWUP  LLM's only tool call this round was a turn closer,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:51:#                      non-empty, continue thinking so the LLM can close the
+novaic-agent-runtime/task_queue/sagas/react_actions.py:72:    return build_tool_execute_tasks(ReactActionsInput.from_context(ctx))
+novaic-agent-runtime/task_queue/sagas/react_actions.py:77:    return build_save_results_tasks(ReactActionsInput.from_context(ctx), prev_results)
+novaic-agent-runtime/task_queue/sagas/react_actions.py:81:    return build_check_stack_payload(ReactActionsInput.from_context(ctx))
+novaic-agent-runtime/task_queue/sagas/react_actions.py:92:      0. REPLY_NO_FOLLOWUP — LLM's only tool call was a turn-closer
+novaic-agent-runtime/task_queue/sagas/react_actions.py:94:         if the stack is already empty; otherwise continue thinking so the LLM
+novaic-agent-runtime/task_queue/sagas/react_actions.py:143:    return build_trigger_next_think_payload(ReactActionsInput.from_context(ctx), decision or {})
+novaic-agent-runtime/task_queue/sagas/react_actions.py:157:    return build_trigger_finalize_payload(ReactActionsInput.from_context(ctx), decision or {})
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:224:    assert names.index("prepare_context") < names.index("call_llm")
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:225:    assert by_name["call_llm"].depends_on == ["prepare_context"]
+novaic-agent-runtime/task_queue/workers/assembly_specs.py:15:    """Declarative binding from runtime mode to process factory."""
+novaic-agent-runtime/task_queue/sagas/__init__.py:6:- react_think:      ReAct Think phase (LLM call)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:11:only when the LLM closes the current stack-top scope through
+novaic-agent-runtime/task_queue/tool_surface_policy.py:6:registry or LLM schema surface.
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:85:    This task is not the LLM history assembly path. LLM requests use
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:188:    user/assistant/system messages. This is not authoritative LLM history;
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:189:    LLM preparation uses Cortex ContextEvents.
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:23:            "prepare_context": {"tool_names": ["shell"]},
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:114:            "tool_call_id": "call_1",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:136:            "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:137:            "tool_call_id": "call_1",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:146:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:147:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:155:        "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:156:        "tool_call_id": "call_1",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:162:        "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:163:        "tool_call_id": "call_1",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:164:        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:175:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:176:            calls.append((scope_id, tool_call_id, kwargs))
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:177:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:186:            "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:187:            "tool_call_id": "shell:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:206:        "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:207:        "tool_call_id": "shell:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:208:        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:219:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:220:            calls.append((scope_id, tool_call_id, kwargs))
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:221:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:230:            "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:231:            "tool_call_id": "display:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:252:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:253:            calls.append((scope_id, tool_call_id, kwargs))
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:254:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:263:            "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:264:            "tool_call_id": "display:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:285:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:286:            calls.append((scope_id, tool_call_id, kwargs))
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:287:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:306:                "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:307:                "tool_call_id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:327:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:328:            calls.append((scope_id, tool_call_id, kwargs))
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:329:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:348:                "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:349:                "tool_call_id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:363:                "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:364:                "tool_call_id": "shell:3",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:387:        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:388:            calls.append((scope_id, tool_call_id, kwargs))
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:389:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:398:            "role": "tool",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:399:            "tool_call_id": "display:0",
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:4:LLM-opened child skill -> skill_end(report=...) -> that child scope's
+novaic-agent-runtime/task_queue/handlers/__init__.py:144:from . import cortex_handlers   # scope lifecycle + LLM context assembly
+novaic-agent-runtime/tests/test_no_tool_warning.py:7:2. `no_tool_retry_count>=1` + no skill stack → warning injected.
+novaic-agent-runtime/tests/test_no_tool_warning.py:8:3. `no_tool_retry_count>=1` + **skill stack non-empty** → warning injected.
+novaic-agent-runtime/tests/test_no_tool_warning.py:9:4. `_build_prepare_context_payload` must forward `no_tool_retry_count` from
+novaic-agent-runtime/tests/test_no_tool_warning.py:19:from task_queue.sagas.react_think import _build_prepare_context_payload
+novaic-agent-runtime/tests/test_no_tool_warning.py:40:# ── payload channel (_build_prepare_context_payload) ───────────────────
+novaic-agent-runtime/tests/test_no_tool_warning.py:54:    payload = _build_prepare_context_payload(ctx)
+novaic-agent-runtime/tests/test_no_tool_warning.py:68:    payload = _build_prepare_context_payload(ctx)
+novaic-agent-runtime/tests/test_no_tool_warning.py:157:    # it's the most salient hint before the LLM call. Filter by the
+novaic-agent-runtime/tests/test_no_tool_warning.py:162:        and (m.get("content") or "").startswith("[Active skill stack")
+novaic-agent-runtime/tests/test_no_tool_warning.py:166:    # system instruction the LLM sees before responding).
+novaic-agent-runtime/task_queue/contracts/llm_call.py:1:"""Explicit LLM call contracts for Runtime.
+novaic-agent-runtime/task_queue/contracts/llm_call.py:3:LLM call handling has two different responsibilities:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:6:2. Send that request through the configured factory client.
+novaic-agent-runtime/task_queue/contracts/llm_call.py:10:resolution), and ``LLMBusiness`` stays as a thin transport wrapper.
+novaic-agent-runtime/task_queue/contracts/llm_call.py:21:class LLMCallInput:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:22:    """Payload shape expected by the LLM call handler."""
+novaic-agent-runtime/task_queue/contracts/llm_call.py:28:    tools: list[dict[str, Any]] = field(default_factory=list)
+novaic-agent-runtime/task_queue/contracts/llm_call.py:37:    def from_payload(cls, payload: dict[str, Any]) -> "LLMCallInput":
+novaic-agent-runtime/task_queue/contracts/llm_call.py:44:        messages = payload.get("messages")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:48:            raise ValueError("LLMCallInput.messages must be a list")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:51:            raise ValueError("LLMCallInput.tools must be a list")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:68:class LLMTransportConfig:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:69:    """Business-provided transport configuration for one LLM call."""
+novaic-agent-runtime/task_queue/contracts/llm_call.py:71:    factory_url: str
+novaic-agent-runtime/task_queue/contracts/llm_call.py:78:    def from_mapping(cls, value: dict[str, Any]) -> "LLMTransportConfig":
+novaic-agent-runtime/task_queue/contracts/llm_call.py:79:        if not value.get("factory_url"):
+novaic-agent-runtime/task_queue/contracts/llm_call.py:80:            raise ValueError("LLMTransportConfig.factory_url is required")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:82:            raise ValueError("LLMTransportConfig.model_id is required")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:84:            raise ValueError("LLMTransportConfig.user_id is required")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:86:            factory_url=str(value["factory_url"]),
+novaic-agent-runtime/task_queue/contracts/llm_call.py:95:            "factory_url": self.factory_url,
+novaic-agent-runtime/task_queue/contracts/llm_call.py:103:class PreparedLLMCall:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:116:    source: LLMCallInput,
+novaic-agent-runtime/task_queue/contracts/llm_call.py:117:    config: LLMTransportConfig,
+novaic-agent-runtime/task_queue/contracts/llm_call.py:123:) -> PreparedLLMCall:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:138:    return PreparedLLMCall(
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:92:    assert _build_cortex_scope_end_payload(context)["agent_root_scope_id"] == "agent-root-main"
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:93:    assert _build_cortex_scope_end_payload(context)["wake_scope_path"] == (
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:96:    assert _build_cortex_scope_end_payload(context)["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:97:    session_payload = _build_session_ended_payload(context)
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:178:    assert _build_session_ended_payload(context)["remaining_stack"] == {
+novaic-agent-runtime/task_queue/contracts/react_actions.py:30:    tools: list[dict[str, Any]] = field(default_factory=list)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:31:    tool_calls: list[dict[str, Any]] = field(default_factory=list)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:135:                "tool_call_id": tc.get("id"),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:222:        tool_call_id = result.get("tool_call_id") or f"tool-{i}"
+novaic-agent-runtime/task_queue/contracts/react_actions.py:227:            raise ValueError(f"tool result missing content: {tool_call_id}")
+novaic-agent-runtime/task_queue/contracts/react_actions.py:236:            raise ValueError(f"tool result missing step_ref: {tool_call_id}")
+novaic-agent-runtime/task_queue/contracts/react_actions.py:258:                    "call_id": tool_call_id,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:270:                "idempotency_key": f"{source.scope_id}-round{source.round_num}-{tool_call_id}",
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:51:    factory_source = Path("task_queue/workers/assembly_factories.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:64:    assert "HealthRecoveryHandler(" in factory_source
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:65:    assert "build_synthetic_worker(" in factory_source
+
+## Media/base64/image terms in runtime assembly candidates
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:9:- 负责 provider 相关转换（expand Cortex step-ref refs, sanitize, multimodal）
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:118:    from ..utils import sanitize_context, process_multimodal_messages
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:126:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:14:import base64
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:93:        tool_name == "display"
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:95:        and isinstance(result.get("_mcp_content"), list)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:97:        return _display_public_output(result)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:118:def _display_public_output(result: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:119:    """Return display output safe for public tool history."""
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:135:        if key == "_mcp_content" and isinstance(value, list):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:142:def _display_durable_payload(result: dict[str, Any]) -> dict[str, Any] | None:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:143:    mcp_content = result.get("_mcp_content")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:159:            "type": "display_result",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:259:    elif tool_name == "display" and isinstance(result, dict):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:260:        durable_payload = _display_durable_payload(result)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:349:        raise ValueError("display only supports Blob refs: blob://{namespace}/{blob_id}") from exc
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:362:def _display_content_for_llm(file_url: str, data: bytes, mime_type: str) -> dict:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:371:                "data": base64.b64encode(data).decode("ascii"),
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:396:        "_mcp_content": content,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:400:def _exec_display(args, deps):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:404:        return {"success": False, "error": "display requires user_id to access Blob Service files"}
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:413:    logger.info("[tool] display: agent=%s file=%s", deps.get("agent_id"), file_url)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:422:    return _display_content_for_llm(file_url, resp.content, _guess_mime(file_url, resp))
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:517:    "display":          _exec_display,
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:28:# scanning a mutable UI receipt column — i.e. it trusted a display
+novaic-agent-runtime/task_queue/tool_surface_policy.py:17:        "display",
+novaic-agent-runtime/task_queue/utils/context.py:6:2. process_multimodal_messages: 处理多模态内容（图片等）
+novaic-agent-runtime/task_queue/utils/context.py:13:from . import multimodal
+novaic-agent-runtime/task_queue/utils/context.py:76:        # Keep tool _projection until process_multimodal_messages runs. It is
+novaic-agent-runtime/task_queue/utils/context.py:77:        # an internal handoff marker that decides whether current display()
+novaic-agent-runtime/task_queue/utils/context.py:183:def process_multimodal_messages(
+novaic-agent-runtime/task_queue/utils/context.py:203:    Only current-turn ``display_perception`` tool messages may be converted to
+novaic-agent-runtime/task_queue/utils/context.py:220:            if projection != "display_perception":
+novaic-agent-runtime/task_queue/utils/context.py:229:            if isinstance(result, dict) and multimodal.has_images(result):
+novaic-agent-runtime/task_queue/utils/context.py:230:                _, images = multimodal.extract_from_result(result)
+novaic-agent-runtime/task_queue/utils/context.py:231:                text_only = multimodal.result_to_text_only(result)
+novaic-agent-runtime/task_queue/utils/context.py:245:                        img_content = multimodal.to_anthropic_content(images, description)
+novaic-agent-runtime/task_queue/utils/context.py:247:                        img_content = multimodal.to_openai_content(images, description)
+novaic-agent-runtime/task_queue/utils/__init__.py:6:- multimodal: display_perception 专用的当前轮图片投影
+novaic-agent-runtime/task_queue/utils/__init__.py:11:    process_multimodal_messages,
+novaic-agent-runtime/task_queue/utils/__init__.py:16:    "process_multimodal_messages",
+novaic-agent-runtime/task_queue/utils/step_result_client.py:29:    """Resolve a Cortex tool step to _mcp_content JSON for LLM injection."""
+novaic-agent-runtime/task_queue/utils/step_result_client.py:137:    if tool_name == "display":
+novaic-agent-runtime/task_queue/utils/step_result_client.py:138:        return "display_perception"
+novaic-agent-runtime/task_queue/utils/step_result_client.py:175:    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:162:    def multimodal(messages, provider):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:163:        calls.append(("multimodal", messages, provider))
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:184:        process_multimodal_messages=multimodal,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:193:    assert [call[0] for call in calls] == ["expand", "sanitize", "multimodal"]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:224:        "version": "tool-output.v1",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:227:        "artifacts": [],
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:318:    assert "process_multimodal_messages" not in source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:330:    assert "process_multimodal_messages(sanitized_messages" not in handler_source
+novaic-agent-runtime/task_queue/contracts/llm_call.py:122:    process_multimodal_messages: Callable[[list[dict[str, Any]], str], list[dict[str, Any]]],
+novaic-agent-runtime/task_queue/contracts/llm_call.py:137:    processed = process_multimodal_messages(sanitized, source.provider)
+novaic-agent-runtime/task_queue/business/llm.py:25:    Context assembly, step-ref expansion, sanitization, and multimodal shaping
+novaic-agent-runtime/task_queue/utils/multimodal.py:1:"""Display-only multimodal conversion for LLM calls.
+novaic-agent-runtime/task_queue/utils/multimodal.py:4:``display_perception`` tool messages may carry ``_mcp_content`` media into this
+novaic-agent-runtime/task_queue/utils/multimodal.py:18:    return text[:limit] + f"\n\n... [truncated display text to {limit} chars]"
+novaic-agent-runtime/task_queue/utils/multimodal.py:22:    """Extract text/images from the current display ``_mcp_content`` contract."""
+novaic-agent-runtime/task_queue/utils/multimodal.py:25:    mcp_content = result.get("_mcp_content")
+novaic-agent-runtime/task_queue/utils/multimodal.py:49:    """Return whether a display ``_mcp_content`` result contains image data."""
+novaic-agent-runtime/task_queue/utils/multimodal.py:50:    mcp_content = result.get("_mcp_content", [])
+novaic-agent-runtime/task_queue/utils/multimodal.py:67:        OpenAI content 数组 [{"type": "image_url", ...}, {"type": "text", ...}]
+novaic-agent-runtime/task_queue/utils/multimodal.py:72:        data_url = f"data:{img['mime_type']};base64,{img['data']}"
+novaic-agent-runtime/task_queue/utils/multimodal.py:74:            "type": "image_url",
+novaic-agent-runtime/task_queue/utils/multimodal.py:75:            "image_url": {"url": data_url}
+novaic-agent-runtime/task_queue/utils/multimodal.py:101:                "type": "base64",
+novaic-agent-runtime/task_queue/utils/multimodal.py:114:    """Return JSON with display image payloads replaced by placeholders."""
+novaic-agent-runtime/task_queue/utils/multimodal.py:137:        if key == "_mcp_content":
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:377:        artifacts: Optional[List[Dict[str, Any]]] = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:401:        if artifacts:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:402:            step["artifacts"] = artifacts
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:448:        """Read a step and get its result formatted as _mcp_content JSON."""
+novaic-agent-runtime/tests/test_tool_surface_boundary.py:20:            "display",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:3:import base64
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:10:    _exec_display,
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:41:        "tool_call_id": "display:0",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:48:def test_display_is_registered_runtime_executor():
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:49:    assert _EXECUTORS["display"] is _exec_display
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:54:    assert _blob_ref_path("blob://user-file/blob-1") == ("user-file", "blob-1")
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:65:def test_display_fetches_blob_service_image_as_mcp_content(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:84:    result = _exec_display({"file_url": "blob://user-file/image-1"}, _deps())
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:90:    item = result["_mcp_content"][0]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:93:    assert base64.b64decode(item["data"]) == b"\x89PNG\r\n"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:95:    wrapped = _ok("scope-1", "round-1", "display:0", "display", result)
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:97:    public_item = public["_mcp_content"][0]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:101:    assert wrapped["durable_payload"]["llm_content"]["_mcp_content"][0]["data"] == item["data"]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:104:def test_display_requires_user_id_and_reports_blob_service_errors(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:105:    assert _exec_display({"file_url": "blob://user-file/x"}, _deps(user_id=""))["success"] is False
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:121:    result = _exec_display({"file_url": "blob://user-file/missing"}, _deps())
+novaic-agent-runtime/task_queue/contracts/react_actions.py:165:    if content.get("version") != "tool-output.v1":
+novaic-agent-runtime/task_queue/tool_output.py:5:for shell capability outputs, artifact manifests, Cortex history, and monitor
+novaic-agent-runtime/task_queue/tool_output.py:15:TOOL_OUTPUT_VERSION = "tool-output.v1"
+novaic-agent-runtime/task_queue/tool_output.py:67:            raise ValueError("artifact uri is required")
+novaic-agent-runtime/task_queue/tool_output.py:69:            raise ValueError(f"invalid artifact modality: {self.modality!r}")
+novaic-agent-runtime/task_queue/tool_output.py:71:            raise ValueError("artifact size_bytes must be >= 0")
+novaic-agent-runtime/task_queue/tool_output.py:121:    artifacts: tuple[ArtifactManifest, ...] = ()
+novaic-agent-runtime/task_queue/tool_output.py:131:            "artifacts": [item.to_dict() for item in self.artifacts],
+novaic-agent-runtime/task_queue/tool_output.py:140:def artifact_manifest(
+novaic-agent-runtime/task_queue/tool_output.py:185:    artifacts: tuple[ArtifactManifest, ...] | list[ArtifactManifest] = (),
+novaic-agent-runtime/task_queue/tool_output.py:195:        artifacts=tuple(artifacts),
+novaic-agent-runtime/task_queue/utils/activity_projection.py:39:    "display": "查看附件或图片",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:9:from task_queue.utils.context import process_multimodal_messages, sanitize_context
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:17:        "name": "display",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:19:            "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:29:    processed = process_multimodal_messages([_image_tool_message()], provider="openai")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:37:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:48:def test_display_perception_can_create_user_image_message_and_strips_marker():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:49:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:50:        [_image_tool_message(_projection="display_perception")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:58:    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:60:    assert processed[1]["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:63:def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:65:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:68:            "tool_call_id": "display:large-text",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:69:            "name": "display",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:71:                "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:76:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:82:    text = tool_payload["_mcp_content"][0]["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:85:    assert "truncated display text" in text
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:87:    assert processed[1]["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:91:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:94:            "tool_call_id": "display:unsupported-content",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:95:            "name": "display",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:102:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:113:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:116:            "tool_call_id": "display:nested",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:117:            "name": "display",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:121:                    "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:127:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:137:def test_sanitize_then_multimodal_preserves_display_projection_until_conversion():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:145:                "function": {"name": "display", "arguments": '{"file_url":"blob://x/y"}'},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:148:        _image_tool_message(_projection="display_perception"),
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:152:    assert sanitized[1]["_projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:154:    processed = process_multimodal_messages(sanitized, provider="openai")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:159:    image_item = tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:163:    assert user_content[0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:164:    assert user_content[0]["image_url"]["url"].startswith("data:image/png;base64,")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:167:def test_runtime_display_wrapper_preserves_media_until_multimodal_conversion():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:168:    raw_display = {
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:171:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:174:        "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:180:    wrapped = _ok("scope-1", "round-1", "display:2", "display", raw_display)
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:183:    assert public_content["_mcp_content"][1]["type"] == "image"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:184:    assert public_content["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:185:    assert "data" not in public_content["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:187:    assert public_content.get("version") != "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:190:    assert llm_content["_mcp_content"][1]["data"] == "YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:192:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:195:            "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:196:            "name": "display",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:198:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:205:    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:206:    assert "data" not in tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:208:    assert processed[1]["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:209:    assert processed[1]["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:212:def test_prepare_llm_call_injects_display_step_image_before_following_system(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:219:                "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:243:                        "id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:246:                            "name": "display",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:247:                            "arguments": '{"file_url":"blob://runtime-artifact/screen"}',
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:253:                    "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:254:                    "step_ref": "step-ref:wake-1:round1:display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:259:                    "content": "[Active skill stack] this system message follows the display result",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:271:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:275:    assert calls[0]["projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:283:    image_placeholder = tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:287:    assert image_message["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:288:    assert image_message["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:292:def test_screenshot_artifact_manifest_display_current_then_history_replay(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:298:        '{"version":"tool-output.v1","ok":true,'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:300:        '"artifacts":[{"uri":"blob://runtime-artifact/screen-1",'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:302:        '"access":{"display":{"args":{"file_url":"blob://runtime-artifact/screen-1"}}}}]}\n'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:304:        'Access: display(file_url="blob://runtime-artifact/screen-1")'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:313:                return json.dumps({"_mcp_content": [{"type": "text", "text": shell_manifest_text}]})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:314:            if tool_call_id == "display:2" and projection == "display_perception":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:316:                    "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:321:            if tool_call_id == "display:2" and projection == "history":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:322:                return json.dumps({"_mcp_content": [{"type": "text", "text": "desktop screenshot"}]})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:352:            "content": "Screenshot captured; loading the artifact now.",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:354:                "id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:357:                    "name": "display",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:358:                    "arguments": '{"file_url":"blob://runtime-artifact/screen-1","modality":"image"}',
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:364:            "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:366:            "step_ref": "step-ref:wake-1:round2:display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:367:            "content": "inline display content must be ignored",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:371:            "content": "[Active skill stack] this system message follows the display result",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:393:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:396:    assert [call["projection"] for call in calls] == ["history", "display_perception"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:399:    assert shell_payload["_mcp_content"][0]["type"] == "text"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:401:        'display(file_url="blob://runtime-artifact/screen-1")'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:402:        in shell_payload["_mcp_content"][0]["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:418:        and message["content"][0].get("type") == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:421:    assert current_image_messages[0]["content"][0]["image_url"]["url"] == (
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:422:        "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:444:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:450:        and any(item.get("type") == "image_url" for item in message["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:454:    replay_display_payload = json.loads(replay.messages[3]["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:455:    assert replay_display_payload["_mcp_content"] == [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:461:def test_runtime_wrapper_does_not_preserve_media_for_non_display_tools():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:467:        {"_mcp_content": [{"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"}]},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:472:    assert public_content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:7:    artifact_manifest,
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:17:        artifacts=(
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:18:            artifact_manifest(
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:19:                uri="blob://runtime-artifact/abc",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:26:                access={"display": {"tool": "display", "args": {"file_url": "blob://runtime-artifact/abc"}}},
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:37:    assert result["artifacts"][0]["uri"] == "blob://runtime-artifact/abc"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:38:    assert result["artifacts"][0]["modality"] == "image"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:63:        ({"uri": "", "modality": "image"}, "artifact uri is required"),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:64:        ({"uri": "blob://x/y", "modality": "unknown"}, "invalid artifact modality"),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:65:        ({"uri": "blob://x/y", "modality": "image", "size_bytes": -1}, "size_bytes"),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:68:def test_artifact_manifest_rejects_invalid_values(kwargs, message):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:70:        artifact_manifest(**kwargs).to_dict()
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:1:"""CI entrypoints keep generated Python artifacts out of source scans."""
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:17:def test_lint_workflow_sets_no_bytecode_and_runs_generated_artifact_lint():
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:21:    assert "./scripts/ci/lint_generated_artifacts.sh" in source
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:24:def test_canonical_test_runner_cleans_and_checks_generated_artifacts():
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:29:    assert "cleanup_generated_python_artifacts()" in source
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:30:    assert 'run_check "generated-artifacts-lint" scripts/ci/lint_generated_artifacts.sh' in source
+novaic-agent-runtime/tests/test_pr234_tool_logical_failure.py:32:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:14:            "blob_ref": "blob://audio-input/voice.mp3",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:20:    assert 'agentctl media audio-qa --file-url "blob://audio-input/voice.mp3"' in rendered
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:21:    assert "display(file_url" not in rendered
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:29:            "blob_ref": "blob://audio-input/voice.m4a",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:36:def test_image_attachment_still_points_to_display():
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:41:            "blob_ref": "blob://user-file/screen.png",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:45:    assert 'display(file_url="blob://user-file/screen.png")' in rendered
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:54:            "blob_ref": "blob://user-file/report.pdf",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:60:    assert "display(file_url" not in rendered
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:49:    image_url = "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:54:                {"type": "image_url", "image_url": {"url": image_url}},
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:75:        "type": "image_url",
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:76:        "image_url": {"url": image_url},
+novaic-agent-runtime/task_queue/utils/user_content.py:5:附件不直接塞 base64，而是告知 Agent 有哪些文件可用，Agent 需要时调用对应工具查看。
+novaic-agent-runtime/task_queue/utils/user_content.py:6:这样统一走 Cortex step result 的 display_files 机制。
+novaic-agent-runtime/task_queue/utils/user_content.py:30:    不再拉取附件 base64，只返回文本 + 附件描述。
+novaic-agent-runtime/task_queue/utils/user_content.py:31:    Agent 需要查看图片/文本附件时调用 display(file_url) 工具；
+novaic-agent-runtime/task_queue/utils/user_content.py:59:            att_lines.append(f"[用户上传图片: {filename}，如需查看请调用 display(file_url=\"{url}\")]")
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:70:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:130:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:162:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:169:    assert "_mcp_content" not in content
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:76:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:105:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:42:        "version": "tool-output.v1",
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:45:        "artifacts": [],
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:115:        assert spec["monitor_display_kind"].strip()
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:147:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:164:        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:177:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:208:        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:213:def test_expand_messages_for_llm_uses_display_projection_only_for_display_tool(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:221:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:231:            "tool_call_id": "display:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:232:            "tool_name": "display",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:234:            "step_ref": "step-ref:wake-1:round1:display:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:243:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:246:def test_expand_messages_for_llm_uses_display_projection_from_cortex_metadata(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:254:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:264:            "tool_call_id": "display:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:265:            "_metadata": {"tool": "display"},
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:267:            "step_ref": "step-ref:wake-1:round1:display:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:276:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:279:def test_expand_messages_for_llm_infers_display_projection_from_assistant_tool_call(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:287:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:300:                    "id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:302:                    "function": {"name": "display", "arguments": "{}"},
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:307:                "tool_call_id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:308:                "step_ref": "step-ref:wake-1:round3:display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:318:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:321:def test_expand_messages_for_llm_does_not_reinject_old_display_after_new_tool_block(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:329:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:342:                    "id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:344:                    "function": {"name": "display", "arguments": "{}"},
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:349:                "tool_call_id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:350:                "step_ref": "step-ref:wake-1:round3:display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:375:    assert calls[0][1] == "display:2"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:389:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:399:            "tool_call_id": "display:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:400:            "tool_name": "display",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:402:            "step_ref": "step-ref:wake-1:round0:display:0",
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:225:def test_reasoning_content_is_preserved_for_debug_display():

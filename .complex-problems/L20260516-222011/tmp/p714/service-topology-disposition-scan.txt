@@ -1,0 +1,5 @@
+123:| 不要再这么理解 | 当前真实边界 |
+126:| Gateway 负责 entity sync/schema | Entangled 负责 sync/schema；Gateway 只做 endpoint discovery |
+127:| Queue DB 在 Gateway | Queue Service 拥有 `queue.db` |
+128:| Runtime 通过 Gateway 取业务状态 | Runtime 通过 Business/Cortex/Factory/Queue 按职责取数据 |
+129:| Device action hook 在 Gateway | Business 处理 devices action hook，Device 只执行硬件 |

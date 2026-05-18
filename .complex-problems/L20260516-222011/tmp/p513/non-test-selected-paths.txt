@@ -1,0 +1,3 @@
+# command
+awk '/^novaic-agent-runtime\/tests\/(.*\/)?test_.*\.py$/ {print}' filename-candidates.txt
+

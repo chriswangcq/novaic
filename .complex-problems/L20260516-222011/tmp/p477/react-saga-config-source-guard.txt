@@ -1,0 +1,2 @@
+--- direct ServiceConfig MAX guard ---
+--- old monkeypatch guard ---

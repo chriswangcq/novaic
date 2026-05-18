@@ -1,0 +1,247 @@
+=== sandbox sdk usage scan ===
+novaic-agent-runtime/queue_service/main.py:251:        db.execute("SELECT 1").fetchone()
+novaic-agent-runtime/queue_service/main.py:260:            db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+novaic-agent-runtime/queue_service/main.py:268:        pending_row = db.execute(
+novaic-agent-runtime/queue_service/main.py:280:        dead_row = db.execute(
+novaic-agent-runtime/queue_service/main.py:291:        starting_row = db.execute(
+novaic-agent-runtime/queue_service/db/schema.py:427:        cursor = conn.execute("SELECT value FROM config WHERE key = 'version'")
+novaic-agent-runtime/queue_service/db/schema.py:448:            conn.execute(statement)
+novaic-agent-runtime/queue_service/db/schema.py:451:        conn.execute(
+novaic-agent-runtime/queue_service/db/schema.py:461:        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+novaic-agent-runtime/queue_service/session_rebuild.py:66:    cursor = db.execute(
+novaic-agent-runtime/queue_service/saga_repo.py:134:            self.db.execute("""
+novaic-agent-runtime/queue_service/saga_repo.py:175:            cursor = self.db.execute(f"""
+novaic-agent-runtime/queue_service/saga_repo.py:295:            cursor = self.db.execute(f"""
+novaic-agent-runtime/queue_service/saga_repo.py:359:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/saga_repo.py:375:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/saga_repo.py:470:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/saga_repo.py:520:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/saga_repo.py:537:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/saga_repo.py:674:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/saga_repo.py:700:                cursor = self.db.execute(f"""
+novaic-agent-runtime/queue_service/saga_repo.py:708:                cursor = self.db.execute(f"""
+novaic-agent-runtime/queue_service/saga_repo.py:863:        cursor = self.db.execute(
+novaic-agent-runtime/queue_service/saga_repo.py:877:        cursor = self.db.execute("SELECT 1 FROM tq_sagas WHERE id = ?", (saga_id,))
+novaic-agent-runtime/queue_service/queue_db.py:156:                self.db.execute("""
+novaic-agent-runtime/queue_service/queue_db.py:192:                    cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:222:            cursor = self.db.execute(f"""
+novaic-agent-runtime/queue_service/queue_db.py:541:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:691:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:712:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:734:                cursor = self.db.execute("""
+novaic-agent-runtime/queue_service/queue_db.py:741:                cursor = self.db.execute("""
+novaic-agent-runtime/queue_service/queue_db.py:764:                cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:775:                cursor = self.db.execute(f"""
+novaic-agent-runtime/queue_service/queue_db.py:849:            cursor = self.db.execute("""
+novaic-agent-runtime/queue_service/queue_db.py:883:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:895:                self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:927:                self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:939:            self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:967:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:987:            self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:1015:            cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:1038:                cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:1050:                cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:1158:        cursor = self.db.execute(sql, (*params, task_id))
+novaic-agent-runtime/queue_service/queue_db.py:1170:        cursor = self.db.execute(
+novaic-agent-runtime/queue_service/queue_db.py:1184:        cursor = self.db.execute("SELECT 1 FROM tq_tasks WHERE id = ?", (task_id,))
+novaic-agent-runtime/queue_service/worker/effects.py:80:    def execute(self, effect: WorkerEffect) -> EffectOutcome:
+novaic-agent-runtime/queue_service/worker/effects.py:92:        return tuple(self.execute(effect) for effect in plan.effects)
+novaic-agent-runtime/queue_service/worker/effects.py:116:        return require_success(self._executor.execute(effect), effect)
+novaic-agent-runtime/queue_service/worker/effects.py:139:    return require_success(executor.execute(effect), effect)
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:183:        self._execute(sql, tuple(row[column] for column in columns))
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:303:        self._execute(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:346:        self._execute(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:398:        self._execute(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:419:        self._execute(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:445:        self._execute(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:485:        cursor = self._execute(sql, params)
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:490:    def _execute(self, sql: str, params: tuple[Any, ...] = ()):
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:495:                cursor = self.db.execute(sql, params)
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:35:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:66:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:227:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:245:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:271:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:39:    def execute(task):
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:565:def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+novaic-agent-runtime/tests/test_pr340_worker_effect_plan.py:43:        executor.execute(WorkerEffect("missing"))
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:15:    cursor = db_or_conn.execute(
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:39:    conn.execute("CREATE TABLE config (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:40:    conn.execute("INSERT INTO config (key, value) VALUES ('version', '9')")
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:41:    conn.execute(
+novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py:60:    cursor = db.execute("SELECT COUNT(*) FROM tq_sagas")
+novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py:63:    cursor = db.execute("SELECT COUNT(*) FROM tq_tasks")
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:130:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:142:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:201:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:217:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:133:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:144:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:117:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:117:    cursor = db.execute("SELECT topic, payload FROM tq_tasks WHERE id = ?", ("task-1",))
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:38:    cursor = db.execute(f"PRAGMA table_info({table_name})")
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:97:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:112:    db.execute("UPDATE tq_tasks SET topic = 'projection.topic' WHERE id = ?", (task_id,))
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:36:    result = handle_tool_execute(_payload(args), ctx={})
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:93:    result = handle_tool_execute(payload, ctx={})
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:106:    result = handle_tool_execute(
+novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py:52:    cursor = db.execute(f"PRAGMA table_info({table_name})")
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:95:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:263:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr321_physical_projection_residue_guard.py:60:    cursor = db.execute(f"PRAGMA table_info({table_name})")
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:70:        result = handle_tool_execute(_payload("shell"), ctx)
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:99:    result = handle_tool_execute(_payload("missing_tool"), ctx_with_stub)
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:122:        result = handle_tool_execute(_payload("shell", {"command": "true"}), ctx)
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:35:    cursor = db.execute(
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:125:        def execute(self, sql, params=()):
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:166:        def execute(self, sql, params=()):
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:197:        def execute(self, sql, params=()):
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:228:    assert "execute(" not in source
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:68:    rows = db.execute(
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:32:    cursor = db.execute("SELECT value FROM config WHERE key = 'version'")
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:34:    cursor = db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:86:    cursor = db.execute("SELECT value FROM config WHERE key = 'version'")
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:93:        for row in db.execute(
+
+=== shell handler files scan ===
+novaic-agent-runtime/tests/test_tool_surface_boundary.py:19:            "shell",
+novaic-agent-runtime/tests/test_tool_surface_boundary.py:41:        "shell_capability",
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:1:"""Turn finalizer behavior around shell agentctl im reply.
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:6:The current wake scope is now a real LLM-closable scope. A shell reply
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:8:close the wake with ``skill_end(report=...)``. A shell reply round with
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:48:def _shell_tc(command: str, *, tc_id: str = "tc1") -> dict:
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:53:            "name": "shell",
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:74:def test_is_reply_no_followup_false_for_non_shell_im_reply():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:78:def test_is_reply_no_followup_false_for_multiple_non_shell_im_replies():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:85:def test_is_reply_no_followup_true_for_shell_agentctl_reply():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:86:    assert _is_reply_no_followup([_shell_tc("agentctl im reply --message-file /cortex/rw/reply.md")]) is True
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:89:def test_is_reply_no_followup_true_for_shell_command_with_read_then_reply():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:91:    assert _is_reply_no_followup([_shell_tc(command)]) is True
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:119:def test_is_reply_no_followup_rejects_non_reply_shell_command():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:120:    assert _is_reply_no_followup([_shell_tc("agentctl im read --limit 1")]) is False
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:127:    """A shell agentctl reply round should not auto-close an open wake with an
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:131:    ctx = _ctx(tool_calls=[_shell_tc("agentctl im reply --message-file /cortex/rw/reply.md")])
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:140:    ctx = _ctx(tool_calls=[_shell_tc("agentctl im reply --message-file /cortex/rw/reply.md")])
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:147:def test_non_shell_im_reply_does_not_force_reply_finalize():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:155:def test_shell_reply_no_followup_finalizes_when_stack_already_empty():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:156:    ctx = _ctx(tool_calls=[_shell_tc("agentctl im reply --message-file /cortex/rw/reply.md")])
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:175:def test_shell_agentctl_reply_with_concurrent_tool_does_not_finalize():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:176:    """If LLM calls shell im reply AND something else in the same round
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:181:        _shell_tc("agentctl im reply --message-file /cortex/rw/reply.md"),
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:228:    ctx = _ctx(tool_calls=[_shell_tc("agentctl im reply --message-file /cortex/rw/reply.md")])
+novaic-agent-runtime/tests/test_im_rendering.py:5:running shell command ``agentctl im read``.
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:100:def test_migrated_interface_tools_are_shell_capabilities_not_direct_executors():
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:10:def _shell_reply(message: str, tid: str = "call_1") -> dict:
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:14:            "name": "shell",
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:30:        "tool_calls": [_shell_reply("好的，已处理完成")],
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:6:notification → prompt hint → shell agentctl im read/reply →
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:19:def test_notification_prompt_points_to_shell_im_read_before_reply(mock_get_bridge):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:23:            "prepare_context": {"tool_names": ["shell"]},
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:35:def _shell_reply_call() -> dict:
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:39:            "name": "shell",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:61:        "tool_calls": [_shell_reply_call()],
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:85:        "tool_calls": [_shell_reply_call()],
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:103:            "tool_calls": [_shell_reply_call()],
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:122:            "tool_name": "shell",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:194:            "tool_call_id": "shell:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:195:            "step_ref": "step-ref:wake-1:round1:shell:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:205:        "shell:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:209:            "step_ref": "step-ref:wake-1:round1:shell:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:214:        "tool_call_id": "shell:0",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:542:                    "id": "shell:3",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:544:                    "function": {"name": "shell", "arguments": "{}"},
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:549:                "tool_call_id": "shell:3",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:550:                "step_ref": "step-ref:wake-1:round4:shell:3",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:562:    assert calls[1][1] == "shell:3"
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:37:        {"name": "shell", "description": "run command", "parameters": {"type": "object"}},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:63:    assert {"skill_end", "shell"}.issubset(tool_names)
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:85:        {"name": "shell", "description": "run command", "parameters": {"type": "object"}},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:104:    assert "shell" in tools
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:176:        "step_results": {"prepare_context": {"tool_names": ["shell"]}},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:179:    assert _get_known_tool_names(ctx) == {"shell"}
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:206:                "tool_name": "shell",
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:221:    assert step["observation"]["tool"] == "shell"
+novaic-agent-runtime/tests/test_llm_prompt_contract.py:10:    assert "无关的 `shell`" in NO_TOOL_WARNING
+novaic-agent-runtime/tests/test_pr261_generic_fsm_residue_cleanup.py:8:def test_unused_session_ledger_record_shells_are_deleted():
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:8:def test_audio_attachment_points_to_shell_audio_qa():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:103:        prepare_context_result={"tool_names": ["shell"]},
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:172:            "tools": [{"type": "function", "function": {"name": "shell"}}],
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:189:    assert prepared.tools == [{"type": "function", "function": {"name": "shell"}}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:231:            "shell_result": {
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:242:            "type": "shell_result",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:251:        "tool_call_id": "shell:1",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:252:        "tool_name": "shell",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:255:        "step_ref": "step-ref:wake-1:round3:shell:1",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:284:                "name": "shell",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:359:        return {"path": "/ro/active/s1/steps/0001_tool_shell.json"}
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:365:        call_id="shell-1",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:366:        tool_name="shell",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:369:        step_ref="step-ref:s1:round1:shell:0",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:376:    assert step["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:377:    assert step["step_ref"] == "step-ref:s1:round1:shell:0"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:380:    assert step["observation"]["tool"] == "shell"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:381:    assert step["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:402:        "tools": [{"type": "function", "function": {"name": "shell"}}],
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:423:def test_cortex_bridge_shell_exec_sends_explicit_capability_env(monkeypatch):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:435:    result = bridge.shell_exec(
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:446:    assert posted["path"] == "/v1/internal/shell"
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:62:                    "name": "shell",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:76:    assert records[1]["tool"] == "shell"
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:92:                "function": {"name": "shell", "arguments": SHELL_READ_MESSAGE_ARGS},
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:164:                        "name": "shell",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:179:def test_shell_desc_projects_as_monitor_action_title():
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:187:                "id": "shell-1",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:189:                    "name": "shell",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:199:    assert records[0]["tool"] == "shell"
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:217:                "call_id": "shell-1",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:218:                "tool": "shell",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:220:                "payload_ref": "payload:shell-1",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:231:    assert records[0]["tool"] == "shell"
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:235:def test_shell_desc_projects_as_monitor_observation_title(mock_get_bridge):
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:247:                "call_id": "shell-1",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:248:                "tool": "shell",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:251:                "payload_ref": "payload:shell-1",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:262:    assert records[0]["tool"] == "shell"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:13:    def shell_exec(self, command, timeout, *, capability_env=None):
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:22:        "tool_call_id": "shell-call-1",
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:23:        "tool_name": "shell",
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:30:def _run_shell(monkeypatch, shell_result, args=None):
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:31:    bridge = _Bridge(shell_result)
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:52:def test_shell_success_uses_explicit_tool_output_contract(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:57:    result, content, bridge = _run_shell(
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:76:    assert content["diagnostics"]["shell_result"]["exit_code"] == 0
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:77:    assert "raw_shell_result" not in content["diagnostics"]
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:84:def test_shell_capability_env_carries_current_subagent_id(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:99:def test_shell_payload_interpretation_config_is_explicit_env(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:121:def test_shell_nonzero_exit_is_logical_tool_error(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:122:    result, content, _bridge = _run_shell(
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:137:def test_shell_large_output_is_bounded_in_text_and_raw_in_diagnostics(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:139:    result, content, _bridge = _run_shell(
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:148:    assert content["diagnostics"]["shell_result"]["stdout_truncated"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:149:    assert content["diagnostics"]["shell_result"]["stdout_chars"] == 10_000
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:150:    assert "raw_shell_result" not in content["diagnostics"]
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:154:def test_shell_media_like_stdout_stays_bounded_terminal_text(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:156:    result, content, _bridge = _run_shell(
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:167:    assert content["diagnostics"]["shell_result"]["stdout_truncated"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:168:    assert content["diagnostics"]["shell_result"]["stdout_chars"] == len(media_like_stdout)
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:328:    shell_manifest_text = (
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:344:            if tool_call_id == "shell:1":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:346:                return json.dumps({"_mcp_content": [{"type": "text", "text": shell_manifest_text}]})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:394:                "id": "shell:1",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:397:                    "name": "shell",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:404:            "tool_call_id": "shell:1",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:406:            "step_ref": "step-ref:wake-1:round1:shell:1",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:407:            "content": "inline shell content must be ignored",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:457:    shell_tool = current.messages[1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:458:    shell_payload = json.loads(shell_tool["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:459:    assert shell_payload["_mcp_content"][0]["type"] == "text"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:462:        in shell_payload["_mcp_content"][0]["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:464:    assert "YWJjMTIz" not in shell_tool["content"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:525:        "shell:1",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:526:        "shell",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:67:    monkeypatch.setitem(_EXECUTORS, "shell", _boom)
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:70:        result = handle_tool_execute(_payload("shell"), ctx)
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:88:    assert "tool=shell" in msg
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:118:    monkeypatch.setitem(_EXECUTORS, "shell",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:122:        result = handle_tool_execute(_payload("shell", {"command": "true"}), ctx)

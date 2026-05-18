@@ -1,0 +1,1 @@
+lint_docs_status_consistency: architecture and roadmap status markers are aligned

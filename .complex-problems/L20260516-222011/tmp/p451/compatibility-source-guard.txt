@@ -1,0 +1,5 @@
+=== production source compatibility word hits ===
+novaic-cortex/scripts/check_cortex_boundary.py:50:        "Cortex must not own user-profile inference or profile mutation.",
+novaic-cortex/scripts/check_cortex_boundary.py:51:        re.compile(r"\b(user_profile|drive_update_profile|profile_inference|infer_user_profile)\b"),
+novaic-cortex/novaic_cortex/step_result_projection.py:185:    # 5. Unknown dict fallback: diagnostic text only, bounded so unexpected
+novaic-agent-runtime/task_queue/sagas/react_think.py:48:    # the saga, not inferred message-tail shape.

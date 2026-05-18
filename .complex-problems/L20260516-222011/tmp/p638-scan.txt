@@ -1,0 +1,18 @@
+=== command: nl -ba novaic-cortex/novaic_cortex/workspace.py | sed -n "974,988p" ===
+   974	    # ── Initialization ──
+   975	
+   976	    async def initialize(self) -> None:
+   977	        await self._files.initialize_layout(
+   978	            (
+   979	                "/ro/active",
+   980	                "/ro/scopes",
+   981	                "/ro/config",
+   982	                "/ro/config/tools",
+   983	                "/ro/skills",
+   984	                "/ro/knowledge",
+   985	            )
+   986	        )
+
+=== command: rg -n "initialize_layout\(|/rw/scratch" novaic-cortex/novaic_cortex/workspace.py novaic-cortex/tests/test_workspace.py || true ===
+novaic-cortex/tests/test_workspace.py:33:    log_path = "/rw/scratch/run.log"
+novaic-cortex/novaic_cortex/workspace.py:977:        await self._files.initialize_layout(

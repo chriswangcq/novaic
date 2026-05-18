@@ -1,0 +1,66 @@
+=== forbidden optional generation contract ===
+=== attach generation and SESSION_ATTACH_INPUT references ===
+novaic-agent-runtime/tests/test_pr271_session_attach_flow_consolidation.py:13:    assert source.count("build_attach_input_effect(") == 1
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:10:    build_attach_input_effect,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:52:def test_build_attach_input_effect_keeps_payload_and_key_shape():
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:53:    effect = build_attach_input_effect(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:64:        expected_session_generation=3,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:74:            "expected_wake_scope_id": "scope-1",
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:75:            "expected_session_generation": 3,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:86:def test_build_attach_input_effect_requires_message_ids():
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:88:        build_attach_input_effect(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:99:            expected_session_generation=1,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:104:def test_build_attach_input_effect_requires_positive_expected_generation(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:108:        build_attach_input_effect(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:119:            expected_session_generation=bad_generation,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:123:def test_build_attach_input_effect_normalizes_string_expected_generation():
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:124:    effect = build_attach_input_effect(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:135:        expected_session_generation="3",
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:138:    assert effect["payload"]["expected_session_generation"] == 3
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:145:    with pytest.raises(ValueError, match="requires expected_session_generation"):
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:169:                "expected_session_generation": True,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:182:    assert "build_attach_input_effect(" in repo_source
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:190:    assert '"expected_wake_scope_id"' not in repo_source
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:64:    assert repo_source.count("build_attach_input_effect(") == 1
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:89:                "expected_wake_scope_id": "old-wake",
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:90:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:111:    with pytest.raises(ValidationError, match="expected_session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:116:                "expected_wake_scope_id": "wake-scope",
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:143:                "expected_wake_scope_id": "wake-scope",
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:144:                "expected_session_generation": True,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:166:    with pytest.raises(ValidationError, match="expected_wake_scope_id"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:171:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:202:                "expected_wake_scope_id": "wake-scope",
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:203:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:25:        if topic == TaskTopics.SESSION_ATTACH_INPUT and self.fail_attach:
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:120:    assert outbox[0]["payload"]["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:144:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:148:    assert task[0] == TaskTopics.SESSION_ATTACH_INPUT
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:152:    assert task_payload["expected_wake_scope_id"] == first["scope_id"]
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:153:    assert task_payload["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:203:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:219:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:306:    assert "TaskTopics.SESSION_ATTACH_INPUT" not in source
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:50:    assert "Missing required field: expected_wake_scope_id" in runtime_handlers
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:51:    assert "Missing required field: expected_session_generation" in runtime_handlers
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:53:    assert "requires expected_session_generation" in session_outbox
+novaic-agent-runtime/queue_service/session_outbox.py:9:    require_positive_session_generation_value,
+novaic-agent-runtime/queue_service/session_outbox.py:203:        session_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_outbox.py:242:        expected_generation = payload.get("expected_session_generation")
+novaic-agent-runtime/queue_service/session_outbox.py:245:                "attach input outbox payload requires expected_session_generation"
+novaic-agent-runtime/queue_service/session_outbox.py:247:        expected_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_outbox.py:256:            TaskTopics.SESSION_ATTACH_INPUT,
+novaic-agent-runtime/queue_service/session_outbox.py:262:                "expected_wake_scope_id": scope_id,
+novaic-agent-runtime/queue_service/session_outbox.py:263:                "expected_session_generation": expected_generation,
+novaic-agent-runtime/queue_service/session_effects.py:9:    require_positive_session_generation_value,
+novaic-agent-runtime/queue_service/session_effects.py:48:def build_attach_input_effect(
+novaic-agent-runtime/queue_service/session_effects.py:60:    expected_session_generation: int,
+novaic-agent-runtime/queue_service/session_effects.py:64:    expected_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_effects.py:65:        expected_session_generation,
+novaic-agent-runtime/queue_service/session_effects.py:79:            "expected_wake_scope_id": scope_id,
+novaic-agent-runtime/queue_service/session_effects.py:80:            "expected_session_generation": expected_generation,
+novaic-agent-runtime/queue_service/saga_repo.py:38:from task_queue.contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/queue_service/saga_repo.py:1382:            generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_repo.py:22:from queue_service.session_effects import build_attach_input_effect
+novaic-agent-runtime/queue_service/session_repo.py:929:            outbox_effect = build_attach_input_effect(
+novaic-agent-runtime/queue_service/session_repo.py:942:                expected_session_generation=session_generation,

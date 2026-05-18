@@ -1,0 +1,347 @@
+## Provider serialization and multimodal terms
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:62:        "messages": [{"role": "system", "content": "prepared"}],
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:68:    assert call_payload["messages"] == [{"role": "system", "content": "prepared"}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:154:    def expand(messages, **kwargs):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:155:        calls.append(("expand", messages, kwargs))
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:156:        return messages + [{"role": "tool", "tool_call_id": "tc", "content": "expanded"}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:158:    def sanitize(messages):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:159:        calls.append(("sanitize", messages))
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:160:        return messages + [{"role": "system", "content": "sanitized"}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:162:    def multimodal(messages, provider):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:163:        calls.append(("multimodal", messages, provider))
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:164:        return messages + [{"role": "system", "content": "processed"}]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:171:            "messages": [{"role": "user", "content": "hi"}],
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:182:        expand_messages_for_llm=expand,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:184:        process_multimodal_messages=multimodal,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:188:    assert prepared.messages[-1] == {"role": "system", "content": "processed"}
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:193:    assert [call[0] for call in calls] == ["expand", "sanitize", "multimodal"]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:223:    public_content = json.dumps({
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:318:    assert "process_multimodal_messages" not in source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:330:    assert "process_multimodal_messages(sanitized_messages" not in handler_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:400:        "messages": [{"role": "user", "content": "hi"}],
+novaic-agent-runtime/task_queue/handlers/validation.py:82:                error_messages = []
+novaic-agent-runtime/task_queue/handlers/validation.py:86:                    error_messages.append(f"{loc}: {msg}")
+novaic-agent-runtime/task_queue/handlers/validation.py:89:                    f"Invalid payload: {'; '.join(error_messages)}",
+novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py:44:        worker_id_provider=lambda: worker_id,
+novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py:45:        execution_token_provider=lambda wid: f"{wid}:exec-token",
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py:24:        worker_id_provider=lambda: worker_id,
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py:25:        execution_token_provider=lambda wid: f"{wid}:exec-token",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:75:    content = json.loads(result["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:104:    content = json.loads(result["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_dedup_guard_failure_path.py:38:        worker_id_provider=lambda: worker_id,
+novaic-agent-runtime/tests/unit/task_queue/test_dedup_guard_failure_path.py:39:        execution_token_provider=lambda wid: f"{wid}:exec-token",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:363:            new_messages=read_result.get("new_messages", []),
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:6:- context.append: Append projection messages or durable tool steps
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:27:# Prior to PR-46, ``handle_context_read`` merged input messages by
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:88:    projection messages, then appends any missing hints for the current wake.
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:120:    new_messages_list = []
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:162:            new_messages_list.append({
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:178:        "new_messages": new_messages_list,
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:188:    user/assistant/system messages. This is not authoritative LLM history;
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:115:    # session.init does not synthesize historical continuity messages.
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:191:    input_messages_claimed = 0
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:207:            input_messages_claimed = int(claim_result.get("ok_count", 0))
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:212:                input_messages_claimed,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:234:        "input_messages_claimed": input_messages_claimed,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:324:        "input_messages_claimed": ok_count,
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:1:from task_queue.factory_client import FactoryLLMClient
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:45:        "task_queue.factory_client.internal_sync_client",
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:49:    image_url = "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:50:    messages = [
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:54:                {"type": "image_url", "image_url": {"url": image_url}},
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:60:    client = FactoryLLMClient(
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:69:    result = client.chat(messages=messages, tools=[])
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:72:    assert captured["url"] == "http://factory.test/v1/chat/completions"
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:73:    payload_message = captured["json"]["messages"][0]
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:75:        "type": "image_url",
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:76:        "image_url": {"url": image_url},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:9:from task_queue.utils.context import process_multimodal_messages, sanitize_context
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:10:from task_queue.utils.step_result_client import expand_messages_for_llm
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:29:    processed = process_multimodal_messages([_image_tool_message()], provider="openai")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:37:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:39:        provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:49:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:51:        provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:60:    assert processed[1]["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:65:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:78:        provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:87:    assert processed[1]["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:91:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:104:        provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:113:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:129:        provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:137:def test_sanitize_then_multimodal_preserves_display_projection_until_conversion():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:138:    messages = [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:151:    sanitized = sanitize_context(messages)
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:154:    processed = process_multimodal_messages(sanitized, provider="openai")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:162:    user_content = processed[2]["content"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:163:    assert user_content[0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:164:    assert user_content[0]["image_url"]["url"].startswith("data:image/png;base64,")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:167:def test_runtime_display_wrapper_preserves_media_until_multimodal_conversion():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:181:    public_content = json.loads(wrapped["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:189:    llm_content = wrapped["durable_payload"]["llm_content"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:192:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:200:        provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:208:    assert processed[1]["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:209:    assert processed[1]["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:237:            provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:238:            messages=[
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:269:        expand_messages_for_llm=expand_messages_for_llm,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:271:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:276:    assert [message["role"] for message in prepared.messages] == [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:282:    tool_payload = json.loads(prepared.messages[1]["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:286:    image_message = prepared.messages[2]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:287:    assert image_message["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:288:    assert image_message["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:289:    assert prepared.messages[3]["role"] == "system"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:330:    messages = [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:382:            provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:383:            messages=messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:391:        expand_messages_for_llm=expand_messages_for_llm,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:393:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:397:    shell_tool = current.messages[1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:406:    assert [message["role"] for message in current.messages] == [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:414:    current_image_messages = [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:415:        message for message in current.messages
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:418:        and message["content"][0].get("type") == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:420:    assert len(current_image_messages) == 1
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:421:    assert current_image_messages[0]["content"][0]["image_url"]["url"] == (
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:422:        "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:433:            provider="openai",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:434:            messages=messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:442:        expand_messages_for_llm=expand_messages_for_llm,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:444:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:450:        and any(item.get("type") == "image_url" for item in message["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:451:        for message in replay.messages
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:453:    assert "YWJjMTIz" not in json.dumps(replay.messages)
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:454:    replay_display_payload = json.loads(replay.messages[3]["content"])
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:458:    assert replay.messages[-1]["role"] == "system"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:470:    public_content = json.loads(wrapped["content"])
+novaic-agent-runtime/task_queue/heartbeat_sync.py:5:    with HeartbeatSync(task_id, heartbeat_fn, interval=10.0, time_provider=time.monotonic):
+novaic-agent-runtime/task_queue/heartbeat_sync.py:25:        with HeartbeatSync("task-123", send_heartbeat, time_provider=time.monotonic):
+novaic-agent-runtime/task_queue/heartbeat_sync.py:29:        with HeartbeatSync("task-123", send_heartbeat, interval=5.0, time_provider=time.monotonic) as hb:
+novaic-agent-runtime/task_queue/heartbeat_sync.py:35:        with HeartbeatSync("task-123", lambda: client.heartbeat("task-123"), time_provider=time.monotonic):
+novaic-agent-runtime/task_queue/heartbeat_sync.py:46:        time_provider: Optional[Callable[[], float]] = None,
+novaic-agent-runtime/task_queue/heartbeat_sync.py:57:            time_provider: 显式时间来源，用于可复现地记录成功/失败时间
+novaic-agent-runtime/task_queue/heartbeat_sync.py:59:        if time_provider is None:
+novaic-agent-runtime/task_queue/heartbeat_sync.py:60:            raise ValueError("HeartbeatSync requires an explicit time_provider")
+novaic-agent-runtime/task_queue/heartbeat_sync.py:66:        self._time_provider = time_provider
+novaic-agent-runtime/task_queue/heartbeat_sync.py:135:                        self.last_success_at = self._time_provider()
+novaic-agent-runtime/task_queue/heartbeat_sync.py:157:        self.last_failure_at = self._time_provider()
+novaic-agent-runtime/task_queue/heartbeat_sync.py:185:    time_provider: Optional[Callable[[], float]] = None,
+novaic-agent-runtime/task_queue/heartbeat_sync.py:192:        with heartbeat_sync("task-123", send_fn, time_provider=time.monotonic):
+novaic-agent-runtime/task_queue/heartbeat_sync.py:199:        time_provider=time_provider,
+novaic-agent-runtime/task_queue/heartbeat_sync.py:224:    def __init__(self, *, time_provider: Optional[Callable[[], float]] = None):
+novaic-agent-runtime/task_queue/heartbeat_sync.py:225:        if time_provider is None:
+novaic-agent-runtime/task_queue/heartbeat_sync.py:226:            raise ValueError("HeartbeatGroupSync requires an explicit time_provider")
+novaic-agent-runtime/task_queue/heartbeat_sync.py:227:        self._time_provider = time_provider
+novaic-agent-runtime/task_queue/heartbeat_sync.py:247:                time_provider=self._time_provider,
+novaic-agent-runtime/task_queue/workers/saga_launch.py:56:            time_provider=self._deps.monotonic,
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:170:    assert "data:image/" not in content["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:3:import base64
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:25:        self.content = content
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:82:    monkeypatch.setattr(tool_handlers, "internal_sync_client", lambda *a, **kw: FakeClient())
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:93:    assert base64.b64decode(item["data"]) == b"\x89PNG\r\n"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:120:    monkeypatch.setattr(tool_handlers, "internal_sync_client", lambda *a, **kw: FakeClient())
+novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py:17:        worker_id_provider=lambda: worker_id,
+novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py:18:        execution_token_provider=lambda wid: f"{wid}:exec-token",
+novaic-agent-runtime/task_queue/factory_client.py:2:Factory LLM Client - 通过 Factory /v1/chat/completions 代理 LLM 调用
+novaic-agent-runtime/task_queue/factory_client.py:5:Factory 内部处理：model 解析、api_key 解密、provider 路由、retry、logging。
+novaic-agent-runtime/task_queue/factory_client.py:12:from common.http.clients import internal_sync_client
+novaic-agent-runtime/task_queue/factory_client.py:20:class FactoryLLMClient:
+novaic-agent-runtime/task_queue/factory_client.py:34:        messages: List[Dict[str, Any]],
+novaic-agent-runtime/task_queue/factory_client.py:41:        """调用 Factory /v1/chat/completions
+novaic-agent-runtime/task_queue/factory_client.py:44:            messages: 对话消息
+novaic-agent-runtime/task_queue/factory_client.py:54:            "messages": messages,
+novaic-agent-runtime/task_queue/factory_client.py:68:        url = f"{self.factory_url}/v1/chat/completions"
+novaic-agent-runtime/task_queue/factory_client.py:71:            with internal_sync_client(service_name="runtime-task", timeout=DEFAULT_TIMEOUT, verify=True) as client:
+novaic-agent-runtime/task_queue/factory_client.py:72:                resp = client.post(url, json=payload)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:8:- 接收 cortex.prepare_llm_context 已组装好的 messages + tools
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:9:- 负责 provider 相关转换（expand Cortex step-ref refs, sanitize, multimodal）
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:36:    from ..factory_client import FactoryLLMClient
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:38:    return FactoryLLMClient(
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:52:    from common.http.clients import internal_sync_client
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:58:    with internal_sync_client(service_name="runtime-task", timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:83:        messages: list
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:87:        provider: str (可选，openai/anthropic)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:117:    from ..utils.step_result_client import expand_messages_for_llm
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:118:    from ..utils import sanitize_context, process_multimodal_messages
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:124:        expand_messages_for_llm=expand_messages_for_llm,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:126:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:137:        messages=prepared.messages,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:140:        provider=prepared.provider,
+novaic-agent-runtime/task_queue/client.py:15:from common.http import internal_sync_client
+novaic-agent-runtime/task_queue/client.py:68:            self._session = internal_sync_client(service_name=self.service_name,
+novaic-agent-runtime/task_queue/client.py:102:            resp = session.request(method, url, json=json_data, headers=self._headers())
+novaic-agent-runtime/task_queue/client.py:347:            self._session = internal_sync_client(service_name=self.service_name,
+novaic-agent-runtime/task_queue/client.py:380:            resp = session.request(method, url, json=json_data, headers=self._headers())
+novaic-agent-runtime/task_queue/client.py:513:            self._session = internal_sync_client(service_name=self.service_name,
+novaic-agent-runtime/task_queue/client.py:538:            resp = session.request(method, url, json=json_data, params=params)
+novaic-agent-runtime/task_queue/client.py:627:        trigger state, while chat messages are only presentation/projection.
+novaic-agent-runtime/task_queue/client.py:709:        with internal_sync_client(service_name=self.service_name,
+novaic-agent-runtime/task_queue/workers/health_effects.py:9:from common.http.clients import internal_sync_client
+novaic-agent-runtime/task_queue/workers/health_effects.py:39:            self._client = internal_sync_client(
+novaic-agent-runtime/task_queue/sagas/react_config.py:1:"""React saga config provider boundary."""
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:14:import base64
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:25:from common.http.clients import internal_sync_client
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:143:    mcp_content = result.get("_mcp_content")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:248:    content = json.dumps(public_output, ensure_ascii=False)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:371:                "data": base64.b64encode(data).decode("ascii"),
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:414:    with internal_sync_client("agent-runtime", timeout=30.0) as client:
+novaic-agent-runtime/task_queue/business/llm.py:25:    Context assembly, step-ref expansion, sanitization, and multimodal shaping
+novaic-agent-runtime/task_queue/business/llm.py:32:        >>> result = llm_biz.call(messages, model="gpt-4o")
+novaic-agent-runtime/task_queue/business/llm.py:47:        messages: List[Dict[str, Any]],
+novaic-agent-runtime/task_queue/business/llm.py:51:        provider: str = "openai",
+novaic-agent-runtime/task_queue/business/llm.py:57:            messages: provider-ready messages
+novaic-agent-runtime/task_queue/business/llm.py:60:            provider: 提供商 (openai/anthropic)
+novaic-agent-runtime/task_queue/business/llm.py:70:                messages=messages,
+novaic-agent-runtime/task_queue/workers/dependencies.py:18:    worker_id_provider: Callable[[], str]
+novaic-agent-runtime/task_queue/workers/dependencies.py:19:    execution_token_provider: Callable[[str], str]
+novaic-agent-runtime/task_queue/workers/dependencies.py:27:            worker_id_provider=lambda: f"{worker_prefix}-{uuid.uuid4().hex[:8]}",
+novaic-agent-runtime/task_queue/workers/dependencies.py:28:            execution_token_provider=lambda worker_id: f"{worker_id}:{uuid.uuid4().hex[:8]}",
+novaic-agent-runtime/task_queue/utils/context.py:6:2. process_multimodal_messages: 处理多模态内容（图片等）
+novaic-agent-runtime/task_queue/utils/context.py:13:from . import multimodal
+novaic-agent-runtime/task_queue/utils/context.py:38:        >>> messages = [
+novaic-agent-runtime/task_queue/utils/context.py:44:        >>> sanitized = sanitize_context(messages)
+novaic-agent-runtime/task_queue/utils/context.py:68:            content = msg.get("content")
+novaic-agent-runtime/task_queue/utils/context.py:76:        # Keep tool _projection until process_multimodal_messages runs. It is
+novaic-agent-runtime/task_queue/utils/context.py:78:        # output may be converted into a provider-native image message; it is
+novaic-agent-runtime/task_queue/utils/context.py:101:    other_messages = []  # (original_idx, msg)
+novaic-agent-runtime/task_queue/utils/context.py:102:    assistant_messages_with_tools = {}  # idx -> msg
+novaic-agent-runtime/task_queue/utils/context.py:108:            assistant_messages_with_tools[idx] = msg
+novaic-agent-runtime/task_queue/utils/context.py:124:                other_messages.append((idx, msg))
+novaic-agent-runtime/task_queue/utils/context.py:126:            other_messages.append((idx, msg))
+novaic-agent-runtime/task_queue/utils/context.py:132:    for orig_idx, msg in other_messages:
+novaic-agent-runtime/task_queue/utils/context.py:134:        for asst_idx in sorted(assistant_messages_with_tools.keys()):
+novaic-agent-runtime/task_queue/utils/context.py:136:                asst_msg = assistant_messages_with_tools[asst_idx]
+novaic-agent-runtime/task_queue/utils/context.py:160:    for asst_idx in sorted(assistant_messages_with_tools.keys()):
+novaic-agent-runtime/task_queue/utils/context.py:162:            asst_msg = assistant_messages_with_tools[asst_idx]
+novaic-agent-runtime/task_queue/utils/context.py:183:def process_multimodal_messages(
+novaic-agent-runtime/task_queue/utils/context.py:184:    messages: List[Dict[str, Any]], 
+novaic-agent-runtime/task_queue/utils/context.py:185:    provider: str = "openai"
+novaic-agent-runtime/task_queue/utils/context.py:194:    图片 user messages 添加到所有 tool results 之后。
+novaic-agent-runtime/task_queue/utils/context.py:197:        messages: 原始消息列表
+novaic-agent-runtime/task_queue/utils/context.py:198:        provider: LLM 提供商 ("openai" 或 "anthropic")
+novaic-agent-runtime/task_queue/utils/context.py:203:    Only current-turn ``display_perception`` tool messages may be converted to
+novaic-agent-runtime/task_queue/utils/context.py:204:    provider-native image content. Shell and historical tool messages stay as
+novaic-agent-runtime/task_queue/utils/context.py:208:        return messages
+novaic-agent-runtime/task_queue/utils/context.py:211:    pending_images = []  # 收集待添加的图片 user messages
+novaic-agent-runtime/task_queue/utils/context.py:213:    for i, msg in enumerate(messages):
+novaic-agent-runtime/task_queue/utils/context.py:215:        content = msg.get("content", "")
+novaic-agent-runtime/task_queue/utils/context.py:229:            if isinstance(result, dict) and multimodal.has_images(result):
+novaic-agent-runtime/task_queue/utils/context.py:230:                _, images = multimodal.extract_from_result(result)
+novaic-agent-runtime/task_queue/utils/context.py:231:                text_only = multimodal.result_to_text_only(result)
+novaic-agent-runtime/task_queue/utils/context.py:244:                    if provider == "anthropic":
+novaic-agent-runtime/task_queue/utils/context.py:245:                        img_content = multimodal.to_anthropic_content(images, description)
+novaic-agent-runtime/task_queue/utils/context.py:247:                        img_content = multimodal.to_openai_content(images, description)
+novaic-agent-runtime/task_queue/utils/context.py:265:                llm_content = user_content_to_llm(content, provider=provider)
+novaic-agent-runtime/task_queue/sagas/react_think.py:6:2. Call LLM (with messages + tools from Step 1)
+novaic-agent-runtime/task_queue/utils/__init__.py:6:- multimodal: display_perception 专用的当前轮图片投影
+novaic-agent-runtime/task_queue/utils/__init__.py:11:    process_multimodal_messages,
+novaic-agent-runtime/task_queue/utils/__init__.py:16:    "process_multimodal_messages",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:273:        task_id_provider=queue_deps.task_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:279:        saga_id_provider=queue_deps.saga_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:284:        event_id_provider=queue_deps.session_event_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:285:        outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:359:        task_id_provider=queue_deps.task_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:364:        event_id_provider=queue_deps.session_event_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:365:        outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:372:            saga_id_provider=queue_deps.saga_id_provider,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:14:from common.http.clients import internal_sync_client
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:55:        self._client = internal_sync_client(service_name="runtime-task", timeout=timeout)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:69:            raise ValueError("CortexBridge requires an explicit clock provider")
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:89:        resp = self._client.post(f"{self._url}{path}", json=payload, headers=headers, **kwargs)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:165:        return result.get("messages", [])
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:183:        messages: list[dict],
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:187:        """Batch-append messages (WRITE — failures raise)."""
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:188:        if not messages:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:190:        payload = {**self._tenant(), "scope_id": scope_id, "messages": messages}
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:444:        provider: str = "openai",
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:454:                "provider": provider,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:491:        """Prepare messages for LLM via Cortex's ContextEvent read model.
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:496:        Returns {"messages": [...], "stack": [...]}.
+novaic-agent-runtime/task_queue/utils/step_result_client.py:5:providers. This module expands lightweight ``step_ref`` tool messages into
+novaic-agent-runtime/task_queue/utils/step_result_client.py:6:provider-shaped tool-result content just before the LLM call.
+novaic-agent-runtime/task_queue/utils/step_result_client.py:22:    provider: str = "openai",
+novaic-agent-runtime/task_queue/utils/step_result_client.py:33:    content = bridge.read_step_formatted(
+novaic-agent-runtime/task_queue/utils/step_result_client.py:36:        provider=provider,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:47:    provider: str = "openai",
+novaic-agent-runtime/task_queue/utils/step_result_client.py:57:        provider=provider,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:85:def _latest_tool_call_ids(messages: List[Dict[str, Any]]) -> set[str]:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:87:    for msg in messages:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:101:def _tool_names_by_call_id(messages: List[Dict[str, Any]]) -> Dict[str, str]:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:103:    for msg in messages:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:166:def expand_messages_for_llm(
+novaic-agent-runtime/task_queue/utils/step_result_client.py:167:    messages: List[Dict[str, Any]],
+novaic-agent-runtime/task_queue/utils/step_result_client.py:168:    provider: str = "openai",
+novaic-agent-runtime/task_queue/utils/step_result_client.py:175:    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+novaic-agent-runtime/task_queue/utils/step_result_client.py:177:    tool_names_by_id = _tool_names_by_call_id(messages)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:178:    latest_tool_call_ids = _latest_tool_call_ids(messages)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:179:    for msg in messages:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:193:            content = fetch_step_for_llm(
+novaic-agent-runtime/task_queue/utils/step_result_client.py:195:                provider,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:215:def expand_messages_for_summary(
+novaic-agent-runtime/task_queue/utils/step_result_client.py:216:    messages: List[Dict[str, Any]],
+novaic-agent-runtime/task_queue/utils/step_result_client.py:222:    """Expand tool messages: step_ref -> text preview for summarization."""
+novaic-agent-runtime/task_queue/utils/step_result_client.py:224:    for msg in messages:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:232:            content = fetch_step_preview(
+novaic-agent-runtime/task_queue/contracts/llm_call.py:5:1. Build a provider-ready request from an already assembled Cortex context.
+novaic-agent-runtime/task_queue/contracts/llm_call.py:26:    messages: list[dict[str, Any]]
+novaic-agent-runtime/task_queue/contracts/llm_call.py:29:    provider: str = "openai"
+novaic-agent-runtime/task_queue/contracts/llm_call.py:44:        messages = payload.get("messages")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:45:        if not messages:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:46:            raise ValueError("Missing required field: messages")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:47:        if not isinstance(messages, list):
+novaic-agent-runtime/task_queue/contracts/llm_call.py:48:            raise ValueError("LLMCallInput.messages must be a list")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:55:            messages=deepcopy(messages),
+novaic-agent-runtime/task_queue/contracts/llm_call.py:58:            provider=str(payload.get("provider") or "openai"),
+novaic-agent-runtime/task_queue/contracts/llm_call.py:108:    messages: list[dict[str, Any]]
+novaic-agent-runtime/task_queue/contracts/llm_call.py:111:    provider: str
+novaic-agent-runtime/task_queue/contracts/llm_call.py:120:    expand_messages_for_llm: Callable[..., list[dict[str, Any]]],
+novaic-agent-runtime/task_queue/contracts/llm_call.py:122:    process_multimodal_messages: Callable[[list[dict[str, Any]], str], list[dict[str, Any]]],
+novaic-agent-runtime/task_queue/contracts/llm_call.py:124:    """Build provider-ready messages from explicit inputs and injected helpers."""
+novaic-agent-runtime/task_queue/contracts/llm_call.py:128:    messages_for_llm = expand_messages_for_llm(
+novaic-agent-runtime/task_queue/contracts/llm_call.py:129:        deepcopy(source.messages),
+novaic-agent-runtime/task_queue/contracts/llm_call.py:130:        provider=source.provider,
+novaic-agent-runtime/task_queue/contracts/llm_call.py:136:    sanitized = sanitize_context(messages_for_llm)
+novaic-agent-runtime/task_queue/contracts/llm_call.py:137:    processed = process_multimodal_messages(sanitized, source.provider)
+novaic-agent-runtime/task_queue/contracts/llm_call.py:141:        messages=processed,
+novaic-agent-runtime/task_queue/contracts/llm_call.py:144:        provider=source.provider,
+novaic-agent-runtime/task_queue/workers/task_execution.py:85:                time_provider=self._deps.monotonic,
+novaic-agent-runtime/task_queue/workers/task_execution.py:98:        execution_token = self._deps.execution_token_provider(self.worker_id)
+novaic-agent-runtime/task_queue/utils/user_content.py:5:附件不直接塞 base64，而是告知 Agent 有哪些文件可用，Agent 需要时调用对应工具查看。
+novaic-agent-runtime/task_queue/utils/user_content.py:25:    provider: str = "openai",
+novaic-agent-runtime/task_queue/utils/user_content.py:30:    不再拉取附件 base64，只返回文本 + 附件描述。
+novaic-agent-runtime/task_queue/utils/user_content.py:36:        provider: "openai" | "anthropic" (目前不影响输出)
+novaic-agent-runtime/task_queue/contracts/react_think.py:122:        "messages": deepcopy((prepare_context_result or {}).get("messages") or []),
+novaic-agent-runtime/task_queue/utils/multimodal.py:1:"""Display-only multimodal conversion for LLM calls.
+novaic-agent-runtime/task_queue/utils/multimodal.py:4:``display_perception`` tool messages may carry ``_mcp_content`` media into this
+novaic-agent-runtime/task_queue/utils/multimodal.py:25:    mcp_content = result.get("_mcp_content")
+novaic-agent-runtime/task_queue/utils/multimodal.py:50:    mcp_content = result.get("_mcp_content", [])
+novaic-agent-runtime/task_queue/utils/multimodal.py:67:        OpenAI content 数组 [{"type": "image_url", ...}, {"type": "text", ...}]
+novaic-agent-runtime/task_queue/utils/multimodal.py:69:    content = []
+novaic-agent-runtime/task_queue/utils/multimodal.py:72:        data_url = f"data:{img['mime_type']};base64,{img['data']}"
+novaic-agent-runtime/task_queue/utils/multimodal.py:74:            "type": "image_url",
+novaic-agent-runtime/task_queue/utils/multimodal.py:75:            "image_url": {"url": data_url}
+novaic-agent-runtime/task_queue/utils/multimodal.py:95:    content = []
+novaic-agent-runtime/task_queue/utils/multimodal.py:101:                "type": "base64",
+novaic-agent-runtime/task_queue/workers/assembly_helpers.py:47:        worker_id = runtime_deps.worker_id_provider()
+novaic-agent-runtime/task_queue/contracts/react_actions.py:192:        content = _logical_tool_content(_decode_tool_content(result.get("content")))
+novaic-agent-runtime/task_queue/contracts/react_actions.py:225:        content = result.get("content")
+novaic-agent-runtime/task_queue/utils/activity_projection.py:59:    """Bind runtime clock/order providers at the handler boundary."""
+
+## Factory/client structured content tests
+novaic-agent-runtime/task_queue/utils/multimodal.py:67:        OpenAI content 数组 [{"type": "image_url", ...}, {"type": "text", ...}]
+novaic-agent-runtime/task_queue/utils/multimodal.py:74:            "type": "image_url",
+novaic-agent-runtime/task_queue/utils/multimodal.py:75:            "image_url": {"url": data_url}
+novaic-agent-runtime/task_queue/factory_client.py:21:    """通过 Factory 代理的 LLM Client，接口兼容 OpenAIClient.chat()"""
+novaic-agent-runtime/task_queue/factory_client.py:32:    def chat(
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:15:def test_factory_client_preserves_structured_image_content(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:34:            captured["json"] = json
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:49:    image_url = "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:54:                {"type": "image_url", "image_url": {"url": image_url}},
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:69:    result = client.chat(messages=messages, tools=[])
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:73:    payload_message = captured["json"]["messages"][0]
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:75:        "type": "image_url",
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:76:        "image_url": {"url": image_url},
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:78:    assert all("YWJjMTIz" not in text for text in _text_values(captured["json"]))

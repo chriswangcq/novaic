@@ -1,0 +1,6 @@
+--- repeated adjacent remaining_stack literal guard ---
+duplicate_adjacent_remaining_stack= False
+remaining_stack_literal_count= 1
+--- broad duplicate/residue session_outbox guard ---
+207:        remaining_stack = payload.get("remaining_stack")
+223:                "remaining_stack": dict(remaining_stack),

@@ -1,0 +1,136 @@
+
+# ── Scope lifecycle ──────────────────────────────────────────────────────
+
+class ScopeCreateRequest(_TenantMixin):
+    scope_id: str
+    name: str
+    skill: str = ""
+    parent_path: str | None = None
+
+
+class ScopeEndRequest(_TenantMixin):
+    scope_id: str
+    report: str = ""
+    scope_path: str | None = None
+    is_root: bool = True
+    session_generation: int | None = None
+    finalize_reason: str | None = None
+    remaining_stack: dict[str, Any] | None = None
+    round_num: int = 0
+
+    @field_validator("session_generation", mode="before")
+    @classmethod
+    def _reject_bool_session_generation(cls, value: Any) -> Any:
+        if isinstance(value, bool):
+            raise ValueError("positive session_generation is required for archive diagnostics")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_archive_diagnostics(self) -> "ScopeEndRequest":
+        has_diagnostics = (
+            self.session_generation is not None
+            or self.finalize_reason is not None
+            or self.remaining_stack is not None
+        )
+        if not has_diagnostics:
+            return self
+        if self.session_generation is None:
+            raise ValueError("session_generation is required for archive diagnostics")
+        if self.session_generation < 1:
+            raise ValueError("positive session_generation is required for archive diagnostics")
+        if not (self.finalize_reason or "").strip():
+            raise ValueError("finalize_reason is required for archive diagnostics")
+        if self.remaining_stack is None:
+            raise ValueError("remaining_stack is required for archive diagnostics")
+        return self
+
+
+async def _append_wake_archived_event(
+    req: ScopeEndRequest,
+    ws: Any,
+    *,
+    scope_path: str,
+    meta: dict[str, Any],
+    reason: str,
+    remaining_stack: list[str],
+) -> None:
+    if meta.get("skill") != "wake":
+        return
+    root_scope_id, root_scope_path = _root_scope_identity_from_path(scope_path)
+    await _context_event_writer(ws).wake_archived(
+        _event_write_context(
+            req,
+            root_scope_id=root_scope_id,
+            root_scope_path=root_scope_path,
+        ),
+        wake_scope_id=_scope_id_from_path(scope_path),
+        reason=reason,
+        remaining_stack=remaining_stack,
+        archive_diagnostics=_archive_diagnostics(req),
+    )
+
+
+def _archive_diagnostics(req: ScopeEndRequest) -> dict[str, Any] | None:
+    if (
+        req.session_generation is None
+        and req.finalize_reason is None
+        and req.remaining_stack is None
+    ):
+        return None
+    return {
+        "session_generation": req.session_generation,
+        "finalize_reason": req.finalize_reason,
+        "remaining_stack": dict(req.remaining_stack or {}),
+        "round_num": req.round_num,
+    }
+
+
+def _stack_scope_ids(frames: list[dict[str, Any]]) -> list[str]:
+    return [
+        str(frame["scope_id"])
+        for frame in frames
+        if isinstance(frame, dict) and frame.get("scope_id")
+    ]
+
+
+def _semantic_remaining_stack_after_archive(
+    frames: list[dict[str, Any]],
+    *,
+    archived_scope_id: str,
+) -> list[str]:
+    """Return the semantic stack remaining after archiving a scope.
+
+    Operational finalize events record the full pre-archive stack. Context
+    events use this post-archive stack so LLM context projection does not keep
+    an archived wake/scope visible.
+    """
+    scope_ids = _stack_scope_ids(frames)
+    try:
+        archived_index = scope_ids.index(archived_scope_id)
+    except ValueError:
+        return scope_ids
+    return scope_ids[archived_index + 1:]
+
+
+def _finalize_idempotency_key(
+    *,
+    root_scope_id: str,
+    finalized_scope_id: str,
+    reason: str,
+) -> str:
+    return f"active-stack:finalize:{root_scope_id}:{finalized_scope_id}:{reason}"
+
+
+async def _finalize_active_stack_for_archive(
+    ws: Any,
+    *,
+    root_scope_id: str,
+    finalized_scope_id: str,
+    frames: list[dict[str, Any]],
+    reason: str,
+) -> dict[str, Any]:
+    return finalize_active_stack_projection(
+        ws.operational_store,
+        root_scope_id=root_scope_id,
+        frames=frames,
+        generation=_active_stack_generation_ms(ws),

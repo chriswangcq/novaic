@@ -1,0 +1,55 @@
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:18:    context_prepare_for_llm,
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:150:    result = await context_prepare_for_llm(PrepareForLLMRequest(
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:168:async def test_prepare_for_llm_returns_explicit_snapshot_contract() -> None:
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:197:    result = await context_prepare_for_llm(PrepareForLLMRequest(
+novaic-cortex/tests/test_context_event_read_source_guards.py:28:def test_prepare_for_llm_has_no_dfs_read_fallback() -> None:
+novaic-cortex/tests/test_context_event_read_source_guards.py:30:        '@app.post("/v1/context/prepare_for_llm")',
+novaic-cortex/tests/test_context_event_read_source_guards.py:37:    assert "read_context" not in section
+novaic-cortex/tests/test_context_event_read_source_guards.py:51:    assert "read_context" not in section
+novaic-cortex/tests/test_pr67_wake_child_api.py:108:    assert [m["content"] for m in await ws.read_context(wake)] == ["current wake input"]
+novaic-cortex/tests/test_pr67_wake_child_api.py:109:    assert await ws.read_context(root) == []
+novaic-cortex/tests/test_context_event_no_compat.py:9:    context_prepare_for_llm,
+novaic-cortex/tests/test_context_event_no_compat.py:43:async def test_prepare_for_llm_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-cortex/tests/test_context_event_no_compat.py:47:        await context_prepare_for_llm(
+novaic-cortex/tests/test_engine_compact_mapping.py:35:async def test_prepare_for_llm_uses_engine_json_for_compact() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:82:    assert await ws.read_context(wake["scope_path"]) == [{"role": "user", "content": "hi"}]
+novaic-cortex/tests/test_context_event_api_context_writes.py:138:    assert [m["content"] for m in await ws.read_context(wake["scope_path"])] == ["same", "same"]
+novaic-cortex/tests/test_context_event_api_context_writes.py:162:async def test_read_context_rejects_corrupt_jsonl_projection() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:171:        await ws.read_context(wake["scope_path"])
+novaic-cortex/tests/test_pr234_control_stack.py:13:    context_prepare_for_llm,
+novaic-cortex/tests/test_pr234_control_stack.py:41:async def test_prepare_for_llm_stack_uses_active_path_not_render_open_siblings() -> None:
+novaic-cortex/tests/test_pr234_control_stack.py:81:    result = await context_prepare_for_llm(PrepareForLLMRequest(
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:25:    bridge.prepare_for_llm.return_value = {
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:80:    bridge.prepare_for_llm.return_value = {
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:112:    bridge.prepare_for_llm.return_value = {"messages": []}
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:131:def test_prepare_llm_context_uses_prepare_snapshot_not_context_read_projection(monkeypatch):
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:133:    bridge.read_context.return_value = [
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:137:    bridge.prepare_for_llm.return_value = {
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:160:    bridge.prepare_for_llm.assert_called_once_with("agent-root-main")
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:166:    assert "bridge.prepare_for_llm(" in source
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:189:    assert "assemble_llm_request_from_snapshot(" in source
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:21:    bridge.read_context.return_value = [
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:299:    assert "read_context" not in handler_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:302:    assert "TaskTopics.CORTEX_PREPARE_LLM_CONTEXT" in think_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:338:def test_cortex_bridge_read_context_fails_closed(monkeypatch):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:347:        bridge.read_context("scope-1")
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:350:def test_cortex_bridge_prepare_for_llm_uses_prepare_endpoint(monkeypatch):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:366:    result = bridge.prepare_for_llm("agent-root-main")
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:369:    assert posted["path"] == "/v1/context/prepare_for_llm"
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:89:    bridge.prepare_for_llm.return_value = {
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:125:    bridge.prepare_for_llm.assert_called_once_with("agent-root-main-agent")
+novaic-agent-runtime/tests/test_no_tool_warning.py:25:    bridge.read_context.return_value = list(messages)
+novaic-agent-runtime/tests/test_no_tool_warning.py:26:    bridge.prepare_for_llm.return_value = {
+novaic-agent-runtime/tests/test_context_read_ordering.py:29:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_ordering.py:53:    bridge.read_context.return_value = []  # empty starting context
+novaic-agent-runtime/tests/test_context_read_ordering.py:88:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:21:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:57:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:79:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:100:    bridge.read_context.return_value = [
+novaic-agent-runtime/tests/test_context_read_by_ids.py:130:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:151:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:55:    bridge.read_context.assert_not_called()
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:67:    bridge.read_context.assert_not_called()
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:79:    bridge.read_context.assert_not_called()
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:74:    bridge.read_context.return_value = [{"role": "system", "content": "SYSTEM"}]

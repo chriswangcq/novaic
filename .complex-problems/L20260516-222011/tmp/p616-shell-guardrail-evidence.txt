@@ -1,0 +1,1441 @@
+=== P616 shell output guardrail test scan ===
+novaic-app/src/application/store.ts:95:  showAgentMonitor: boolean;
+novaic-app/src/application/store.ts:101:  showAgentMonitor: true,
+novaic-app/src/application/store.ts:164:  /** Per-agent chat view options (Show Device / Agent Monitor / Subagents) */
+novaic-app/src/config/index.ts:171:  JSON_PREVIEW_LENGTH: 100,
+novaic-app/src/config/index.ts:177:  CHAT_HISTORY_LIMIT: 50,
+novaic-app/src/config/index.ts:180:  CHAT_HISTORY_PAGE_SIZE: 20,
+novaic-cortex/tests/test_operational_store.py:66:        "payload_manifest",
+novaic-cortex/tests/test_operational_store.py:72:def test_initialize_resets_incompatible_payload_manifest_schema(tmp_path):
+novaic-cortex/tests/test_operational_store.py:77:            CREATE TABLE payload_manifest (
+novaic-cortex/tests/test_operational_store.py:78:                payload_ref TEXT PRIMARY KEY,
+novaic-cortex/tests/test_operational_store.py:96:            INSERT INTO payload_manifest(
+novaic-cortex/tests/test_operational_store.py:97:                payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/tests/test_operational_store.py:117:            for row in conn.execute("PRAGMA table_info(payload_manifest)")
+novaic-cortex/tests/test_operational_store.py:119:    manifest = store.get_payload_manifest(payload_ref="payload-1")
+novaic-cortex/tests/test_operational_store.py:120:    local = store.put_payload_manifest(
+novaic-cortex/tests/test_operational_store.py:121:        payload_ref="local",
+novaic-cortex/tests/test_operational_store.py:122:        source_payload_ref="local",
+novaic-cortex/tests/test_operational_store.py:132:    assert "source_payload_ref" in columns
+novaic-cortex/tests/test_operational_store.py:134:    assert manifest is None
+novaic-cortex/tests/test_operational_store.py:338:def test_payload_manifest_stores_metadata_and_updates_status(tmp_path):
+novaic-cortex/tests/test_operational_store.py:341:    created = store.put_payload_manifest(
+novaic-cortex/tests/test_operational_store.py:342:        payload_ref="payload-1",
+novaic-cortex/tests/test_operational_store.py:343:        source_payload_ref="step-ref-1",
+novaic-cortex/tests/test_operational_store.py:354:    updated = store.put_payload_manifest(
+novaic-cortex/tests/test_operational_store.py:355:        payload_ref="payload-1",
+novaic-cortex/tests/test_operational_store.py:356:        source_payload_ref="step-ref-1",
+novaic-cortex/tests/test_operational_store.py:372:    assert updated["source_payload_ref"] == "step-ref-1"
+novaic-cortex/tests/test_operational_store.py:374:    assert store.get_payload_manifest(payload_ref="payload-1")["blob_ref"] == "blob://cortex-payload/1"
+novaic-cortex/tests/test_operational_store.py:377:def test_payload_manifest_supports_local_payload_without_blob_ref(tmp_path):
+novaic-cortex/tests/test_operational_store.py:380:    manifest = store.put_payload_manifest(
+novaic-cortex/tests/test_operational_store.py:381:        payload_ref="step-ref-local",
+novaic-cortex/tests/test_operational_store.py:382:        source_payload_ref="step-ref-local",
+novaic-cortex/tests/test_operational_store.py:394:    assert manifest["blob_ref"] is None
+novaic-cortex/tests/test_operational_store.py:395:    assert manifest["source_payload_ref"] == "step-ref-local"
+novaic-cortex/tests/test_operational_store.py:396:    assert manifest["retention_class"] == "scope_local"
+novaic-cortex/tests/test_operational_store.py:397:    assert store.get_payload_manifest(payload_ref="step-ref-local") == manifest
+novaic-app/src/types/index.ts:229:  /** 'image' for inline preview, 'resource' for download link */
+novaic-cortex/tests/test_step_index_outcome.py:20:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_step_index_outcome.py:64:        "observation": {"kind": "tool_result", "preview": "web search complete"},
+novaic-cortex/tests/test_step_index_outcome.py:65:        "artifacts": [{"url": "blob://user-file/img.png", "filename": "img.png"}],
+novaic-cortex/tests/test_step_index_outcome.py:81:    assert entry["has_artifacts"] is True
+novaic-cortex/tests/test_step_index_outcome.py:95:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:97:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:103:    assert original["observation"] == {"kind": "tool_result", "preview": "FULL"}
+novaic-cortex/tests/test_step_index_outcome.py:105:    assert normalized["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:106:    assert normalized["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:108:    manifest = ws.operational_store.get_payload_manifest(payload_ref="step-ref:s1:round1:shell:0")
+novaic-cortex/tests/test_step_index_outcome.py:109:    assert manifest["source_payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:110:    assert manifest["blob_ref"] is None
+novaic-cortex/tests/test_step_index_outcome.py:111:    assert manifest["scope_id"] == "s1"
+novaic-cortex/tests/test_step_index_outcome.py:112:    assert manifest["step_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:113:    assert manifest["status"] == "available"
+novaic-cortex/tests/test_step_index_outcome.py:114:    assert manifest["retention_class"] == "scope_local"
+novaic-cortex/tests/test_step_index_outcome.py:118:async def test_write_step_externalizes_payload_and_indexes_payload_ref():
+novaic-cortex/tests/test_step_index_outcome.py:128:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:130:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:135:    assert index[0]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:141:    assert step["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:142:    assert step["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:145:    assert original["observation"] == {"kind": "tool_result", "preview": "FULL"}
+novaic-cortex/tests/test_step_index_outcome.py:166:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:170:            "preview": "FULL",
+novaic-cortex/tests/test_step_index_outcome.py:171:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:176:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:181:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:182:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:185:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:186:    assert manifest["source_payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:187:    assert manifest["blob_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:188:    assert manifest["root_scope_id"] == "s1"
+novaic-cortex/tests/test_step_index_outcome.py:189:    assert manifest["scope_id"] == "s1"
+novaic-cortex/tests/test_step_index_outcome.py:190:    assert manifest["step_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:191:    assert manifest["status"] == "available"
+novaic-cortex/tests/test_step_index_outcome.py:192:    assert manifest["retention_class"] == "external_blob"
+novaic-cortex/tests/test_step_index_outcome.py:196:async def test_read_payload_missing_record_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:200:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:207:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:208:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:209:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:211:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:215:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:217:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:219:    assert manifest["status"] == "missing"
+novaic-cortex/tests/test_step_index_outcome.py:220:    assert manifest["error"]["code"] == "payload_record_missing"
+novaic-cortex/tests/test_step_index_outcome.py:224:async def test_read_payload_corrupt_record_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:228:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:235:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:236:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:237:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:239:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:243:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:245:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:247:    assert manifest["status"] == "corrupt"
+novaic-cortex/tests/test_step_index_outcome.py:248:    assert manifest["error"]["code"] == "payload_record_corrupt"
+novaic-cortex/tests/test_step_index_outcome.py:252:async def test_read_payload_ref_mismatch_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:256:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:263:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:264:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:265:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:267:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:268:    await ws._sys_write_json(f"{path}/payloads/{payload_name}.json", {"payload_ref": "other"})
+novaic-cortex/tests/test_step_index_outcome.py:271:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:273:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:274:    assert exc.value.code == "payload_ref_mismatch"
+novaic-cortex/tests/test_step_index_outcome.py:275:    assert manifest["status"] == "corrupt"
+novaic-cortex/tests/test_step_index_outcome.py:276:    assert manifest["error"]["code"] == "payload_ref_mismatch"
+novaic-cortex/tests/test_step_index_outcome.py:280:async def test_read_payload_blob_failures_update_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:295:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:297:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:303:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:305:    assert manifest["status"] == "unavailable"
+novaic-cortex/tests/test_step_index_outcome.py:306:    assert manifest["error"]["code"] == "payload_blob_fetch_failed"
+novaic-cortex/tests/test_step_index_outcome.py:310:async def test_read_payload_missing_blob_client_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:325:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:327:        "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:334:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:336:    assert manifest["status"] == "unavailable"
+novaic-cortex/tests/test_step_index_outcome.py:337:    assert manifest["error"]["code"] == "payload_blob_client_missing"
+novaic-cortex/tests/test_step_index_outcome.py:356:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:358:            "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_step_index_outcome.py:367:    with pytest.raises(ValueError, match="payload/payload_ref"):
+novaic-cortex/tests/test_step_index_outcome.py:388:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:413:            "observation": {"kind": "tool_result", "preview": f"tool {i} complete"},
+novaic-cortex/tests/test_step_index_outcome.py:432:        "observation": {"kind": "tool_result", "preview": "OK"},
+novaic-cortex/tests/test_step_index_outcome.py:441:    assert "has_artifacts" not in entry
+novaic-cortex/tests/test_step_index_outcome.py:445:async def test_index_keeps_zero_duration_and_observation_artifacts():
+novaic-cortex/tests/test_step_index_outcome.py:457:            "preview": "OK",
+novaic-cortex/tests/test_step_index_outcome.py:458:            "artifacts": [{"uri": "blob://runtime-artifact/img"}],
+novaic-cortex/tests/test_step_index_outcome.py:465:    assert index[0]["has_artifacts"] is True
+novaic-cortex/tests/test_step_index_outcome.py:520:        "observation": {"kind": "tool_result", "preview": "one"},
+novaic-cortex/tests/test_step_index_outcome.py:524:        "observation": {"kind": "tool_result", "preview": "two"},
+novaic-cortex/tests/test_step_index_outcome.py:540:        "observation": {"kind": "tool_result", "preview": "one"},
+novaic-app/src/data/entities/entangledEntityContracts.ts:52:      truncated: 'BOOL',
+novaic-app/src/locales/en/translation.json:58:    "show_agent_monitor": "Show Agent Monitor",
+novaic-app/src/locales/en/translation.json:87:    "prompts_preview": "Prompts Preview",
+novaic-app/src/locales/en/translation.json:216:    "preview": "Preview",
+novaic-app/src/locales/en/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-app/src/locales/zh-TW/translation.json:58:    "show_agent_monitor": "顯示 Agent 監視器",
+novaic-app/src/locales/zh-TW/translation.json:87:    "prompts_preview": "Prompt 預覽",
+novaic-app/src/locales/zh-TW/translation.json:214:    "preview": "預覽",
+novaic-app/src/locales/zh-TW/translation.json:428:    "agent_monitor": "Agent 監視器",
+novaic-app/src/types/appCompatGuard.test.ts:37:    const acl = read('src-tauri/gen/schemas/acl-manifests.json');
+novaic-app/src/types/appCompatGuard.test.ts:101:    const acl = read('src-tauri/gen/schemas/acl-manifests.json');
+novaic-cortex/tests/test_runtime.py:50:    assert "truncated" in out
+novaic-app/src/locales/zh/translation.json:58:    "show_agent_monitor": "显示 Agent 监视器",
+novaic-app/src/locales/zh/translation.json:87:    "prompts_preview": "Prompt 预览",
+novaic-app/src/locales/zh/translation.json:216:    "preview": "预览",
+novaic-app/src/locales/zh/translation.json:426:    "agent_monitor": "Agent 监视器",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:3:import base64
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:85:                        "screenshot": base64.b64encode(screenshot_bytes).decode("ascii"),
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:94:                        "data": base64.b64encode(file_bytes).decode("ascii"),
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:95:                        "is_base64": True,
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:113:                            "blob_ref": f"blob://runtime-artifact/{blob_id}",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:114:                            "namespace": "runtime-artifact",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:137:def test_devicectl_hd_screenshot_uploads_image_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:149:    assert body["version"] == "tool-output.v1"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:151:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:152:    assert body["artifacts"][0]["modality"] == "image"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:153:    assert body["artifacts"][0]["mime_type"] == "image/jpeg"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:154:    assert body["artifacts"][0]["access"]["display"]["args"]["file_url"] == body["artifacts"][0]["uri"]
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:155:    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:158:    assert base64.b64encode(image).decode("ascii") not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:162:def test_devicectl_hd_file_pull_uploads_file_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:178:    assert body["version"] == "tool-output.v1"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:180:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:181:    assert body["artifacts"][0]["modality"] == "binary"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:182:    assert body["artifacts"][0]["name"] == "note.txt"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:183:    assert body["artifacts"][0]["mime_type"] == "text/plain"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:184:    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:186:    assert base64.b64encode(file_payload).decode("ascii") not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:197:    assert "base64 into normal shell output" in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:200:def test_devicectl_help_teaches_artifact_manifest_not_base64(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:204:    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:205:    assert "Do not print or paste raw base64" in completed.stdout
+novaic-app/src/locales/es/translation.json:58:    "show_agent_monitor": "Mostrar Agent Monitor",
+novaic-app/src/locales/es/translation.json:87:    "prompts_preview": "Supervisión Visual de Prompts y Cognición",
+novaic-app/src/locales/es/translation.json:216:    "preview": "Testigo Anticipatorio de Apariencia de Procesado Final",
+novaic-app/src/locales/es/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-cortex/tests/test_tool_output_projection.py:5:    format_for_display_perception_llm,
+novaic-cortex/tests/test_tool_output_projection.py:6:    format_for_history_llm,
+novaic-cortex/tests/test_tool_output_projection.py:8:    preview_for_text,
+novaic-cortex/tests/test_tool_output_projection.py:12:def _tool_output_with_image_artifact():
+novaic-cortex/tests/test_tool_output_projection.py:14:        "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:17:        "artifacts": [
+novaic-cortex/tests/test_tool_output_projection.py:19:                "uri": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_tool_output_projection.py:28:                        "args": {"file_url": "blob://runtime-artifact/screen-1"},
+novaic-cortex/tests/test_tool_output_projection.py:32:                    "history": "manifest_only",
+novaic-cortex/tests/test_tool_output_projection.py:33:                    "monitor": "thumbnail_allowed",
+novaic-cortex/tests/test_tool_output_projection.py:40:                "summary": "Screenshot stored as artifact.",
+novaic-cortex/tests/test_tool_output_projection.py:43:        "diagnostics": {"truncated": False},
+novaic-cortex/tests/test_tool_output_projection.py:47:def test_tool_output_v1_artifacts_render_as_manifest_text():
+novaic-cortex/tests/test_tool_output_projection.py:48:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:52:    assert parsed["artifacts"][0]["uri"] == "blob://runtime-artifact/screen-1"
+novaic-cortex/tests/test_tool_output_projection.py:54:    assert "[Artifact: desktop.png (image, image/png, 2.0KB)]" in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:55:    assert 'display(file_url="blob://runtime-artifact/screen-1")' in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:59:def test_tool_output_v1_display_perception_never_inlines_artifact_image():
+novaic-cortex/tests/test_tool_output_projection.py:60:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:61:    formatted = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:65:    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_tool_output_projection.py:68:def test_tool_output_v1_preview_mentions_artifact_count():
+novaic-cortex/tests/test_tool_output_projection.py:69:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:71:    assert "[1 artifacts]" in preview_for_text(parsed)
+novaic-cortex/tests/test_tool_output_projection.py:85:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+novaic-cortex/tests/test_tool_output_projection.py:88:def test_mcp_image_content_is_only_visual_in_display_perception_projection():
+novaic-cortex/tests/test_tool_output_projection.py:98:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:100:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:102:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:126:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:134:            "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:136:            "text": "exit_code=0\nstdout:\nshort preview",
+novaic-cortex/tests/test_tool_output_projection.py:137:            "artifacts": [],
+novaic-cortex/tests/test_tool_output_projection.py:139:            "diagnostics": {"truncated": False},
+novaic-cortex/tests/test_tool_output_projection.py:151:    assert parsed["text"] == "exit_code=0\nstdout:\nshort preview"
+novaic-cortex/tests/test_tool_output_projection.py:160:            "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:162:            "text": "exit_code=0\nstdout:\n/9j/AAAA\n... [truncated 10000 chars]",
+novaic-cortex/tests/test_tool_output_projection.py:163:            "artifacts": [],
+novaic-cortex/tests/test_tool_output_projection.py:166:                "truncated": False,
+novaic-cortex/tests/test_tool_output_projection.py:169:                    "stdout_truncated": True,
+novaic-cortex/tests/test_tool_output_projection.py:182:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:197:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:207:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:213:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:214:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:217:    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+novaic-cortex/tests/test_tool_output_projection.py:225:def test_display_tool_step_payload_projects_blobref_image_ref_content():
+novaic-cortex/tests/test_tool_output_projection.py:231:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:237:                    "type": "image_ref",
+novaic-cortex/tests/test_tool_output_projection.py:238:                    "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:246:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:252:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:253:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:257:        "url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:263:    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+novaic-cortex/tests/test_tool_output_projection.py:265:        "type": "image_ref",
+novaic-cortex/tests/test_tool_output_projection.py:266:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:276:        "display_files": [{"url": "data:image/png;base64,aabbcc"}],
+novaic-cortex/tests/test_tool_output_projection.py:279:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:281:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:283:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_context_event_writer.py:83:        observation={"preview": "exit_code=0"},
+novaic-cortex/tests/test_context_event_writer.py:84:        payload_ref="step-ref:1",
+novaic-cortex/tests/test_context_event_writer.py:93:    assert tool.payload["payload_ref"] == "step-ref:1"
+novaic-cortex/tests/test_context_event_writer.py:131:        observation={"preview": "first"},
+novaic-cortex/tests/test_context_event_writer.py:133:        payload_ref="step-ref:wake-a:round4:skill_end:3",
+novaic-cortex/tests/test_context_event_writer.py:141:        observation={"preview": "second"},
+novaic-cortex/tests/test_context_event_writer.py:143:        payload_ref="step-ref:wake-b:round4:skill_end:3",
+novaic-cortex/tests/test_context_event_writer.py:148:    assert [event.payload["observation"]["preview"] for event in events] == [
+novaic-app/src/application/blobAttachmentPath.test.ts:21:    expect(source).not.toContain('/api/blobs/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:22:    expect(source).not.toContain('/api/files/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:25:    expect(source).not.toContain('fileToBase64');
+novaic-app/src/application/blobAttachmentPath.test.ts:30:  it('records voice audio as compressed multipart blobs instead of WAV/base64 uploads', () => {
+novaic-app/src/application/blobAttachmentPath.test.ts:38:    expect(recorder).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:40:    expect(input).not.toContain('base64_data');
+novaic-app/src/types/activityTimeline.ts:9:  truncated?: boolean;
+novaic-cortex/tests/test_payload_inspection_api.py:39:async def _seed_payload(ws: Workspace, payload_ref: str, payload) -> None:
+novaic-cortex/tests/test_payload_inspection_api.py:47:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:48:        "step_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:52:            "preview": "short preview",
+novaic-cortex/tests/test_payload_inspection_api.py:53:            "payload_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:61:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:62:    await _seed_payload(ws, payload_ref, {"stdout": "alpha\nbeta\nFAILED final", "exit_code": 1})
+novaic-cortex/tests/test_payload_inspection_api.py:68:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:74:    assert result["payload_ref"] == payload_ref
+novaic-cortex/tests/test_payload_inspection_api.py:78:    assert result["truncated"] is True
+novaic-cortex/tests/test_payload_inspection_api.py:85:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:86:    await _seed_payload(ws, payload_ref, "one failed\nTWO FAILED\nthree")
+novaic-cortex/tests/test_payload_inspection_api.py:92:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:101:    assert result["truncated"] is True
+novaic-cortex/tests/test_payload_inspection_api.py:114:            payload_ref="missing",
+novaic-cortex/tests/test_payload_inspection_api.py:123:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:124:    await _seed_payload(ws, payload_ref, "payload")
+novaic-cortex/tests/test_payload_inspection_api.py:125:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_payload_inspection_api.py:133:            payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:138:    assert exc.value.detail["payload_ref"] == payload_ref
+novaic-cortex/tests/test_payload_inspection_api.py:139:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_payload_inspection_api.py:140:    assert manifest["status"] == "missing"
+novaic-cortex/tests/test_payload_inspection_api.py:146:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:149:        payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:164:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:174:    assert result["input_truncated"] is True
+novaic-cortex/tests/test_payload_inspection_api.py:187:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:188:    await _seed_payload(ws, payload_ref, "alpha\nFAILED final")
+novaic-cortex/tests/test_payload_inspection_api.py:201:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:212:    assert result["output_truncated"] is True
+novaic-cortex/tests/test_payload_inspection_api.py:220:            payload_ref=payload_ref,
+novaic-app/src/locales/pt/translation.json:58:    "show_agent_monitor": "Mostrar Agent Monitor",
+novaic-app/src/locales/pt/translation.json:87:    "prompts_preview": "Pré-visualização dos Prompts",
+novaic-app/src/locales/pt/translation.json:216:    "preview": "Pré-visualização",
+novaic-app/src/locales/pt/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-app/src/locales/fr/translation.json:58:    "show_agent_monitor": "Afficher Agent Monitor",
+novaic-app/src/locales/fr/translation.json:87:    "prompts_preview": "Aperçu Global des Prompts",
+novaic-app/src/locales/fr/translation.json:216:    "preview": "Fenêtre Prophétique du Rendu Final",
+novaic-app/src/locales/fr/translation.json:429:    "execution_log": "Parchemin Solennelle Magistral Exécuté des Chroniques et Geste Epique (Audit History Logs Execution Log System Detaillé)",
+novaic-app/src/locales/fr/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-cortex/tests/test_blob_payload_client.py:12:    assert "base64" not in source
+novaic-app/src/data/entities/agentActivity.ts:2: * Agent Monitor product projection stores.
+novaic-app/src/data/entities/agentActivity.ts:5: * it does not call Business/Cortex to fetch monitor data.
+novaic-app/src/data/entities/agentActivity.ts:25:  truncated?: boolean;
+novaic-cortex/tests/test_context_event_read_source_guards.py:61:        '@app.get("/v1/scope/history")',
+novaic-cortex/tests/test_context_event_read_source_guards.py:116:        "# ── Context (conversation history)",
+novaic-app/src/application/skillsService.ts:101:  /** Get prompts preview — via Entangled agents.prompts_preview action */
+novaic-app/src/application/skillsService.ts:102:  async getPromptsPreview(agentId: string) {
+novaic-app/src/application/skillsService.ts:103:    return entangledMethod('agents', 'prompts_preview', {
+novaic-cortex/tests/test_workspace.py:66:        "payload_ref": "payload:tc_001",
+novaic-cortex/tests/test_workspace.py:67:        "observation": {"kind": "tool_result", "preview": "ok"},
+novaic-cortex/tests/test_workspace.py:87:        "payload": {}, "payload_ref": "step-ref:arch:note",
+novaic-cortex/tests/test_workspace.py:88:        "observation": {"kind": "tool_result", "preview": "OK"},
+novaic-cortex/tests/test_workspace.py:124:        "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_workspace.py:125:        "observation": {"kind": "tool_result", "preview": "hits=3"},
+novaic-cortex/tests/test_workspace.py:139:        "payload_ref": "step-ref:s1:tc_002",
+novaic-cortex/tests/test_workspace.py:140:        "observation": {"kind": "tool_result", "preview": "..."},
+novaic-cortex/tests/test_workspace.py:172:        "status": "success", "payload": {}, "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_workspace.py:173:        "observation": {"kind": "tool_result", "preview": "OK"},
+novaic-app/src/locales/ru/translation.json:58:    "show_agent_monitor": "Показать Agent Monitor",
+novaic-app/src/locales/ru/translation.json:87:    "prompts_preview": "Предпросмотр структуры промптов",
+novaic-app/src/locales/ru/translation.json:216:    "preview": "Окно предвидения (Превью)",
+novaic-app/src/locales/ru/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-app/src/locales/ko/translation.json:58:    "show_agent_monitor": "Agent Monitor 보기",
+novaic-app/src/locales/ko/translation.json:87:    "prompts_preview": "프롬프트 미리보기",
+novaic-app/src/locales/ko/translation.json:216:    "preview": "미리보기",
+novaic-app/src/locales/ko/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-app/src/locales/it/translation.json:58:    "show_agent_monitor": "Mostra Agent Monitor",
+novaic-app/src/locales/it/translation.json:87:    "prompts_preview": "Supervisione Telepatica dei Prompt",
+novaic-app/src/locales/it/translation.json:216:    "preview": "Bozza Criptata Profetizzante a Occhio Nudo",
+novaic-app/src/locales/it/translation.json:286:    "main_desktop": "Aura Visiva Del Capo Clan Padrone Massimo Server Origine Sfera Grafica X Root Screen Monitor (Desktop 1)",
+novaic-app/src/locales/it/translation.json:349:    "android_device": "Creatura Tascabile Simulandosi A Cellulare Fisso Su Monitor Google Phone Screen Sim",
+novaic-app/src/locales/it/translation.json:429:    "execution_log": "Venerandi Annales Degli Antichi E Passati Lavori Di Forza (L'Archivio Brutale Logistico Execution Logs Raw Output History Table Event Tracking Lavori Console Text Historian Audit Logger Data List)",
+novaic-app/src/locales/it/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-app/src/locales/it/translation.json:439:    "empty_chat_subtitle": "La Cassa Di Risonanza Centrale Sputerà Pietre E Perle Di Saggezza LLM Appena Tu Ed Una Presenza Scambiando Fatterelli Logici Code Lavorativo Ne Daranno Esecuzioni Di Dialogo Misto Ai App Byclaw Log History Chat...",
+novaic-app/src/locales/it/translation.json:446:    "screenshot": "Spaccato Rubato Dall'Occhio Macchina Congelato In Luce Imprigionata Dal Tubo Catodico Pieno Screenshot Camera Shot Memento Image Proof Monitor Evidence Memory Shot Capture Byclaw Sull'Apparato Dispositivo D'Artefatto : {{name}}"
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:53:  it('exposes only product projection entities for Agent Monitor', () => {
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:62:  it('does not keep a route-driven subscription table for monitor entities', () => {
+novaic-cortex/tests/test_context_event_api_steps_write.py:42:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_context_event_api_steps_write.py:102:async def test_steps_write_emits_tool_step_recorded_without_fake_payload_ref() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:122:                    "preview": "exit_code=0",
+novaic-cortex/tests/test_context_event_api_steps_write.py:123:                    "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:138:            "preview": "exit_code=0",
+novaic-cortex/tests/test_context_event_api_steps_write.py:139:            "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:145:    assert "payload_ref" not in index[0]
+novaic-cortex/tests/test_context_event_api_steps_write.py:147:    assert index[0]["has_artifacts"] is True
+novaic-cortex/tests/test_context_event_api_steps_write.py:155:    with pytest.raises(ValueError, match="payload/payload_ref"):
+novaic-cortex/tests/test_context_event_api_steps_write.py:175:async def test_steps_write_records_deepest_scope_and_final_blob_payload_ref() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:217:                "payload_ref": "step-ref:wake-1:round1:shell:2",
+novaic-cortex/tests/test_context_event_api_steps_write.py:218:                "observation": {"kind": "tool_result", "preview": "FULL"},
+novaic-cortex/tests/test_context_event_api_steps_write.py:232:            "preview": "FULL",
+novaic-cortex/tests/test_context_event_api_steps_write.py:233:            "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:236:        "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:240:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:242:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:243:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:245:    manifest = reopened_ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_context_event_api_steps_write.py:246:    assert manifest["source_payload_ref"] == "step-ref:wake-1:round1:shell:2"
+novaic-cortex/tests/test_context_event_api_steps_write.py:247:    assert manifest["root_scope_id"] == "agent-root"
+novaic-cortex/tests/test_context_event_api_steps_write.py:248:    assert manifest["scope_id"] == "skill-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:249:    assert manifest["step_ref"] == "step-ref:wake-1:round1:shell:2"
+novaic-cortex/tests/test_context_event_api_steps_write.py:250:    assert manifest["status"] == "available"
+novaic-cortex/tests/test_context_event_api_steps_write.py:276:                "payload_ref": "step-ref:wake-1:round1:shell:externalized",
+novaic-cortex/tests/test_context_event_api_steps_write.py:278:                "observation": {"kind": "tool_result", "preview": "externalized"},
+novaic-cortex/tests/test_context_event_api_steps_write.py:314:                "payload_ref": "step-ref:wake-1:round1:shell:projection",
+novaic-cortex/tests/test_context_event_api_steps_write.py:316:                "observation": {"kind": "tool_result", "preview": "hello"},
+novaic-app/src/locales/ja/translation.json:58:    "show_agent_monitor": "Agent Monitor を表示",
+novaic-app/src/locales/ja/translation.json:87:    "prompts_preview": "プロンプトプレビュー",
+novaic-app/src/locales/ja/translation.json:216:    "preview": "プレビュー",
+novaic-app/src/locales/ja/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-app/src/locales/de/translation.json:58:    "show_agent_monitor": "Agent Monitor anzeigen",
+novaic-app/src/locales/de/translation.json:87:    "prompts_preview": "Prompt-Matrix (Vorschau)",
+novaic-app/src/locales/de/translation.json:216:    "preview": "Fenster der Vorschau und Prophezeiung",
+novaic-app/src/locales/de/translation.json:365:    "view_screen": "Durch das Kaleidoskop der Fernsteuerung blicken (Remote Monitor View)",
+novaic-app/src/locales/de/translation.json:430:    "agent_monitor": "Agent Monitor",
+novaic-app/src/locales/de/translation.json:432:    "records_count_plural": "{{count}} Endlos geschriebene Paragraphen des Execution-Logs History"
+novaic-app/src/locales/de/translation.json:446:    "screenshot": "Beweisfoto In Pixeln Gegossen Eingelegt In Zeit (Snapshot von Monitor Frame) für Gerät {{name}}"
+novaic-cortex/tests/test_scope_history_api.py:22:async def test_scope_history_reads_operational_sqlite(tmp_path):
+novaic-cortex/tests/test_scope_history_api.py:38:        response = await api.scope_history("/ro/active/root-scope")
+novaic-cortex/tests/test_context_event_write_authority.py:128:                "observation": {"kind": "tool_result", "preview": "exit_code=0"},
+novaic-cortex/tests/test_context_event_write_authority.py:198:        "observation": {"kind": "tool_result", "preview": "exit_code=0"},
+novaic-cortex/tests/test_pr193_no_trace_projection_http_path.py:1:"""PR-193 — Cortex no longer exposes the old Agent Monitor projection HTTP path."""
+novaic-cortex/tests/test_context_event_read_model.py:122:                    "observation": {"preview": "exit_code=0\n/ro/rw"},
+novaic-cortex/tests/test_context_event_read_model.py:188:                "payload_ref": None,
+novaic-cortex/tests/test_context_event_read_model.py:226:                    "observation": {"preview": long_tool_output},
+novaic-cortex/tests/test_context_event_read_model.py:250:    assert "[truncated: 26 → 8 chars]" in tool_content
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:32:    assert "PREV_SCOPE_" + "HISTORY" not in active_source
+novaic-app/src/locales/ar/translation.json:58:    "show_agent_monitor": "إظهار مراقب الوكيل",
+novaic-app/src/locales/ar/translation.json:87:    "prompts_preview": "معاينة الموجّهات",
+novaic-app/src/locales/ar/translation.json:216:    "preview": "معاينة",
+novaic-app/src/locales/ar/translation.json:430:    "agent_monitor": "مراقب الوكيل",
+novaic-cortex/tests/test_pr76_boundary_guard.py:64:def test_boundary_guard_ignores_docs_and_ticket_history(tmp_path: Path) -> None:
+novaic-cortex/tests/test_step_result_projection.py:3:    format_for_display_perception_llm,
+novaic-cortex/tests/test_step_result_projection.py:4:    format_for_history_llm,
+novaic-cortex/tests/test_step_result_projection.py:6:    preview_for_text,
+novaic-cortex/tests/test_step_result_projection.py:13:            {"type": "image", "data": "base64encoded==", "mimeType": "image/jpeg"}
+novaic-cortex/tests/test_step_result_projection.py:19:    assert parsed["display_files"][0]["url"] == "data:image/jpeg;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:26:            {"type": "image", "data": "base64encoded==", "mimeType": "image/png"},
+novaic-cortex/tests/test_step_result_projection.py:34:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:48:def test_parse_tool_result_mcp_image_ref():
+novaic-cortex/tests/test_step_result_projection.py:53:                "type": "image_ref",
+novaic-cortex/tests/test_step_result_projection.py:54:                "file_url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:65:        "url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:92:    assert "Truncated unknown tool result JSON" in parsed["text"]
+novaic-cortex/tests/test_step_result_projection.py:96:def test_history_projection_truncation():
+novaic-cortex/tests/test_step_result_projection.py:101:    formatted_str = format_for_history_llm(result_data, max_text_len=100)
+novaic-cortex/tests/test_step_result_projection.py:107:    assert "Truncated due to context budget length" in text_content
+novaic-cortex/tests/test_step_result_projection.py:110:def test_display_perception_projection_data_url():
+novaic-cortex/tests/test_step_result_projection.py:114:            {"url": "data:image/png;base64,aabbcc"}
+novaic-cortex/tests/test_step_result_projection.py:117:    formatted_str = format_for_display_perception_llm(result_data)
+novaic-cortex/tests/test_step_result_projection.py:126:def test_display_perception_projection_blob_ref_image_ref():
+novaic-cortex/tests/test_step_result_projection.py:131:                "url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:139:    history = json.loads(format_for_history_llm(result_data))
+novaic-cortex/tests/test_step_result_projection.py:140:    display = json.loads(format_for_display_perception_llm(result_data))
+novaic-cortex/tests/test_step_result_projection.py:142:    assert history["_mcp_content"] == [{"type": "text", "text": "Check this"}]
+novaic-cortex/tests/test_step_result_projection.py:144:        "type": "image_ref",
+novaic-cortex/tests/test_step_result_projection.py:145:        "file_url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:151:def test_empty_display_perception_projection_is_diagnostic_not_ok():
+novaic-cortex/tests/test_step_result_projection.py:152:    formatted = json.loads(format_for_display_perception_llm({
+novaic-cortex/tests/test_tool_schemas_limits.py:111:    assert "Agent Monitor" in props["desc"]["description"]
+novaic-cortex/tests/test_tool_schemas_limits.py:119:    assert "<PREV_SCOPE_" + "HISTORY>" not in combined
+novaic-cortex/tests/test_tool_schemas_limits.py:151:        "im_history",
+novaic-cortex/tests/test_context_event_projection.py:579:                    "observation": {"preview": "exit_code=0"},
+novaic-cortex/tests/test_context_event_projection.py:580:                    "payload_ref": "step-ref:1",
+novaic-cortex/tests/test_context_event_projection.py:598:                "payload_ref": "step-ref:1",
+novaic-cortex/tests/test_context_event_projection.py:604:def test_project_context_events_multiple_tool_results_preserve_order_and_payload_refs() -> None:
+novaic-cortex/tests/test_context_event_projection.py:626:                    "payload_ref": "payload:a",
+novaic-cortex/tests/test_context_event_projection.py:636:                    "observation": {"preview": "B"},
+novaic-cortex/tests/test_context_event_projection.py:637:                    "payload_ref": "payload:b",
+novaic-cortex/tests/test_context_event_projection.py:648:    assert [message["_metadata"]["payload_ref"] for message in snapshot.messages[1:]] == [
+novaic-cortex/tests/test_context_event_projection.py:672:                    "payload_ref": "payload:display-image",
+novaic-cortex/tests/test_context_event_projection.py:708:                    "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_projection.py:717:    assert tool_message["_metadata"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_projection.py:731:                    "payload_ref": "payload:missing",
+novaic-cortex/tests/test_context_event_projection.py:775:                    "observation": {"preview": "internal output"},
+novaic-cortex/tests/test_context_event_projection.py:776:                    "payload_ref": "payload:shell",
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:1:"""CI entrypoints keep generated Python artifacts out of source scans."""
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:17:def test_lint_workflow_sets_no_bytecode_and_runs_generated_artifact_lint():
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:21:    assert "./scripts/ci/lint_generated_artifacts.sh" in source
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:24:def test_canonical_test_runner_cleans_and_checks_generated_artifacts():
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:29:    assert "cleanup_generated_python_artifacts()" in source
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:30:    assert 'run_check "generated-artifacts-lint" scripts/ci/lint_generated_artifacts.sh' in source
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:133:    assert step["payload_ref"] == "step-ref:scp-1:round2:call_1"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:137:    assert step["observation"]["payload_ref"] == "step-ref:scp-1:round2:call_1"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:250:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:253:def test_expand_messages_for_llm_resolves_current_display_image_ref(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:264:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:265:                        "file_url": "blob://runtime-artifact/screen-1",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:314:    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen-1")
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:323:def test_expand_messages_for_llm_does_not_resolve_history_image_ref(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:328:            assert kwargs["projection"] == "history"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:333:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:334:                        "file_url": "blob://runtime-artifact/old-screen",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:346:        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("history must not fetch blobs")),
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:365:    assert payload["_mcp_content"][1]["type"] == "image_ref"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:368:def test_expand_messages_for_llm_image_ref_fetch_failure_becomes_text(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:373:            assert kwargs["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:377:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:378:                        "file_url": "blob://runtime-artifact/missing",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:427:        "text": "[Image ref not resolved: blob://runtime-artifact/missing — Blob Service returned 404: not found]",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:461:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:503:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:561:    assert calls[0][2]["projection"] == "history"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:566:def test_expand_messages_for_llm_uses_history_projection_for_old_round(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:596:    assert calls[0][2]["projection"] == "history"
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:218:    assert step["payload_ref"] == "step-ref:real-result-id"
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:222:    assert step["observation"]["payload_ref"] == "step-ref:real-result-id"
+novaic-agent-runtime/tests/test_pr234_tool_logical_failure.py:32:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:1:"""PR-193 — Runtime materializes Agent Monitor projection entities."""
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:132:                "preview": "skill_end 完成",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:133:                "payload_ref": "payload:debug",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:135:            "payload_ref": "payload:debug",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:179:def test_shell_desc_projects_as_monitor_action_title():
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:219:                "observation": {"preview": "stdout: ok"},
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:220:                "payload_ref": "payload:shell-1",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:235:def test_shell_desc_projects_as_monitor_observation_title(mock_get_bridge):
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:250:                "observation": {"preview": "exit_code=0"},
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:251:                "payload_ref": "payload:shell-1",
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:29:        "CHAT_HISTORY",
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:73:def test_context_read_uses_input_ids_without_history_replay(monkeypatch):
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:5:summary.md. Runtime must not expose a separate recap/history builder.
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:20:    assert not hasattr(runtime_handlers, "WAKE_PREV_SCOPE_" + "HISTORY_COUNT_ENV")
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:26:    assert "PREV_SCOPE_" + "HISTORY" not in source
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:76:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:105:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:7:    artifact_manifest,
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:8:    event_manifest,
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:17:        artifacts=(
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:18:            artifact_manifest(
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:19:                uri="blob://runtime-artifact/abc",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:26:                access={"display": {"tool": "display", "args": {"file_url": "blob://runtime-artifact/abc"}}},
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:27:                projection={"history": "manifest_only", "monitor": "thumbnail_allowed"},
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:30:        events=(event_manifest(type="device.screenshot.captured", id="evt-1", summary="captured"),),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:37:    assert result["artifacts"][0]["uri"] == "blob://runtime-artifact/abc"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:38:    assert result["artifacts"][0]["modality"] == "image"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:40:    assert result["diagnostics"] == {"duration_ms": 12, "truncated": False}
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:47:    assert result["text"] == "abc\n\n... [truncated to 3 chars]"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:48:    assert result["diagnostics"]["truncated"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:55:    assert result["text"] == "boom\n\n... [truncated to 4 chars]"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:57:    assert result["diagnostics"]["truncated"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:63:        ({"uri": "", "modality": "image"}, "artifact uri is required"),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:64:        ({"uri": "blob://x/y", "modality": "unknown"}, "invalid artifact modality"),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:68:def test_artifact_manifest_rejects_invalid_values(kwargs, message):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:70:        artifact_manifest(**kwargs).to_dict()
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:78:    assert result["diagnostics"] == {"truncated": False}
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:49:    image_url = "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:224:        "version": "tool-output.v1",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:227:        "artifacts": [],
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:230:            "truncated": False,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:234:                "stdout_truncated": True,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:262:    assert "x" * 100 not in step["observation"]["preview"]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:376:    assert step["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:381:    assert step["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:36:def test_history_projection_marker_is_stripped_without_image_injection():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:38:        [_image_tool_message(_projection="history")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:48:def test_display_perception_can_create_user_image_message_and_strips_marker():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:50:        [_image_tool_message(_projection="display_perception")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:63:def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:76:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:85:    assert "truncated display text" in text
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:102:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:127:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:148:        _image_tool_message(_projection="display_perception"),
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:152:    assert sanitized[1]["_projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:164:    assert user_content[0]["image_url"]["url"].startswith("data:image/png;base64,")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:171:        "file_url": "blob://runtime-artifact/screenshot",
+=== runtime shell/tool output tests ===
+     1	from __future__ import annotations
+     2	
+     3	import json
+     4	
+     5	from task_queue.handlers.tool_handlers import handle_tool_execute
+     6	
+     7	
+     8	class _Bridge:
+     9	    def __init__(self, result):
+    10	        self.result = result
+    11	        self.calls = []
+    12	
+    13	    def shell_exec(self, command, timeout, *, capability_env=None):
+    14	        self.calls.append((command, timeout, dict(capability_env or {})))
+    15	        return self.result
+    16	
+    17	
+    18	def _payload(args=None):
+    19	    return {
+    20	        "scope_id": "wake-1",
+    21	        "round_id": "round-1",
+    22	        "tool_call_id": "shell-call-1",
+    23	        "tool_name": "shell",
+    24	        "arguments": args or {"command": "printf hi", "timeout": 9},
+    25	        "agent_id": "agent-1",
+    26	        "user_id": "user-1",
+    27	    }
+    28	
+    29	
+    30	def _run_shell(monkeypatch, shell_result, args=None):
+    31	    bridge = _Bridge(shell_result)
+    32	    monkeypatch.setattr(
+    33	        "task_queue.utils.cortex_bridge.get_cortex_bridge",
+    34	        lambda *_args, **_kwargs: bridge,
+    35	    )
+    36	    result = handle_tool_execute(_payload(args), ctx={})
+    37	    return result, json.loads(result["content"]), bridge
+    38	
+    39	
+    40	class _Business:
+    41	    def request(self, method, path, json_data=None, params=None):
+    42	        assert method == "GET"
+    43	        assert path == "/internal/config/llm/agent/agent-1"
+    44	        return {
+    45	            "success": True,
+    46	            "model_id": "payload-model",
+    47	            "factory_url": "http://factory.local",
+    48	            "user_id": "factory-user",
+    49	        }
+    50	
+    51	
+    52	def test_shell_success_uses_explicit_tool_output_contract(monkeypatch):
+    53	    monkeypatch.setattr(
+    54	        "task_queue.handlers.tool_handlers.ServiceConfig.CORTEX_INTERNAL_KEY",
+    55	        "cortex-secret",
+    56	    )
+    57	    result, content, bridge = _run_shell(
+    58	        monkeypatch,
+    59	        {"stdout": "hello\n", "stderr": "", "exit_code": 0, "files_changed": ["/rw/a.txt"]},
+    60	    )
+    61	
+    62	    assert bridge.calls[0][:2] == ("printf hi", 9)
+    63	    assert bridge.calls[0][2]["NOVAIC_AGENT_ID"] == "agent-1"
+    64	    assert bridge.calls[0][2]["NOVAIC_SCOPE_ID"] == "wake-1"
+    65	    assert bridge.calls[0][2]["NOVAIC_CORTEX_INTERNAL_KEY"] == "cortex-secret"
+    66	    assert "NOVAIC_BUSINESS_URL" in bridge.calls[0][2]
+    67	    assert result["success"] is True
+    68	    assert result["tool_success"] is True
+    69	    assert result["tool_status"] == "completed"
+    70	    assert content["version"] == "tool-output.v1"
+    71	    assert content["ok"] is True
+    72	    assert "exit_code=0" in content["text"]
+    73	    assert "stdout:" in content["text"]
+    74	    assert "hello" in content["text"]
+    75	    assert "files_changed:" in content["text"]
+    76	    assert content["diagnostics"]["shell_result"]["exit_code"] == 0
+    77	    assert "raw_shell_result" not in content["diagnostics"]
+    78	    assert result["durable_payload"]["version"] == "tool-step-payload.v1"
+    79	    assert result["durable_payload"]["llm_content"] == content
+    80	    assert result["durable_payload"]["raw"]["stdout"] == "hello\n"
+    81	    assert content["diagnostics"].get("unstructured_executor_result") is None
+    82	
+    83	
+    84	def test_shell_capability_env_carries_current_subagent_id(monkeypatch):
+    85	    bridge = _Bridge({"stdout": "ok", "stderr": "", "exit_code": 0, "files_changed": []})
+    86	    monkeypatch.setattr(
+    87	        "task_queue.utils.cortex_bridge.get_cortex_bridge",
+    88	        lambda *_args, **_kwargs: bridge,
+    89	    )
+    90	    payload = _payload()
+    91	    payload["subagent_id"] = "sub-worker-1"
+    92	
+    93	    result = handle_tool_execute(payload, ctx={})
+    94	
+    95	    assert result["tool_success"] is True
+    96	    assert bridge.calls[0][2]["NOVAIC_SUBAGENT_ID"] == "sub-worker-1"
+    97	
+    98	
+    99	def test_shell_payload_interpretation_config_is_explicit_env(monkeypatch):
+   100	    bridge = _Bridge({"stdout": "ok", "stderr": "", "exit_code": 0, "files_changed": []})
+   101	    monkeypatch.setattr(
+   102	        "task_queue.utils.cortex_bridge.get_cortex_bridge",
+   103	        lambda *_args, **_kwargs: bridge,
+   104	    )
+   105	
+   106	    result = handle_tool_execute(
+   107	        _payload({
+   108	            "command": "cortex payload summarize --payload-ref step-ref:abc",
+   109	            "timeout": 9,
+   110	        }),
+   111	        ctx={"business_client": _Business()},
+   112	    )
+   113	
+   114	    env = bridge.calls[0][2]
+   115	    assert result["tool_success"] is True
+   116	    assert env["NOVAIC_PAYLOAD_MODEL_ID"] == "payload-model"
+   117	    assert env["NOVAIC_PAYLOAD_FACTORY_URL"] == "http://factory.local"
+   118	    assert env["NOVAIC_PAYLOAD_FACTORY_USER_ID"] == "factory-user"
+   119	
+   120	
+   121	def test_shell_nonzero_exit_is_logical_tool_error(monkeypatch):
+   122	    result, content, _bridge = _run_shell(
+   123	        monkeypatch,
+   124	        {"stdout": "", "stderr": "boom\n", "exit_code": 7, "files_changed": []},
+   125	    )
+   126	
+   127	    assert result["success"] is True
+   128	    assert result["tool_success"] is False
+   129	    assert result["tool_status"] == "error"
+   130	    assert content["version"] == "tool-output.v1"
+   131	    assert content["ok"] is False
+   132	    assert content["error"] == "boom"
+   133	    assert "exit_code=7" in content["text"]
+   134	    assert "stderr:" in content["text"]
+   135	
+   136	
+   137	def test_shell_large_output_is_bounded_in_text_and_raw_in_diagnostics(monkeypatch):
+   138	    large_stdout = "x" * 10_000
+   139	    result, content, _bridge = _run_shell(
+   140	        monkeypatch,
+   141	        {"stdout": large_stdout, "stderr": "", "exit_code": 0, "files_changed": []},
+   142	    )
+   143	
+   144	    assert result["tool_success"] is True
+   145	    assert len(content["text"]) <= 4050
+   146	    assert "truncated" in content["text"]
+   147	    assert content["diagnostics"]["truncated"] is False
+   148	    assert content["diagnostics"]["shell_result"]["stdout_truncated"] is True
+   149	    assert content["diagnostics"]["shell_result"]["stdout_chars"] == 10_000
+   150	    assert "raw_shell_result" not in content["diagnostics"]
+   151	    assert result["durable_payload"]["raw"]["stdout"] == large_stdout
+   152	
+   153	
+   154	def test_shell_media_like_stdout_stays_bounded_terminal_text(monkeypatch):
+   155	    media_like_stdout = "/9j/" + ("A" * 10_000)
+   156	    result, content, _bridge = _run_shell(
+   157	        monkeypatch,
+   158	        {"stdout": media_like_stdout, "stderr": "", "exit_code": 0, "files_changed": []},
+   159	    )
+   160	
+   161	    assert result["tool_success"] is True
+   162	    assert content["version"] == "tool-output.v1"
+   163	    assert "stdout:" in content["text"]
+   164	    assert "/9j/" in content["text"]
+   165	    assert "truncated" in content["text"]
+   166	    assert len(content["text"]) <= 4050
+   167	    assert content["diagnostics"]["shell_result"]["stdout_truncated"] is True
+   168	    assert content["diagnostics"]["shell_result"]["stdout_chars"] == len(media_like_stdout)
+   169	    assert "_mcp_content" not in content
+   170	    assert "data:image/" not in content["text"]
+   171	    assert result["durable_payload"]["raw"]["stdout"] == media_like_stdout
+     1	import json
+     2	
+     3	import pytest
+     4	
+     5	from task_queue.tool_output import (
+     6	    TOOL_OUTPUT_VERSION,
+     7	    artifact_manifest,
+     8	    event_manifest,
+     9	    tool_error,
+    10	    tool_text,
+    11	)
+    12	
+    13	
+    14	def test_tool_text_serializes_to_json_contract():
+    15	    result = tool_text(
+    16	        "captured screenshot",
+    17	        artifacts=(
+    18	            artifact_manifest(
+    19	                uri="blob://runtime-artifact/abc",
+    20	                modality="image",
+    21	                name="desktop.png",
+    22	                mime_type="image/png",
+    23	                size_bytes=123,
+    24	                sha256="abc123",
+    25	                source={"tool": "device screenshot", "step_ref": "step-ref:1"},
+    26	                access={"display": {"tool": "display", "args": {"file_url": "blob://runtime-artifact/abc"}}},
+    27	                projection={"history": "manifest_only", "monitor": "thumbnail_allowed"},
+    28	            ),
+    29	        ),
+    30	        events=(event_manifest(type="device.screenshot.captured", id="evt-1", summary="captured"),),
+    31	        duration_ms=12,
+    32	    ).to_dict()
+    33	
+    34	    assert result["version"] == TOOL_OUTPUT_VERSION
+    35	    assert result["ok"] is True
+    36	    assert result["text"] == "captured screenshot"
+    37	    assert result["artifacts"][0]["uri"] == "blob://runtime-artifact/abc"
+    38	    assert result["artifacts"][0]["modality"] == "image"
+    39	    assert result["events"][0]["type"] == "device.screenshot.captured"
+    40	    assert result["diagnostics"] == {"duration_ms": 12, "truncated": False}
+    41	    json.dumps(result)
+    42	
+    43	
+    44	def test_tool_text_truncates_deterministically():
+    45	    result = tool_text("abcdef", text_limit=3).to_dict()
+    46	
+    47	    assert result["text"] == "abc\n\n... [truncated to 3 chars]"
+    48	    assert result["diagnostics"]["truncated"] is True
+    49	
+    50	
+    51	def test_tool_error_is_machine_readable_and_bounded():
+    52	    result = tool_error("boom boom", text_limit=4).to_dict()
+    53	
+    54	    assert result["ok"] is False
+    55	    assert result["text"] == "boom\n\n... [truncated to 4 chars]"
+    56	    assert result["error"] == result["text"]
+    57	    assert result["diagnostics"]["truncated"] is True
+    58	
+    59	
+    60	@pytest.mark.parametrize(
+    61	    ("kwargs", "message"),
+    62	    [
+    63	        ({"uri": "", "modality": "image"}, "artifact uri is required"),
+    64	        ({"uri": "blob://x/y", "modality": "unknown"}, "invalid artifact modality"),
+    65	        ({"uri": "blob://x/y", "modality": "image", "size_bytes": -1}, "size_bytes"),
+    66	    ],
+    67	)
+    68	def test_artifact_manifest_rejects_invalid_values(kwargs, message):
+    69	    with pytest.raises(ValueError, match=message):
+    70	        artifact_manifest(**kwargs).to_dict()
+    71	
+    72	
+    73	def test_contract_constructors_do_not_invent_hidden_identity_or_time():
+    74	    result = tool_text("ok").to_dict()
+    75	
+    76	    assert "created_at" not in result
+    77	    assert "id" not in result
+    78	    assert result["diagnostics"] == {"truncated": False}
+=== no historical image injection/display tests ===
+     1	import json
+     2	
+     3	from task_queue.handlers.tool_handlers import _ok
+     4	from task_queue.contracts.llm_call import (
+     5	    LLMCallInput,
+     6	    LLMTransportConfig,
+     7	    prepare_llm_call,
+     8	)
+     9	from task_queue.utils.context import process_multimodal_messages, sanitize_context
+    10	from task_queue.utils.step_result_client import expand_messages_for_llm
+    11	
+    12	
+    13	def _image_tool_message(**extra):
+    14	    return {
+    15	        "role": "tool",
+    16	        "tool_call_id": "call-1",
+    17	        "name": "display",
+    18	        "content": json.dumps({
+    19	            "_mcp_content": [
+    20	                {"type": "text", "text": "screenshot"},
+    21	                {"type": "image", "data": "aabbcc", "mimeType": "image/png"},
+    22	            ]
+    23	        }),
+    24	        **extra,
+    25	    }
+    26	
+    27	
+    28	def test_generic_tool_image_content_does_not_create_user_image_message():
+    29	    processed = process_multimodal_messages([_image_tool_message()], provider="openai")
+    30	
+    31	    assert len(processed) == 1
+    32	    assert processed[0]["role"] == "tool"
+    33	    assert all(message["role"] != "user" for message in processed)
+    34	
+    35	
+    36	def test_history_projection_marker_is_stripped_without_image_injection():
+    37	    processed = process_multimodal_messages(
+    38	        [_image_tool_message(_projection="history")],
+    39	        provider="openai",
+    40	    )
+    41	
+    42	    assert len(processed) == 1
+    43	    assert processed[0]["role"] == "tool"
+    44	    assert "_projection" not in processed[0]
+    45	    assert all(message["role"] != "user" for message in processed)
+    46	
+    47	
+    48	def test_display_perception_can_create_user_image_message_and_strips_marker():
+    49	    processed = process_multimodal_messages(
+    50	        [_image_tool_message(_projection="display_perception")],
+    51	        provider="openai",
+    52	    )
+    53	
+    54	    assert len(processed) == 2
+    55	    assert processed[0]["role"] == "tool"
+    56	    assert "_projection" not in processed[0]
+    57	    tool_payload = json.loads(processed[0]["content"])
+    58	    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+    59	    assert processed[1]["role"] == "user"
+    60	    assert processed[1]["content"][0]["type"] == "image_url"
+    61	
+    62	
+    63	def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+    64	    large_text = "x" * 10_000
+    65	    processed = process_multimodal_messages(
+    66	        [{
+    67	            "role": "tool",
+    68	            "tool_call_id": "display:large-text",
+    69	            "name": "display",
+    70	            "content": json.dumps({
+    71	                "_mcp_content": [
+    72	                    {"type": "text", "text": large_text},
+    73	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+    74	                ]
+    75	            }),
+    76	            "_projection": "display_perception",
+    77	        }],
+    78	        provider="openai",
+    79	    )
+    80	
+    81	    tool_payload = json.loads(processed[0]["content"])
+    82	    text = tool_payload["_mcp_content"][0]["text"]
+    83	
+    84	    assert len(text) < len(large_text)
+    85	    assert "truncated display text" in text
+    86	    assert "YWJjMTIz" not in processed[0]["content"]
+    87	    assert processed[1]["content"][0]["type"] == "image_url"
+    88	
+    89	
+    90	def test_unsupported_content_array_does_not_create_image_projection():
+    91	    processed = process_multimodal_messages(
+    92	        [{
+    93	            "role": "tool",
+    94	            "tool_call_id": "display:unsupported-content",
+    95	            "name": "display",
+    96	            "content": json.dumps({
+    97	                "content": [
+    98	                    {"type": "text", "text": "unsupported shape"},
+    99	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+   100	                ]
+   101	            }),
+   102	            "_projection": "display_perception",
+   103	        }],
+   104	        provider="openai",
+   105	    )
+   106	
+   107	    assert len(processed) == 1
+   108	    assert processed[0]["role"] == "tool"
+   109	    assert all(message["role"] != "user" for message in processed)
+   110	
+   111	
+   112	def test_nested_result_wrapper_does_not_create_image_projection():
+   113	    processed = process_multimodal_messages(
+   114	        [{
+   115	            "role": "tool",
+   116	            "tool_call_id": "display:nested",
+   117	            "name": "display",
+   118	            "content": json.dumps({
+   119	                "success": True,
+   120	                "result": {
+   121	                    "_mcp_content": [
+   122	                        {"type": "text", "text": "unsupported wrapped shape"},
+   123	                        {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+   124	                    ]
+   125	                },
+   126	            }),
+   127	            "_projection": "display_perception",
+   128	        }],
+   129	        provider="openai",
+   130	    )
+   131	
+   132	    assert len(processed) == 1
+   133	    assert processed[0]["role"] == "tool"
+   134	    assert all(message["role"] != "user" for message in processed)
+   135	
+   136	
+   137	def test_sanitize_then_multimodal_preserves_display_projection_until_conversion():
+   138	    messages = [
+   139	        {
+   140	            "role": "assistant",
+   141	            "content": "",
+   142	            "tool_calls": [{
+   143	                "id": "call-1",
+   144	                "type": "function",
+   145	                "function": {"name": "display", "arguments": '{"file_url":"blob://x/y"}'},
+   146	            }],
+   147	        },
+   148	        _image_tool_message(_projection="display_perception"),
+   149	    ]
+   150	
+   151	    sanitized = sanitize_context(messages)
+   152	    assert sanitized[1]["_projection"] == "display_perception"
+   153	
+   154	    processed = process_multimodal_messages(sanitized, provider="openai")
+   155	
+   156	    assert [message["role"] for message in processed] == ["assistant", "tool", "user"]
+   157	    assert "_projection" not in processed[1]
+   158	    tool_payload = json.loads(processed[1]["content"])
+   159	    image_item = tool_payload["_mcp_content"][1]
+   160	    assert image_item["_placeholder"] is True
+   161	    assert "data" not in image_item
+   162	    user_content = processed[2]["content"]
+   163	    assert user_content[0]["type"] == "image_url"
+   164	    assert user_content[0]["image_url"]["url"].startswith("data:image/png;base64,")
+   165	
+   166	
+   167	def test_runtime_display_wrapper_persists_reference_not_media_bytes():
+   168	    raw_display = {
+   169	        "success": True,
+   170	        "message": "Loaded screenshot.jpg (6B, image/jpeg)",
+   171	        "file_url": "blob://runtime-artifact/screenshot",
+   172	        "mime_type": "image/jpeg",
+   173	        "size": 6,
+   174	        "_mcp_content": [
+   175	            {"type": "text", "text": "desktop screenshot"},
+   176	            {"type": "image", "data": "YWJjMTIz", "mimeType": "image/jpeg"},
+   177	        ],
+   178	    }
+   179	
+   180	    wrapped = _ok("scope-1", "round-1", "display:2", "display", raw_display)
+   181	    public_content = json.loads(wrapped["content"])
+   182	
+   183	    assert public_content["_mcp_content"][1]["type"] == "image"
+   184	    assert public_content["_mcp_content"][1]["_placeholder"] is True
+   185	    assert "data" not in public_content["_mcp_content"][1]
+   186	    assert "YWJjMTIz" not in wrapped["content"]
+   187	    assert public_content.get("version") != "tool-output.v1"
+   188	    assert wrapped["durable_payload"]["version"] == "tool-step-payload.v1"
+   189	    llm_content = wrapped["durable_payload"]["llm_content"]
+   190	    assert llm_content["_mcp_content"][1] == {
+   191	        "type": "image_ref",
+   192	        "file_url": "blob://runtime-artifact/screenshot",
+   193	        "mimeType": "image/jpeg",
+   194	        "size": 6,
+   195	    }
+   196	    assert "YWJjMTIz" not in json.dumps(llm_content)
+   197	
+   198	    processed = process_multimodal_messages(
+   199	        [{
+   200	            "role": "tool",
+   201	            "tool_call_id": "display:2",
+   202	            "name": "display",
+   203	            "content": json.dumps(llm_content),
+   204	            "_projection": "display_perception",
+   205	        }],
+   206	        provider="openai",
+   207	    )
+   208	
+   209	    assert [message["role"] for message in processed] == ["tool"]
+   210	    tool_payload = json.loads(processed[0]["content"])
+   211	    assert tool_payload["_mcp_content"][1]["type"] == "image_ref"
+   212	    assert "YWJjMTIz" not in processed[0]["content"]
+   213	
+   214	
+   215	def test_prepare_llm_call_injects_display_step_image_before_following_system(monkeypatch):
+   216	    calls = []
+   217	    blob_calls = []
+   218	
+   219	    class Bridge:
+   220	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   213	        "role": "tool",
+   214	        "tool_call_id": "shell:0",
+   215	        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+   216	        "_projection": "current_tool_result",
+   217	    }]
+   218	
+   219	
+   220	def test_expand_messages_for_llm_uses_display_projection_only_for_display_tool(monkeypatch):
+   221	    calls = []
+   222	
+   223	    class Bridge:
+   224	        enabled = True
+   225	
+   226	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   227	            calls.append((scope_id, tool_call_id, kwargs))
+   228	            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+   229	
+   230	    monkeypatch.setattr(
+   231	        "task_queue.utils.step_result_client._get_bridge",
+   232	        lambda runtime_id, user_id, agent_id: Bridge(),
+   233	    )
+   234	
+   235	    expand_messages_for_llm(
+   236	        [{
+   237	            "role": "tool",
+   238	            "tool_call_id": "display:0",
+   239	            "tool_name": "display",
+   240	            "_round_id": "round-1",
+   241	            "step_ref": "step-ref:wake-1:round1:display:0",
+   242	            "content": "inline content must not be used",
+   243	        }],
+   244	        current_round_id="round-1",
+   245	        runtime_id="agent-root-main",
+   246	        user_id="user-1",
+   247	        agent_id="agent-1",
+   248	    )
+   249	
+   250	    assert calls[0][2]["projection"] == "display_perception"
+   251	
+   252	
+   253	def test_expand_messages_for_llm_resolves_current_display_image_ref(monkeypatch):
+   254	    blob_calls = []
+   255	
+   256	    class Bridge:
+   257	        enabled = True
+   258	
+   259	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   260	            return json.dumps({
+   261	                "_mcp_content": [
+   262	                    {"type": "text", "text": "resolved screenshot"},
+   263	                    {
+   264	                        "type": "image_ref",
+   265	                        "file_url": "blob://runtime-artifact/screen-1",
+   266	                        "mimeType": "image/jpeg",
+   267	                        "size": 6,
+   268	                    },
+   269	                ]
+   270	            })
+   271	
+   272	    class FakeResponse:
+   273	        status_code = 200
+   274	        content = b"abc123"
+   275	        text = "abc123"
+   276	        headers = {"content-type": "image/jpeg"}
+   277	
+   278	    class FakeClient:
+   279	        def __enter__(self):
+   280	            return self
+   281	
+   282	        def __exit__(self, *_exc):
+   283	            return False
+   284	
+   285	        def get(self, url, headers):
+   286	            blob_calls.append({"url": url, "headers": headers})
+   287	            return FakeResponse()
+   288	
+   289	    monkeypatch.setattr(
+   290	        "task_queue.utils.step_result_client._get_bridge",
+   291	        lambda runtime_id, user_id, agent_id: Bridge(),
+   292	    )
+   293	    monkeypatch.setattr(
+   294	        "task_queue.utils.step_result_client.internal_sync_client",
+   295	        lambda *a, **kw: FakeClient(),
+   296	    )
+   297	
+   298	    expanded = expand_messages_for_llm(
+   299	        [{
+   300	            "role": "tool",
+   301	            "tool_call_id": "display:0",
+   302	            "tool_name": "display",
+   303	            "_round_id": "round-1",
+   304	            "step_ref": "step-ref:wake-1:round1:display:0",
+   305	            "content": "inline content must not be used",
+   306	        }],
+   307	        current_round_id="round-1",
+   308	        runtime_id="agent-root-main",
+   309	        user_id="user-1",
+   310	        agent_id="agent-1",
+   311	    )
+   312	
+   313	    payload = json.loads(expanded[0]["content"])
+   314	    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen-1")
+   315	    assert blob_calls[0]["headers"] == {"X-Tenant-ID": "user-1"}
+   316	    assert payload["_mcp_content"][1] == {
+   317	        "type": "image",
+   318	        "data": "YWJjMTIz",
+   319	        "mimeType": "image/jpeg",
+   320	    }
+   321	
+   322	
+   323	def test_expand_messages_for_llm_does_not_resolve_history_image_ref(monkeypatch):
+   324	    class Bridge:
+   325	        enabled = True
+   326	
+   327	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   328	            assert kwargs["projection"] == "history"
+   329	            return json.dumps({
+   330	                "_mcp_content": [
+   331	                    {"type": "text", "text": "old screenshot"},
+   332	                    {
+   333	                        "type": "image_ref",
+   334	                        "file_url": "blob://runtime-artifact/old-screen",
+   335	                        "mimeType": "image/jpeg",
+   336	                    },
+   337	                ]
+   338	            })
+   339	
+   340	    monkeypatch.setattr(
+   341	        "task_queue.utils.step_result_client._get_bridge",
+   342	        lambda runtime_id, user_id, agent_id: Bridge(),
+   343	    )
+   344	    monkeypatch.setattr(
+   345	        "task_queue.utils.step_result_client.internal_sync_client",
+   346	        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("history must not fetch blobs")),
+   347	    )
+   348	
+   349	    expanded = expand_messages_for_llm(
+   350	        [{
+   351	            "role": "tool",
+   352	            "tool_call_id": "display:0",
+   353	            "tool_name": "display",
+   354	            "_round_id": "round-old",
+   355	            "step_ref": "step-ref:wake-1:round1:display:0",
+   356	            "content": "inline content must not be used",
+   357	        }],
+   358	        current_round_id="round-current",
+   359	        runtime_id="agent-root-main",
+   360	        user_id="user-1",
+   361	        agent_id="agent-1",
+   362	    )
+   363	
+   364	    payload = json.loads(expanded[0]["content"])
+   365	    assert payload["_mcp_content"][1]["type"] == "image_ref"
+   366	
+   367	
+   368	def test_expand_messages_for_llm_image_ref_fetch_failure_becomes_text(monkeypatch):
+   369	    class Bridge:
+   370	        enabled = True
+   371	
+   372	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   373	            assert kwargs["projection"] == "display_perception"
+   374	            return json.dumps({
+   375	                "_mcp_content": [
+   376	                    {
+   377	                        "type": "image_ref",
+   378	                        "file_url": "blob://runtime-artifact/missing",
+   379	                        "mimeType": "image/jpeg",
+   380	                    },
+   381	                ]
+   382	            })
+   383	
+   384	    class FakeResponse:
+   385	        status_code = 404
+   386	        content = b"not found"
+   387	        text = "not found"
+   388	        headers = {"content-type": "text/plain"}
+   389	
+   390	    class FakeClient:
+   391	        def __enter__(self):
+   392	            return self
+   393	
+   394	        def __exit__(self, *_exc):
+   395	            return False
+   396	
+   397	        def get(self, url, headers):
+   398	            return FakeResponse()
+   399	
+   400	    monkeypatch.setattr(
+   401	        "task_queue.utils.step_result_client._get_bridge",
+   402	        lambda runtime_id, user_id, agent_id: Bridge(),
+   403	    )
+   404	    monkeypatch.setattr(
+   405	        "task_queue.utils.step_result_client.internal_sync_client",
+   406	        lambda *a, **kw: FakeClient(),
+   407	    )
+   408	
+   409	    expanded = expand_messages_for_llm(
+   410	        [{
+   411	            "role": "tool",
+   412	            "tool_call_id": "display:0",
+   413	            "tool_name": "display",
+   414	            "_round_id": "round-1",
+   415	            "step_ref": "step-ref:wake-1:round1:display:0",
+   416	            "content": "inline content must not be used",
+   417	        }],
+   418	        current_round_id="round-1",
+   419	        runtime_id="agent-root-main",
+   420	        user_id="user-1",
+   421	        agent_id="agent-1",
+   422	    )
+   423	
+   424	    payload = json.loads(expanded[0]["content"])
+   425	    assert payload["_mcp_content"] == [{
+   426	        "type": "text",
+   427	        "text": "[Image ref not resolved: blob://runtime-artifact/missing — Blob Service returned 404: not found]",
+   428	    }]
+   429	
+   430	
+=== Cortex projection/blob tests ===
+    47	def test_tool_output_v1_artifacts_render_as_manifest_text():
+    48	    parsed = parse_tool_result(_tool_output_with_image_artifact())
+    49	
+    50	    assert parsed["display_files"] == []
+    51	    assert parsed["files_created"] == []
+    52	    assert parsed["artifacts"][0]["uri"] == "blob://runtime-artifact/screen-1"
+    53	    assert "Captured host desktop screenshot." in parsed["text"]
+    54	    assert "[Artifact: desktop.png (image, image/png, 2.0KB)]" in parsed["text"]
+    55	    assert 'display(file_url="blob://runtime-artifact/screen-1")' in parsed["text"]
+    56	    assert "[Event: device.screenshot.captured]" in parsed["text"]
+    57	
+    58	
+    59	def test_tool_output_v1_display_perception_never_inlines_artifact_image():
+    60	    parsed = parse_tool_result(_tool_output_with_image_artifact())
+    61	    formatted = json.loads(format_for_display_perception_llm(parsed))
+    62	
+    63	    assert formatted["_mcp_content"]
+    64	    assert all(item["type"] == "text" for item in formatted["_mcp_content"])
+    65	    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+    66	
+    67	
+    68	def test_tool_output_v1_preview_mentions_artifact_count():
+    69	    parsed = parse_tool_result(_tool_output_with_image_artifact())
+    70	
+    71	    assert "[1 artifacts]" in preview_for_text(parsed)
+    72	
+    73	
+    74	def test_mcp_image_content_parses_to_display_files_for_explicit_projection():
+    75	    parsed = parse_tool_result(
+    76	        {
+    77	            "_mcp_content": [
+    78	                {"type": "text", "text": "mcp image"},
+    79	                {"type": "image", "data": "abc", "mimeType": "image/png"},
+    80	            ]
+    81	        }
+    82	    )
+    83	
+    84	    assert parsed["text"] == "mcp image"
+    85	    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+    86	
+    87	
+    88	def test_mcp_image_content_is_only_visual_in_display_perception_projection():
+    89	    parsed = parse_tool_result(
+    90	        {
+   155	def test_media_like_shell_step_payload_does_not_project_as_display_image():
+   156	    media_like_stdout = "/9j/" + ("A" * 10_000)
+   157	    parsed = parse_tool_result({
+   158	        "version": "tool-step-payload.v1",
+   159	        "llm_content": {
+   160	            "version": "tool-output.v1",
+   161	            "ok": True,
+   162	            "text": "exit_code=0\nstdout:\n/9j/AAAA\n... [truncated 10000 chars]",
+   163	            "artifacts": [],
+   164	            "events": [],
+   165	            "diagnostics": {
+   166	                "truncated": False,
+   167	                "shell_result": {
+   168	                    "stdout_chars": len(media_like_stdout),
+   169	                    "stdout_truncated": True,
+   170	                },
+   171	            },
+   172	        },
+   173	        "raw": {
+   174	            "type": "shell_result",
+   175	            "stdout": media_like_stdout,
+   176	            "stderr": "",
+   177	            "exit_code": 0,
+   178	            "files_changed": [],
+   179	        },
+   180	    })
+   181	
+   182	    display = json.loads(format_for_display_perception_llm(parsed))
+   183	
+   184	    assert parsed["display_files"] == []
+   185	    assert parsed["text"].startswith("exit_code=0\nstdout:\n/9j/AAAA")
+   186	    assert "A" * 1000 not in parsed["text"]
+   187	    assert all(item["type"] == "text" for item in display["_mcp_content"])
+   188	    assert not any(item.get("type") == "image" for item in display["_mcp_content"])
+   189	
+   190	
+   191	def test_display_tool_step_payload_projects_llm_image_content():
+   192	    parsed = parse_tool_result({
+   193	        "version": "tool-step-payload.v1",
+   194	        "llm_content": {
+   195	            "success": True,
+   196	            "message": "Loaded screenshot.jpg (6B, image/jpeg)",
+   197	            "file_url": "blob://runtime-artifact/screenshot",
+   198	            "mime_type": "image/jpeg",
+   199	            "size": 6,
+   200	            "_mcp_content": [
+   201	                {"type": "text", "text": "desktop screenshot"},
+   202	                {"type": "image", "data": "YWJjMTIz", "mimeType": "image/jpeg"},
+   203	            ],
+   204	        },
+   205	        "raw": {
+   206	            "type": "display_result",
+   207	            "file_url": "blob://runtime-artifact/screenshot",
+   208	            "mime_type": "image/jpeg",
+   209	            "size": 6,
+   210	        },
+   211	    })
+   212	
+   213	    history = json.loads(format_for_history_llm(parsed))
+   214	    display = json.loads(format_for_display_perception_llm(parsed))
+   215	
+   216	    assert parsed["text"] == "desktop screenshot"
+   217	    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+   218	    assert display["_mcp_content"][1] == {
+   219	        "type": "image",
+   220	        "data": "YWJjMTIz",
+   221	        "mimeType": "image/jpeg",
+   222	    }
+   223	
+   224	
+   225	def test_display_tool_step_payload_projects_blobref_image_ref_content():
+   226	    parsed = parse_tool_result({
+   227	        "version": "tool-step-payload.v1",
+   228	        "llm_content": {
+   229	            "success": True,
+   230	            "message": "Loaded screenshot.jpg (154.0KB, image/jpeg)",
+   231	            "file_url": "blob://runtime-artifact/screenshot",
+   232	            "mime_type": "image/jpeg",
+   233	            "size": 154169,
+   234	            "_mcp_content": [
+   235	                {"type": "text", "text": "desktop screenshot"},
+   236	                {
+   237	                    "type": "image_ref",
+   238	                    "file_url": "blob://runtime-artifact/screenshot",
+   239	                    "mimeType": "image/jpeg",
+   240	                    "size": 154169,
+   241	                },
+   242	            ],
+   243	        },
+   244	        "raw": {
+   245	            "type": "display_result",
+   246	            "file_url": "blob://runtime-artifact/screenshot",
+   247	            "mime_type": "image/jpeg",
+   248	            "size": 154169,
+   249	        },
+   250	    })
+   251	
+   252	    history = json.loads(format_for_history_llm(parsed))
+   253	    display = json.loads(format_for_display_perception_llm(parsed))
+   254	
+   255	    assert parsed["text"] == "desktop screenshot"
+   256	    assert parsed["display_files"] == [{
+   257	        "url": "blob://runtime-artifact/screenshot",
+   258	        "filename": "",
+   259	        "modality": "image",
+   260	        "mime_type": "image/jpeg",
+   261	        "size": 154169,
+   262	    }]
+   263	    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+   264	    assert display["_mcp_content"][1] == {
+   265	        "type": "image_ref",
+   266	        "file_url": "blob://runtime-artifact/screenshot",
+   267	        "mimeType": "image/jpeg",
+   268	        "size": 154169,
+   269	    }
+   270	
+   137	def test_devicectl_hd_screenshot_uploads_image_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+   138	    image = b"\xff\xd8jpeg-bytes"
+   139	    server, thread, state = _server_for_device_and_blob(screenshot_bytes=image)
+   140	    try:
+   141	        base_url = f"http://127.0.0.1:{server.server_port}"
+   142	        completed = _run_devicectl(tmp_path, ["hd", "screenshot"], server_url=base_url)
+   143	    finally:
+   144	        server.shutdown()
+   145	        thread.join(timeout=5)
+   146	
+   147	    assert completed.returncode == 0, completed.stderr
+   148	    body = json.loads(completed.stdout)
+   149	    assert body["version"] == "tool-output.v1"
+   150	    assert body["ok"] is True
+   151	    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+   152	    assert body["artifacts"][0]["modality"] == "image"
+   153	    assert body["artifacts"][0]["mime_type"] == "image/jpeg"
+   154	    assert body["artifacts"][0]["access"]["display"]["args"]["file_url"] == body["artifacts"][0]["uri"]
+   155	    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+   156	    assert state["uploads"][0]["mime_type"] == "image/jpeg"
+   157	    assert state["parts"][0]["data"] == image
+   158	    assert base64.b64encode(image).decode("ascii") not in completed.stdout
+   159	    assert '"screenshot":' not in completed.stdout
+   160	
+   161	
+   162	def test_devicectl_hd_file_pull_uploads_file_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+   163	    file_payload = b"hello from host file"
+   164	    server, thread, state = _server_for_device_and_blob(file_bytes=file_payload)
+   165	    try:
+   166	        base_url = f"http://127.0.0.1:{server.server_port}"
+   167	        completed = _run_devicectl(
+   168	            tmp_path,
+   169	            ["hd", "file-pull", "--json", '{"path":"/tmp/note.txt"}'],
+   170	            server_url=base_url,
+   171	        )
+   172	    finally:
+   173	        server.shutdown()
+   174	        thread.join(timeout=5)
+   175	
+   176	    assert completed.returncode == 0, completed.stderr
+   177	    body = json.loads(completed.stdout)
+   178	    assert body["version"] == "tool-output.v1"
+   179	    assert body["ok"] is True
+   180	    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+   181	    assert body["artifacts"][0]["modality"] == "binary"
+   182	    assert body["artifacts"][0]["name"] == "note.txt"
+   183	    assert body["artifacts"][0]["mime_type"] == "text/plain"
+   184	    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+   185	    assert state["parts"][0]["data"] == file_payload
+   186	    assert base64.b64encode(file_payload).decode("ascii") not in completed.stdout
+   187	    assert '"data":' not in completed.stdout
+   188	
+   189	
+   190	def test_cortex_payload_help_teaches_bounded_payload_inspection(tmp_path: Path) -> None:
+   191	    completed = _run_cortex(tmp_path, ["payload", "--help"])
+   192	
+   193	    assert completed.returncode == 0, completed.stderr
+   194	    assert "read/search return bounded text slices" in completed.stdout
+   195	    assert "summarize/qa send bounded, redacted" in completed.stdout
+   196	    assert "Do not dump raw large payloads or" in completed.stdout
+   197	    assert "base64 into normal shell output" in completed.stdout
+   198	
+   199	
+   200	def test_devicectl_help_teaches_artifact_manifest_not_base64(tmp_path: Path) -> None:
+   201	    completed = _run_devicectl(tmp_path, ["--help"], server_url="http://127.0.0.1:9")
+   202	
+   203	    assert completed.returncode == 0, completed.stderr
+   204	    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+   205	    assert "Do not print or paste raw base64" in completed.stdout
+   206	    assert "display access hints" in completed.stdout

@@ -1,0 +1,304 @@
+novaic-device/main_device.py:17:if __name__ == "__main__":
+novaic-device/main_device.py:18:    import argparse
+novaic-device/main_device.py:19:    _parser = argparse.ArgumentParser(description="NovAIC Device Service")
+novaic-device/main_device.py:90:import uvicorn
+novaic-device/main_device.py:166:if __name__ == "__main__":
+novaic-device/main_device.py:167:    uvicorn.run(
+novaic-device/device/pc_client.py:340:    async def vm_input_mouse_click(self, vm_id: str, payload: dict) -> dict:
+novaic-device/device/pc_client.py:341:        return await send_command(self._device, "vm_input_mouse_click", {"vm_id": vm_id, "payload": payload}, timeout=10.0)
+novaic-device/device/agent_binding.py:46:    "ui": ["dump", "find", "wait", "scroll", "click_element"],
+novaic-device/device/agent_binding.py:95:    "ui/click_element": ("ui", "click_element"),
+novaic-device/device/agent_binding.py:144:    "mobile_ui_click_element": ("android", "ui", "click_element"),
+novaic-device/device/vmcontrol_routes.py:95:@router.post("/vms/{vm_id}/mouse/click")
+novaic-device/device/vmcontrol_routes.py:96:async def mouse_click(vm_id: str, button_data: dict):
+novaic-device/device/vmcontrol_routes.py:97:    """Mouse click in VM."""
+novaic-device/device/vmcontrol_routes.py:100:        return await broker.vm_input_mouse_click(vm_id, {"button": button_data.get("button", "left")})
+novaic-sandbox-service/main_sandbox_service.py:22:if __name__ == "__main__":
+novaic-cortex/scripts/check_cortex_boundary.py:11:import argparse
+novaic-cortex/scripts/check_cortex_boundary.py:166:    parser = argparse.ArgumentParser(description=__doc__)
+novaic-cortex/scripts/check_cortex_boundary.py:187:if __name__ == "__main__":
+novaic-gateway/main_gateway.py:19:if __name__ == "__main__":
+novaic-gateway/main_gateway.py:20:    import argparse
+novaic-gateway/main_gateway.py:21:    _parser = argparse.ArgumentParser(description="NovAIC Gateway Server")
+novaic-gateway/main_gateway.py:94:import uvicorn
+novaic-gateway/main_gateway.py:374:if __name__ == "__main__":
+novaic-gateway/main_gateway.py:388:        uvicorn.run(
+novaic-gateway/main_gateway.py:394:        uvicorn.run(
+novaic-sandbox-service/sandbox_service/main.py:5:import argparse
+novaic-sandbox-service/sandbox_service/main.py:99:    parser = argparse.ArgumentParser(description="NovaIC sandboxd service")
+novaic-sandbox-service/sandbox_service/main.py:111:    import uvicorn
+novaic-sandbox-service/sandbox_service/main.py:113:    uvicorn.run(create_app(), host=args.host, port=args.port)
+novaic-sandbox-service/sandbox_service/main.py:116:if __name__ == "__main__":
+novaic-llm-factory/factory/app.py:9:    uvicorn factory.app:app --host 0.0.0.0 --port 9100
+novaic-blob-service/blob_service/main.py:6:  python -m blob_service.main
+novaic-blob-service/blob_service/main.py:7:  python -m blob_service.main --port 9100 --base-dir /path/to/data
+novaic-blob-service/blob_service/main.py:10:import argparse
+novaic-blob-service/blob_service/main.py:63:    parser = argparse.ArgumentParser(description="NovaIC Blob Service")
+novaic-blob-service/blob_service/main.py:72:    import uvicorn
+novaic-blob-service/blob_service/main.py:73:    uvicorn.run(app, host=args.host, port=args.port)
+novaic-blob-service/blob_service/main.py:76:if __name__ == "__main__":
+novaic-gateway/tests/test_deps_internal_tasks.py:58:if __name__ == "__main__":
+novaic-llm-factory/main.py:10:    # 或使用 uvicorn 直接启动
+novaic-llm-factory/main.py:11:    uvicorn factory.app:app --host 0.0.0.0 --port 9100 --reload
+novaic-llm-factory/main.py:14:import argparse
+novaic-llm-factory/main.py:18:import uvicorn
+novaic-llm-factory/main.py:33:    parser = argparse.ArgumentParser(description="LLM Factory Server")
+novaic-llm-factory/main.py:61:    uvicorn.run(
+novaic-llm-factory/main.py:70:if __name__ == "__main__":
+novaic-cortex/novaic_cortex/cli.py:117:if __name__ == "__main__":
+novaic-blob-service/main_blob_service.py:21:if __name__ == "__main__":
+Entangled/packages/server-python/pyproject.toml:20:    "uvicorn[standard]>=0.30",
+Entangled/packages/server-python/pyproject.toml:25:dev = ["pytest", "httpx", "uvicorn", "starlette>=0.27"]
+Entangled/packages/server-python/pyproject.toml:27:[project.scripts]
+novaic-cortex/novaic_cortex/scope_locks.py:362:        # so we don't need an event loop (install runs pre-uvicorn).
+novaic-common/common/tools/definitions.py:32:        "name": "browser_click",
+novaic-common/common/tools/definitions.py:33:        "description": "Click an element in the browser by CSS selector. Waits for element to be clickable. Returns success status. Use for interacting with buttons, links, and clickable elements.",
+novaic-common/common/tools/definitions.py:175:        "description": "Control mouse in VM with two-phase aim workflow. Phase 1: call action='aim' with x,y to get a zoomed crosshair screenshot and an aim_id. You can refine aim with delta-based re-aim, then execute click/right_click/double/scroll using aim_id. aim_id is reusable within TTL (10 minutes).",
+novaic-common/common/tools/definitions.py:183:                        "click",
+novaic-common/common/tools/definitions.py:184:                        "right_click",
+novaic-common/common/tools/definitions.py:199:                    "description": "Aim ID from a previous aim step. Required for click/right_click/double/scroll, and for delta-based re-aim."
+novaic-common/common/tools/definitions.py:681:                "clickable_only": {
+novaic-common/common/tools/definitions.py:683:                    "description": "Only return clickable elements",
+novaic-common/common/log_context.py:40:    "uvicorn.access",
+novaic-app/add_trans_pc.py:17:        "click_add_device_to_get_started": "Click \"Add Device\" to get started",
+novaic-app/add_trans_pc.py:33:        "click_add_device_to_get_started": "点击“添加设备”开始",
+novaic-app/add_trans_pc.py:49:        "click_add_device_to_get_started": "點擊“添加設備”開始",
+novaic-app/fix_pc_list.py:90:content = content.replace('Click "Add Device" to get started', "{t('device.click_add_device_to_get_started')}")
+novaic-cortex/novaic_cortex/shell_capabilities.py:1049:if __name__ == "__main__":
+novaic-common/tests/test_strict_config_runtime_switches_overlay.py:170:if __name__ == "__main__":
+novaic-cortex/novaic_cortex/main_cortex.py:5:import argparse
+novaic-cortex/novaic_cortex/main_cortex.py:8:import uvicorn
+novaic-cortex/novaic_cortex/main_cortex.py:19:    parser = argparse.ArgumentParser(description="Cortex Service")
+novaic-cortex/novaic_cortex/main_cortex.py:74:    loop. Doing it before ``uvicorn.run`` removes the need for the
+novaic-cortex/novaic_cortex/main_cortex.py:83:    # the process dies before ``uvicorn.run`` — no silent downgrade to an
+novaic-cortex/novaic_cortex/main_cortex.py:122:if __name__ == "__main__":
+novaic-cortex/novaic_cortex/main_cortex.py:125:    # Without this, only the uvicorn access logger emits, hiding the
+novaic-cortex/novaic_cortex/main_cortex.py:140:    uvicorn.run(
+novaic-app/update_trans.py:18:        "click_to_fetch_models": "Click to fetch available models",
+novaic-app/update_trans.py:57:        "click_to_fetch_models": "点击获取可用模型",
+novaic-app/update_trans.py:96:        "click_to_fetch_models": "點擊獲取可用模型",
+novaic-agent-runtime/queue_service/main.py:339:if __name__ == "__main__":
+novaic-agent-runtime/queue_service/main.py:340:    import uvicorn
+novaic-agent-runtime/queue_service/main.py:345:    uvicorn.run(
+novaic-agent-runtime/queue_service/main.py:350:        # TD-1 (2026-04-20): uvicorn access log disabled; CallerLoggingMiddleware
+novaic-app/scripts/test-stun.py:105:if __name__ == "__main__":
+novaic-app/src-tauri/icons/make_icons.py:84:if __name__ == "__main__":
+novaic-agent-runtime/main_novaic.py:74:    import argparse
+novaic-agent-runtime/main_novaic.py:76:    parser = argparse.ArgumentParser(description="NovAIC Gateway Server")
+novaic-agent-runtime/main_novaic.py:97:    import uvicorn
+novaic-agent-runtime/main_novaic.py:100:    uvicorn.run(app, host=args.host, port=args.port, log_level="info", access_log=False)
+novaic-agent-runtime/main_novaic.py:105:    import argparse
+novaic-agent-runtime/main_novaic.py:107:    parser = argparse.ArgumentParser(description="NovAIC Queue Service")
+novaic-agent-runtime/main_novaic.py:119:    import uvicorn
+novaic-agent-runtime/main_novaic.py:122:    uvicorn.run(app, host=args.host, port=args.port, log_level="info", access_log=False)
+novaic-agent-runtime/main_novaic.py:150:    import argparse
+novaic-agent-runtime/main_novaic.py:157:    parser = argparse.ArgumentParser(description="NovAIC VMControl Service")
+novaic-agent-runtime/main_novaic.py:334:    # Remove mode from argv so argparse in sub-commands works correctly
+novaic-agent-runtime/main_novaic.py:354:if __name__ == "__main__":
+novaic-app/src-tauri/icons/fix_icns.py:93:if __name__ == "__main__":
+novaic-app/src-tauri/icons/fix_apple_ring.py:87:if __name__ == "__main__":
+novaic-agent-runtime/scripts/runtime_worker_roster.py:46:if __name__ == "__main__":
+novaic-common/tests/test_strict_config.py:68:if __name__ == "__main__":
+novaic-business/main_subscriber.py:18:argparse errors instead of relying on process environment defaults.
+novaic-business/main_subscriber.py:23:import argparse
+novaic-business/main_subscriber.py:35:def _parse_args() -> argparse.Namespace:
+novaic-business/main_subscriber.py:36:    parser = argparse.ArgumentParser(description="NovAIC Dispatch Subscriber")
+novaic-business/main_subscriber.py:71:    # Remove any lingering default handlers (argparse may install a stderr
+novaic-business/main_subscriber.py:177:if __name__ == "__main__":
+novaic-app/src-tauri/icons/regenerate_app_icon.py:101:if __name__ == "__main__":
+Entangled/packages/server-python/entangled/app/main.py:4:    python -m entangled.app.main
+Entangled/packages/server-python/entangled/app/main.py:5:    python -m entangled.app.main --port 8080 --db-path data/my.db
+Entangled/packages/server-python/entangled/app/main.py:8:import argparse
+Entangled/packages/server-python/entangled/app/main.py:16:    parser = argparse.ArgumentParser(description="Entangled Service")
+Entangled/packages/server-python/entangled/app/main.py:44:    import uvicorn
+Entangled/packages/server-python/entangled/app/main.py:45:    uvicorn.run(
+Entangled/packages/server-python/entangled/app/main.py:55:if __name__ == "__main__":
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:59:| browser_click | 点击元素 (CSS 选择器) |
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:91:3. `mouse(action="click", x=X, y=Y)` 点击
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:95:2. 优先用 `browser_click(selector="CSS选择器")`
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:189:  mouse(action='click', aim_id='...')
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:291:async def browser_click(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:297:    return await browser.click(selector, timeout)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:554:    import uvicorn
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:573:if __name__ == "__main__":
+novaic-common/tests/test_log_context.py:171:    assert logging.getLogger("uvicorn.access").getEffectiveLevel() >= logging.WARNING
+novaic-business/main_business.py:18:if __name__ == "__main__":
+novaic-business/main_business.py:19:    import argparse
+novaic-business/main_business.py:20:    _parser = argparse.ArgumentParser(description="NovAIC Business Service")
+novaic-business/main_business.py:100:import uvicorn
+novaic-business/main_business.py:337:if __name__ == "__main__":
+novaic-business/main_business.py:338:    uvicorn.run(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:5:import argparse
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:13:    parser = argparse.ArgumentParser(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:134:if __name__ == "__main__":
+Entangled/packages/server-python/entangled/app/factory.py:10:    import uvicorn
+Entangled/packages/server-python/entangled/app/factory.py:11:    uvicorn.run(app, host=config.host, port=config.port)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:100:        self.app.router.add_post('/api/browser/click', self.browser_click)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:246:    async def browser_click(self, request):
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:255:            result = await browser.click(selector, data.get('timeout', 5000))
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:644:        logger.info(f"  Browser: /api/browser/* (navigate, click, type, screenshot, scroll, eval, tabs)")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:685:if __name__ == "__main__":
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/virtio_proxy.py:207:if __name__ == "__main__":
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1232:⚠️ To click, use mouse(action='aim', x=TARGET_X, y=TARGET_Y) first."""
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1264:        action: Literal["aim", "click", "double", "right_click", "down", "move", "up", "scroll"],
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1272:        # For execute actions (click, double, right_click, down, move, scroll)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1284:            click/double/right_click: Click at aim_id position
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1351:Click:  mouse(action='click', aim_id='{new_aim_id}')"""
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1368:            actions_requiring_aim_id = ["click", "double", "right_click", "down", "move", "scroll"]
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1391:            if action == "click":
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1392:                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "1"]
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1400:                    "action": "click",
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1408:                       "click", "--repeat", "2", "--delay", "100", "1"]
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1412:                    return {"success": False, "error": f"Double click failed: {result.stderr}"}
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1416:                    "action": "double_click",
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1418:                    "hint": f"Double-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1422:            elif action == "right_click":
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1423:                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "3"]
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1427:                    return {"success": False, "error": f"Right click failed: {result.stderr}"}
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1431:                    "action": "right_click",
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1433:                    "hint": f"Right-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1519:                cmd = ["xdotool", "click", "--repeat", str(amount), scroll_btn]
+novaic-cortex/pyproject.toml:21:  "uvicorn[standard]>=0.34",
+novaic-cortex/pyproject.toml:26:[project.scripts]
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/pyproject.toml:44:[project.scripts]
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:161:    async def click(self, selector: str, timeout: int = 5000) -> Dict[str, Any]:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:174:                await page.click(selector, timeout=timeout)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:177:                await page.click(f"text={selector}", timeout=timeout)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:59:| browser_click | 点击元素 (CSS 选择器) |
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:91:3. `mouse(action="click", x=X, y=Y)` 点击
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:95:2. 优先用 `browser_click(selector="CSS选择器")`
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:189:  mouse(action='click', aim_id='...')
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:291:async def browser_click(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:297:    return await browser.click(selector, timeout)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:554:    import uvicorn
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:573:if __name__ == "__main__":
+novaic-agent-runtime/task_queue/workers/command_specs.py:5:import argparse
+novaic-agent-runtime/task_queue/workers/command_specs.py:40:    def apply(self, parser: argparse.ArgumentParser, cfg: Any) -> None:
+novaic-agent-runtime/task_queue/workers/command_specs.py:62:    build_process: Callable[[argparse.Namespace, WorkerCommandDependencies], WorkerProcessSpec]
+novaic-agent-runtime/task_queue/workers/command_specs.py:84:    ) -> argparse.ArgumentParser:
+novaic-agent-runtime/task_queue/workers/command_specs.py:86:        parser = argparse.ArgumentParser(description=command.description)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:5:import argparse
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:13:    parser = argparse.ArgumentParser(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:134:if __name__ == "__main__":
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:100:        self.app.router.add_post('/api/browser/click', self.browser_click)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:246:    async def browser_click(self, request):
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:255:            result = await browser.click(selector, data.get('timeout', 5000))
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:644:        logger.info(f"  Browser: /api/browser/* (navigate, click, type, screenshot, scroll, eval, tabs)")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:685:if __name__ == "__main__":
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/virtio_proxy.py:207:if __name__ == "__main__":
+novaic-business/tests/test_dispatch_subscriber.py:452:    The module's ``if __name__ == '__main__':`` guards the CLI so
+novaic-business/tests/test_dispatch_subscriber.py:453:    ``import main_subscriber`` is side-effect-free (no argparse, no logging
+novaic-business/tests/test_dispatch_subscriber.py:455:    argparse at import-time would cause test collection to hang here.
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:59:| browser_click | 点击元素 (CSS 选择器) |
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:91:3. `mouse(action="click", x=X, y=Y)` 点击
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:95:2. 优先用 `browser_click(selector="CSS选择器")`
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:189:  mouse(action='click', aim_id='...')
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:291:async def browser_click(
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:297:    return await browser.click(selector, timeout)
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:554:    import uvicorn
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:573:if __name__ == "__main__":
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:9:import argparse
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:54:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:150:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:238:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:325:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:406:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:480:    args: argparse.Namespace,
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:5:import argparse
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:13:    parser = argparse.ArgumentParser(
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:134:if __name__ == "__main__":
+novaic-mcp-vmuse/pyproject.toml:44:[project.scripts]
+novaic-agent-runtime/task_queue/workers/assembly_specs.py:5:import argparse
+novaic-agent-runtime/task_queue/workers/assembly_specs.py:18:    build_process: Callable[[argparse.Namespace, WorkerCommandDependencies], WorkerProcessSpec]
+novaic-agent-runtime/task_queue/workers/assembly_specs.py:22:        args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/assembly_specs.py:49:        args: argparse.Namespace,
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1232:⚠️ To click, use mouse(action='aim', x=TARGET_X, y=TARGET_Y) first."""
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1264:        action: Literal["aim", "click", "double", "right_click", "down", "move", "up", "scroll"],
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1272:        # For execute actions (click, double, right_click, down, move, scroll)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1284:            click/double/right_click: Click at aim_id position
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1351:Click:  mouse(action='click', aim_id='{new_aim_id}')"""
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1368:            actions_requiring_aim_id = ["click", "double", "right_click", "down", "move", "scroll"]
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1391:            if action == "click":
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1392:                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "1"]
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1400:                    "action": "click",
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1408:                       "click", "--repeat", "2", "--delay", "100", "1"]
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1412:                    return {"success": False, "error": f"Double click failed: {result.stderr}"}
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1416:                    "action": "double_click",
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1418:                    "hint": f"Double-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1422:            elif action == "right_click":
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1423:                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "3"]
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1427:                    return {"success": False, "error": f"Right click failed: {result.stderr}"}
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1431:                    "action": "right_click",
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1433:                    "hint": f"Right-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1519:                cmd = ["xdotool", "click", "--repeat", str(amount), scroll_btn]
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:100:        self.app.router.add_post('/api/browser/click', self.browser_click)
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:246:    async def browser_click(self, request):
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:255:            result = await browser.click(selector, data.get('timeout', 5000))
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:644:        logger.info(f"  Browser: /api/browser/* (navigate, click, type, screenshot, scroll, eval, tabs)")
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:685:if __name__ == "__main__":
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1232:⚠️ To click, use mouse(action='aim', x=TARGET_X, y=TARGET_Y) first."""
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1264:        action: Literal["aim", "click", "double", "right_click", "down", "move", "up", "scroll"],
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1272:        # For execute actions (click, double, right_click, down, move, scroll)
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1284:            click/double/right_click: Click at aim_id position
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1351:Click:  mouse(action='click', aim_id='{new_aim_id}')"""
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1368:            actions_requiring_aim_id = ["click", "double", "right_click", "down", "move", "scroll"]
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1391:            if action == "click":
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1392:                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "1"]
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1400:                    "action": "click",
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1408:                       "click", "--repeat", "2", "--delay", "100", "1"]
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1412:                    return {"success": False, "error": f"Double click failed: {result.stderr}"}
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1416:                    "action": "double_click",
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1418:                    "hint": f"Double-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1422:            elif action == "right_click":
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1423:                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "3"]
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1427:                    return {"success": False, "error": f"Right click failed: {result.stderr}"}
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1431:                    "action": "right_click",
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1433:                    "hint": f"Right-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1519:                cmd = ["xdotool", "click", "--repeat", str(amount), scroll_btn]
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:161:    async def click(self, selector: str, timeout: int = 5000) -> Dict[str, Any]:
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:174:                await page.click(selector, timeout=timeout)
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:177:                await page.click(f"text={selector}", timeout=timeout)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:11:import argparse
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:32:BuildProcess = Callable[[argparse.Namespace, WorkerCommandDependencies], WorkerProcessSpec]
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:57:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:64:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:71:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:78:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:85:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:92:    args: argparse.Namespace,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:99:    args: argparse.Namespace,
+novaic-mcp-vmuse/src/novaic_mcp_vmuse/virtio_proxy.py:207:if __name__ == "__main__":
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:161:    async def click(self, selector: str, timeout: int = 5000) -> Dict[str, Any]:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:174:                await page.click(selector, timeout=timeout)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:177:                await page.click(f"text={selector}", timeout=timeout)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/pyproject.toml:44:[project.scripts]
+novaic-business/business/skill_repository.py:17:    "desktop": ["screenshot", "click", "mouse", "keyboard", "screen", "gui", "桌面", "截图", "点击", "窗口", "应用"],
+scripts/gateway/add_agent_a2.py:11:import argparse
+scripts/gateway/add_agent_a2.py:26:    parser = argparse.ArgumentParser(description="Add A2 agent and main subagent to Gateway DB")
+scripts/gateway/add_agent_a2.py:95:if __name__ == "__main__":
+scripts/gateway/stun_server.py:14:import argparse
+scripts/gateway/stun_server.py:45:    parser = argparse.ArgumentParser(description="RFC 5389 STUN server")
+scripts/gateway/stun_server.py:67:if __name__ == "__main__":
+scripts/gateway/admin_reset_user_password.py:15:import argparse
+scripts/gateway/admin_reset_user_password.py:21:    p = argparse.ArgumentParser(description="Reset gateway user password_hash (bcrypt)")
+scripts/gateway/admin_reset_user_password.py:82:if __name__ == "__main__":
+scripts/lint_logic_purity.py:97:if __name__ == "__main__":
+scripts/ci/check_no_internal_async.py:21:    * Business FastAPI handlers ARE async by design (edge, uvicorn loop).
+scripts/ci/check_no_internal_async.py:203:if __name__ == "__main__":
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:31:    'if __name__ == "__main__"',
+scripts/ci/lint_blob_workspace_boundary.py:108:if __name__ == "__main__":
+scripts/ci/lint_docs_status_consistency.py:72:if __name__ == "__main__":
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:190:                    "arguments": "{\"command\":\"python -m pytest -q\",\"desc\":\"运行 runtime 测试\",\"timeout\":30}",
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:249:                "arguments": {"command": "python -m pytest -q", "desc": "运行 runtime 测试"},
+scripts/ci/lint_deploy_fresh_smoke.py:87:if __name__ == "__main__":
+scripts/ci/lint_retired_runtime_vocabulary.py:64:if __name__ == "__main__":
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:1:"""PR-346 - runtime service entry points do not emit uvicorn access spam."""
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:9:def _uvicorn_run_kwargs(function_name: str) -> list[dict[str, object]]:
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:23:                and child.func.value.id == "uvicorn"
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:34:def test_queue_service_entrypoint_disables_uvicorn_access_log():
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:35:    assert _uvicorn_run_kwargs("run_queue_service") == [{
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:41:def test_gateway_entrypoint_disables_uvicorn_access_log():
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:42:    assert _uvicorn_run_kwargs("run_gateway") == [{
+scripts/ci/lint_runtime_worker_supervision.py:113:if __name__ == "__main__":
+scripts/ci/check_start_config_contract.py:160:if __name__ == "__main__":
+scripts/ci/lint_roadmap_ticket_archaeology.py:57:if __name__ == "__main__":

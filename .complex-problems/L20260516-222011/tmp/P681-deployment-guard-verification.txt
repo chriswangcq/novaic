@@ -1,0 +1,9 @@
+=== test_no_legacy_file_hot_paths ===
+..                                                                       [100%]
+2 passed in 0.01s
+=== app resource hygiene ===
+..                                                                       [100%]
+2 passed in 0.01s
+=== start config contract ===
+start_config_contract OK
+=== packaged launcher stale text scan (expect no matches, exit 1 acceptable) ===

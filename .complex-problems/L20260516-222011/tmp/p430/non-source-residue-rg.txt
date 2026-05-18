@@ -1,0 +1,422 @@
+=== novaic-cortex tests residue ===
+novaic-cortex/tests/test_payload_inspection_api.py:39:async def _seed_payload(ws: Workspace, payload_ref: str, payload) -> None:
+novaic-cortex/tests/test_payload_inspection_api.py:47:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:48:        "step_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:53:            "payload_ref": payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:61:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:62:    await _seed_payload(ws, payload_ref, {"stdout": "alpha\nbeta\nFAILED final", "exit_code": 1})
+novaic-cortex/tests/test_payload_inspection_api.py:68:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:74:    assert result["payload_ref"] == payload_ref
+novaic-cortex/tests/test_payload_inspection_api.py:85:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:86:    await _seed_payload(ws, payload_ref, "one failed\nTWO FAILED\nthree")
+novaic-cortex/tests/test_payload_inspection_api.py:92:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:114:            payload_ref="missing",
+novaic-cortex/tests/test_payload_inspection_api.py:123:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:124:    await _seed_payload(ws, payload_ref, "payload")
+novaic-cortex/tests/test_payload_inspection_api.py:125:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_payload_inspection_api.py:133:            payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:138:    assert exc.value.detail["payload_ref"] == payload_ref
+novaic-cortex/tests/test_payload_inspection_api.py:139:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_payload_inspection_api.py:146:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:149:        payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:164:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:187:    payload_ref = "step-ref:root-1:round1:shell:0"
+novaic-cortex/tests/test_payload_inspection_api.py:188:    await _seed_payload(ws, payload_ref, "alpha\nFAILED final")
+novaic-cortex/tests/test_payload_inspection_api.py:201:        payload_ref=payload_ref,
+novaic-cortex/tests/test_payload_inspection_api.py:220:            payload_ref=payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:20:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_step_index_outcome.py:95:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:105:    assert normalized["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:106:    assert normalized["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:108:    manifest = ws.operational_store.get_payload_manifest(payload_ref="step-ref:s1:round1:shell:0")
+novaic-cortex/tests/test_step_index_outcome.py:109:    assert manifest["source_payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:118:async def test_write_step_externalizes_payload_and_indexes_payload_ref():
+novaic-cortex/tests/test_step_index_outcome.py:128:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:135:    assert index[0]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:141:    assert step["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:142:    assert step["observation"]["payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:166:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:171:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:176:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:181:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:182:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:185:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:186:    assert manifest["source_payload_ref"] == "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:200:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:207:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:208:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:211:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:215:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:217:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:228:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:235:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:236:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:239:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:243:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:245:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:252:async def test_read_payload_ref_mismatch_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:256:    payload_ref = "step-ref:s1:round1:shell:0"
+novaic-cortex/tests/test_step_index_outcome.py:263:        "payload_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:264:        "step_ref": payload_ref,
+novaic-cortex/tests/test_step_index_outcome.py:267:    payload_name = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/tests/test_step_index_outcome.py:268:    await ws._sys_write_json(f"{path}/payloads/{payload_name}.json", {"payload_ref": "other"})
+novaic-cortex/tests/test_step_index_outcome.py:271:        await ws.read_payload(path, payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:273:    manifest = ws.operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/tests/test_step_index_outcome.py:274:    assert exc.value.code == "payload_ref_mismatch"
+novaic-cortex/tests/test_step_index_outcome.py:276:    assert manifest["error"]["code"] == "payload_ref_mismatch"
+novaic-cortex/tests/test_step_index_outcome.py:295:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:303:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:325:        "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:334:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:356:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_step_index_outcome.py:367:    with pytest.raises(ValueError, match="payload/payload_ref"):
+novaic-cortex/tests/test_step_index_outcome.py:388:            "payload_ref": "step-ref:s1:round1:shell:0",
+novaic-cortex/tests/test_operational_store.py:78:                payload_ref TEXT PRIMARY KEY,
+novaic-cortex/tests/test_operational_store.py:97:                payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/tests/test_operational_store.py:119:    manifest = store.get_payload_manifest(payload_ref="payload-1")
+novaic-cortex/tests/test_operational_store.py:121:        payload_ref="local",
+novaic-cortex/tests/test_operational_store.py:122:        source_payload_ref="local",
+novaic-cortex/tests/test_operational_store.py:132:    assert "source_payload_ref" in columns
+novaic-cortex/tests/test_operational_store.py:342:        payload_ref="payload-1",
+novaic-cortex/tests/test_operational_store.py:343:        source_payload_ref="step-ref-1",
+novaic-cortex/tests/test_operational_store.py:355:        payload_ref="payload-1",
+novaic-cortex/tests/test_operational_store.py:356:        source_payload_ref="step-ref-1",
+novaic-cortex/tests/test_operational_store.py:372:    assert updated["source_payload_ref"] == "step-ref-1"
+novaic-cortex/tests/test_operational_store.py:374:    assert store.get_payload_manifest(payload_ref="payload-1")["blob_ref"] == "blob://cortex-payload/1"
+novaic-cortex/tests/test_operational_store.py:381:        payload_ref="step-ref-local",
+novaic-cortex/tests/test_operational_store.py:382:        source_payload_ref="step-ref-local",
+novaic-cortex/tests/test_operational_store.py:395:    assert manifest["source_payload_ref"] == "step-ref-local"
+novaic-cortex/tests/test_operational_store.py:397:    assert store.get_payload_manifest(payload_ref="step-ref-local") == manifest
+novaic-cortex/tests/test_blob_payload_client.py:12:    assert "base64" not in source
+novaic-cortex/tests/test_step_result_projection.py:3:    format_for_display_perception_llm,
+novaic-cortex/tests/test_step_result_projection.py:13:            {"type": "image", "data": "base64encoded==", "mimeType": "image/jpeg"}
+novaic-cortex/tests/test_step_result_projection.py:19:    assert parsed["display_files"][0]["url"] == "data:image/jpeg;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:26:            {"type": "image", "data": "base64encoded==", "mimeType": "image/png"},
+novaic-cortex/tests/test_step_result_projection.py:34:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:84:def test_display_perception_projection_data_url():
+novaic-cortex/tests/test_step_result_projection.py:88:            {"url": "data:image/png;base64,aabbcc"}
+novaic-cortex/tests/test_step_result_projection.py:91:    formatted_str = format_for_display_perception_llm(result_data)
+novaic-cortex/tests/test_step_result_projection.py:100:def test_empty_display_perception_projection_is_diagnostic_not_ok():
+novaic-cortex/tests/test_step_result_projection.py:101:    formatted = json.loads(format_for_display_perception_llm({
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:3:import base64
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:85:                        "screenshot": base64.b64encode(screenshot_bytes).decode("ascii"),
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:94:                        "data": base64.b64encode(file_bytes).decode("ascii"),
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:95:                        "is_base64": True,
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:158:    assert base64.b64encode(image).decode("ascii") not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:186:    assert base64.b64encode(file_payload).decode("ascii") not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:197:    assert "base64 into normal shell output" in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:200:def test_devicectl_help_teaches_artifact_manifest_not_base64(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:205:    assert "Do not print or paste raw base64" in completed.stdout
+novaic-cortex/tests/test_workspace.py:66:        "payload_ref": "payload:tc_001",
+novaic-cortex/tests/test_workspace.py:87:        "payload": {}, "payload_ref": "step-ref:arch:note",
+novaic-cortex/tests/test_workspace.py:124:        "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_workspace.py:139:        "payload_ref": "step-ref:s1:tc_002",
+novaic-cortex/tests/test_workspace.py:172:        "status": "success", "payload": {}, "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_context_event_read_model.py:188:                "payload_ref": None,
+novaic-cortex/tests/test_context_event_writer.py:84:        payload_ref="step-ref:1",
+novaic-cortex/tests/test_context_event_writer.py:93:    assert tool.payload["payload_ref"] == "step-ref:1"
+novaic-cortex/tests/test_context_event_writer.py:133:        payload_ref="step-ref:wake-a:round4:skill_end:3",
+novaic-cortex/tests/test_context_event_writer.py:143:        payload_ref="step-ref:wake-b:round4:skill_end:3",
+novaic-cortex/tests/test_context_event_api_steps_write.py:42:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_context_event_api_steps_write.py:102:async def test_steps_write_emits_tool_step_recorded_without_fake_payload_ref() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:145:    assert "payload_ref" not in index[0]
+novaic-cortex/tests/test_context_event_api_steps_write.py:155:    with pytest.raises(ValueError, match="payload/payload_ref"):
+novaic-cortex/tests/test_context_event_api_steps_write.py:175:async def test_steps_write_records_deepest_scope_and_final_blob_payload_ref() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:217:                "payload_ref": "step-ref:wake-1:round1:shell:2",
+novaic-cortex/tests/test_context_event_api_steps_write.py:233:            "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:236:        "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:240:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:242:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:243:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:245:    manifest = reopened_ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_context_event_api_steps_write.py:246:    assert manifest["source_payload_ref"] == "step-ref:wake-1:round1:shell:2"
+novaic-cortex/tests/test_context_event_api_steps_write.py:276:                "payload_ref": "step-ref:wake-1:round1:shell:externalized",
+novaic-cortex/tests/test_context_event_api_steps_write.py:290:            projection="current_tool_result",
+novaic-cortex/tests/test_context_event_api_steps_write.py:314:                "payload_ref": "step-ref:wake-1:round1:shell:projection",
+novaic-cortex/tests/test_tool_output_projection.py:4:    format_for_current_tool_result_llm,
+novaic-cortex/tests/test_tool_output_projection.py:5:    format_for_display_perception_llm,
+novaic-cortex/tests/test_tool_output_projection.py:59:def test_tool_output_v1_display_perception_never_inlines_artifact_image():
+novaic-cortex/tests/test_tool_output_projection.py:61:    formatted = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:85:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+novaic-cortex/tests/test_tool_output_projection.py:88:def test_mcp_image_content_is_only_visual_in_display_perception_projection():
+novaic-cortex/tests/test_tool_output_projection.py:99:    current = json.loads(format_for_current_tool_result_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:100:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:126:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:182:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:214:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:229:        "display_files": [{"url": "data:image/png;base64,aabbcc"}],
+novaic-cortex/tests/test_tool_output_projection.py:233:    current = json.loads(format_for_current_tool_result_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:234:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_context_event_projection.py:580:                    "payload_ref": "step-ref:1",
+novaic-cortex/tests/test_context_event_projection.py:598:                "payload_ref": "step-ref:1",
+novaic-cortex/tests/test_context_event_projection.py:604:def test_project_context_events_multiple_tool_results_preserve_order_and_payload_refs() -> None:
+novaic-cortex/tests/test_context_event_projection.py:626:                    "payload_ref": "payload:a",
+novaic-cortex/tests/test_context_event_projection.py:637:                    "payload_ref": "payload:b",
+novaic-cortex/tests/test_context_event_projection.py:648:    assert [message["_metadata"]["payload_ref"] for message in snapshot.messages[1:]] == [
+novaic-cortex/tests/test_context_event_projection.py:672:                    "payload_ref": "payload:display-image",
+novaic-cortex/tests/test_context_event_projection.py:708:                    "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_projection.py:717:    assert tool_message["_metadata"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_projection.py:731:                    "payload_ref": "payload:missing",
+novaic-cortex/tests/test_context_event_projection.py:776:                    "payload_ref": "payload:shell",
+=== docs / markdown residue ===
+=== current ledger artifact residue ===
+.complex-problems/L20260516-222011/tmp/p211-result.md:5:Retained the MCP image/data-url parsing branch, but verified and strengthened its constraint: parsed images become visual image blocks only through explicit `display_perception`; history and current-tool projections remain text-only.
+.complex-problems/L20260516-222011/tmp/p211-result.md:9:Retained with rationale. The branch is still needed for current explicit display perception: `display` may return `_mcp_content` image data, `parse_tool_result` stores it as `display_files`, and `format_for_display_perception_llm` is the only formatter that passes `include_display=True`.
+.complex-problems/L20260516-222011/tmp/p211-result.md:14:  - Added `test_mcp_image_content_is_only_visual_in_display_perception_projection`.
+.complex-problems/L20260516-222011/tmp/p211-result.md:20:  - `format_for_history_llm` and `format_for_current_tool_result_llm` call `_format_mcp_content(..., include_display=False)`.
+.complex-problems/L20260516-222011/tmp/p211-result.md:21:  - `format_for_display_perception_llm` calls `_format_mcp_content(..., include_display=True)`.
+.complex-problems/L20260516-222011/tmp/p205-result.md:5:Completed a read-only runtime projection inventory. Runtime now has a clear active boundary: Cortex step refs are expanded through explicit projection modes, shell output is bounded terminal text plus durable raw payload, and only current `display_perception` tool messages can become provider-native image messages. No stale runtime production branch was proven in this inventory, but several compatibility branches should be kept intentionally or reviewed in later test cleanup.
+.complex-problems/L20260516-222011/tmp/p205-result.md:12:| Current-vs-history projection selection | `step_result_client.py:119-139` | active | Old rounds return `history`; current display returns `display_perception`; current non-display returns `current_tool_result`. |
+.complex-problems/L20260516-222011/tmp/p205-result.md:16:| Non-display tool messages cannot inject media | `context.py:217-222` | active safety branch | If `_projection` is not `display_perception`, runtime appends text-only tool message and skips media extraction. |
+.complex-problems/L20260516-222011/tmp/p205-result.md:22:| User content attachment descriptions | `novaic-agent-runtime/task_queue/utils/user_content.py:30-59` | active | User uploads are described and require explicit `display(file_url=...)`; base64 is not injected automatically. |
+.complex-problems/L20260516-222011/tmp/p205-result.md:35:rg -n "expand_messages_for_llm|process_multimodal_messages|_projection|display_perception|current_tool_result|history|image_url|_placeholder|data:image|base64|tool-output\\.v1|manifest_only|stdout_truncated|_shell_result" novaic-agent-runtime/task_queue novaic-agent-runtime/tests -g'*.py'
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P102/README.md:5:Shell execution should expose bounded terminal text, preserve useful monitor `desc`, and avoid raw binary/base64 payloads in LLM-visible tool results.
+.complex-problems/L20260516-222011/tmp/p181-check.md:29:The stress case is exactly the previous bug shape: a display tool result followed by a system stack message. The focused test asserts the prepared provider messages become assistant, tool placeholder, user image, then system stack message, and that the display projection remains `display_perception`.
+.complex-problems/L20260516-222011/tmp/p235-check.md:5:`P235` is solved by `R219`. The workspace persistence code and focused tests prove that tool payloads are stored through durable payload records/manifests and that step/index records preserve `step_ref`/`payload_ref` pointer metadata. The sibling runtime handoff boundary remains outside this problem and is not used to inflate this success claim.
+.complex-problems/L20260516-222011/tmp/p235-check.md:10:- `novaic-cortex/novaic_cortex/workspace.py:700-736` rejects inline tool `result`, requires observation percepts, requires `payload_ref` for payload writes, calls `write_payload`, and mirrors actual `payload_ref` into normalized step/observation.
+.complex-problems/L20260516-222011/tmp/p235-check.md:11:- `novaic-cortex/novaic_cortex/workspace.py:738-789` writes step files and indexes `step_ref`/`payload_ref` in `_index.jsonl`.
+.complex-problems/L20260516-222011/tmp/p235-check.md:17:- Step write implementation evidence shows `payload_ref`/`step_ref` are required, generated, or preserved for heavy tool output: satisfied by `normalize_step` requiring `payload_ref` and `write_step` indexing refs.
+.complex-problems/L20260516-222011/tmp/p235-check.md:28:The main failure mode would be a tool step silently accepting inline `result` and bypassing durable payload refs. The code directly rejects `result` on tool steps and requires observation + `payload_ref` for payload writes, while tests include error expectations around missing `payload/payload_ref` and assertions that index/step metadata contains `payload_ref`.
+.complex-problems/L20260516-222011/tmp/p192-ticket.md:5:Runtime must choose the correct Cortex formatted-read projection for each tool step before LLM assembly. Current-round `display` must request `display_perception`; historical `display` must request `history`; current non-display tools must request `current_tool_result`.
+.complex-problems/L20260516-222011/tmp/p192-ticket.md:14:- Current display tool messages use `display_perception`.
+.complex-problems/L20260516-222011/tmp/p192-ticket.md:16:- Current non-display tool messages use `current_tool_result`.
+.complex-problems/L20260516-222011/tmp/p229-result.md:5:`P229` is covered through four closed child audits. Tool/step write paths store heavy output behind durable `step_ref`/`payload_ref` boundaries (`P231`), Cortex event projection preserves pointer metadata and compact observations (`P232`), runtime LLM context expansion uses formatted step projection rather than full payload reads (`P233`), and combined shell/display large-output regression tests pass (`P234`).
+.complex-problems/L20260516-222011/tmp/p136-child-formatted-read.md:9:- Map `read_step_formatted`, `StepResultClient`, display projection expansion, and provider multimodal conversion around `step_ref`/`payload_ref`.
+.complex-problems/L20260516-222011/tmp/p136-child-formatted-read.md:11:- Prove public tool message placeholders do not contain raw image/base64 data while LLM image projection can still be constructed only for explicit display perception.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P102/checks/C109.md:29:A plausible failure mode was shell or display base64 leaking into normal LLM-visible history. The verification included `test_tool_handlers_display_chat_history.py`, `test_no_historical_tool_image_injection.py`, and runtime explicit contract tests, which cover placeholder/public content behavior and prevent non-display/historical image injection. A second failure mode was monitor `desc` affecting execution semantics; inspection showed it is used in activity projection only.
+.complex-problems/L20260516-222011/tmp/p417-child-workspace-step-payload.md:5:Workspace step writing and payload normalization are the bridge between shell/tool outputs and ContextEvents. They must enforce pointer-oriented payloads and avoid inline result compatibility.
+.complex-problems/L20260516-222011/tmp/p234-check.md:5:`P234` is solved by `R226`. The combined regression surface has code and test evidence: shell emits bounded terminal text, display images use current perception image channels only, and historical/default context expansion does not inject raw image/base64 text.
+.complex-problems/L20260516-222011/tmp/p234-check.md:13:- Search found `raw_shell_result` only in absence assertions and `data:image` only in intended multimodal conversion/test paths.
+.complex-problems/L20260516-222011/tmp/p234-check.md:18:- Raw base64/large stdout is not normal history text by default: satisfied by shell media-like stdout test, display history injection tests, and context expansion tests.
+.complex-problems/L20260516-222011/tmp/p234-check.md:28:The combined stress case is a session containing both a shell command that prints image-like base64 and a display tool result with image content. The relevant tests cover both cases: shell output remains terminal text without `_mcp_content` or `data:image/`, and display history only converts to image content when marked as current `display_perception`.
+.complex-problems/L20260516-222011/tmp/p224-result.md:9:- Searched Cortex projection code/tests for `_mcp_content`, `display_perception`, `tool-output.v1`, artifacts, image/data-url handling, and unknown fallback markers.
+.complex-problems/L20260516-222011/tmp/p224-result.md:11:- Searched factory provider/log projection surfaces for `image_url`, `inlineData`, base64 handling, and redaction.
+.complex-problems/L20260516-222011/tmp/p224-result.md:23:- `novaic-agent-runtime/task_queue/utils/step_result_client.py:126-139`: only current-round `display` tool messages get `display_perception`; historical or non-display tools get text/manifest projections. Intentional current-turn media gate.
+.complex-problems/L20260516-222011/tmp/p224-result.md:24:- `novaic-agent-runtime/task_queue/utils/context.py:203-249`: only `display_perception` tool results are converted into provider image messages; other tools remain text receipts. Intentional anti-historical-image-injection guard.
+.complex-problems/L20260516-222011/tmp/p224-result.md:26:- `novaic-llm-factory/factory/providers.py:201-252`: Anthropic provider converts data URL image content into native base64 image blocks. Intentional provider adapter behavior, covered by tests.
+.complex-problems/L20260516-222011/tmp/p224-result.md:28:- `novaic-llm-factory/factory/contracts.py:80-147`: log snapshots redact data URL and provider-native image base64. Intentional observability/privacy contract.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P102/tickets/T097.md:5:Shell execution must expose bounded terminal text, accept/use `desc` for monitor clarity, and avoid leaking raw binary/base64 into LLM-visible history.
+.complex-problems/L20260516-222011/tmp/p133-child-event-projection.md:11:- The roles of `step_ref`, `payload_ref`, orphan tool result marking, and folded summary messages are documented.
+.complex-problems/L20260516-222011/tmp/t134-result.md:5:The active Cortex `/v1/steps/write` path normalizes requests, emits `ToolStepRecorded`, and writes through `write_step_projection`. I added API-level coverage for inline result rejection and artifact/duration metadata propagation into the step index.
+.complex-problems/L20260516-222011/tmp/p186-ticket.md:5:Historical display outputs and shell-created artifacts should remain manifest/text-only in LLM history. They must not rehydrate old image bytes, re-inject stale screenshots, or turn artifact metadata into raw base64 text.
+.complex-problems/L20260516-222011/tmp/p186-ticket.md:15:- Historical display steps use `history`, not `display_perception`.
+.complex-problems/L20260516-222011/tmp/p003-child-large-output-leakage-sweep.md:1:# Large-output and base64 leakage sweep
+.complex-problems/L20260516-222011/tmp/p003-child-large-output-leakage-sweep.md:5:Even if the main projection path is correct, stale fallback branches, tests, docs, and utility helpers can keep old inline-base64 or full-output behavior alive. A targeted sweep is needed to classify and remove active leakage residues.
+.complex-problems/L20260516-222011/tmp/p003-child-large-output-leakage-sweep.md:9:- Source sweeps for `base64`, `data:image`, `screenshot`, `payload_ref`, `step_ref`, and `include_display` are performed and summarized.
+.complex-problems/L20260516-222011/tmp/p213-ticket.md:5:The `resolve_for_llm` helper was removed from production. Its dedicated test file now preserves an obsolete API and inline-image/base64 behavior.
+.complex-problems/L20260516-222011/tmp/p427-ticket.md:10:- Guard confirms no `stable_json(observation)` fallback remains in `context_event_projection.py`.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/results/R117.md:5:Ran the final focused blob/display/base64 regression sweep. Cortex and runtime focused tests passed together. Active source search confirms remaining base64/data URL uses are protocol-local: device-response decoding into Blob artifacts, display current-perception payload preparation, provider-native multimodal conversion, auth encoding, and explicit docs warnings.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/results/R117.md:11:- Classified source search hits for `data:image`, `base64`, `_mcp_content`, and `tool-output.v1` across active runtime/Cortex/common code and current docs.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/results/R117.md:17:- `rg` source sweep classified remaining base64/data URL uses as allowed protocol-local encoding or explicit docs warnings, not ordinary shell/display history leakage.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/results/R117.md:21:- None for blob/display/base64 regression sweep.
+.complex-problems/L20260516-222011/tmp/t187-result.md:10:  - Cortex `parse_tool_result`, `_parse_tool_output_v1`, `format_for_history_llm`, `format_for_display_perception_llm`.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/README.md:5:After artifact CLI and display projection checks, run a final regression sweep for base64/data URL leakage in shell/display history contracts.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/README.md:10:- Search active code/tests for raw media/base64 transport paths and classify allowed protocol-local uses.
+.complex-problems/L20260516-222011/tmp/t008-result.md:16:- Ephemeral Cortex backing path and media/base64 leakage paths were fixed and guarded.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/checks/C131.md:11:- Source search classified remaining base64/data URL use as protocol-local and covered by tests: device base64 decode to Blob artifact, display current-perception payload, provider-native image conversion, or auth encoding.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/checks/C131.md:31:Low. Remaining `resolve_for_llm` base64 behavior is provider/perception-oriented and guarded by include-display behavior; it is not ordinary shell stdout or display history text.
+.complex-problems/L20260516-222011/tmp/p150-check.md:12:- Existing React action test asserts no `result`, payload, `payload_ref`, and observation payload ref.
+.complex-problems/L20260516-222011/tmp/p150-check.md:13:- Extended bridge test asserts no `result`, payload, `payload_ref`, `step_ref`, and observation payload ref.
+.complex-problems/L20260516-222011/tmp/p177-ticket.md:9:Inspect Cortex workspace step write/read/index/projection code and bridge write code around `step_ref`, `payload_ref`, `payload`, artifacts, and JSONL error behavior. Add or tighten tests if index/projection storage conflates or loses refs.
+.complex-problems/L20260516-222011/tmp/p177-ticket.md:14:- The storage contract for `step_ref`, `payload_ref`, and artifacts is documented.
+.complex-problems/L20260516-222011/tmp/p177-ticket.md:24:Bridge code may still assume `payload_ref == step_ref`; that may be acceptable today but must be explicitly classified.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/tickets/T120.md:5:The final blob/display sweep must prove shell artifact manifests, display history sanitization, and current display perception remain coherent together, without raw base64 or data URLs leaking into ordinary context.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/tickets/T120.md:14:- Active source search finds only protocol-local base64 use, Blob upload conversions, or provider-native multimodal conversion, not raw tool text/history leakage.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/tickets/T120.md:19:Run focused pytest bundles in Cortex and Runtime and a targeted `rg` classification for `data:image`, `_mcp_content`, `tool-output.v1`, and `base64` in active code/tests.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/tickets/T120.md:23:- Source search will include allowed protocol-local base64 uses; classification must be explicit rather than blind deletion.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P125/tickets/T120.md:27:- Provider-native image payload conversion may use data URLs/base64 internally and is allowed only outside ordinary tool text/history.
+.complex-problems/L20260516-222011/tmp/p217-result.md:5:Closed the Google/Gemini multimodal provider conversion branch by combining implementation result R203 and regression-test result R204. Gemini user list content now converts to native text/image parts, with tests pinning that data URL image base64 is carried only in `inlineData.data` and not text.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/results/R114.md:5:Audited devicectl artifact-producing CLI paths. Screenshot and file-pull convert device base64 responses into Blob uploads and print `tool-output.v1` artifact manifests; focused tests prove raw base64 fields do not appear in stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/results/R114.md:12:- Confirmed tests assert source base64 bytes are absent from stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/README.md:5:Media-producing shell CLIs such as `devicectl hd screenshot` and file-pull paths must return bounded text plus `tool-output.v1` artifact manifests with `blob://runtime-artifact/...` refs, not raw bytes or base64 in stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/README.md:11:- Verify raw base64 payloads are absent from stdout.
+.complex-problems/L20260516-222011/tmp/p185-child-end-to-end-display-regression.md:11:- Assert display tool result content is placeholder-only, with no raw base64 or large JSON payload.
+.complex-problems/L20260516-222011/tmp/p196-check.md:18:- Raw base64 is not moved into text fields: satisfied by recursive text-field assertion.
+.complex-problems/L20260516-222011/tmp/p142-ticket.md:5:`P142` asks whether Cortex workspace step materialization keeps tool results pointer-oriented and indexable. The risky paths are `normalize_step`, `write_step`, and `write_step_projection`: if any of them accept inline raw output, lose `payload_ref`, or under-index artifact-bearing steps, later context assembly can leak large payloads or make complete reconstruction impossible.
+.complex-problems/L20260516-222011/tmp/p142-ticket.md:15:- The audit proves raw payload data is externalized through `write_payload`, with `payload_ref` mirrored into the stored observation.
+.complex-problems/L20260516-222011/tmp/p142-ticket.md:16:- The audit proves step index rows preserve `step_ref`, `payload_ref`, duration, tool/status metadata, and an artifact marker when artifacts exist.
+.complex-problems/L20260516-222011/tmp/p142-ticket.md:25:- A test may cover the happy path while `write_step_projection` still allows legacy inline result shapes.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/checks/C128.md:5:Success. R114 verifies artifact-producing devicectl CLI paths convert media/file bytes into Blob artifact manifests and keep raw base64 out of shell stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/checks/C128.md:9:- `_wrap_hd_screenshot` decodes device base64 internally, uploads bytes to Blob, and returns `tool-output.v1` with image artifact metadata and display access.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/checks/C128.md:10:- `_wrap_hd_file_pull` decodes file base64 internally, uploads bytes to Blob, and returns `tool-output.v1` with binary artifact metadata.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/checks/C128.md:11:- `test_shell_capabilities_blob_contract.py` asserts raw base64 and raw `screenshot`/`data` fields are absent from stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/checks/C128.md:18:- Raw base64 absent from stdout: satisfied by explicit test assertions.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/checks/C128.md:28:The tests simulate device APIs returning base64 and verify the shell CLI uploads raw bytes through Blob multipart instead of printing those base64 fields to stdout.
+.complex-problems/L20260516-222011/tmp/p208-result.md:11:  - Removed unused `base64` import.
+.complex-problems/L20260516-222011/tmp/p208-result.md:26:  - Imported `parse_tool_result`, `preview_for_text`, `format_for_history_llm`, and `format_for_display_perception_llm`.
+.complex-problems/L20260516-222011/tmp/p208-result.md:31:This ticket intentionally did not delete the active current-display `data:` image handling in `format_for_display_perception_llm`; that path is still the current explicit display perception path and is separate from the stale helper. Its detailed branch audit remains in P209.
+.complex-problems/L20260516-222011/tmp/p197-check.md:10:- Contract redaction handles OpenAI `image_url` data URLs and Anthropic image source base64.
+.complex-problems/L20260516-222011/tmp/p197-check.md:28:- The new test uses a data-url JPEG with raw `/9j/SECRETBASE64`, then asserts the route response includes `image_url` structure and redaction metadata while excluding raw base64.
+.complex-problems/L20260516-222011/tmp/p423-check.md:15:- Tool payloads require `payload_ref`: satisfied in `normalize_step` and `write_payload`.
+.complex-problems/L20260516-222011/tmp/p423-check.md:21:The check included the dangerous paths: inline result, missing observation, large payload without Blob service, externalized payload readback, corrupt/missing payload records, and payload ref mismatch.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/tickets/T117.md:5:Artifact-producing shell CLIs must not print raw media bytes or base64. They should return `tool-output.v1` JSON with concise text, artifact metadata, and `blob://runtime-artifact/...` references.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/tickets/T117.md:9:Inspect the artifact manifest builder and devicectl media/file commands, run focused blob contract tests, and add missing coverage if any artifact path lacks base64-leak assertions.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/tickets/T117.md:15:- Raw base64 source payloads are absent from stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P122/tickets/T117.md:28:- Device API may still return base64 internally; the shell CLI boundary must convert it to Blob artifact output.
+.complex-problems/L20260516-222011/tmp/p127-check.md:17:- Historical display/tool results proven manifest-only without base64/image bytes: satisfied by P186/R184 and P187/R212.
+.complex-problems/L20260516-222011/tmp/p127-check.md:19:- Active raw-base64/unbounded-text branches fixed: stale `resolve_for_llm` removed, shell text bounded, unknown fallback bounded, display media gated.
+.complex-problems/L20260516-222011/tmp/t164-result.md:1:# Tool result step_ref and payload_ref map result
+.complex-problems/L20260516-222011/tmp/t164-result.md:5:Closed the split investigation for the tool-result `step_ref` / `payload_ref` contract. The split children mapped the runtime wrapper, Cortex durable storage, formatted read/display projection, and cross-layer regression coverage. The resulting contract is: `step_ref` is the stable lookup identity across runtime and Cortex; final `payload_ref` is the actual stored payload identity and may become an external blob ref; public context stays text/manifest-only unless an explicit current display perception projection is requested.
+.complex-problems/L20260516-222011/tmp/p232-ticket.md:5:Cortex event writer/projection must preserve `step_ref`/`payload_ref` and compact tool projections without expanding durable payload bodies into normal event records or projected context.
+.complex-problems/L20260516-222011/tmp/p232-ticket.md:14:- Evidence shows `step_ref`/`payload_ref` are preserved and raw payload bodies are not expanded into event projection records by default.
+.complex-problems/L20260516-222011/tmp/p127-ticket.md:5:Step result projection is the final boundary that turns durable tool output into LLM-visible text/history/current messages. It must keep shell output terminal-style and bounded, preserve artifact manifests, allow current display media projection, and prevent raw base64 or large payload leakage into ordinary context.
+.complex-problems/L20260516-222011/tmp/p127-ticket.md:17:- Any raw-base64 or unbounded-text projection branch is fixed or split into a targeted child.
+.complex-problems/L20260516-222011/tmp/p422-check.md:9:P422 found a live projection leak risk and patched the actual projection path, not just tests. The dangerous fallback `stable_json(observation)` was removed from `_tool_result_content()`, so unknown dict observations can no longer dump embedded media/base64 payloads into LLM history.
+.complex-problems/L20260516-222011/tmp/p422-check.md:15:- LLM context projection remains pointer-oriented: satisfied by the new fallback using `payload_ref` and observation keys only.
+.complex-problems/L20260516-222011/tmp/p422-check.md:21:The test uses image-shaped `_mcp_content` with a large base64-like payload and verifies the projected content includes `payload_ref` and keys but excludes `/9j/` and repeated base64 data. This directly targets the failure mode seen earlier.
+.complex-problems/L20260516-222011/tmp/p422-check.md:32:- Post-fix guard: no `stable_json(observation)` fallback remains.
+.complex-problems/L20260516-222011/tmp/p126-check.md:12:- P136/C179 covers `step_ref`/`payload_ref` semantics and formatted step reads.
+.complex-problems/L20260516-222011/tmp/p126-check.md:19:- Role of context event stream, workspace projections, `step_ref`, `payload_ref`, and active stack injection documented: satisfied by R171 and child results.
+.complex-problems/L20260516-222011/tmp/p423-result.md:5:P423 found the workspace step/payload normalization boundary already aligned with the pointer-oriented contract. Tool steps reject inline `result`, require an observation percept, require `payload_ref` when writing payloads, and externalized payloads are stored through Blob-backed manifests.
+.complex-problems/L20260516-222011/tmp/p423-result.md:23:  - payload writing requires `payload_ref`.
+.complex-problems/L20260516-222011/tmp/p203-result.md:17:  - Only current `display_perception` messages can become provider-native image messages.
+.complex-problems/L20260516-222011/tmp/p203-result.md:23:  - Factory log snapshots redact base64 but preserve structured shape.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/results/R115.md:12:- Confirmed current display perception is intentionally carried only through `_projection="display_perception"`, not generic history.
+.complex-problems/L20260516-222011/tmp/p147-ticket.md:9:Audit `write_step` index construction and `read_step_index`. Verify tests cover `step_ref`, `payload_ref`, tool/status/duration, and artifact markers. If corrupt index lines are silently ignored, replace that with explicit failure behavior and add a targeted regression test.
+.complex-problems/L20260516-222011/tmp/p147-ticket.md:14:- Index entries include `step_ref`, `payload_ref`, tool/status/duration metadata when present.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/README.md:5:`display(blob://...)` may produce current-turn perception content, but public/history tool output must stay sanitized so future context does not contain raw image base64 or data URLs.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/README.md:12:- Fix any projection path that reinserts raw base64 into ordinary context.
+.complex-problems/L20260516-222011/tmp/t085-result.md:14:rg -n "skip\(|pytest\.mark\.skip|xfail|TODO|FIXME|compat|fallback|legacy|migration|direct[-_ ]tool|base64|pass\b" novaic-business/tests novaic-cortex/tests novaic-common/tests -g '*.py'
+.complex-problems/L20260516-222011/tmp/t085-result.md:24:- `base64` hits in Cortex are intentional projection and shell-capability fixtures proving binary/image data is converted to blob/display contracts instead of being left in LLM text history.
+.complex-problems/L20260516-222011/tmp/p217-child-implementation.md:11:- Image base64 is not inserted into text parts.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/checks/C129.md:5:Success. R115 proves display public/history projection is sanitized and does not reinsert raw base64 into ordinary context.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/checks/C129.md:17:- No raw data/data:image/base64 in history: satisfied by explicit assertions that public wrapped content lacks `data` and base64.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/checks/C129.md:18:- Current perception separated: satisfied by `_projection="display_perception"` tests.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/checks/C129.md:27:A real failure previously observed was display tool output containing base64 text in later context. The no-historical-image-injection suite exercises that path by storing full `llm_content` but ensuring public content uses placeholders.
+.complex-problems/L20260516-222011/tmp/p217-child-tests.md:10:- Tests assert no image base64 appears in text parts.
+.complex-problems/L20260516-222011/tmp/p142-child-normalize-step-contract.md:5:`normalize_step` is the first gate before tool results become workspace step files. It must reject legacy inline raw `result` fields and require a structured observation/percept shape so raw CLI output, base64, or large JSON cannot sneak into `steps/*.json` as the canonical result.
+.complex-problems/L20260516-222011/tmp/p236-result.md:5:Runtime heavy-output handoff is covered through two closed child audits. Shell handoff uses bounded terminal-style public text plus durable raw payload (`R220`), and display/media handoff gates image data through current `display_perception` structured image conversion while historical/default tool text uses placeholders (`R221`).
+.complex-problems/L20260516-222011/tmp/p236-result.md:11:- Verified both representative heavy-output classes that caused prior regressions: large/base64-like shell stdout and display image `_mcp_content`.
+.complex-problems/L20260516-222011/tmp/p237-ticket.md:5:Runtime shell execution must return compact terminal-style text to the LLM and keep raw/heavy stdout behind durable payload/artifact mechanisms. Shell should not inline huge stdout/base64 in normal tool history.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/tickets/T118.md:5:Display tool results may include image data for current-turn perception, but historical/public tool output must be sanitized so raw base64 or data URLs do not re-enter ordinary LLM context.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P123/tickets/T118.md:14:- Historical display output does not contain raw `data`, `data:image`, or base64 image payloads.
+.complex-problems/L20260516-222011/tmp/p128-child-active-stack-ordering.md:11:- The display tool result text is sanitized with placeholders rather than base64.
+.complex-problems/L20260516-222011/tmp/p219-result.md:17:- `{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}` becomes `{"inlineData": {"mimeType": "image/jpeg", "data": "..."}}`.
+.complex-problems/L20260516-222011/tmp/p219-result.md:19:- Anthropic-style base64 image blocks are also accepted as inline image parts.
+.complex-problems/L20260516-222011/tmp/p219-result.md:26:- Image base64 did not appear in any text part.
+.complex-problems/L20260516-222011/tmp/p146-check.md:1:# write_step payload_ref mirroring success check
+.complex-problems/L20260516-222011/tmp/p146-check.md:5:Success. `R126` proves the payload data leaves step JSON, the final persisted `payload_ref` is mirrored into the stored observation, and both local and blob-backed paths are covered by focused tests.
+.complex-problems/L20260516-222011/tmp/p146-check.md:11:- Local payload stored-step assertions: `novaic-cortex/tests/test_step_index_outcome.py:117-146`, including observation-level `payload_ref`.
+.complex-problems/L20260516-222011/tmp/p426/ledger-child-outcomes-rg.txt:2:.complex-problems/L20260516-222011/tmp/p423-result.md:5:P423 found the workspace step/payload normalization boundary already aligned with the pointer-oriented contract. Tool steps reject inline `result`, require an observation percept, require `payload_ref` when writing payloads, and externalized payloads are stored through Blob-backed manifests.
+.complex-problems/L20260516-222011/tmp/p426/ledger-child-outcomes-rg.txt:8:.complex-problems/L20260516-222011/tmp/p422-check.md:9:P422 found a live projection leak risk and patched the actual projection path, not just tests. The dangerous fallback `stable_json(observation)` was removed from `_tool_result_content()`, so unknown dict observations can no longer dump embedded media/base64 payloads into LLM history.
+.complex-problems/L20260516-222011/tmp/p426/ledger-child-outcomes-rg.txt:74:.complex-problems/L20260516-222011/tmp/p422-result.md:5:P422 found and fixed a real projection leak risk: when a tool observation dict had no `preview`, `summary`, or `head`, ContextEvent projection serialized the entire observation into LLM history. That could re-inline display/media/base64-shaped payloads. The fallback now emits a bounded pointer-style diagnostic using `payload_ref` and observation keys instead of serializing the observation body.
+.complex-problems/L20260516-222011/tmp/p426/ledger-child-outcomes-rg.txt:145:.complex-problems/L20260516-222011/state.json:41038:      "summary": "P422 found and fixed a real projection leak risk: when a tool observation dict had no `preview`, `summary`, or `head`, ContextEvent projection serialized the entire observation into LLM history. That could re-inline display/media/base64-shaped payloads. The fallback now emits a bounded pointer-style diagnostic using `payload_ref` and observation keys instead of serializing the observation body.",
+.complex-problems/L20260516-222011/tmp/p426/ledger-child-outcomes-rg.txt:151:.complex-problems/L20260516-222011/state.json:41073:      "summary": "P423 found the workspace step/payload normalization boundary already aligned with the pointer-oriented contract. Tool steps reject inline `result`, require an observation percept, require `payload_ref` when writing payloads, and externalized payloads are stored through Blob-backed manifests.",
+.complex-problems/L20260516-222011/tmp/p426/ledger-child-outcomes-rg.txt:177:.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/results/R403.md:5:P423 found the workspace step/payload normalization boundary already aligned with the pointer-oriented contract. Tool steps reject inline `result`, require an observation percept, require `payload_ref` when writing payloads, and externalized payloads are stored through Blob-backed manifests.
+.complex-problems/L20260516-222011/tmp/p426/ledger-child-outcomes-rg.txt:182:.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/results/R402.md:5:P422 found and fixed a real projection leak risk: when a tool observation dict had no `preview`, `summary`, or `head`, ContextEvent projection serialized the entire observation into LLM history. That could re-inline display/media/base64-shaped payloads. The fallback now emits a bounded pointer-style diagnostic using `payload_ref` and observation keys instead of serializing the observation body.
+.complex-problems/L20260516-222011/tmp/p426/ledger-child-outcomes-rg.txt:184:.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/checks/C428.md:9:P422 found a live projection leak risk and patched the actual projection path, not just tests. The dangerous fallback `stable_json(observation)` was removed from `_tool_result_content()`, so unknown dict observations can no longer dump embedded media/base64 payloads into LLM history.
+.complex-problems/L20260516-222011/tmp/p177-check.md:7:`R162` satisfies P177. It maps Cortex storage/projection refs, documents the stable `step_ref` versus final `payload_ref` contract, runs focused tests, and classifies request-side `payload_ref == step_ref` seeding as safe because Cortex normalization is final authority.
+.complex-problems/L20260516-222011/tmp/p177-check.md:11:- The result specifically checks the risky case: externalized payloads where final `payload_ref` differs from stable `step_ref`.
+.complex-problems/L20260516-222011/tmp/p177-check.md:12:- Existing tests prove index entries and step files store the final blob payload ref while manifests preserve `source_payload_ref` and `step_ref`.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P124/results/R116.md:5:Audited current display image projection. Runtime multimodal conversion only treats `_projection="display_perception"` display messages as image sources, sanitizes the tool message into a placeholder, and inserts provider-native image content before following system messages.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P124/results/R116.md:11:- Confirmed `display_perception` creates an OpenAI `image_url` content part while stripping image data from the tool message.
+.complex-problems/L20260516-222011/tmp/p231-split/workspace-persistence.md:5:Cortex workspace persistence must create or preserve durable payload records for tool steps and expose compact `step_ref`/`payload_ref` metadata in step records instead of storing raw heavy results as normal context content.
+.complex-problems/L20260516-222011/tmp/p231-split/workspace-persistence.md:12:- Evidence shows active step write requires or receives payload/payload_ref and writes durable payload records for heavy content.
+.complex-problems/L20260516-222011/tmp/p231-split/workspace-persistence.md:13:- Focused Cortex tests verify step write/index records include `payload_ref`/`step_ref` behavior.
+.complex-problems/L20260516-222011/tmp/p231-result.md:5:The full tool step write path durable payload ref boundary is audited through closed child results. Cortex workspace persistence creates/preserves durable payload refs (`R219`), and runtime handoff separates shell/display heavy output from compact public context before persistence (`R222`). Together they show active heavy tool output flows as compact projections plus `step_ref`/`payload_ref` backed payloads, not inline raw results.
+.complex-problems/L20260516-222011/tmp/p231-result.md:11:- Covered shell large/base64-like stdout and display/image output as representative heavy-output classes.
+.complex-problems/L20260516-222011/tmp/p231-split/runtime-handoff.md:13:- Focused runtime tests pass for shell/display projection and no raw base64/large stdout in normal tool messages.
+.complex-problems/L20260516-222011/tmp/p199-ticket.md:5:The projection inventory identified production code that appears stale or actively dangerous because it can inline images/base64 into LLM text paths. The cleanup must remove truly dead production branches while preserving current active projection paths and justified compatibility/defensive branches.
+.complex-problems/L20260516-222011/tmp/p199-ticket.md:14:- No code path can inline image/base64 payloads into LLM text through the removed helper.
+.complex-problems/L20260516-222011/tmp/p176-check.md:7:`R161` satisfies P176. It maps the runtime wrapper fields, separates public context from durable/raw payload fields, verifies raw-media/base64 safety with focused tests, and correctly states that `payload_ref` is not owned by the wrapper layer.
+.complex-problems/L20260516-222011/tmp/p176-check.md:11:- The result does not overclaim: it explicitly leaves storage-level `payload_ref` behavior to P177-P179.
+.complex-problems/L20260516-222011/tmp/p234-ticket.md:5:The concrete regression class is large shell output or display image/base64 data appearing as ordinary model-visible history text. This combined audit should prove both large shell and display paths stay compact together.
+.complex-problems/L20260516-222011/tmp/p234-ticket.md:9:Reuse code evidence from shell/display/runtime expansion audits, perform a final targeted regression search for raw base64/text injection patterns, and run the combined focused runtime test set that covers shell output contract, no historical image injection, and LLM context expansion.
+.complex-problems/L20260516-222011/tmp/p234-ticket.md:14:- Evidence shows raw base64/large stdout is not normal history text by default.
+.complex-problems/L20260516-222011/tmp/p234-ticket.md:19:Search for suspicious base64/raw image injection in runtime context/tool handling tests and code. Run shell output, no historical image injection, and context expansion tests together.
+.complex-problems/L20260516-222011/tmp/p191-check.md:17:- Shell screenshot output uses artifact/blob manifest, not raw base64 text: covered by shell output contract tests.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P124/checks/C130.md:9:- `process_multimodal_messages` only projects images from messages marked `_projection="display_perception"`.
+.complex-problems/L20260516-222011/tmp/t132-result.md:23:- This result does not audit whether all active API call sites populate `step_ref`/`payload_ref`; that remains under `P148`.
+.complex-problems/L20260516-222011/tmp/p417-ticket.md:22:- Tool payload references stay pointer-oriented; inline result payload compatibility is rejected or externalized explicitly.
+.complex-problems/L20260516-222011/tmp/p150-ticket.md:14:- Produced request shape includes structured `observation` and uses `payload`/`payload_ref` for full output where applicable.
+.complex-problems/L20260516-222011/tmp/p150-ticket.md:20:Use `rg` to locate `steps/write`, `write_step`, `payload_ref`, and bridge client calls in runtime code. Run relevant runtime tests around Cortex bridge/tool result recording. Add regression coverage if a request-building helper exists.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/children/P124/tickets/T119.md:5:Display history sanitization must not break current-turn image perception. Current display output should become provider-native image content through the dedicated multimodal path, not raw base64 text in tool content.
+.complex-problems/L20260516-222011/tmp/p190-check.md:18:- Raw base64 does not appear in text-only fields: satisfied by runtime and factory assertions.
+.complex-problems/L20260516-222011/tmp/p190-check.md:31:- Multimodal log snapshots are tested with raw JPEG-like base64 and route-level detail reads.
+.complex-problems/L20260516-222011/tmp/p136-child-regression-coverage.md:5:Even if individual layers look correct, regression coverage must prove externalized/blob-like payload refs do not break stable step lookup, do not leak raw payloads into public context, and do not leave compatibility branches that silently treat `step_ref` and `payload_ref` as interchangeable.
+.complex-problems/L20260516-222011/tmp/p136-child-regression-coverage.md:10:- Add missing tests that fail if `step_ref` and `payload_ref` are conflated.
+.complex-problems/L20260516-222011/tmp/p142-child-payload-ref-mirroring.md:1:# write_step payload_ref mirroring audit
+.complex-problems/L20260516-222011/tmp/p142-child-payload-ref-mirroring.md:5:`write_step` must externalize raw payload data through the workspace payload store and mirror the actual `payload_ref` back into the stored observation. If this fails, step JSON can point at stale refs, miss full-output recovery, or retain large payload data inline.
+.complex-problems/L20260516-222011/tmp/p142-child-payload-ref-mirroring.md:12:- Evidence proves raw payload writes require or produce a `payload_ref`.
+.complex-problems/L20260516-222011/tmp/p142-child-payload-ref-mirroring.md:13:- Evidence proves the stored step observation contains the actual persisted `payload_ref`.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/results/R118.md:9:- Incorporated P122/R114: devicectl screenshot/file-pull convert base64 device responses into Blob artifacts and do not print raw base64 stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/results/R118.md:12:- Incorporated P125/R117: final base64/display/artifact regression sweep passed.
+.complex-problems/L20260516-222011/tmp/p003-child-runtime-context-client.md:13:- Targeted runtime tests prove no historical image/base64 injection and correct current-round image availability.
+.complex-problems/L20260516-222011/tmp/p220-ticket.md:5:The Google provider fix must be pinned by tests that would fail on the old `str(content)` behavior and verify base64 is not placed into text parts.
+.complex-problems/L20260516-222011/tmp/p220-ticket.md:9:Add a provider `chat` capture test for a user message with OpenAI-style `image_url` data URL and text content. Assert the outgoing Gemini request contains `inlineData` image part and text part, and no text part contains the image base64.
+.complex-problems/L20260516-222011/tmp/p220-ticket.md:15:- Test asserts no image base64 appears in text parts.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/README.md:5:CLI tools that produce media or large outputs should return text plus artifact manifests, with display consuming blob refs without reinserting raw base64 into context.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/README.md:10:- Verify screenshot/media CLI returns blob artifacts rather than base64 text.
+.complex-problems/L20260516-222011/tmp/p229-check.md:5:`P229` is solved by `R227` and its four closed child branches. The write path records and preserves `step_ref`/`payload_ref`, event projection keeps compact pointer-bearing observations, runtime LLM context expansion uses `/v1/steps/read_formatted` rather than full payload reads, and combined shell/display regression tests pass.
+.complex-problems/L20260516-222011/tmp/p229-check.md:16:- Tool/step write path records `step_ref`/`payload_ref` evidence: satisfied by `P231` and its child checks.
+.complex-problems/L20260516-222011/tmp/p229-check.md:28:The deepest plausible failure chain is: shell/display writes heavy data, event projection expands it, runtime context reads full payload, then LLM request receives raw/base64 text. The child audits cover every link in that chain and the final combined tests cover large shell + display regressions together.
+.complex-problems/L20260516-222011/tmp/p203-child-factory.md:5:Factory and provider/log layers should preserve structured multimodal request content while redacting large/base64 payloads in logs. We need to classify these branches separately from runtime.
+.complex-problems/L20260516-222011/tmp/p427-check.md:17:- No `stable_json(observation)` fallback: satisfied, guard has no hits.
+.complex-problems/L20260516-222011/tmp/p427-check.md:27:I checked for the exact prior failure class: unknown tool observations or display/base64 shaped payloads being projected into history/current messages. The previous fallback is absent and formatter gating is explicit.
+.complex-problems/L20260516-222011/tmp/p228-check.md:29:The skeptical failure mode is that a payload API might silently fall back to whole-payload or default-history injection. Evidence argues against that for this problem scope: payload reads require explicit `payload_ref`, use `_payload_slice` with clamped limits, searches cap match count/context size, and summarize/qa call explicit payload interpretation with bounded/redacted input. Default step formatting paths return projections/previews rather than full payload bodies.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/checks/C132.md:9:- R114/C128: screenshot/file-pull artifact manifest contract and no raw base64 stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/checks/C132.md:17:- Verify media CLI returns blob artifacts rather than base64 text: satisfied by P122.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/checks/C132.md:27:The combined sweep exercises the previously fragile path: shell screenshot -> blob artifact -> display -> sanitized tool history -> current provider image message, without raw base64 in ordinary shell/display history text.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/checks/C132.md:31:Low. Remaining base64 use is protocol-local at Blob/device/display/provider boundaries and covered by focused tests.
+.complex-problems/L20260516-222011/tmp/p429/api-steps-read-formatted.txt:8:        format_for_current_tool_result_llm,
+.complex-problems/L20260516-222011/tmp/p429/api-steps-read-formatted.txt:9:        format_for_display_perception_llm,
+.complex-problems/L20260516-222011/tmp/p429/api-steps-read-formatted.txt:24:    if projection == "display_perception":
+.complex-problems/L20260516-222011/tmp/p429/api-steps-read-formatted.txt:25:        content = format_for_display_perception_llm(parsed, req.provider)
+.complex-problems/L20260516-222011/tmp/p429/api-steps-read-formatted.txt:26:    elif projection == "current_tool_result":
+.complex-problems/L20260516-222011/tmp/p429/api-steps-read-formatted.txt:27:        content = format_for_current_tool_result_llm(parsed, req.provider)
+.complex-problems/L20260516-222011/tmp/p429/api-steps-read-formatted.txt:36:                "allowed": ["history", "current_tool_result", "display_perception"],
+.complex-problems/L20260516-222011/tmp/p003-child-context-assembly-map.md:11:- The role of context event stream, workspace projections, `step_ref`, `payload_ref`, and active skill stack injection is documented.
+.complex-problems/L20260516-222011/tmp/t181-result.md:12:  - base64 is not copied into text fields.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/tickets/T116.md:5:Media/large-output CLI tools must behave like terminal commands: stdout should contain bounded text plus artifact manifests, not raw bytes/base64. `display(blob://...)` is the explicit perception path, but its historical/public tool projection must not reinsert raw base64 into future context.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/tickets/T116.md:9:Split the audit across artifact-producing CLIs, display history/current projection, provider-native image handoff, and final base64 residue/regression checks. Fix any bounded gap found and rerun focused tests.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/tickets/T116.md:13:- Media-producing shell CLIs return `tool-output.v1` manifests with `blob://runtime-artifact/...` refs, not raw base64 stdout.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/tickets/T116.md:16:- Regression tests prevent raw image/audio bytes or `data:image` text from leaking into ordinary shell/display history context.
+.complex-problems/L20260516-222011/problems/P000/children/P002/children/P104/tickets/T116.md:30:- Direct provider image payloads may use base64/data URLs internally only at the provider adapter boundary; that is distinct from tool text/history projection.
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:16:        ``payload_ref`` into the observation percept. The caller's input is not
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:27:            raise ValueError("tool steps must use payload/payload_ref, not inline result")
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:32:            payload_ref = normalized.get("payload_ref")
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:33:            if not payload_ref:
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:34:                raise ValueError("payload_ref is required when writing payload")
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:35:            stable_step_ref = str(normalized.get("step_ref") or payload_ref)
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:36:            actual_payload_ref = await self.write_payload(
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:38:                str(payload_ref),
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:43:            normalized["payload_ref"] = actual_payload_ref
+.complex-problems/L20260516-222011/tmp/p429/workspace-normalize-step.txt:45:                normalized["observation"]["payload_ref"] = actual_payload_ref
+.complex-problems/L20260516-222011/tmp/t131-result.md:1:# write_step payload_ref mirroring audit result
+.complex-problems/L20260516-222011/tmp/t131-result.md:5:`write_step`/`normalize_step` externalizes payloads and mirrors the actual persisted `payload_ref` into both the top-level step and the stored observation. I tightened local-payload test coverage so the observation-level mirror is explicitly verified for both local and blob-backed paths.
+.complex-problems/L20260516-222011/tmp/t131-result.md:11:- Verified `write_payload` returns the actual persisted ref and that ref is written to `normalized["payload_ref"]` and `normalized["observation"]["payload_ref"]`.
+.complex-problems/L20260516-222011/tmp/t131-result.md:12:- Added local-path assertion in `test_write_step_externalizes_payload_and_indexes_payload_ref` so stored observation mirroring is checked, not just top-level ref.
+.complex-problems/L20260516-222011/tmp/p147-check.md:19:- `step_ref`, `payload_ref`, tool/status/duration metadata: satisfied by existing and retained tests.
+.complex-problems/L20260516-222011/tmp/p421/context_event_writer.inspect.txt:214:        payload_ref: str | None = None,
+.complex-problems/L20260516-222011/tmp/p421/context_event_writer.inspect.txt:226:        if payload_ref is not None:
+.complex-problems/L20260516-222011/tmp/p421/context_event_writer.inspect.txt:227:            payload["payload_ref"] = payload_ref
+.complex-problems/L20260516-222011/tmp/p421/context_event_writer.inspect.txt:238:                    f"context-tool:step:{ctx.stream_id}:{scope_id or '_root'}:{step_ref or payload_ref or call_id}"
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:7:=== display/base64/history/current projection surface ===
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:14:novaic-cortex/novaic_cortex/api.py:1827:        format_for_current_tool_result_llm,
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:15:novaic-cortex/novaic_cortex/api.py:1828:        format_for_display_perception_llm,
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:17:novaic-cortex/novaic_cortex/api.py:1843:    if projection == "display_perception":
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:18:novaic-cortex/novaic_cortex/api.py:1844:        content = format_for_display_perception_llm(parsed, req.provider)
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:19:novaic-cortex/novaic_cortex/api.py:1845:    elif projection == "current_tool_result":
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:20:novaic-cortex/novaic_cortex/api.py:1846:        content = format_for_current_tool_result_llm(parsed, req.provider)
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:23:novaic-cortex/novaic_cortex/api.py:1855:                "allowed": ["history", "current_tool_result", "display_perception"],
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:29:novaic-cortex/novaic_cortex/step_result_projection.py:154:                # 支持 URL 形式或直接的 data(base64) 形式
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:30:novaic-cortex/novaic_cortex/step_result_projection.py:164:                        "url": f"data:{mime};base64,{item['data']}",
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:37:novaic-cortex/novaic_cortex/step_result_projection.py:257:def format_for_current_tool_result_llm(
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:39:novaic-cortex/novaic_cortex/step_result_projection.py:267:def format_for_display_perception_llm(
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:42:=== inline result / payload ref enforcement ===
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:44:novaic-cortex/novaic_cortex/context_event_projection.py:358:    payload_ref = event.payload.get("payload_ref")
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:45:novaic-cortex/novaic_cortex/context_event_projection.py:359:    content = _tool_result_content(observation, payload_ref=payload_ref)
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:46:novaic-cortex/novaic_cortex/context_event_projection.py:364:        "payload_ref": payload_ref,
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:47:novaic-cortex/novaic_cortex/context_event_projection.py:377:    lookup_ref = step_ref if isinstance(step_ref, str) and step_ref else payload_ref
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:48:novaic-cortex/novaic_cortex/context_event_projection.py:383:def _tool_result_content(observation: Any, *, payload_ref: Any = None) -> str:
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:51:novaic-cortex/novaic_cortex/context_event_projection.py:389:        ref = payload_ref if isinstance(payload_ref, str) and payload_ref.strip() else None
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:53:novaic-cortex/novaic_cortex/context_event_projection.py:393:            return f"[Tool result omitted from context; inspect payload_ref={ref}{detail}]"
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:56:novaic-cortex/novaic_cortex/workspace.py:34:    def __init__(self, *, code: str, payload_ref: str, message: str) -> None:
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:57:novaic-cortex/novaic_cortex/workspace.py:37:        self.payload_ref = payload_ref
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:58:novaic-cortex/novaic_cortex/workspace.py:41:def _payload_filename(payload_ref: str) -> str:
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:59:novaic-cortex/novaic_cortex/workspace.py:42:    digest = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:60:novaic-cortex/novaic_cortex/workspace.py:143:        payload_ref: str,
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:61:novaic-cortex/novaic_cortex/workspace.py:149:        manifest = operational_store.get_payload_manifest(payload_ref=payload_ref)
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:62:novaic-cortex/novaic_cortex/workspace.py:153:            payload_ref=manifest["payload_ref"],
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:63:novaic-cortex/novaic_cortex/workspace.py:154:            source_payload_ref=manifest.get("source_payload_ref"),
+.complex-problems/L20260516-222011/tmp/p429/live-source-residue-rg.txt:64:novaic-cortex/novaic_cortex/workspace.py:170:        payload_ref: str,

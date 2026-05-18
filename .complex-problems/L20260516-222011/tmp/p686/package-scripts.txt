@@ -1,0 +1,40 @@
+## Entangled/packages/protocol/package.json
+- build: tsc
+- dev: tsc --watch
+
+## byclaw-website/package.json
+- dev: vite --host 127.0.0.1
+- build: tsc -b && vite build
+- lint: eslint .
+- preview: vite preview
+
+## examples/tauri-ios-hello/package.json
+- dev: vite
+- build: tsc && vite build
+- preview: vite preview
+- tauri: tauri
+- tauri:build:ios:debug: (test -d src-tauri/gen/apple || env -u CI tauri ios init) && bash scripts/patch-ios-xcode.sh && env -u CI tauri ios build --debug
+- tauri:run:ios: bash scripts/build-and-install-ios.sh
+- tauri:open:ios: (test -d src-tauri/gen/apple || env -u CI tauri ios init) && bash scripts/patch-ios-xcode.sh && open src-tauri/gen/apple/tauri-ios-hello.xcodeproj
+
+## novaic-app/package.json
+- dev: vite
+- build: tsc && vite build
+- preview: vite preview
+- tauri: tauri
+- tauri:dev: tauri dev
+- tauri:build: bash scripts/sync-vmuse-resource.sh && cd src-tauri && ./setup-dmg-support.sh && cd .. && env -u CI tauri build
+- tauri:build:desktop: tauri build
+- tauri:build:android: tauri android build -- --no-default-features --features custom-protocol,mobile
+- tauri:clean:ios: rm -rf src-tauri/gen/apple
+- tauri:build:ios: (test -d src-tauri/gen/apple || env -u CI tauri ios init) && bash scripts/patch-ios-xcode.sh && env -u CI tauri ios build -- --no-default-features --features mobile
+- tauri:build:ios:debug: (test -d src-tauri/gen/apple || env -u CI tauri ios init) && bash scripts/patch-ios-xcode.sh && env -u CI tauri ios build --debug -- --no-default-features --features mobile
+- tauri:open:ios: (test -d src-tauri/gen/apple || env -u CI tauri ios init) && bash scripts/patch-ios-xcode.sh && open src-tauri/gen/apple/novaic.xcodeproj
+- tauri:run:ios: bash scripts/build-and-install-ios.sh
+- tauri:dev:android: tauri android dev -- --no-default-features --features custom-protocol,mobile
+- tauri:dev:ios: tauri ios dev -- --no-default-features --features mobile
+- tauri:setup-dmg: cd src-tauri && ./setup-dmg-support.sh
+- lint: eslint "src/**/*.{ts,tsx}" --report-unused-disable-directives --max-warnings 0
+- format: prettier --write src/
+- test:unit: vitest run
+

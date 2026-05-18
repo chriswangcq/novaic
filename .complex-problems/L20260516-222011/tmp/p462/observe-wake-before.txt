@@ -1,0 +1,6 @@
+novaic-agent-runtime/queue_service/session_outbox.py:30:    OBSERVE_CREATE_WAKE_SAGA = "observe_create_wake_saga"
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:133:        if row["effect_type"] == SessionOutboxDispatcher.OBSERVE_CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:148:            effect_type=SessionOutboxDispatcher.OBSERVE_CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:159:    assert SessionOutboxDispatcher.OBSERVE_CREATE_WAKE_SAGA not in (
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:75:        if effect["effect_type"] == SessionOutboxDispatcher.OBSERVE_CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:102:        effect["effect_type"] != SessionOutboxDispatcher.OBSERVE_CREATE_WAKE_SAGA

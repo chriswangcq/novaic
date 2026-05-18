@@ -1,0 +1,53 @@
+class StepIndexRequest(_TenantMixin):
+    scope_id: str
+
+
+@app.post("/v1/steps/write")
+async def steps_write(req: StepWriteRequest):
+    """Write a tool step to the current active scope.
+
+    Automatically resolves to the deepest open child scope
+    so that tool results inside a skill go to the correct scope.
+
+    Serialized per (user, agent, root scope) with the same lock as
+    skill_begin/skill_end, so concurrent tool calls in the same round
+    can't race on SQLite active-scope routing, _count_step_dirs (seq
+    allocation), or _sys_append_line (_index.jsonl RMW).
+    """
+    async with _scope_lock_cm(req.user_id, req.agent_id, req.scope_id, op="steps_write"):
+        try:
+            ws = _get_workspace(req.user_id, req.agent_id)
+            root_path = _root_scope_path(req.scope_id)
+            active_path = read_active_stack_projection(
+                ws.operational_store,
+                root_scope_id=req.scope_id,
+                root_scope_path=root_path,
+            )["active_scope_path"]
+            normalized_step = await ws.normalize_step(active_path, req.step)
+            await _context_event_writer(ws).tool_step_recorded(
+                _event_write_context(
+                    req,
+                    root_scope_id=req.scope_id,
+                    root_scope_path=root_path,
+                ),
+                scope_id=_scope_id_from_path(active_path),
+                call_id=str(
+                    normalized_step.get("call_id")
+                    or normalized_step.get("id")
+                    or "unknown"
+                ),
+                tool=str(normalized_step.get("tool") or ""),
+                status=str(normalized_step.get("status") or ""),
+                observation=normalized_step.get("observation") or {},
+                step_ref=normalized_step.get("step_ref"),
+                payload_ref=normalized_step.get("payload_ref"),
+            )
+            path = await ws.write_step_projection(active_path, normalized_step)
+            return {"path": path, "scope_path": active_path}
+        except Exception:
+            metric_inc("cortex_step_failures_total")
+            raise
+
+
+@app.post("/v1/steps/list")
+async def steps_list(req: StepListRequest):

@@ -1,0 +1,114 @@
+## subprocess/process/fallback terms in Cortex code and tests
+novaic-cortex/tests/test_operational_store.py:36:def test_initialize_creates_schema_and_rejects_memory_fallback(tmp_path):
+novaic-cortex/tests/test_operational_store.py:49:            for row in conn.execute(
+novaic-cortex/tests/test_operational_store.py:53:        schema_version = conn.execute(
+novaic-cortex/tests/test_operational_store.py:58:            for row in conn.execute("PRAGMA table_info(scope_projection)")
+novaic-cortex/tests/test_operational_store.py:75:        conn.execute(
+novaic-cortex/tests/test_operational_store.py:94:        conn.execute(
+novaic-cortex/tests/test_operational_store.py:117:            for row in conn.execute("PRAGMA table_info(payload_manifest)")
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:12:async def test_shell_has_no_local_fallback_without_sandboxd_executor() -> None:
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:13:    ws, store = make_workspace_with_store("no-local-fallback")
+novaic-cortex/tests/test_shell_capabilities_internal_auth.py:4:import subprocess
+novaic-cortex/tests/test_shell_capabilities_internal_auth.py:52:        completed = subprocess.run(
+novaic-cortex/tests/test_tool_schemas_limits.py:114:def test_skill_end_schema_does_not_advertise_root_summary_fallback() -> None:
+novaic-cortex/tests/test_context_event_no_compat.py:43:async def test_prepare_for_llm_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-cortex/tests/test_context_event_no_compat.py:59:async def test_status_include_usage_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:6:import subprocess
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:15:def _run_devicectl(tmp_path: Path, args: list[str], *, server_url: str) -> subprocess.CompletedProcess[str]:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:17:    return subprocess.run(
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:32:def _run_cortex(tmp_path: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:34:    return subprocess.run(
+novaic-cortex/tests/test_sandboxd_wiring.py:11:from novaic_cortex.api import app, set_registry, set_sandbox_process_runner_factory
+novaic-cortex/tests/test_sandboxd_wiring.py:28:    async def execute(self, spec: SandboxExecSpec) -> SandboxExecResult:
+novaic-cortex/tests/test_sandboxd_wiring.py:34:            self.on_execute(spec)
+novaic-cortex/tests/test_sandboxd_wiring.py:49:    result = await Sandbox(ws, process_runner=runner).exec("printf raw-command")
+novaic-cortex/tests/test_sandboxd_wiring.py:88:    result = await Sandbox(ws, process_runner=runner).exec("touch created.txt")
+novaic-cortex/tests/test_sandboxd_wiring.py:121:    result = await Sandbox(ws, process_runner=runner).exec(
+novaic-cortex/tests/test_sandboxd_wiring.py:159:    result = await Sandbox(ws, process_runner=runner).exec(
+novaic-cortex/tests/test_sandboxd_wiring.py:169:def test_internal_shell_endpoint_uses_configured_process_runner() -> None:
+novaic-cortex/tests/test_sandboxd_wiring.py:178:    set_sandbox_process_runner_factory(lambda: runner)
+novaic-cortex/tests/test_sandboxd_wiring.py:192:        set_sandbox_process_runner_factory(None)
+novaic-cortex/tests/test_context_event_read_source_guards.py:28:def test_prepare_for_llm_has_no_dfs_read_fallback() -> None:
+novaic-cortex/tests/test_context_event_read_source_guards.py:42:def test_status_usage_has_no_dfs_read_fallback() -> None:
+novaic-cortex/novaic_cortex/main_cortex.py:10:from sandbox_sdk import SandboxdClient
+novaic-cortex/novaic_cortex/main_cortex.py:12:from novaic_cortex.api import app, set_registry, set_internal_key, set_sandbox_process_runner_factory
+novaic-cortex/novaic_cortex/main_cortex.py:97:    set_sandbox_process_runner_factory(
+novaic-cortex/novaic_cortex/main_cortex.py:98:        lambda: SandboxdClient(cli_args.sandboxd_url)
+novaic-cortex/tests/test_step_result_projection.py:60:def test_parse_tool_result_unknown_dict_fallback_is_bounded_text_only():
+novaic-cortex/novaic_cortex/operational_store.py:161:            conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:172:        rows = conn.execute("PRAGMA table_info(payload_manifest)").fetchall()
+novaic-cortex/novaic_cortex/operational_store.py:183:        conn.execute("DROP TABLE payload_manifest")
+novaic-cortex/novaic_cortex/operational_store.py:184:        conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:206:        rows = conn.execute("PRAGMA table_info(scope_projection)").fetchall()
+novaic-cortex/novaic_cortex/operational_store.py:209:            conn.execute("ALTER TABLE scope_projection ADD COLUMN scope_path TEXT")
+novaic-cortex/novaic_cortex/operational_store.py:215:        conn.execute(f"PRAGMA busy_timeout={int(self._config.busy_timeout_ms)}")
+novaic-cortex/novaic_cortex/operational_store.py:216:        conn.execute("PRAGMA journal_mode=WAL")
+novaic-cortex/novaic_cortex/operational_store.py:217:        conn.execute("PRAGMA foreign_keys=ON")
+novaic-cortex/novaic_cortex/operational_store.py:226:            conn.execute("BEGIN IMMEDIATE")
+novaic-cortex/novaic_cortex/operational_store.py:230:                conn.execute("ROLLBACK")
+novaic-cortex/novaic_cortex/operational_store.py:233:                conn.execute("COMMIT")
+novaic-cortex/novaic_cortex/operational_store.py:265:                existing = conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:288:            conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:309:            row = conn.execute("SELECT * FROM scope_events WHERE id = ?", (event_id,)).fetchone()
+novaic-cortex/novaic_cortex/operational_store.py:335:            return [self._scope_event_row_to_dict(row) for row in conn.execute(sql, tuple(params))]
+novaic-cortex/novaic_cortex/operational_store.py:359:            conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:398:            row = conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:406:            row = conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:431:            return [dict(row) for row in conn.execute(sql, tuple(params))]
+novaic-cortex/novaic_cortex/operational_store.py:447:            conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:459:            row = conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:467:            row = conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:500:            conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:539:            row = conn.execute(
+novaic-cortex/novaic_cortex/operational_store.py:547:            row = conn.execute(
+novaic-cortex/novaic_cortex/runtime.py:39:        sandbox_process_runner: object | None = None,
+novaic-cortex/novaic_cortex/runtime.py:44:        self._sandbox_process_runner = sandbox_process_runner
+novaic-cortex/novaic_cortex/runtime.py:51:            process_runner=self._sandbox_process_runner,
+novaic-cortex/novaic_cortex/runtime.py:63:            process_runner=self._sandbox_process_runner,
+novaic-cortex/novaic_cortex/sandbox.py:35:    async def execute(self, spec: SandboxExecSpec) -> SandboxExecResult:
+novaic-cortex/novaic_cortex/sandbox.py:59:        sandbox_executor: SandboxExecutor | None,
+novaic-cortex/novaic_cortex/sandbox.py:64:        self.sandbox_executor = sandbox_executor
+novaic-cortex/novaic_cortex/sandbox.py:81:        if self.sandbox_executor is None:
+novaic-cortex/novaic_cortex/sandbox.py:85:                    "Sandbox executor is not configured. Cortex shell execution "
+novaic-cortex/novaic_cortex/sandbox.py:114:            process_result = await self.sandbox_executor.execute(
+novaic-cortex/novaic_cortex/sandbox.py:166:        process_runner: SandboxExecutor | None = None,
+novaic-cortex/novaic_cortex/sandbox.py:174:        self.process_runner = process_runner
+novaic-cortex/novaic_cortex/sandbox.py:177:            self.process_runner,
+novaic-cortex/novaic_cortex/logical_fs.py:106:            "execute local shell processes."
+novaic-cortex/novaic_cortex/step_result_projection.py:185:    # 5. Unknown dict fallback: diagnostic text only, bounded so unexpected
+novaic-cortex/novaic_cortex/api.py:61:def _sandbox_executor_not_configured() -> Any:
+novaic-cortex/novaic_cortex/api.py:62:    raise RuntimeError("Sandbox executor factory is not configured; Cortex must use sandboxd")
+novaic-cortex/novaic_cortex/api.py:65:_sandbox_process_runner_factory: Callable[[], Any] = _sandbox_executor_not_configured
+novaic-cortex/novaic_cortex/api.py:119:def set_sandbox_process_runner_factory(factory: Callable[[], Any] | None) -> None:
+novaic-cortex/novaic_cortex/api.py:120:    global _sandbox_process_runner_factory
+novaic-cortex/novaic_cortex/api.py:121:    _sandbox_process_runner_factory = factory or _sandbox_executor_not_configured
+novaic-cortex/novaic_cortex/api.py:129:        sandbox_process_runner=_sandbox_process_runner_factory(),
+novaic-cortex/novaic_cortex/api.py:794:        raise HTTPException(status_code=503, detail="Cortex registry not configured")
+
+## explicit local executor class names
+novaic-cortex/novaic_cortex/sandbox.py:7:* A sandboxd SDK client owns remote process execution.
+novaic-cortex/novaic_cortex/sandbox.py:10:the sandboxd service boundary, shell execution fails explicitly instead of
+novaic-cortex/novaic_cortex/sandbox.py:34:class SandboxExecutor(Protocol):
+novaic-cortex/novaic_cortex/sandbox.py:59:        sandbox_executor: SandboxExecutor | None,
+novaic-cortex/novaic_cortex/sandbox.py:81:        if self.sandbox_executor is None:
+novaic-cortex/novaic_cortex/sandbox.py:86:                    "must go through sandboxd via sandbox_sdk."
+novaic-cortex/novaic_cortex/sandbox.py:156:    """Public shell facade backed by explicit LogicalFS and sandboxd SDK client."""
+novaic-cortex/novaic_cortex/sandbox.py:166:        process_runner: SandboxExecutor | None = None,
+novaic-cortex/tests/test_sandboxd_wiring.py:45:    ws, store = make_workspace_with_store("sandboxd-wiring")
+novaic-cortex/tests/test_sandboxd_wiring.py:68:    ws, store = make_workspace_with_store("sandboxd-logicalfs-patch")
+novaic-cortex/tests/test_sandboxd_wiring.py:99:    ws, store = make_workspace_with_store("sandboxd-scoped-ro")
+novaic-cortex/tests/test_sandboxd_wiring.py:135:    ws, store = make_workspace_with_store("sandboxd-scoped-rw")
+novaic-cortex/tests/test_sandboxd_wiring.py:170:    ws, store = make_workspace_with_store("api-sandboxd-wiring")
+novaic-cortex/tests/test_sandboxd_wiring.py:185:                "agent_id": "api-sandboxd-wiring",
+novaic-cortex/novaic_cortex/api.py:62:    raise RuntimeError("Sandbox executor factory is not configured; Cortex must use sandboxd")
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:12:async def test_shell_has_no_local_fallback_without_sandboxd_executor() -> None:
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:18:    assert caps.provider == "sandboxd-logicalfs"
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:25:    assert "must go through sandboxd" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:46:    assert "must go through sandboxd" not in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:66:    assert "must go through sandboxd" not in result.stderr
+novaic-cortex/novaic_cortex/logical_fs.py:100:        provider="sandboxd-logicalfs",
+novaic-cortex/novaic_cortex/logical_fs.py:104:            "Cortex projects Workspace data into LogicalFS and asks sandboxd to "
+novaic-cortex/novaic_cortex/main_cortex.py:30:        "--sandboxd-url",
+novaic-cortex/novaic_cortex/main_cortex.py:32:        help="Sandboxd base URL. Cortex server shell execution must go through sandboxd.",
+novaic-cortex/novaic_cortex/main_cortex.py:98:        lambda: SandboxdClient(cli_args.sandboxd_url)
+novaic-cortex/novaic_cortex/main_cortex.py:100:    logger.info("[Cortex] Sandbox process runner installed (sandboxd=%s)", cli_args.sandboxd_url)

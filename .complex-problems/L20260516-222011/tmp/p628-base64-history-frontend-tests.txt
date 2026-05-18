@@ -1,0 +1,16 @@
+
+> novaic@0.1.0 test:unit
+> vitest run src/components/Visual/ActivityTimeline.test.tsx src/components/Visual/ActivityTimeline.guard.test.ts src/components/hooks/useActivityTimeline.test.ts
+
+
+ RUN  v4.0.18 /Users/wangchaoqun/new-build-novaic/novaic-app
+
+ ✓ src/components/Visual/ActivityTimeline.guard.test.ts (3 tests) 2ms
+ ✓ src/components/hooks/useActivityTimeline.test.ts (4 tests) 10ms
+ ✓ src/components/Visual/ActivityTimeline.test.tsx (11 tests) 43ms
+
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Start at  02:09:59
+   Duration  555ms (transform 101ms, setup 0ms, import 383ms, tests 55ms, environment 440ms)
+

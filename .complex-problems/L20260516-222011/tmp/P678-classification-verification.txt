@@ -1,0 +1,70 @@
+=== classification headings ===
+3:## Source Artifacts
+9:## Active Cloud / Production Deployment Surfaces
+16:## Active / High-Signal Local Development Backend Surfaces
+22:## Packaged / Generated Resource Backend Launchers Requiring Caution
+27:## Active Ops / Peripheral Deploy Scripts
+36:## Test-Only / Guard-Only Candidates
+42:## Docs / Historical / Roadmap Candidates
+47:## Example / Unrelated Candidates
+53:## Remediation Inputs for P676
+=== remediation inputs ===
+## Remediation Inputs for P676
+
+Prioritize these files in P676:
+
+1. `novaic-app/scripts/start-backends.sh` - active dev launcher appears incomplete/stale versus current service topology.
+2. `novaic-app/src-tauri/resources/backends/start-backends.sh` - packaged launcher appears stale and may be active in app resources.
+3. `novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh` - generated copy of stale packaged launcher; update via source/regeneration if required.
+4. `scripts/start.sh` and `deploy` - current cloud path looks well-aligned with runtime roster, but should be inspected for syntax and guard verification rather than assumed correct.
+5. `scripts/ci/check_start_config_contract.py`, `scripts/ci/lint_deploy_fresh_smoke.py`, `scripts/ci/lint_runtime_worker_supervision.py` - verify they cover the active launchers and do not only guard cloud script paths.
+=== active candidates sanity rg ===
+novaic-app/src-tauri/resources/backends/start-backends.sh:2:# start-backends.sh - Start all backend services
+novaic-app/src-tauri/resources/backends/start-backends.sh:5:# Usage: ./start-backends.sh <resources_dir>
+novaic-app/src-tauri/resources/backends/start-backends.sh:19:AGENT_RUNTIME_PORT=19991
+novaic-app/src-tauri/resources/backends/start-backends.sh:21:echo "[start-backends] Starting NovAIC backends..."
+novaic-app/src-tauri/resources/backends/start-backends.sh:22:echo "[start-backends] Resources: $RESOURCES_DIR"
+novaic-app/src-tauri/resources/backends/start-backends.sh:23:echo "[start-backends] Logs: $LOG_DIR"
+novaic-app/src-tauri/resources/backends/start-backends.sh:31:    echo "[start-backends] Started Blob Service on :$BLOB_SERVICE_PORT"
+novaic-app/src-tauri/resources/backends/start-backends.sh:39:    echo "[start-backends] Started Gateway on :$GATEWAY_PORT"
+novaic-app/src-tauri/resources/backends/start-backends.sh:46:    echo "[start-backends] Started Agent Runtime on :$AGENT_RUNTIME_PORT"
+novaic-app/src-tauri/resources/backends/start-backends.sh:49:echo "[start-backends] All backends started."
+novaic-app/src-tauri/resources/backends/start-backends.sh:50:echo "[start-backends] Gateway URL: http://127.0.0.1:$GATEWAY_PORT"
+scripts/ci/lint_runtime_worker_supervision.py:65:        "runtime_worker_roster.py",
+scripts/start.sh:15:#   - Queue Service  :19997  Task/Saga queue management
+scripts/start.sh:17:#   - Sandboxd       :19994  Generic sandbox process execution
+scripts/start.sh:18:#   - Cortex         :19996  Scope tree, LLM context assembly, Workspace, Sandbox
+scripts/start.sh:24:#   Workers → Cortex    (scope/context/shell APIs)
+scripts/start.sh:64:    $(py novaic-agent-runtime) "$BASE/novaic-agent-runtime/scripts/runtime_worker_roster.py" "$@"
+scripts/start.sh:215:wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
+scripts/start.sh:234:wait_port "$PORT_SANDBOXD" "Sandboxd"
+scripts/start.sh:239:# 127.0.0.1). Cortex refuses to start without a reachable Redis —
+scripts/start.sh:243:# multi-replica Cortex is therefore always safe.
+scripts/start.sh:244:# Cortex runs out of its own venv; export PYTHONPATH so sibling infrastructure
+scripts/start.sh:259:wait_port "$PORT_CORTEX" "Cortex"
+novaic-app/scripts/start-backends.sh:2:# start-backends.sh - Start all Python backends from source (dev mode)
+novaic-app/scripts/start-backends.sh:9:#   ./start-backends.sh              # start all backends
+novaic-app/scripts/start-backends.sh:10:#   ./start-backends.sh --stop       # stop all backends
+novaic-app/scripts/start-backends.sh:11:#   ./start-backends.sh --status     # show running backends
+novaic-app/scripts/start-backends.sh:127:        "$PORT_QUEUE_SERVICE:Queue Service"
+novaic-app/scripts/start-backends.sh:183:# 2. Queue Service (part of novaic-agent-runtime)
+novaic-app/scripts/start-backends.sh:186:    echo "Starting Queue Service..."
+novaic-app/scripts/start-backends.sh:193:    wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
+novaic-app/scripts/start-backends.sh:274:echo "Stop: $SCRIPT_DIR/start-backends.sh --stop"
+scripts/ci/lint_deploy_fresh_smoke.py:46:        "runtime_worker_roster.py",
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:2:# start-backends.sh - Start all backend services
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:5:# Usage: ./start-backends.sh <resources_dir>
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:19:AGENT_RUNTIME_PORT=19991
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:21:echo "[start-backends] Starting NovAIC backends..."
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:22:echo "[start-backends] Resources: $RESOURCES_DIR"
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:23:echo "[start-backends] Logs: $LOG_DIR"
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:31:    echo "[start-backends] Started Blob Service on :$BLOB_SERVICE_PORT"
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:39:    echo "[start-backends] Started Gateway on :$GATEWAY_PORT"
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:46:    echo "[start-backends] Started Agent Runtime on :$AGENT_RUNTIME_PORT"
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:49:echo "[start-backends] All backends started."
+novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh:50:echo "[start-backends] Gateway URL: http://127.0.0.1:$GATEWAY_PORT"
+deploy:64:  # start.sh always restarts sandboxd and Cortex, so every backend restart path
+deploy:143:    /opt/novaic/services/novaic-agent-runtime/scripts/runtime_worker_roster.py \
+deploy:332:      /opt/novaic/services/novaic-agent-runtime/scripts/runtime_worker_roster.py \
+deploy:414:  echo "  cortex            部署 Cortex (LLM 编排)"
+deploy:416:  echo "  sandboxd          部署 Sandboxd Service"

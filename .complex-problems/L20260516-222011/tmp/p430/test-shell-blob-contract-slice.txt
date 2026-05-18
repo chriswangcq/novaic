@@ -1,0 +1,56 @@
+    assert body["ok"] is True
+    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+    assert body["artifacts"][0]["modality"] == "image"
+    assert body["artifacts"][0]["mime_type"] == "image/jpeg"
+    assert body["artifacts"][0]["access"]["display"]["args"]["file_url"] == body["artifacts"][0]["uri"]
+    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+    assert state["uploads"][0]["mime_type"] == "image/jpeg"
+    assert state["parts"][0]["data"] == image
+    assert base64.b64encode(image).decode("ascii") not in completed.stdout
+    assert '"screenshot":' not in completed.stdout
+
+
+def test_devicectl_hd_file_pull_uploads_file_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+    file_payload = b"hello from host file"
+    server, thread, state = _server_for_device_and_blob(file_bytes=file_payload)
+    try:
+        base_url = f"http://127.0.0.1:{server.server_port}"
+        completed = _run_devicectl(
+            tmp_path,
+            ["hd", "file-pull", "--json", '{"path":"/tmp/note.txt"}'],
+            server_url=base_url,
+        )
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    body = json.loads(completed.stdout)
+    assert body["version"] == "tool-output.v1"
+    assert body["ok"] is True
+    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+    assert body["artifacts"][0]["modality"] == "binary"
+    assert body["artifacts"][0]["name"] == "note.txt"
+    assert body["artifacts"][0]["mime_type"] == "text/plain"
+    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+    assert state["parts"][0]["data"] == file_payload
+    assert base64.b64encode(file_payload).decode("ascii") not in completed.stdout
+    assert '"data":' not in completed.stdout
+
+
+def test_cortex_payload_help_teaches_bounded_payload_inspection(tmp_path: Path) -> None:
+    completed = _run_cortex(tmp_path, ["payload", "--help"])
+
+    assert completed.returncode == 0, completed.stderr
+    assert "read/search return bounded text slices" in completed.stdout
+    assert "summarize/qa send bounded, redacted" in completed.stdout
+    assert "Do not dump raw large payloads or" in completed.stdout
+    assert "base64 into normal shell output" in completed.stdout
+
+
+def test_devicectl_help_teaches_artifact_manifest_not_base64(tmp_path: Path) -> None:
+    completed = _run_devicectl(tmp_path, ["--help"], server_url="http://127.0.0.1:9")
+
+    assert completed.returncode == 0, completed.stderr
+    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+    assert "Do not print or paste raw base64" in completed.stdout

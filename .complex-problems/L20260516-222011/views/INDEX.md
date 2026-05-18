@@ -1,0 +1,2534 @@
+# Complex Problem Ledger
+
+Ledger: L20260516-222011
+Schema: v6
+Root: P000 - Comprehensive project optimization audit and remediation
+Status: done
+Updated: 2026-05-18T15:20:41+00:00
+
+## Problem Tree
+- [done] P000: Comprehensive project optimization audit and remediation
+  - [done] P001: Repo topology and residue inventory
+    - [done] P008: Workspace branch submodule and dirty-state inventory
+      - [done] P010: Git and submodule state fact capture
+        - [done] P012: Superproject git state capture
+        - [done] P013: Submodule git state capture
+          - [done] P014: Repair submodule dirty-state capture
+      - [done] P011: Repo layout and command entrypoint fact capture
+    - [done] P009: Residue hotspot search and triage
+      - [done] P015: Direct tool and hidden harness residue scan
+        - [done] P018: IM direct tool residue scan
+          - [done] P021: Update current IM tool docs and placeholders to shell contract
+        - [done] P019: Payload direct tool residue scan
+          - [done] P022: Remove tracked generated complex-problems dashboard residue
+        - [done] P020: Subagent and audio direct tool residue scan
+          - [done] P023: Update vmuse long-running command guidance to shell-first contract
+          - [done] P024: Reconcile current perception/action architecture doc with shell-first subagent/audio contract
+        - [done] P025: Clean ActivityTimeline legacy direct-tool assumptions
+          - [done] P026: ActivityTimeline current versus legacy behavior inventory
+          - [done] P027: ActivityTimeline shell-first cleanup and focused tests
+        - [done] P028: Reconcile remaining current docs with shell-first tool contract
+          - [done] P029: Current docs stale tool reference inventory
+          - [done] P030: Current docs shell-first wording patch
+        - [done] P031: Update Cortex environment notification hint to shell-first IM read
+        - [done] P032: Neutralize internal reply-cap comments from direct im_reply wording
+        - [done] P033: Follow-up: classify and isolate remaining direct-tool vocabulary
+          - [done] P034: Policy and API vocabulary classification
+          - [done] P035: Test fixture vocabulary cleanup
+            - [done] P038: Common contract test fixtures
+            - [done] P039: Runtime test fixtures
+              - [done] P042: Runtime finalizer legacy-negative fixtures
+              - [done] P043: Runtime activity projection test fixtures
+              - [done] P044: Runtime guard and smoke assertions
+            - [done] P040: Cortex test fixtures
+            - [done] P041: App monitor test fixtures
+          - [done] P036: Monitor activity projection legacy boundary
+            - [done] P045: Backend activity projection legacy labels
+            - [done] P046: Frontend ActivityTimeline legacy detection
+          - [done] P037: Final direct-tool residue scan and exception ledger
+      - [done] P016: Ephemeral path and media payload leakage scan
+        - [done] P047: Ephemeral Cortex backing path residue
+        - [done] P048: Media/base64 tool output contract
+          - [done] P050: Child Problem: media CLI emits manifests, not bytes
+          - [done] P051: Child Problem: display and LLM image projection avoids text base64
+            - [done] P054: Child Problem: display tool output is concise and non-binary
+            - [done] P055: Child Problem: LLM context assembly preserves displayed images as images
+            - [done] P056: Child Problem: provider adapters receive image payloads through the right contract
+              - [done] P057: Add direct provider adapter image payload tests
+                - [done] P058: Implement provider adapter image payload test
+          - [done] P052: Child Problem: shell observations stay terminal-shaped
+            - [done] P059: Child Problem: runtime shell wrapper enforces bounded terminal text
+            - [done] P060: Child Problem: Cortex shell step projection preserves terminal semantics
+            - [done] P061: Child Problem: large media-like shell stdout regression coverage
+          - [done] P053: Child Problem: base64 leakage regression guards
+            - [done] P062: Child Problem: classify active base64 leakage surfaces
+            - [done] P063: Child Problem: implement active base64 leakage regression guard
+        - [done] P049: Docs and examples for file/blob output contract
+          - [done] P064: Child Problem: scan and classify active docs for output contract drift
+          - [done] P065: Child Problem: update active docs with final file/blob output contract
+      - [done] P017: Fallback compatibility and TODO residue scan
+        - [done] P066: Active code fallback and compatibility residue scan
+          - [done] P069: Runtime queue fallback compatibility residue scan
+          - [done] P070: Cortex common fallback compatibility residue scan
+            - [done] P072: Cortex common active PR history comment cleanup
+          - [done] P071: App business MCP adapter fallback compatibility residue scan
+            - [done] P073: App monitor UI fallback compatibility residue scan
+            - [done] P074: Business dispatch adapter residue scan
+              - [done] P076: Business dispatch active residue scan and safe cleanup
+                - [done] P077: Finish Business residue classification, cleanup, and tests
+                  - [done] P078: Remove or justify Business subagent no-op agent stub path
+                  - [done] P079: Classify and clean Business entity/health stub wording
+                  - [done] P080: Classify Business environment IM endpoints as current shell boundary
+                  - [done] P081: Run Business focused tests and final active residue scan
+            - [done] P075: MCP scripts shell adapter residue scan
+              - [done] P082: Scan and clean MCP/VMuse adapter residue
+              - [done] P083: Scan and clean Cortex shell CLI adapter residue
+              - [done] P084: Run final MCP/script shell-adapter scan and focused tests
+          - [done] P085: Classify and clean non-monitor App active residue
+            - [done] P086: App settings and model config residue classification
+            - [done] P087: App device WebRTC and UI media residue classification
+            - [done] P088: App chat audio and blob upload residue classification
+            - [done] P089: App non-monitor final residue scan and guard verification
+        - [done] P067: Test skip TODO and fixture residue scan
+          - [done] P090: Runtime queue test residue scan
+          - [done] P091: App test residue scan
+          - [done] P092: Business Cortex Common test residue scan
+          - [done] P093: MCP scripts and CI test residue scan
+            - [done] P094: MCP Test Residue Scan
+            - [done] P095: Scripts and CI Helper Residue Scan
+              - [done] P097: Repository Scripts Residue Scan
+              - [done] P098: CI and Lint Helper Residue Scan
+            - [done] P096: MCP Scripts CI Final Residue Sweep
+        - [done] P068: Active docs migration and legacy residue scan
+          - [done] P099: Active Architecture Docs Residue Scan
+          - [done] P100: Reference and Runbook Docs Residue Scan
+          - [done] P101: Active Docs Final Residue Sweep
+  - [done] P002: Shell tool contract and CLI usability audit
+    - [done] P102: Shell Output and Desc Contract Audit
+    - [done] P103: Agentctl Devicectl Cortex CLI Coverage Audit
+      - [done] P105: Agentctl CLI Coverage Audit
+        - [done] P108: Agentctl IM CLI Contract Audit
+        - [done] P109: Agentctl Subagent CLI Contract Audit
+        - [done] P110: Agentctl Media Audio-QA CLI Contract Audit
+      - [done] P106: Devicectl CLI Coverage and Artifact Contract Audit
+        - [done] P111: Devicectl Artifact-Producing Commands Contract Audit
+        - [done] P112: Devicectl Non-Media Command Coverage Audit
+      - [done] P107: Cortex CLI Coverage and Workspace Access Audit
+        - [done] P113: Cortex Payload CLI Coverage Audit
+        - [done] P114: Cortex Stable Workspace Path Contract Audit
+          - [done] P115: Stable Workspace Path Guidance in Shell Schema and Help
+          - [done] P116: Runtime Stale Cortex Backing Path Rejection Guard
+          - [done] P117: Stable Workspace Path Docs and Example Residue Sweep
+            - [done] P119: Active Docs Stable Path Residue Audit
+            - [done] P120: Test and Schema Stable Path Residue Classification
+            - [done] P121: Scripts and Examples Stable Path Residue Audit
+          - [done] P118: Stable Workspace Path Regression Sweep
+    - [done] P104: Blob Artifact and Display Contract Audit
+      - [done] P122: Artifact-Producing CLI Blob Manifest Contract Audit
+      - [done] P123: Display Tool History Sanitization Audit
+      - [done] P124: Provider-Native Image Projection Audit
+      - [done] P125: Blob Artifact and Display Base64 Regression Sweep
+  - [done] P003: Cortex context projection and payload boundary audit
+    - [done] P126: Context assembly source map and event boundary
+      - [done] P133: ContextEvent stream and read model map
+        - [done] P138: ContextEvent append-only store map
+        - [done] P139: ContextEvent pure projection map
+        - [done] P140: ContextEvent read model and budget boundary map
+      - [done] P134: Workspace materialized projections and payload reference map
+        - [done] P141: Workspace payload store and blob externalization map
+        - [done] P142: Workspace tool step normalization and index map
+          - [done] P145: normalize_step observation contract audit
+          - [done] P146: write_step payload_ref mirroring audit
+          - [done] P147: step index metadata and artifact marker audit
+          - [done] P148: write_step_projection call-site boundary audit
+            - [done] P149: Cortex API step projection boundary audit
+            - [done] P150: Runtime bridge step request shape audit
+            - [done] P151: Direct workspace write bypass scan
+        - [done] P143: Workspace context.jsonl projection map
+          - [done] P152: context.jsonl helper implementation map
+          - [done] P153: context.jsonl caller classification
+          - [done] P154: LLM prepare path context authority audit
+            - [done] P156: Cortex prepare_for_llm read model authority
+            - [done] P157: Runtime LLM prepare caller authority
+            - [done] P158: LLM prepare authority residue guard
+          - [done] P155: context projection regression test audit
+        - [done] P144: Cortex API materialization call-site map
+      - [done] P135: Runtime prepare-context handler map
+        - [done] P159: Runtime saga prepare-context ordering map
+          - [done] P164: ReAct saga prepare-context source ordering map
+          - [done] P165: ReAct saga prepare-context ordering guard
+        - [done] P160: Runtime Cortex prepare handler contract map
+          - [done] P166: Cortex prepare handler response shape map
+          - [done] P167: CortexBridge prepare_for_llm endpoint contract map
+        - [done] P161: Runtime LLM payload handoff map
+          - [done] P168: ReactThink llm.call payload builder map
+          - [done] P169: LLM handler provider request assembly map
+            - [done] P171: LLMCall contract provider payload source map
+            - [done] P172: LLM handler transport delegation boundary map
+          - [done] P170: LLM payload handoff regression coverage audit
+        - [done] P162: Runtime continuity and context.read residue classification
+          - [done] P173: Context read handler residue classification
+          - [done] P174: Runtime wake continuity residue classification
+          - [done] P175: Runtime read_context caller inventory and guard coverage
+        - [done] P163: Runtime prepare-context regression coverage audit
+      - [done] P136: Tool result step_ref and payload_ref map
+        - [done] P176: Runtime tool result wrapper ref contract
+        - [done] P177: Cortex step storage and projection ref contract
+        - [done] P178: Formatted step read and display projection ref contract
+        - [done] P179: Externalized payload regression coverage and ambiguity cleanup
+      - [done] P137: Active skill stack injection map
+        - [done] P180: Active stack source and projection map
+        - [done] P181: Active stack final context injection ordering map
+        - [done] P182: Active stack and current display media regression coverage
+        - [done] P183: Active stack stale injection cleanup audit
+    - [done] P127: Step result projection contract audit
+      - [done] P184: Shell projection bounded terminal text
+      - [done] P185: Current display projection provider media
+        - [done] P188: Cortex current display projection contract
+        - [done] P189: Runtime current display selection and active-stack ordering
+          - [done] P192: Runtime step-ref display projection selection
+          - [done] P193: Active-stack-after-display media preservation
+        - [done] P190: Provider media adapter conversion
+          - [done] P194: Runtime-to-factory multimodal request preservation
+          - [done] P195: Factory provider multimodal adapter preservation
+            - [done] P196: Factory provider request adapter media preservation
+            - [done] P197: Factory multimodal log detail serialization
+        - [done] P191: End-to-end display screenshot regression
+      - [done] P186: Historical display and artifact manifest projection
+      - [done] P187: Step result projection stale branch cleanup
+        - [done] P198: Projection branch inventory and classification
+          - [done] P202: Cortex projection branch inventory
+          - [done] P203: Runtime and factory projection branch inventory
+            - [done] P205: Runtime projection branch inventory
+            - [done] P206: Factory/provider/log projection branch inventory
+          - [done] P204: Projection test branch inventory
+        - [done] P199: Projection production stale branch cleanup
+          - [done] P207: Prove stale production projection helper has no live callers
+          - [done] P208: Delete stale projection helper and export residue
+          - [done] P209: Audit retained production projection compatibility branches
+            - [done] P210: Audit nested result wrapper projection branch
+            - [done] P211: Audit MCP image/data-url projection branch
+            - [done] P212: Audit generic dict JSON fallback projection branch
+        - [done] P200: Projection test residue cleanup
+          - [done] P213: Delete stale `resolve_for_llm` tests
+          - [done] P214: Audit projection guard test labels and assertions
+          - [done] P215: Run projection test cleanup verification
+        - [done] P201: Projection stale branch regression sweep
+          - [done] P216: Final projection static branch audit
+          - [done] P217: Fix Google/Gemini multimodal provider conversion
+            - [done] P219: Implement Gemini multimodal content conversion
+            - [done] P220: Add Gemini multimodal provider regression tests
+          - [done] P218: Final focused projection regression chain
+            - [done] P221: Run focused projection test chain
+            - [done] P222: Classify remaining projection compatibility branches
+              - [done] P223: Prove removed projection symbols are absent
+              - [done] P224: Classify active projection branch sites
+    - [done] P128: Agent runtime context client and history expansion audit
+      - [done] P225: Map runtime step result expansion path
+      - [done] P226: Verify runtime current versus historical media boundary
+      - [done] P227: Verify active-stack ordering does not suppress current display media
+    - [done] P129: Payload API and pointer retrieval boundary audit
+      - [done] P228: Audit explicit Cortex payload inspection APIs
+      - [done] P229: Audit payload write and normal context assembly boundaries
+        - [done] P231: Audit tool step write path durable payload refs
+          - [done] P235: Audit Cortex workspace step payload persistence
+          - [done] P236: Audit runtime tool handler durable payload handoff
+            - [done] P237: Audit runtime shell handoff uses compact projection plus durable payload
+            - [done] P238: Audit runtime display and media handoff avoids raw image text
+        - [done] P232: Audit Cortex event projection preserves payload pointers
+        - [done] P233: Audit runtime LLM context expansion avoids full payload reads
+        - [done] P234: Audit large shell/display output projection boundary
+      - [done] P230: Audit tool guidance and payload boundary tests
+        - [done] P239: Audit LLM tool schema and policy payload boundary
+          - [done] P241: Fix cross-package pytest tests namespace conflict
+            - [done] P242: Inventory Cortex test helper imports and package markers
+            - [done] P243: Migrate Cortex helpers to package-specific test namespace
+            - [done] P244: Verify mixed runtime and Cortex pytest selection is stable
+        - [done] P240: Audit shell capability guidance for payload and output boundaries
+          - [done] P245: Map shell capability payload and artifact guidance
+          - [done] P246: Correct stale shell capability wording if found
+          - [done] P247: Verify shell payload and output boundary tests
+    - [done] P130: Provider-native media adapter boundary audit
+      - [done] P248: Audit runtime history versus media perception boundary
+      - [done] P249: Audit provider adapter native media formats
+      - [done] P250: Classify media/base64 residue as provider-boundary-only or fix it
+        - [done] P251: Runtime/context media residue classification
+        - [done] P252: Cortex and shell CLI media residue classification
+        - [done] P253: Provider and factory fixture media residue classification
+        - [done] P254: Final repository cross-scan and residue closure
+    - [done] P131: Large-output and base64 leakage sweep
+      - [done] P255: Runtime large-output boundary sweep
+      - [done] P256: Cortex projection and payload large-output sweep
+      - [done] P257: Factory log redaction and detail large-output sweep
+      - [done] P258: Final large-output leakage cross-scan
+    - [done] P132: Cross-layer context projection regression suite
+      - [done] P259: Cortex projection regression coverage
+        - [done] P263: Cortex projection coverage inventory
+        - [done] P264: Cortex projection missing regression implementation
+        - [done] P265: Cortex projection focused verification
+      - [done] P260: Agent-runtime current versus historical media regression coverage
+        - [done] P266: Runtime media regression coverage inventory
+        - [done] P267: Runtime media missing regression implementation
+        - [done] P268: Runtime media focused verification
+      - [done] P261: Near-integrated screenshot manifest to display replay regression
+        - [done] P269: Near-integrated screenshot/display coverage inventory
+          - [done] P272: Runtime media seam inventory
+          - [done] P273: Cortex shell artifact seam inventory
+          - [done] P274: Cross-layer coverage comparison
+        - [done] P270: Near-integrated screenshot/display regression implementation
+          - [done] P275: Add near-integrated screenshot/display regression test
+          - [done] P276: Production fix or no-op proof for near-integrated regression
+        - [done] P271: Near-integrated screenshot/display focused verification
+      - [done] P262: Final cross-layer projection marker scan
+  - [done] P004: Queue FSM session and worker boundary audit
+    - [done] P277: Queue FSM and worker topology map
+    - [done] P278: Session state SSOT outbox and generation boundary audit
+      - [done] P282: Problem: Session schema and state ownership audit
+        - [done] P286: Problem: Session schema table inventory
+          - [done] P289: Problem: Session DDL definition scan
+          - [done] P290: Problem: Session table active usage classification
+        - [done] P287: Problem: Session repository state mutation inventory
+          - [done] P291: Problem: Session ledger mutation API inventory
+          - [done] P292: Problem: Session repository transaction and effect orchestration inventory
+            - [done] P294: Problem: Session dispatch transaction flow audit
+              - [done] P297: Problem: Unify dispatch start-wake transition construction
+                - [done] P298: Problem: Dispatch start-wake helper design
+                - [done] P299: Problem: Dispatch start-wake helper implementation
+                - [done] P300: Problem: Dispatch start-wake helper verification
+                  - [done] P301: Dispatch helper source-shape verification
+                  - [done] P302: Dispatch helper behavior test verification
+            - [done] P295: Problem: Session finalize restart rebuild transaction flow audit
+              - [done] P303: Session finalize transaction flow audit
+                - [done] P306: Finalize pending restart atomicity fix
+                  - [done] P307: Finalize restart atomicity design
+                  - [done] P308: Finalize restart atomicity implementation
+                  - [done] P309: Finalize restart atomicity verification
+              - [done] P304: Session restart transaction flow audit
+              - [done] P305: Session rebuild projection transaction flow audit
+            - [done] P296: Problem: Session after-transaction publish and outbox boundary audit
+              - [done] P310: Remove repository eager attach publish
+                - [done] P311: Attach outbox worker-only design
+                - [done] P312: Attach outbox worker-only implementation
+                  - [done] P314: Close attach worker-only cutover gaps
+                    - [done] P315: Remove stale attach task_id assumption
+                    - [done] P316: Update session outbox boundary source guards
+                    - [done] P317: Verify attach worker-only cutover after patches
+                - [done] P313: Attach outbox worker-only verification
+          - [done] P293: Problem: Session direct SQL and mutation residue scan
+            - [done] P318: Scan direct session SQL table access
+            - [done] P319: Scan old session wrappers and compatibility branches
+              - [done] P321: Rename stale attach publish helper
+            - [done] P320: Consolidate session residue scan classification
+        - [done] P288: Problem: Session rebuild projection and state read inventory
+          - [done] P322: Audit active session read paths
+          - [done] P323: Audit rebuild and pending projection writers
+          - [done] P324: Audit rebuild projection coverage and guards
+            - [done] P325: Update PR-252 attach state test for worker-owned outbox
+      - [done] P283: Problem: Session generation attach and finalize boundary audit
+        - [done] P326: Session generation lifecycle and advancement inventory
+        - [done] P327: Attach expected-generation validation audit
+          - [done] P330: Attach repository payload generation audit
+          - [done] P331: Attach session outbox delivery audit
+          - [done] P332: Runtime attach handler generation enforcement audit
+          - [done] P333: Attach stale and missing generation regression coverage audit
+        - [done] P328: Finalize and session-ended generation ownership audit
+          - [done] P334: Finalize/session-ended entry-point inventory
+          - [done] P335: Repository finalize generation atomicity
+          - [done] P336: Session-ended outbox delivery generation contract
+            - [done] P340: Session-ended delivery chain inventory
+            - [done] P341: Wake-finalize payload positive generation
+            - [done] P342: Session-ended handler client route contract
+            - [done] P343: Session-ended compatibility residue cleanup
+              - [done] P345: Direct session-ended delivery residue guard
+              - [done] P346: Session-ended delivery tests compatibility cleanup
+              - [done] P347: Upstream react generation default classification
+            - [done] P344: Session-ended delivery aggregate verification
+          - [done] P337: Runtime session-ended handler enforcement
+            - [done] P348: Runtime finalize handler inventory
+            - [done] P349: React contract positive session generation
+            - [done] P350: Cortex finalize mutation identity guards
+              - [done] P353: Cortex scope_end identity contract
+              - [done] P354: Subagent finalize status identity guard
+                - [done] P357: Subagent finalize status payload identity
+                - [done] P358: Subagent finalize status handler validation
+                - [done] P359: Wake finalize status gating order
+                - [done] P360: Subagent finalize status identity aggregate verification
+              - [done] P355: Wake finalize mutation payload propagation
+              - [done] P356: Finalize mutation guard aggregate verification
+            - [done] P351: Recovery compensation finalize identity
+              - [done] P361: Recovery compensation finalize source map
+              - [done] P362: Compensation wake_finalize generation preservation
+              - [done] P363: Session recovery missing identity handling
+              - [done] P364: Recovery compensation finalize aggregate verification
+                - [done] P365: Follow-Up: Remove Startup Rebuild Generation Default
+            - [done] P352: Runtime finalize enforcement aggregate verification
+          - [done] P338: Remaining stack and finalize reason archive boundary
+            - [done] P366: Child Problem: Finalize Diagnostics Source Map
+            - [done] P367: Child Problem: Session Finalize Diagnostics Binding
+              - [done] P370: Finalize Diagnostics Assertion Hardening
+            - [done] P368: Child Problem: Cortex Archive Diagnostics Binding
+              - [done] P371: Cortex Archive Diagnostics Source Map
+              - [done] P372: Scope End Boundary Contract Propagation
+              - [done] P373: Cortex Archive Diagnostics Persistence
+                - [done] P375: Cortex Archive Diagnostics Persistence Source Map
+                - [done] P376: Persist Explicit Archive Diagnostics
+                - [done] P377: Cortex Archive Diagnostics Persistence Verification
+              - [done] P374: Cortex Archive Diagnostics Aggregate Verification
+            - [done] P369: Child Problem: Finalize Diagnostics Aggregate Verification
+          - [done] P339: Finalize generation aggregate regression coverage
+            - [done] P378: Runtime finalize generation aggregate regression
+              - [done] P381: Runtime focused finalize regression tests
+              - [done] P382: Runtime finalize source guard classification
+            - [done] P379: Cortex archive diagnostics aggregate regression
+              - [done] P383: Cortex archive diagnostics focused tests
+              - [done] P384: Cortex archive diagnostics source guard classification
+            - [done] P380: Cross-repo stale compatibility residue guard
+              - [done] P385: Close residual live generation coercions
+                - [done] P386: Runtime attach active generation validation
+                - [done] P387: Cortex operational store generation validation
+                - [done] P388: Cross-repo generation residue guard matrix
+                  - [done] P389: Normalize remaining runtime generation default boundaries
+                    - [done] P390: Session FSM finalize generation validation
+                    - [done] P391: Session repo and ledger generation adapters
+                      - [done] P394: Session repo state reconstruction validation
+                      - [done] P395: Session ledger generation helper classification
+                    - [done] P392: Audit and generic FSM generation classification
+                      - [done] P396: Audit and projection generation classification
+                      - [done] P397: Generic FSM generation counter classification
+                    - [done] P393: Round and stack-depth default classification
+                    - [done] P398: Close remaining unclassified generation-like guard hits
+                      - [done] P399: Session FSM event generation boundary
+                      - [done] P400: Subagent wake session generation boundary
+                      - [done] P401: Widened guard residue matrix
+        - [done] P329: Missing or stale generation compatibility residue guard audit
+          - [done] P402: Compatibility residue guard inventory
+          - [done] P403: Runtime compatibility residue cleanup
+            - [done] P407: Runtime session authority residue cleanup
+            - [done] P408: Generic Queue infrastructure generation classification
+            - [done] P409: Task contracts and handler residue cleanup
+              - [done] P412: React contract residue classification
+              - [done] P413: Finalize saga and session handler residue classification
+              - [done] P414: Cortex handler and bridge residue classification
+              - [done] P415: Task contract and handler final verification
+            - [done] P410: Worker and health counter classification
+            - [done] P411: Runtime cleanup final verification
+          - [done] P404: Cortex compatibility residue cleanup
+            - [done] P416: Cortex residue inventory and live-surface map
+            - [done] P417: Cortex context event lifecycle cleanup
+              - [done] P421: ContextEvent store and writer contract audit
+              - [done] P422: ContextEvent projection and read-model cleanup
+              - [done] P423: Workspace step and payload normalization cleanup
+              - [done] P424: ContextEvent API lifecycle endpoint cleanup
+              - [done] P425: ContextEvent lifecycle final verification
+                - [done] P426: Problem: ContextEvent child outcome reconciliation
+                - [done] P427: Problem: ContextEvent projection and guard verification
+                - [done] P428: Problem: ContextEvent lifecycle residue sweep
+                  - [done] P429: Problem: ContextEvent live source residue sweep
+                  - [done] P430: Problem: ContextEvent test and artifact residue classification
+            - [done] P418: Cortex archive and diagnostic residue cleanup
+              - [done] P431: Problem: Cortex archive/direct diagnostics inventory
+              - [done] P432: Problem: Cortex direct scope-end contract cleanup
+              - [done] P433: Problem: Cortex archive projection cleanup
+            - [done] P419: Cortex API CLI and bridge surface cleanup
+              - [done] P434: Problem: Cortex API surface cleanup
+              - [done] P435: Problem: Cortex CLI and shell capability cleanup
+              - [done] P436: Problem: Cortex bridge surface cleanup
+                - [done] P437: Runtime bridge endpoint inventory
+                  - [done] P441: Runtime bridge focused test fixture misses explicit session_generation
+                - [done] P438: Agent loop prepare-path proof
+                - [done] P439: Context endpoint ownership and migration
+                  - [done] P442: Materialized context owner classification
+                  - [done] P443: Runtime bridge materialized context helper narrowing
+                  - [done] P444: Context task handler projection contract cleanup
+                  - [done] P445: Cortex context endpoint and test cleanup
+                - [done] P440: Final runtime bridge guard verification
+            - [done] P420: Cortex compatibility final verification
+              - [done] P446: Cortex generation and active-state compatibility guard
+              - [done] P447: Cortex media payload and projection compatibility guard
+              - [done] P448: Final focused Cortex runtime boundary test rerun
+              - [done] P449: Final Cortex compatibility classification matrix
+          - [done] P405: Test and migration compatibility residue cleanup
+            - [done] P450: Test and fixture compatibility assertion audit
+            - [done] P451: Migration-like and compatibility-named source audit
+            - [done] P452: Test migration residue final guard
+          - [done] P406: Compatibility residue final verification
+            - [done] P453: Aggregate compatibility guard matrix rerun
+            - [done] P454: Aggregate compatibility focused behavior tests
+              - [done] P456: Runtime focused compatibility behavior tests
+              - [done] P457: Cortex focused compatibility behavior tests
+            - [done] P455: Aggregate compatibility final matrix
+      - [done] P284: Problem: Session outbox side-effect ownership audit
+        - [done] P458: Session outbox effect inventory
+        - [done] P459: Session direct side-effect bypass classification
+          - [done] P461: Dispatcher direct call classification
+          - [done] P462: Observed wake outbox residue cleanup
+            - [done] P464: Remove observed wake outbox residue
+          - [done] P463: Side-effect bypass final guard
+        - [done] P460: Session outbox ownership final verification
+      - [done] P285: Problem: Session compatibility and legacy residue audit
+        - [done] P465: Session legacy residue inventory
+        - [done] P466: Session hidden input and duplicate config audit
+          - [done] P468: Session hidden input inventory
+          - [done] P469: Session hidden input remediation
+            - [done] P472: Saga decision config injection
+              - [done] P475: React saga decision config model
+              - [done] P476: React saga config wiring
+              - [done] P477: React saga config tests
+            - [done] P473: Retained ServiceConfig boundary classification
+            - [done] P474: Hidden input remediation tests and guards
+              - [done] P478: Rerun hidden input focused tests from correct runtime cwd
+          - [done] P470: Duplicate session config and residue cleanup
+            - [done] P479: Rerun duplicate residue guard from repo root
+          - [done] P471: Session explicit-boundary final verification
+        - [done] P467: Session legacy residue final verification
+    - [done] P279: Legacy imperative dispatch and compatibility residue cleanup
+      - [done] P480: Imperative dispatch residue inventory
+      - [done] P481: Direct side-effect bypass cleanup
+        - [done] P484: Production side-effect callsite classification
+        - [done] P485: Generic task publish route boundary decision
+        - [done] P486: Session outbox dispatcher boundary hardening
+        - [done] P487: Direct side-effect bypass final verification
+      - [done] P482: Finalize and session compatibility branch cleanup
+        - [done] P488: Finalize/session compatibility residue inventory
+        - [done] P489: Finalize ownership cleanup
+          - [done] P493: Finalize producer remaining-stack contract audit
+          - [done] P494: Wake finalize remaining-stack strictness
+          - [done] P495: Finalize ownership final verification
+        - [done] P490: Attach generation compatibility cleanup
+          - [done] P496: Attach generation contract inventory
+          - [done] P497: Attach generation contract hardening
+            - [done] P499: Attach effect builder strict generation boundary
+            - [done] P500: Attach generation hardening verification
+          - [done] P498: Attach generation final verification
+        - [done] P491: Recovery and session-ended compatibility cleanup
+          - [done] P501: Recovery and session-ended contract inventory
+          - [done] P502: Recovery stack diagnostics hardening
+          - [done] P503: Recovery and session-ended final verification
+        - [done] P492: Final finalize/session compatibility verification
+      - [done] P483: Imperative dispatch cleanup final verification
+        - [done] P504: Final imperative dispatch guard classification
+        - [done] P505: Final imperative dispatch residue cleanup
+        - [done] P506: Final focused runtime verification for imperative dispatch cleanup
+    - [done] P280: Finalize watchdog and recovery ownership audit
+      - [done] P507: Finalize and recovery ownership map
+      - [done] P508: Finalize and recovery ownership remediation
+      - [done] P509: Finalize and recovery ownership final verification
+    - [done] P281: Queue FSM focused verification
+      - [done] P510: Queue FSM Verification Test Scope Inventory
+        - [done] P513: Focused Pytest Target Inventory
+          - [done] P515: Filter Focused Pytest Target Inventory to Real Test Files
+        - [done] P514: Static Residue Guard Design
+          - [done] P516: Align Static Residue Guard Command With Term Taxonomy
+      - [done] P511: Queue FSM Focused Test Execution
+        - [done] P517: Session Outbox Finalize Focused Tests
+          - [done] P520: Repair Session Outbox Finalize Focused Test Failures
+            - [done] P521: Repair Recovery Remaining Stack Failure
+            - [done] P522: Repair Attach Outbox Published Status Failure
+            - [done] P523: Repair Session Repository Wrapper Boundary Count Failure
+            - [done] P524: Rerun Full Session Outbox Finalize Focused Subset
+        - [done] P518: Task Saga Worker FSM Focused Tests
+          - [done] P525: Build Task Saga Worker Test Subset
+          - [done] P526: Run Task Saga Worker Focused Pytest
+          - [done] P527: Audit Task Saga Worker Focused Result
+        - [done] P519: Unit Tool Output and Task Queue Focused Tests
+          - [done] P528: Build Unit Tool Output Test Subset
+          - [done] P529: Run Unit Tool Output Focused Pytest
+          - [done] P530: Audit Unit Tool Output Focused Result
+      - [done] P512: Queue FSM Static Residue Classification
+        - [done] P531: Run Static Residue Scan
+        - [done] P532: Classify Static Residue Hits
+          - [done] P534: Classify Production Residue Hits
+            - [done] P537: Classify Queue Service Production Hits
+            - [done] P538: Classify Task Queue Production Hits
+              - [done] P540: Remove stale saga optional-step residue
+            - [done] P539: Reconcile Production Residue Classification
+          - [done] P535: Classify Test Residue Hits
+            - [done] P541: Classify lifecycle and recovery test residue hits
+            - [done] P542: Classify cutover and guardrail test residue hits
+            - [done] P543: Classify low-density boundary test residue hits
+              - [done] P545: Classify low-density tests with 2-4 hits
+              - [done] P546: Classify single-hit boundary tests
+              - [done] P547: Reconcile low-density test residue classification
+            - [done] P544: Reconcile test residue classifications
+          - [done] P536: Reconcile Static Residue Classification
+        - [done] P533: Audit Static Residue Classification
+          - [done] P548: Fresh Static Residue Scan Audit
+          - [done] P549: Prior Classification Artifact Reconciliation
+          - [done] P550: Risky Saga Optional Residue Closure Gate
+          - [done] P551: Static Residue Audit Rollup
+  - [done] P005: LogicalFS sandbox blob layering audit
+    - [done] P552: LogicalFS Sandbox Blob Topology Map
+      - [done] P556: LogicalFS Sandbox Blob Module Inventory
+      - [done] P557: LogicalFS Sandbox Blob Call Path Map
+        - [done] P559: Cortex Boundary Call Path Map
+        - [done] P560: Sandbox LogicalFS Blob Service Call Path Map
+        - [done] P561: Artifact And Display Blob Usage Map
+      - [done] P558: LogicalFS Sandbox Blob Entry Points And Tests Map
+    - [done] P553: LogicalFS Sandbox Blob Fallback Residue Inventory
+      - [done] P562: Cortex Materialization And Local Fallback Residue Inventory
+        - [done] P566: Cortex Materialize API Residue Classification
+        - [done] P567: Cortex Shell Fallback And Executor Bypass Classification
+        - [done] P568: Cortex Stable Path Compatibility Residue Classification
+          - [done] P569: P568 Reproducible Scan Command Manifest
+        - [done] P570: P562 Child Scan Command Manifests
+      - [done] P563: LogicalFS Blob Authority Residue Inventory
+        - [done] P571: Cortex BlobObjectStore Adapter Boundary Classification
+        - [done] P572: LogicalFS Object Authority And Key Prefix Classification
+        - [done] P573: Blob Service Namespace And Artifact Boundary Classification
+      - [done] P564: Runtime Display Tool Output Projection Residue Inventory
+        - [done] P574: Runtime LLM Request Projection Path Inventory
+          - [done] P578: Runtime Message Assembly And Active Stack Ordering Inventory
+          - [done] P579: Provider Request Serialization And Multimodal Projection Inventory
+        - [done] P575: Display Tool Perception Contract Inventory
+          - [done] P580: Child Problem: Display tool implementation and blob/artifact contract
+            - [done] P584: Follow-up Problem: Replace display durable image bytes with BlobRef-backed perception fetch
+              - [done] P585: Child Problem: Display BlobRef perception design and call-path map
+              - [done] P586: Child Problem: Implement BlobRef-backed display perception
+                - [done] P588: Runtime display durable payload is BlobRef-only
+                  - [done] P592: Runtime display durable media refs must not depend on inline bytes
+                - [done] P589: Cortex display projection preserves media references
+                - [done] P590: Runtime resolves current display image refs for LLM calls
+                - [done] P591: Display perception tests and stale durable-base64 cleanup
+              - [done] P587: Child Problem: Verify display durable no-base64 and image delivery
+          - [done] P581: Child Problem: Cortex display step-result projection contract
+          - [done] P582: Child Problem: Display history and perception regression test inventory
+            - [done] P593: Current Display Image Injection Test Coverage
+            - [done] P594: Historical Display Replay Text-Only Test Coverage
+            - [done] P595: Durable Shell and Display Output Base64 Absence Test Coverage
+              - [done] P597: Shell Screenshot CLI BlobRef Manifest Test Coverage
+              - [done] P598: Display Handler Durable ImageRef Test Coverage
+              - [done] P599: Cortex Projection BlobRef No-Inline Test Coverage
+            - [done] P596: Active Stack and System Message Display Ordering Test Coverage
+          - [done] P583: Child Problem: Display monitor/UI projection boundary inventory
+            - [done] P600: Factory Log Request Context and Raw JSON Boundary
+            - [done] P601: Agent Monitor Step Preview Boundary
+              - [done] P603: Backend Agent Progress Preview Payload Boundary
+                - [done] P605: Add exact backend preview boundary evidence and focused tests
+              - [done] P604: Frontend Agent Monitor Timeline Preview Boundary
+                - [done] P606: Frontend Timeline Preview Truncation and Escaping
+                  - [done] P609: Redact raw payload-like text in ActivityTimeline details
+                - [done] P607: Frontend Detail Modal and Raw JSON Boundary
+                - [done] P608: Frontend Artifact and Image Rendering Boundary
+                  - [done] P610: Fix Runtime Projection Session Generation Test Fixtures
+            - [done] P602: UI Display Artifact and BlobRef Rendering Boundary
+              - [done] P611: UI Chat Attachment BlobRef Rendering
+              - [done] P612: UI Monitor and Log Artifact Display Boundary
+              - [done] P613: UI Base64 Residue Classification
+        - [done] P576: Shell History Tool Output Contract Inventory
+          - [done] P614: Shell Wrapper Terminal Output Boundary
+          - [done] P615: Cortex Shell Step and Payload Persistence Boundary
+          - [done] P616: Shell Output Contract Test and Guardrail Inventory
+        - [done] P577: Legacy Base64 And Multimodal Compatibility Residue Inventory
+          - [done] P617: Provider Adapter Multimodal Boundary Residue
+          - [done] P618: Runtime and Cortex Multimodal Compatibility Residue
+          - [done] P619: UI and Test Multimodal Residue Classification
+      - [done] P565: Sandbox Service SDK Compatibility Residue Inventory
+        - [done] P620: Sandbox Service Execution Boundary Residue
+        - [done] P621: Sandbox SDK Client Boundary Residue
+          - [done] P623: Sandbox SDK API and Wire Boundary Residue
+          - [done] P624: Runtime Sandbox SDK Call Site Residue
+            - [done] P626: Runtime Shell Handler SDK Wiring
+            - [done] P627: Runtime Legacy Execution Residue Classification
+          - [done] P625: Sandbox SDK Runtime Boundary Test Coverage
+        - [done] P622: Sandbox Wire Base64 and Mount Residue Classification
+          - [done] P628: Sandbox Wire Base64 Public-History Residue
+          - [done] P629: Sandbox Mount Ownership and Bypass Residue
+    - [done] P554: LogicalFS Sandbox Blob Layering Remediation
+      - [done] P630: Cortex Workspace Materialize API Removal
+        - [done] P633: Workspace Materialize Reference Inventory
+        - [done] P634: Workspace Materialize Removal and Test Rewrite
+      - [done] P631: Legacy RW Scratch Layout Cleanup
+        - [done] P635: RW Scratch Usage Inventory
+        - [done] P636: RW Scratch Layout Cleanup and Test Update
+          - [done] P638: Workspace Default RW Layout Cleanup
+          - [done] P639: Cortex RW Scratch Fixture Rewrite
+            - [done] P641: Workspace and Authority RW Fixture Rewrite
+            - [done] P642: Runtime and Tool RW Fixture Rewrite
+            - [done] P643: Path Normalization and Abuse RW Fixture Rewrite
+          - [done] P640: RW Scratch Cleanup Post-Scan Verification
+        - [done] P637: RW Scratch Final Guard
+          - [done] P644: Final RW Scratch Residue Scan Classification
+          - [done] P645: Final RW Scratch Focused Verification
+      - [done] P632: LogicalFS Sandbox Fallback Remediation Guard
+        - [done] P646: LogicalFS Materialization Residue Audit
+        - [done] P647: Sandbox Backing Path Residue Audit
+        - [done] P648: Runtime Local Shell Fallback Residue Audit
+          - [done] P651: Explicit Cortex API URL for Shell LogicalFS Environment
+            - [done] P652: Remove Cortex API URL Default from Test Helper
+        - [done] P649: Blob Workspace Authority Residue Audit
+          - [done] P653: Audit Live Code for Blob-as-Workspace Authority
+          - [done] P654: Audit Docs for Blob/Workspace Authority Wording
+          - [done] P655: Audit Blob Workspace Boundary Tests and Guardrails
+        - [done] P650: LogicalFS Sandbox Boundary Focused Verification
+    - [done] P555: LogicalFS Sandbox Blob Layering Final Verification
+      - [done] P656: Final Post-Remediation Static Residue Scan
+      - [done] P657: Final Boundary Tests and Guards
+      - [done] P658: Final Residual Risk and Worktree Classification
+  - [done] P006: Tests docs and architecture guard audit
+    - [done] P659: Docs Architecture Stale Claims Audit
+    - [done] P660: Tests Stale Contract Audit
+    - [done] P661: Architecture Guard Coverage Audit
+      - [done] P662: Architecture guard inventory
+      - [done] P663: Architecture guard gap remediation
+        - [done] P665: Guard contract gap matrix
+        - [done] P666: Targeted guard patch implementation
+        - [done] P667: Guard false-positive and stale-assumption review
+      - [done] P664: Architecture guard verification
+  - [done] P007: Deployment runtime observability and smoke audit
+    - [done] P668: Runtime process topology and deployment script audit
+      - [done] P672: Deployment and start script topology inventory
+        - [done] P675: Deployment script discovery and classification
+          - [done] P677: Deployment script candidate scan artifacts
+          - [done] P678: Deployment script candidate classification
+        - [done] P676: Active deployment script stale-role remediation
+          - [done] P679: Local dev backend launcher remediation
+          - [done] P680: Packaged backend launcher remediation
+          - [done] P681: Deployment script guard verification and patch
+      - [done] P673: Worker and service entrypoint topology inventory
+        - [done] P682: Entrypoint discovery scan artifacts
+          - [done] P686: Script and package entrypoint scan
+          - [done] P687: Python module and CLI entrypoint scan
+          - [done] P688: Config and deployment launch reference scan
+        - [done] P683: Queue and runtime worker role classification
+          - [done] P689: Queue service worker and FSM role map
+            - [done] P692: Queue service launch command evidence supplement
+          - [done] P690: Agent runtime loop and worker role map
+          - [done] P691: Queue/runtime stale entrypoint cleanup and verification
+            - [done] P693: Queue/runtime stale entrypoint residue scan
+            - [done] P694: Queue/runtime stale entrypoint remediation and verification
+        - [done] P684: Extracted service entrypoint classification
+          - [done] P695: Extracted service entrypoint and launch evidence discovery
+          - [done] P696: Foundational file and sandbox service boundary classification
+            - [done] P699: Blob service boundary map
+            - [done] P700: LogicalFS boundary map
+            - [done] P701: Sandbox and Sandboxd boundary map
+            - [done] P702: Foundational boundary residue cleanup and verification
+              - [done] P703: Foundational boundary residue scan and disposition
+              - [done] P704: Foundational boundary residue remediation and verification
+          - [done] P697: Semantic, app, and device service boundary classification
+            - [done] P705: Cortex semantic state/context boundary classification
+              - [done] P710: Cortex boundary discovery and map
+              - [done] P711: Cortex boundary residue remediation and verification
+                - [done] P712: Follow-up: Patch active Cortex boundary residue
+            - [done] P706: Gateway and app edge service boundary classification
+              - [done] P713: Gateway/app edge boundary discovery and map
+              - [done] P714: Gateway/app edge residue remediation and verification
+            - [done] P707: Business service and subscriber boundary classification
+              - [done] P715: Business/subscriber boundary discovery and map
+              - [done] P716: Business/subscriber residue remediation and verification
+                - [done] P717: Business/subscriber cleanup candidate disposition
+                - [done] P718: Business/subscriber active documentation remediation
+                - [done] P719: Business/subscriber code dependency boundary audit
+                - [done] P720: Business/subscriber boundary verification sweep
+            - [done] P708: Device/devicectl and artifact-display boundary classification
+              - [done] P721: Device/devicectl surface discovery and contract map
+              - [done] P722: Artifact/display/context projection discovery
+                - [done] P725: Shell artifact manifest output contract discovery
+                - [done] P726: Blob artifact manifest and history replay discovery
+                  - [done] P729: Runtime artifact manifest handling discovery
+                  - [done] P730: Cortex tool output and context projection discovery
+                  - [done] P731: Historical image replay guardrail discovery
+                - [done] P727: Display current-round LLM image projection discovery
+                - [done] P728: Legacy and standalone media-byte surface classification
+                  - [done] P732: Active non-test media-byte surface classification
+                    - [done] P734: Complete residual production media-byte classification
+                      - [done] P735: Classify Device VmControl screenshot route
+                      - [done] P736: Classify VMuse MCP tool media-byte surfaces
+                        - [done] P738: Classify VMuse desktop screenshot MCP surfaces
+                        - [done] P739: Classify VMuse browser and window MCP media surfaces
+                      - [done] P737: Classify VMuse HTTP and file binary API surfaces
+                  - [done] P733: Docs and test media-byte residue classification
+                    - [done] P740: Classify documentation media-byte residue
+                    - [done] P741: Classify test and generated-resource media-byte residue
+              - [done] P723: Device/artifact/display boundary remediation
+                - [done] P742: Update stale VMuse protocol mapping documentation
+                - [done] P743: Clean VMuse source residue and resource sync
+                - [done] P744: Disposition Device VmControl screenshot route
+                  - [done] P745: Analyze Device screenshot route usage and ownership
+                  - [done] P746: Implement Device screenshot route disposition
+              - [done] P724: Device/artifact/display boundary verification sweep
+                - [done] P747: Post-remediation media-boundary scan
+                - [done] P748: Focused media-boundary test sweep
+            - [done] P709: Semantic/app/device service residue cleanup and verification
+              - [done] P749: Cross-service semantic residue discovery and classification
+                - [done] P752: Active docs and scripts semantic residue discovery
+                - [done] P753: Service code semantic residue discovery
+                  - [done] P755: Runtime Queue Cortex service-code residue discovery
+                  - [done] P756: Gateway Business Device service-code residue discovery
+                    - [done] P758: Gateway Business Device test residue discovery
+                      - [done] P759: Gateway test residue discovery
+                      - [done] P760: Business test residue discovery
+                      - [done] P761: Device test residue discovery
+                  - [done] P757: Blob LogicalFS Sandbox VMuse service-code residue discovery
+                    - [done] P762: Blob service residue discovery
+                    - [done] P763: LogicalFS residue discovery
+                    - [done] P764: Sandbox service residue discovery
+                    - [done] P765: VMuse service residue discovery
+                    - [done] P766: App resource copy residue discovery
+                - [done] P754: App resource and generated asset semantic residue discovery
+                  - [done] P767: App VMuse copied resource sync discovery
+                  - [done] P768: App Tauri backend and VmControl wiring discovery
+                    - [done] P770: App Tauri Rust VmControl route wiring discovery
+                    - [done] P771: App backend script and launch wiring discovery
+                    - [done] P772: App resource packaging and generated asset wiring discovery
+                  - [done] P769: App frontend and Monitor output contract discovery
+                    - [done] P773: App message media and Blob renderer discovery
+                    - [done] P774: App factory log and raw JSON detail discovery
+                      - [done] P776: App factory logs page and detail discovery
+                      - [done] P777: App monitor timeline payload projection discovery
+                      - [done] P778: App raw JSON and truncation primitives discovery
+                    - [done] P775: App shell artifact output UI contract discovery
+                      - [done] P779: App chat shell output rendering discovery
+                      - [done] P780: App monitor shell artifact projection discovery
+                      - [done] P781: App BlobRef and artifact preview contract discovery
+              - [done] P750: Safe active-surface semantic residue remediation
+                - [done] P782: Active Docs Boundary Wording Remediation
+                - [done] P783: Runtime Cortex Business Device Source Residue Remediation
+                  - [done] P787: Runtime Business Device Wording Cleanup
+                  - [done] P788: Cortex Step Result Projection BlobRef Contract Cleanup
+                    - [done] P789: Cortex Projection Contract Inspection
+                    - [done] P790: Cortex Projection BlobRef-Only Patch
+                - [done] P784: LogicalFS Sandbox VMuse Service Cleanup
+                  - [done] P791: LogicalFS Public Contract Cleanup
+                  - [done] P792: Sandbox Unused Filesystem Helper Cleanup
+                  - [done] P793: VMuse FastMCP Direct Media Entry Cleanup
+                    - [done] P794: VMuse active entry map
+                    - [done] P795: VMuse source FastMCP removal
+                      - [done] P797: VMuse delete FastMCP main module
+                        - [done] P799: VMuse remove deleted main imports
+                      - [done] P798: VMuse CLI and package metadata HTTP contract
+                    - [done] P796: VMuse contract tests after cleanup
+                - [done] P785: App Resource Generated Asset And Backend Startup Remediation
+                  - [done] P800: App VMuse resource copy sync
+                  - [done] P801: App generated VMuse asset copy sync
+                  - [done] P802: App backend startup graph cleanup
+                    - [done] P804: App backend startup graph audit
+                    - [done] P805: App backend startup graph remediation
+                      - [done] P806: Packaged Blob Binary Contract Remediation
+                        - [done] P810: Resource Storage Binary Source Boundary
+                      - [done] P807: Dev Startup Port And Service URL Contract Remediation
+                      - [done] P808: VMuse Runtime URL Config Contract Remediation
+                      - [done] P809: Backend Startup Resource And Generated Copy Synchronization
+                  - [done] P803: VmControl HD screenshot contract comment cleanup
+                  - [done] P811: Follow-up: remove stale VMuse main.py assumption from app sync script
+                - [done] P786: App Frontend And Factory Logs UI Cleanup
+                  - [done] P812: Child Problem: Factory logs safe payload projection
+                    - [done] P816: Child Problem: Factory logs rendering inventory
+                    - [done] P817: Child Problem: Factory logs safe projection helper
+                    - [done] P818: Child Problem: Wire factory log renderers to safe projection
+                    - [done] P819: Child Problem: Factory logs projection verification
+                  - [done] P813: Child Problem: SmartValue unused raw renderer cleanup
+                  - [done] P814: Child Problem: AssistantMessage legacy events rendering cleanup
+                  - [done] P815: Child Problem: Frontend payload residue aggregate verification
+              - [done] P751: Cross-service semantic residue verification
+          - [done] P698: Extracted service entrypoint residue cleanup and verification
+            - [done] P820: Queue service residual standalone entrypoint audit
+            - [done] P821: LLM factory launch status audit
+            - [done] P822: Blob service and Sandboxd dual entrypoint audit
+            - [done] P823: Launch scripts cross-verification against service topology
+        - [done] P685: Entrypoint topology docs and guard alignment
+          - [done] P824: Architecture docs topology alignment
+          - [done] P825: Runbook topology alignment
+          - [done] P826: CI guard topology alignment
+      - [done] P674: Runtime topology docs and runbook consistency audit
+        - [done] P827: Runtime process role docs accuracy audit
+        - [done] P828: Deploy and build docs topology audit
+        - [done] P829: Doc CI guards pass after topology changes
+    - [done] P669: Runtime health and log access observability audit
+      - [done] P830: Health endpoint inventory and contract verification
+      - [done] P831: LLM Factory log API and UI audit
+      - [done] P832: Frontend runtime log and observability hooks audit
+    - [done] P670: Smoke-test ergonomics and deployment freshness guard audit
+      - [done] P833: Smoke and deploy guard script inventory and contract check
+      - [done] P834: Smoke and deploy guard local execution verification
+    - [done] P671: Deployment runtime residual-risk and evidence ledger audit
+
+## Active
+
+## Blocked
+
+## Done
+- [x] P000: Comprehensive project optimization audit and remediation
+- [x] P001: Repo topology and residue inventory
+- [x] P002: Shell tool contract and CLI usability audit
+- [x] P003: Cortex context projection and payload boundary audit
+- [x] P004: Queue FSM session and worker boundary audit
+- [x] P005: LogicalFS sandbox blob layering audit
+- [x] P006: Tests docs and architecture guard audit
+- [x] P007: Deployment runtime observability and smoke audit
+- [x] P008: Workspace branch submodule and dirty-state inventory
+- [x] P009: Residue hotspot search and triage
+- [x] P010: Git and submodule state fact capture
+- [x] P011: Repo layout and command entrypoint fact capture
+- [x] P012: Superproject git state capture
+- [x] P013: Submodule git state capture
+- [x] P014: Repair submodule dirty-state capture
+- [x] P015: Direct tool and hidden harness residue scan
+- [x] P016: Ephemeral path and media payload leakage scan
+- [x] P017: Fallback compatibility and TODO residue scan
+- [x] P018: IM direct tool residue scan
+- [x] P019: Payload direct tool residue scan
+- [x] P020: Subagent and audio direct tool residue scan
+- [x] P021: Update current IM tool docs and placeholders to shell contract
+- [x] P022: Remove tracked generated complex-problems dashboard residue
+- [x] P023: Update vmuse long-running command guidance to shell-first contract
+- [x] P024: Reconcile current perception/action architecture doc with shell-first subagent/audio contract
+- [x] P025: Clean ActivityTimeline legacy direct-tool assumptions
+- [x] P026: ActivityTimeline current versus legacy behavior inventory
+- [x] P027: ActivityTimeline shell-first cleanup and focused tests
+- [x] P028: Reconcile remaining current docs with shell-first tool contract
+- [x] P029: Current docs stale tool reference inventory
+- [x] P030: Current docs shell-first wording patch
+- [x] P031: Update Cortex environment notification hint to shell-first IM read
+- [x] P032: Neutralize internal reply-cap comments from direct im_reply wording
+- [x] P033: Follow-up: classify and isolate remaining direct-tool vocabulary
+- [x] P034: Policy and API vocabulary classification
+- [x] P035: Test fixture vocabulary cleanup
+- [x] P036: Monitor activity projection legacy boundary
+- [x] P037: Final direct-tool residue scan and exception ledger
+- [x] P038: Common contract test fixtures
+- [x] P039: Runtime test fixtures
+- [x] P040: Cortex test fixtures
+- [x] P041: App monitor test fixtures
+- [x] P042: Runtime finalizer legacy-negative fixtures
+- [x] P043: Runtime activity projection test fixtures
+- [x] P044: Runtime guard and smoke assertions
+- [x] P045: Backend activity projection legacy labels
+- [x] P046: Frontend ActivityTimeline legacy detection
+- [x] P047: Ephemeral Cortex backing path residue
+- [x] P048: Media/base64 tool output contract
+- [x] P049: Docs and examples for file/blob output contract
+- [x] P050: Child Problem: media CLI emits manifests, not bytes
+- [x] P051: Child Problem: display and LLM image projection avoids text base64
+- [x] P052: Child Problem: shell observations stay terminal-shaped
+- [x] P053: Child Problem: base64 leakage regression guards
+- [x] P054: Child Problem: display tool output is concise and non-binary
+- [x] P055: Child Problem: LLM context assembly preserves displayed images as images
+- [x] P056: Child Problem: provider adapters receive image payloads through the right contract
+- [x] P057: Add direct provider adapter image payload tests
+- [x] P058: Implement provider adapter image payload test
+- [x] P059: Child Problem: runtime shell wrapper enforces bounded terminal text
+- [x] P060: Child Problem: Cortex shell step projection preserves terminal semantics
+- [x] P061: Child Problem: large media-like shell stdout regression coverage
+- [x] P062: Child Problem: classify active base64 leakage surfaces
+- [x] P063: Child Problem: implement active base64 leakage regression guard
+- [x] P064: Child Problem: scan and classify active docs for output contract drift
+- [x] P065: Child Problem: update active docs with final file/blob output contract
+- [x] P066: Active code fallback and compatibility residue scan
+- [x] P067: Test skip TODO and fixture residue scan
+- [x] P068: Active docs migration and legacy residue scan
+- [x] P069: Runtime queue fallback compatibility residue scan
+- [x] P070: Cortex common fallback compatibility residue scan
+- [x] P071: App business MCP adapter fallback compatibility residue scan
+- [x] P072: Cortex common active PR history comment cleanup
+- [x] P073: App monitor UI fallback compatibility residue scan
+- [x] P074: Business dispatch adapter residue scan
+- [x] P075: MCP scripts shell adapter residue scan
+- [x] P076: Business dispatch active residue scan and safe cleanup
+- [x] P077: Finish Business residue classification, cleanup, and tests
+- [x] P078: Remove or justify Business subagent no-op agent stub path
+- [x] P079: Classify and clean Business entity/health stub wording
+- [x] P080: Classify Business environment IM endpoints as current shell boundary
+- [x] P081: Run Business focused tests and final active residue scan
+- [x] P082: Scan and clean MCP/VMuse adapter residue
+- [x] P083: Scan and clean Cortex shell CLI adapter residue
+- [x] P084: Run final MCP/script shell-adapter scan and focused tests
+- [x] P085: Classify and clean non-monitor App active residue
+- [x] P086: App settings and model config residue classification
+- [x] P087: App device WebRTC and UI media residue classification
+- [x] P088: App chat audio and blob upload residue classification
+- [x] P089: App non-monitor final residue scan and guard verification
+- [x] P090: Runtime queue test residue scan
+- [x] P091: App test residue scan
+- [x] P092: Business Cortex Common test residue scan
+- [x] P093: MCP scripts and CI test residue scan
+- [x] P094: MCP Test Residue Scan
+- [x] P095: Scripts and CI Helper Residue Scan
+- [x] P096: MCP Scripts CI Final Residue Sweep
+- [x] P097: Repository Scripts Residue Scan
+- [x] P098: CI and Lint Helper Residue Scan
+- [x] P099: Active Architecture Docs Residue Scan
+- [x] P100: Reference and Runbook Docs Residue Scan
+- [x] P101: Active Docs Final Residue Sweep
+- [x] P102: Shell Output and Desc Contract Audit
+- [x] P103: Agentctl Devicectl Cortex CLI Coverage Audit
+- [x] P104: Blob Artifact and Display Contract Audit
+- [x] P105: Agentctl CLI Coverage Audit
+- [x] P106: Devicectl CLI Coverage and Artifact Contract Audit
+- [x] P107: Cortex CLI Coverage and Workspace Access Audit
+- [x] P108: Agentctl IM CLI Contract Audit
+- [x] P109: Agentctl Subagent CLI Contract Audit
+- [x] P110: Agentctl Media Audio-QA CLI Contract Audit
+- [x] P111: Devicectl Artifact-Producing Commands Contract Audit
+- [x] P112: Devicectl Non-Media Command Coverage Audit
+- [x] P113: Cortex Payload CLI Coverage Audit
+- [x] P114: Cortex Stable Workspace Path Contract Audit
+- [x] P115: Stable Workspace Path Guidance in Shell Schema and Help
+- [x] P116: Runtime Stale Cortex Backing Path Rejection Guard
+- [x] P117: Stable Workspace Path Docs and Example Residue Sweep
+- [x] P118: Stable Workspace Path Regression Sweep
+- [x] P119: Active Docs Stable Path Residue Audit
+- [x] P120: Test and Schema Stable Path Residue Classification
+- [x] P121: Scripts and Examples Stable Path Residue Audit
+- [x] P122: Artifact-Producing CLI Blob Manifest Contract Audit
+- [x] P123: Display Tool History Sanitization Audit
+- [x] P124: Provider-Native Image Projection Audit
+- [x] P125: Blob Artifact and Display Base64 Regression Sweep
+- [x] P126: Context assembly source map and event boundary
+- [x] P127: Step result projection contract audit
+- [x] P128: Agent runtime context client and history expansion audit
+- [x] P129: Payload API and pointer retrieval boundary audit
+- [x] P130: Provider-native media adapter boundary audit
+- [x] P131: Large-output and base64 leakage sweep
+- [x] P132: Cross-layer context projection regression suite
+- [x] P133: ContextEvent stream and read model map
+- [x] P134: Workspace materialized projections and payload reference map
+- [x] P135: Runtime prepare-context handler map
+- [x] P136: Tool result step_ref and payload_ref map
+- [x] P137: Active skill stack injection map
+- [x] P138: ContextEvent append-only store map
+- [x] P139: ContextEvent pure projection map
+- [x] P140: ContextEvent read model and budget boundary map
+- [x] P141: Workspace payload store and blob externalization map
+- [x] P142: Workspace tool step normalization and index map
+- [x] P143: Workspace context.jsonl projection map
+- [x] P144: Cortex API materialization call-site map
+- [x] P145: normalize_step observation contract audit
+- [x] P146: write_step payload_ref mirroring audit
+- [x] P147: step index metadata and artifact marker audit
+- [x] P148: write_step_projection call-site boundary audit
+- [x] P149: Cortex API step projection boundary audit
+- [x] P150: Runtime bridge step request shape audit
+- [x] P151: Direct workspace write bypass scan
+- [x] P152: context.jsonl helper implementation map
+- [x] P153: context.jsonl caller classification
+- [x] P154: LLM prepare path context authority audit
+- [x] P155: context projection regression test audit
+- [x] P156: Cortex prepare_for_llm read model authority
+- [x] P157: Runtime LLM prepare caller authority
+- [x] P158: LLM prepare authority residue guard
+- [x] P159: Runtime saga prepare-context ordering map
+- [x] P160: Runtime Cortex prepare handler contract map
+- [x] P161: Runtime LLM payload handoff map
+- [x] P162: Runtime continuity and context.read residue classification
+- [x] P163: Runtime prepare-context regression coverage audit
+- [x] P164: ReAct saga prepare-context source ordering map
+- [x] P165: ReAct saga prepare-context ordering guard
+- [x] P166: Cortex prepare handler response shape map
+- [x] P167: CortexBridge prepare_for_llm endpoint contract map
+- [x] P168: ReactThink llm.call payload builder map
+- [x] P169: LLM handler provider request assembly map
+- [x] P170: LLM payload handoff regression coverage audit
+- [x] P171: LLMCall contract provider payload source map
+- [x] P172: LLM handler transport delegation boundary map
+- [x] P173: Context read handler residue classification
+- [x] P174: Runtime wake continuity residue classification
+- [x] P175: Runtime read_context caller inventory and guard coverage
+- [x] P176: Runtime tool result wrapper ref contract
+- [x] P177: Cortex step storage and projection ref contract
+- [x] P178: Formatted step read and display projection ref contract
+- [x] P179: Externalized payload regression coverage and ambiguity cleanup
+- [x] P180: Active stack source and projection map
+- [x] P181: Active stack final context injection ordering map
+- [x] P182: Active stack and current display media regression coverage
+- [x] P183: Active stack stale injection cleanup audit
+- [x] P184: Shell projection bounded terminal text
+- [x] P185: Current display projection provider media
+- [x] P186: Historical display and artifact manifest projection
+- [x] P187: Step result projection stale branch cleanup
+- [x] P188: Cortex current display projection contract
+- [x] P189: Runtime current display selection and active-stack ordering
+- [x] P190: Provider media adapter conversion
+- [x] P191: End-to-end display screenshot regression
+- [x] P192: Runtime step-ref display projection selection
+- [x] P193: Active-stack-after-display media preservation
+- [x] P194: Runtime-to-factory multimodal request preservation
+- [x] P195: Factory provider multimodal adapter preservation
+- [x] P196: Factory provider request adapter media preservation
+- [x] P197: Factory multimodal log detail serialization
+- [x] P198: Projection branch inventory and classification
+- [x] P199: Projection production stale branch cleanup
+- [x] P200: Projection test residue cleanup
+- [x] P201: Projection stale branch regression sweep
+- [x] P202: Cortex projection branch inventory
+- [x] P203: Runtime and factory projection branch inventory
+- [x] P204: Projection test branch inventory
+- [x] P205: Runtime projection branch inventory
+- [x] P206: Factory/provider/log projection branch inventory
+- [x] P207: Prove stale production projection helper has no live callers
+- [x] P208: Delete stale projection helper and export residue
+- [x] P209: Audit retained production projection compatibility branches
+- [x] P210: Audit nested result wrapper projection branch
+- [x] P211: Audit MCP image/data-url projection branch
+- [x] P212: Audit generic dict JSON fallback projection branch
+- [x] P213: Delete stale `resolve_for_llm` tests
+- [x] P214: Audit projection guard test labels and assertions
+- [x] P215: Run projection test cleanup verification
+- [x] P216: Final projection static branch audit
+- [x] P217: Fix Google/Gemini multimodal provider conversion
+- [x] P218: Final focused projection regression chain
+- [x] P219: Implement Gemini multimodal content conversion
+- [x] P220: Add Gemini multimodal provider regression tests
+- [x] P221: Run focused projection test chain
+- [x] P222: Classify remaining projection compatibility branches
+- [x] P223: Prove removed projection symbols are absent
+- [x] P224: Classify active projection branch sites
+- [x] P225: Map runtime step result expansion path
+- [x] P226: Verify runtime current versus historical media boundary
+- [x] P227: Verify active-stack ordering does not suppress current display media
+- [x] P228: Audit explicit Cortex payload inspection APIs
+- [x] P229: Audit payload write and normal context assembly boundaries
+- [x] P230: Audit tool guidance and payload boundary tests
+- [x] P231: Audit tool step write path durable payload refs
+- [x] P232: Audit Cortex event projection preserves payload pointers
+- [x] P233: Audit runtime LLM context expansion avoids full payload reads
+- [x] P234: Audit large shell/display output projection boundary
+- [x] P235: Audit Cortex workspace step payload persistence
+- [x] P236: Audit runtime tool handler durable payload handoff
+- [x] P237: Audit runtime shell handoff uses compact projection plus durable payload
+- [x] P238: Audit runtime display and media handoff avoids raw image text
+- [x] P239: Audit LLM tool schema and policy payload boundary
+- [x] P240: Audit shell capability guidance for payload and output boundaries
+- [x] P241: Fix cross-package pytest tests namespace conflict
+- [x] P242: Inventory Cortex test helper imports and package markers
+- [x] P243: Migrate Cortex helpers to package-specific test namespace
+- [x] P244: Verify mixed runtime and Cortex pytest selection is stable
+- [x] P245: Map shell capability payload and artifact guidance
+- [x] P246: Correct stale shell capability wording if found
+- [x] P247: Verify shell payload and output boundary tests
+- [x] P248: Audit runtime history versus media perception boundary
+- [x] P249: Audit provider adapter native media formats
+- [x] P250: Classify media/base64 residue as provider-boundary-only or fix it
+- [x] P251: Runtime/context media residue classification
+- [x] P252: Cortex and shell CLI media residue classification
+- [x] P253: Provider and factory fixture media residue classification
+- [x] P254: Final repository cross-scan and residue closure
+- [x] P255: Runtime large-output boundary sweep
+- [x] P256: Cortex projection and payload large-output sweep
+- [x] P257: Factory log redaction and detail large-output sweep
+- [x] P258: Final large-output leakage cross-scan
+- [x] P259: Cortex projection regression coverage
+- [x] P260: Agent-runtime current versus historical media regression coverage
+- [x] P261: Near-integrated screenshot manifest to display replay regression
+- [x] P262: Final cross-layer projection marker scan
+- [x] P263: Cortex projection coverage inventory
+- [x] P264: Cortex projection missing regression implementation
+- [x] P265: Cortex projection focused verification
+- [x] P266: Runtime media regression coverage inventory
+- [x] P267: Runtime media missing regression implementation
+- [x] P268: Runtime media focused verification
+- [x] P269: Near-integrated screenshot/display coverage inventory
+- [x] P270: Near-integrated screenshot/display regression implementation
+- [x] P271: Near-integrated screenshot/display focused verification
+- [x] P272: Runtime media seam inventory
+- [x] P273: Cortex shell artifact seam inventory
+- [x] P274: Cross-layer coverage comparison
+- [x] P275: Add near-integrated screenshot/display regression test
+- [x] P276: Production fix or no-op proof for near-integrated regression
+- [x] P277: Queue FSM and worker topology map
+- [x] P278: Session state SSOT outbox and generation boundary audit
+- [x] P279: Legacy imperative dispatch and compatibility residue cleanup
+- [x] P280: Finalize watchdog and recovery ownership audit
+- [x] P281: Queue FSM focused verification
+- [x] P282: Problem: Session schema and state ownership audit
+- [x] P283: Problem: Session generation attach and finalize boundary audit
+- [x] P284: Problem: Session outbox side-effect ownership audit
+- [x] P285: Problem: Session compatibility and legacy residue audit
+- [x] P286: Problem: Session schema table inventory
+- [x] P287: Problem: Session repository state mutation inventory
+- [x] P288: Problem: Session rebuild projection and state read inventory
+- [x] P289: Problem: Session DDL definition scan
+- [x] P290: Problem: Session table active usage classification
+- [x] P291: Problem: Session ledger mutation API inventory
+- [x] P292: Problem: Session repository transaction and effect orchestration inventory
+- [x] P293: Problem: Session direct SQL and mutation residue scan
+- [x] P294: Problem: Session dispatch transaction flow audit
+- [x] P295: Problem: Session finalize restart rebuild transaction flow audit
+- [x] P296: Problem: Session after-transaction publish and outbox boundary audit
+- [x] P297: Problem: Unify dispatch start-wake transition construction
+- [x] P298: Problem: Dispatch start-wake helper design
+- [x] P299: Problem: Dispatch start-wake helper implementation
+- [x] P300: Problem: Dispatch start-wake helper verification
+- [x] P301: Dispatch helper source-shape verification
+- [x] P302: Dispatch helper behavior test verification
+- [x] P303: Session finalize transaction flow audit
+- [x] P304: Session restart transaction flow audit
+- [x] P305: Session rebuild projection transaction flow audit
+- [x] P306: Finalize pending restart atomicity fix
+- [x] P307: Finalize restart atomicity design
+- [x] P308: Finalize restart atomicity implementation
+- [x] P309: Finalize restart atomicity verification
+- [x] P310: Remove repository eager attach publish
+- [x] P311: Attach outbox worker-only design
+- [x] P312: Attach outbox worker-only implementation
+- [x] P313: Attach outbox worker-only verification
+- [x] P314: Close attach worker-only cutover gaps
+- [x] P315: Remove stale attach task_id assumption
+- [x] P316: Update session outbox boundary source guards
+- [x] P317: Verify attach worker-only cutover after patches
+- [x] P318: Scan direct session SQL table access
+- [x] P319: Scan old session wrappers and compatibility branches
+- [x] P320: Consolidate session residue scan classification
+- [x] P321: Rename stale attach publish helper
+- [x] P322: Audit active session read paths
+- [x] P323: Audit rebuild and pending projection writers
+- [x] P324: Audit rebuild projection coverage and guards
+- [x] P325: Update PR-252 attach state test for worker-owned outbox
+- [x] P326: Session generation lifecycle and advancement inventory
+- [x] P327: Attach expected-generation validation audit
+- [x] P328: Finalize and session-ended generation ownership audit
+- [x] P329: Missing or stale generation compatibility residue guard audit
+- [x] P330: Attach repository payload generation audit
+- [x] P331: Attach session outbox delivery audit
+- [x] P332: Runtime attach handler generation enforcement audit
+- [x] P333: Attach stale and missing generation regression coverage audit
+- [x] P334: Finalize/session-ended entry-point inventory
+- [x] P335: Repository finalize generation atomicity
+- [x] P336: Session-ended outbox delivery generation contract
+- [x] P337: Runtime session-ended handler enforcement
+- [x] P338: Remaining stack and finalize reason archive boundary
+- [x] P339: Finalize generation aggregate regression coverage
+- [x] P340: Session-ended delivery chain inventory
+- [x] P341: Wake-finalize payload positive generation
+- [x] P342: Session-ended handler client route contract
+- [x] P343: Session-ended compatibility residue cleanup
+- [x] P344: Session-ended delivery aggregate verification
+- [x] P345: Direct session-ended delivery residue guard
+- [x] P346: Session-ended delivery tests compatibility cleanup
+- [x] P347: Upstream react generation default classification
+- [x] P348: Runtime finalize handler inventory
+- [x] P349: React contract positive session generation
+- [x] P350: Cortex finalize mutation identity guards
+- [x] P351: Recovery compensation finalize identity
+- [x] P352: Runtime finalize enforcement aggregate verification
+- [x] P353: Cortex scope_end identity contract
+- [x] P354: Subagent finalize status identity guard
+- [x] P355: Wake finalize mutation payload propagation
+- [x] P356: Finalize mutation guard aggregate verification
+- [x] P357: Subagent finalize status payload identity
+- [x] P358: Subagent finalize status handler validation
+- [x] P359: Wake finalize status gating order
+- [x] P360: Subagent finalize status identity aggregate verification
+- [x] P361: Recovery compensation finalize source map
+- [x] P362: Compensation wake_finalize generation preservation
+- [x] P363: Session recovery missing identity handling
+- [x] P364: Recovery compensation finalize aggregate verification
+- [x] P365: Follow-Up: Remove Startup Rebuild Generation Default
+- [x] P366: Child Problem: Finalize Diagnostics Source Map
+- [x] P367: Child Problem: Session Finalize Diagnostics Binding
+- [x] P368: Child Problem: Cortex Archive Diagnostics Binding
+- [x] P369: Child Problem: Finalize Diagnostics Aggregate Verification
+- [x] P370: Finalize Diagnostics Assertion Hardening
+- [x] P371: Cortex Archive Diagnostics Source Map
+- [x] P372: Scope End Boundary Contract Propagation
+- [x] P373: Cortex Archive Diagnostics Persistence
+- [x] P374: Cortex Archive Diagnostics Aggregate Verification
+- [x] P375: Cortex Archive Diagnostics Persistence Source Map
+- [x] P376: Persist Explicit Archive Diagnostics
+- [x] P377: Cortex Archive Diagnostics Persistence Verification
+- [x] P378: Runtime finalize generation aggregate regression
+- [x] P379: Cortex archive diagnostics aggregate regression
+- [x] P380: Cross-repo stale compatibility residue guard
+- [x] P381: Runtime focused finalize regression tests
+- [x] P382: Runtime finalize source guard classification
+- [x] P383: Cortex archive diagnostics focused tests
+- [x] P384: Cortex archive diagnostics source guard classification
+- [x] P385: Close residual live generation coercions
+- [x] P386: Runtime attach active generation validation
+- [x] P387: Cortex operational store generation validation
+- [x] P388: Cross-repo generation residue guard matrix
+- [x] P389: Normalize remaining runtime generation default boundaries
+- [x] P390: Session FSM finalize generation validation
+- [x] P391: Session repo and ledger generation adapters
+- [x] P392: Audit and generic FSM generation classification
+- [x] P393: Round and stack-depth default classification
+- [x] P394: Session repo state reconstruction validation
+- [x] P395: Session ledger generation helper classification
+- [x] P396: Audit and projection generation classification
+- [x] P397: Generic FSM generation counter classification
+- [x] P398: Close remaining unclassified generation-like guard hits
+- [x] P399: Session FSM event generation boundary
+- [x] P400: Subagent wake session generation boundary
+- [x] P401: Widened guard residue matrix
+- [x] P402: Compatibility residue guard inventory
+- [x] P403: Runtime compatibility residue cleanup
+- [x] P404: Cortex compatibility residue cleanup
+- [x] P405: Test and migration compatibility residue cleanup
+- [x] P406: Compatibility residue final verification
+- [x] P407: Runtime session authority residue cleanup
+- [x] P408: Generic Queue infrastructure generation classification
+- [x] P409: Task contracts and handler residue cleanup
+- [x] P410: Worker and health counter classification
+- [x] P411: Runtime cleanup final verification
+- [x] P412: React contract residue classification
+- [x] P413: Finalize saga and session handler residue classification
+- [x] P414: Cortex handler and bridge residue classification
+- [x] P415: Task contract and handler final verification
+- [x] P416: Cortex residue inventory and live-surface map
+- [x] P417: Cortex context event lifecycle cleanup
+- [x] P418: Cortex archive and diagnostic residue cleanup
+- [x] P419: Cortex API CLI and bridge surface cleanup
+- [x] P420: Cortex compatibility final verification
+- [x] P421: ContextEvent store and writer contract audit
+- [x] P422: ContextEvent projection and read-model cleanup
+- [x] P423: Workspace step and payload normalization cleanup
+- [x] P424: ContextEvent API lifecycle endpoint cleanup
+- [x] P425: ContextEvent lifecycle final verification
+- [x] P426: Problem: ContextEvent child outcome reconciliation
+- [x] P427: Problem: ContextEvent projection and guard verification
+- [x] P428: Problem: ContextEvent lifecycle residue sweep
+- [x] P429: Problem: ContextEvent live source residue sweep
+- [x] P430: Problem: ContextEvent test and artifact residue classification
+- [x] P431: Problem: Cortex archive/direct diagnostics inventory
+- [x] P432: Problem: Cortex direct scope-end contract cleanup
+- [x] P433: Problem: Cortex archive projection cleanup
+- [x] P434: Problem: Cortex API surface cleanup
+- [x] P435: Problem: Cortex CLI and shell capability cleanup
+- [x] P436: Problem: Cortex bridge surface cleanup
+- [x] P437: Runtime bridge endpoint inventory
+- [x] P438: Agent loop prepare-path proof
+- [x] P439: Context endpoint ownership and migration
+- [x] P440: Final runtime bridge guard verification
+- [x] P441: Runtime bridge focused test fixture misses explicit session_generation
+- [x] P442: Materialized context owner classification
+- [x] P443: Runtime bridge materialized context helper narrowing
+- [x] P444: Context task handler projection contract cleanup
+- [x] P445: Cortex context endpoint and test cleanup
+- [x] P446: Cortex generation and active-state compatibility guard
+- [x] P447: Cortex media payload and projection compatibility guard
+- [x] P448: Final focused Cortex runtime boundary test rerun
+- [x] P449: Final Cortex compatibility classification matrix
+- [x] P450: Test and fixture compatibility assertion audit
+- [x] P451: Migration-like and compatibility-named source audit
+- [x] P452: Test migration residue final guard
+- [x] P453: Aggregate compatibility guard matrix rerun
+- [x] P454: Aggregate compatibility focused behavior tests
+- [x] P455: Aggregate compatibility final matrix
+- [x] P456: Runtime focused compatibility behavior tests
+- [x] P457: Cortex focused compatibility behavior tests
+- [x] P458: Session outbox effect inventory
+- [x] P459: Session direct side-effect bypass classification
+- [x] P460: Session outbox ownership final verification
+- [x] P461: Dispatcher direct call classification
+- [x] P462: Observed wake outbox residue cleanup
+- [x] P463: Side-effect bypass final guard
+- [x] P464: Remove observed wake outbox residue
+- [x] P465: Session legacy residue inventory
+- [x] P466: Session hidden input and duplicate config audit
+- [x] P467: Session legacy residue final verification
+- [x] P468: Session hidden input inventory
+- [x] P469: Session hidden input remediation
+- [x] P470: Duplicate session config and residue cleanup
+- [x] P471: Session explicit-boundary final verification
+- [x] P472: Saga decision config injection
+- [x] P473: Retained ServiceConfig boundary classification
+- [x] P474: Hidden input remediation tests and guards
+- [x] P475: React saga decision config model
+- [x] P476: React saga config wiring
+- [x] P477: React saga config tests
+- [x] P478: Rerun hidden input focused tests from correct runtime cwd
+- [x] P479: Rerun duplicate residue guard from repo root
+- [x] P480: Imperative dispatch residue inventory
+- [x] P481: Direct side-effect bypass cleanup
+- [x] P482: Finalize and session compatibility branch cleanup
+- [x] P483: Imperative dispatch cleanup final verification
+- [x] P484: Production side-effect callsite classification
+- [x] P485: Generic task publish route boundary decision
+- [x] P486: Session outbox dispatcher boundary hardening
+- [x] P487: Direct side-effect bypass final verification
+- [x] P488: Finalize/session compatibility residue inventory
+- [x] P489: Finalize ownership cleanup
+- [x] P490: Attach generation compatibility cleanup
+- [x] P491: Recovery and session-ended compatibility cleanup
+- [x] P492: Final finalize/session compatibility verification
+- [x] P493: Finalize producer remaining-stack contract audit
+- [x] P494: Wake finalize remaining-stack strictness
+- [x] P495: Finalize ownership final verification
+- [x] P496: Attach generation contract inventory
+- [x] P497: Attach generation contract hardening
+- [x] P498: Attach generation final verification
+- [x] P499: Attach effect builder strict generation boundary
+- [x] P500: Attach generation hardening verification
+- [x] P501: Recovery and session-ended contract inventory
+- [x] P502: Recovery stack diagnostics hardening
+- [x] P503: Recovery and session-ended final verification
+- [x] P504: Final imperative dispatch guard classification
+- [x] P505: Final imperative dispatch residue cleanup
+- [x] P506: Final focused runtime verification for imperative dispatch cleanup
+- [x] P507: Finalize and recovery ownership map
+- [x] P508: Finalize and recovery ownership remediation
+- [x] P509: Finalize and recovery ownership final verification
+- [x] P510: Queue FSM Verification Test Scope Inventory
+- [x] P511: Queue FSM Focused Test Execution
+- [x] P512: Queue FSM Static Residue Classification
+- [x] P513: Focused Pytest Target Inventory
+- [x] P514: Static Residue Guard Design
+- [x] P515: Filter Focused Pytest Target Inventory to Real Test Files
+- [x] P516: Align Static Residue Guard Command With Term Taxonomy
+- [x] P517: Session Outbox Finalize Focused Tests
+- [x] P518: Task Saga Worker FSM Focused Tests
+- [x] P519: Unit Tool Output and Task Queue Focused Tests
+- [x] P520: Repair Session Outbox Finalize Focused Test Failures
+- [x] P521: Repair Recovery Remaining Stack Failure
+- [x] P522: Repair Attach Outbox Published Status Failure
+- [x] P523: Repair Session Repository Wrapper Boundary Count Failure
+- [x] P524: Rerun Full Session Outbox Finalize Focused Subset
+- [x] P525: Build Task Saga Worker Test Subset
+- [x] P526: Run Task Saga Worker Focused Pytest
+- [x] P527: Audit Task Saga Worker Focused Result
+- [x] P528: Build Unit Tool Output Test Subset
+- [x] P529: Run Unit Tool Output Focused Pytest
+- [x] P530: Audit Unit Tool Output Focused Result
+- [x] P531: Run Static Residue Scan
+- [x] P532: Classify Static Residue Hits
+- [x] P533: Audit Static Residue Classification
+- [x] P534: Classify Production Residue Hits
+- [x] P535: Classify Test Residue Hits
+- [x] P536: Reconcile Static Residue Classification
+- [x] P537: Classify Queue Service Production Hits
+- [x] P538: Classify Task Queue Production Hits
+- [x] P539: Reconcile Production Residue Classification
+- [x] P540: Remove stale saga optional-step residue
+- [x] P541: Classify lifecycle and recovery test residue hits
+- [x] P542: Classify cutover and guardrail test residue hits
+- [x] P543: Classify low-density boundary test residue hits
+- [x] P544: Reconcile test residue classifications
+- [x] P545: Classify low-density tests with 2-4 hits
+- [x] P546: Classify single-hit boundary tests
+- [x] P547: Reconcile low-density test residue classification
+- [x] P548: Fresh Static Residue Scan Audit
+- [x] P549: Prior Classification Artifact Reconciliation
+- [x] P550: Risky Saga Optional Residue Closure Gate
+- [x] P551: Static Residue Audit Rollup
+- [x] P552: LogicalFS Sandbox Blob Topology Map
+- [x] P553: LogicalFS Sandbox Blob Fallback Residue Inventory
+- [x] P554: LogicalFS Sandbox Blob Layering Remediation
+- [x] P555: LogicalFS Sandbox Blob Layering Final Verification
+- [x] P556: LogicalFS Sandbox Blob Module Inventory
+- [x] P557: LogicalFS Sandbox Blob Call Path Map
+- [x] P558: LogicalFS Sandbox Blob Entry Points And Tests Map
+- [x] P559: Cortex Boundary Call Path Map
+- [x] P560: Sandbox LogicalFS Blob Service Call Path Map
+- [x] P561: Artifact And Display Blob Usage Map
+- [x] P562: Cortex Materialization And Local Fallback Residue Inventory
+- [x] P563: LogicalFS Blob Authority Residue Inventory
+- [x] P564: Runtime Display Tool Output Projection Residue Inventory
+- [x] P565: Sandbox Service SDK Compatibility Residue Inventory
+- [x] P566: Cortex Materialize API Residue Classification
+- [x] P567: Cortex Shell Fallback And Executor Bypass Classification
+- [x] P568: Cortex Stable Path Compatibility Residue Classification
+- [x] P569: P568 Reproducible Scan Command Manifest
+- [x] P570: P562 Child Scan Command Manifests
+- [x] P571: Cortex BlobObjectStore Adapter Boundary Classification
+- [x] P572: LogicalFS Object Authority And Key Prefix Classification
+- [x] P573: Blob Service Namespace And Artifact Boundary Classification
+- [x] P574: Runtime LLM Request Projection Path Inventory
+- [x] P575: Display Tool Perception Contract Inventory
+- [x] P576: Shell History Tool Output Contract Inventory
+- [x] P577: Legacy Base64 And Multimodal Compatibility Residue Inventory
+- [x] P578: Runtime Message Assembly And Active Stack Ordering Inventory
+- [x] P579: Provider Request Serialization And Multimodal Projection Inventory
+- [x] P580: Child Problem: Display tool implementation and blob/artifact contract
+- [x] P581: Child Problem: Cortex display step-result projection contract
+- [x] P582: Child Problem: Display history and perception regression test inventory
+- [x] P583: Child Problem: Display monitor/UI projection boundary inventory
+- [x] P584: Follow-up Problem: Replace display durable image bytes with BlobRef-backed perception fetch
+- [x] P585: Child Problem: Display BlobRef perception design and call-path map
+- [x] P586: Child Problem: Implement BlobRef-backed display perception
+- [x] P587: Child Problem: Verify display durable no-base64 and image delivery
+- [x] P588: Runtime display durable payload is BlobRef-only
+- [x] P589: Cortex display projection preserves media references
+- [x] P590: Runtime resolves current display image refs for LLM calls
+- [x] P591: Display perception tests and stale durable-base64 cleanup
+- [x] P592: Runtime display durable media refs must not depend on inline bytes
+- [x] P593: Current Display Image Injection Test Coverage
+- [x] P594: Historical Display Replay Text-Only Test Coverage
+- [x] P595: Durable Shell and Display Output Base64 Absence Test Coverage
+- [x] P596: Active Stack and System Message Display Ordering Test Coverage
+- [x] P597: Shell Screenshot CLI BlobRef Manifest Test Coverage
+- [x] P598: Display Handler Durable ImageRef Test Coverage
+- [x] P599: Cortex Projection BlobRef No-Inline Test Coverage
+- [x] P600: Factory Log Request Context and Raw JSON Boundary
+- [x] P601: Agent Monitor Step Preview Boundary
+- [x] P602: UI Display Artifact and BlobRef Rendering Boundary
+- [x] P603: Backend Agent Progress Preview Payload Boundary
+- [x] P604: Frontend Agent Monitor Timeline Preview Boundary
+- [x] P605: Add exact backend preview boundary evidence and focused tests
+- [x] P606: Frontend Timeline Preview Truncation and Escaping
+- [x] P607: Frontend Detail Modal and Raw JSON Boundary
+- [x] P608: Frontend Artifact and Image Rendering Boundary
+- [x] P609: Redact raw payload-like text in ActivityTimeline details
+- [x] P610: Fix Runtime Projection Session Generation Test Fixtures
+- [x] P611: UI Chat Attachment BlobRef Rendering
+- [x] P612: UI Monitor and Log Artifact Display Boundary
+- [x] P613: UI Base64 Residue Classification
+- [x] P614: Shell Wrapper Terminal Output Boundary
+- [x] P615: Cortex Shell Step and Payload Persistence Boundary
+- [x] P616: Shell Output Contract Test and Guardrail Inventory
+- [x] P617: Provider Adapter Multimodal Boundary Residue
+- [x] P618: Runtime and Cortex Multimodal Compatibility Residue
+- [x] P619: UI and Test Multimodal Residue Classification
+- [x] P620: Sandbox Service Execution Boundary Residue
+- [x] P621: Sandbox SDK Client Boundary Residue
+- [x] P622: Sandbox Wire Base64 and Mount Residue Classification
+- [x] P623: Sandbox SDK API and Wire Boundary Residue
+- [x] P624: Runtime Sandbox SDK Call Site Residue
+- [x] P625: Sandbox SDK Runtime Boundary Test Coverage
+- [x] P626: Runtime Shell Handler SDK Wiring
+- [x] P627: Runtime Legacy Execution Residue Classification
+- [x] P628: Sandbox Wire Base64 Public-History Residue
+- [x] P629: Sandbox Mount Ownership and Bypass Residue
+- [x] P630: Cortex Workspace Materialize API Removal
+- [x] P631: Legacy RW Scratch Layout Cleanup
+- [x] P632: LogicalFS Sandbox Fallback Remediation Guard
+- [x] P633: Workspace Materialize Reference Inventory
+- [x] P634: Workspace Materialize Removal and Test Rewrite
+- [x] P635: RW Scratch Usage Inventory
+- [x] P636: RW Scratch Layout Cleanup and Test Update
+- [x] P637: RW Scratch Final Guard
+- [x] P638: Workspace Default RW Layout Cleanup
+- [x] P639: Cortex RW Scratch Fixture Rewrite
+- [x] P640: RW Scratch Cleanup Post-Scan Verification
+- [x] P641: Workspace and Authority RW Fixture Rewrite
+- [x] P642: Runtime and Tool RW Fixture Rewrite
+- [x] P643: Path Normalization and Abuse RW Fixture Rewrite
+- [x] P644: Final RW Scratch Residue Scan Classification
+- [x] P645: Final RW Scratch Focused Verification
+- [x] P646: LogicalFS Materialization Residue Audit
+- [x] P647: Sandbox Backing Path Residue Audit
+- [x] P648: Runtime Local Shell Fallback Residue Audit
+- [x] P649: Blob Workspace Authority Residue Audit
+- [x] P650: LogicalFS Sandbox Boundary Focused Verification
+- [x] P651: Explicit Cortex API URL for Shell LogicalFS Environment
+- [x] P652: Remove Cortex API URL Default from Test Helper
+- [x] P653: Audit Live Code for Blob-as-Workspace Authority
+- [x] P654: Audit Docs for Blob/Workspace Authority Wording
+- [x] P655: Audit Blob Workspace Boundary Tests and Guardrails
+- [x] P656: Final Post-Remediation Static Residue Scan
+- [x] P657: Final Boundary Tests and Guards
+- [x] P658: Final Residual Risk and Worktree Classification
+- [x] P659: Docs Architecture Stale Claims Audit
+- [x] P660: Tests Stale Contract Audit
+- [x] P661: Architecture Guard Coverage Audit
+- [x] P662: Architecture guard inventory
+- [x] P663: Architecture guard gap remediation
+- [x] P664: Architecture guard verification
+- [x] P665: Guard contract gap matrix
+- [x] P666: Targeted guard patch implementation
+- [x] P667: Guard false-positive and stale-assumption review
+- [x] P668: Runtime process topology and deployment script audit
+- [x] P669: Runtime health and log access observability audit
+- [x] P670: Smoke-test ergonomics and deployment freshness guard audit
+- [x] P671: Deployment runtime residual-risk and evidence ledger audit
+- [x] P672: Deployment and start script topology inventory
+- [x] P673: Worker and service entrypoint topology inventory
+- [x] P674: Runtime topology docs and runbook consistency audit
+- [x] P675: Deployment script discovery and classification
+- [x] P676: Active deployment script stale-role remediation
+- [x] P677: Deployment script candidate scan artifacts
+- [x] P678: Deployment script candidate classification
+- [x] P679: Local dev backend launcher remediation
+- [x] P680: Packaged backend launcher remediation
+- [x] P681: Deployment script guard verification and patch
+- [x] P682: Entrypoint discovery scan artifacts
+- [x] P683: Queue and runtime worker role classification
+- [x] P684: Extracted service entrypoint classification
+- [x] P685: Entrypoint topology docs and guard alignment
+- [x] P686: Script and package entrypoint scan
+- [x] P687: Python module and CLI entrypoint scan
+- [x] P688: Config and deployment launch reference scan
+- [x] P689: Queue service worker and FSM role map
+- [x] P690: Agent runtime loop and worker role map
+- [x] P691: Queue/runtime stale entrypoint cleanup and verification
+- [x] P692: Queue service launch command evidence supplement
+- [x] P693: Queue/runtime stale entrypoint residue scan
+- [x] P694: Queue/runtime stale entrypoint remediation and verification
+- [x] P695: Extracted service entrypoint and launch evidence discovery
+- [x] P696: Foundational file and sandbox service boundary classification
+- [x] P697: Semantic, app, and device service boundary classification
+- [x] P698: Extracted service entrypoint residue cleanup and verification
+- [x] P699: Blob service boundary map
+- [x] P700: LogicalFS boundary map
+- [x] P701: Sandbox and Sandboxd boundary map
+- [x] P702: Foundational boundary residue cleanup and verification
+- [x] P703: Foundational boundary residue scan and disposition
+- [x] P704: Foundational boundary residue remediation and verification
+- [x] P705: Cortex semantic state/context boundary classification
+- [x] P706: Gateway and app edge service boundary classification
+- [x] P707: Business service and subscriber boundary classification
+- [x] P708: Device/devicectl and artifact-display boundary classification
+- [x] P709: Semantic/app/device service residue cleanup and verification
+- [x] P710: Cortex boundary discovery and map
+- [x] P711: Cortex boundary residue remediation and verification
+- [x] P712: Follow-up: Patch active Cortex boundary residue
+- [x] P713: Gateway/app edge boundary discovery and map
+- [x] P714: Gateway/app edge residue remediation and verification
+- [x] P715: Business/subscriber boundary discovery and map
+- [x] P716: Business/subscriber residue remediation and verification
+- [x] P717: Business/subscriber cleanup candidate disposition
+- [x] P718: Business/subscriber active documentation remediation
+- [x] P719: Business/subscriber code dependency boundary audit
+- [x] P720: Business/subscriber boundary verification sweep
+- [x] P721: Device/devicectl surface discovery and contract map
+- [x] P722: Artifact/display/context projection discovery
+- [x] P723: Device/artifact/display boundary remediation
+- [x] P724: Device/artifact/display boundary verification sweep
+- [x] P725: Shell artifact manifest output contract discovery
+- [x] P726: Blob artifact manifest and history replay discovery
+- [x] P727: Display current-round LLM image projection discovery
+- [x] P728: Legacy and standalone media-byte surface classification
+- [x] P729: Runtime artifact manifest handling discovery
+- [x] P730: Cortex tool output and context projection discovery
+- [x] P731: Historical image replay guardrail discovery
+- [x] P732: Active non-test media-byte surface classification
+- [x] P733: Docs and test media-byte residue classification
+- [x] P734: Complete residual production media-byte classification
+- [x] P735: Classify Device VmControl screenshot route
+- [x] P736: Classify VMuse MCP tool media-byte surfaces
+- [x] P737: Classify VMuse HTTP and file binary API surfaces
+- [x] P738: Classify VMuse desktop screenshot MCP surfaces
+- [x] P739: Classify VMuse browser and window MCP media surfaces
+- [x] P740: Classify documentation media-byte residue
+- [x] P741: Classify test and generated-resource media-byte residue
+- [x] P742: Update stale VMuse protocol mapping documentation
+- [x] P743: Clean VMuse source residue and resource sync
+- [x] P744: Disposition Device VmControl screenshot route
+- [x] P745: Analyze Device screenshot route usage and ownership
+- [x] P746: Implement Device screenshot route disposition
+- [x] P747: Post-remediation media-boundary scan
+- [x] P748: Focused media-boundary test sweep
+- [x] P749: Cross-service semantic residue discovery and classification
+- [x] P750: Safe active-surface semantic residue remediation
+- [x] P751: Cross-service semantic residue verification
+- [x] P752: Active docs and scripts semantic residue discovery
+- [x] P753: Service code semantic residue discovery
+- [x] P754: App resource and generated asset semantic residue discovery
+- [x] P755: Runtime Queue Cortex service-code residue discovery
+- [x] P756: Gateway Business Device service-code residue discovery
+- [x] P757: Blob LogicalFS Sandbox VMuse service-code residue discovery
+- [x] P758: Gateway Business Device test residue discovery
+- [x] P759: Gateway test residue discovery
+- [x] P760: Business test residue discovery
+- [x] P761: Device test residue discovery
+- [x] P762: Blob service residue discovery
+- [x] P763: LogicalFS residue discovery
+- [x] P764: Sandbox service residue discovery
+- [x] P765: VMuse service residue discovery
+- [x] P766: App resource copy residue discovery
+- [x] P767: App VMuse copied resource sync discovery
+- [x] P768: App Tauri backend and VmControl wiring discovery
+- [x] P769: App frontend and Monitor output contract discovery
+- [x] P770: App Tauri Rust VmControl route wiring discovery
+- [x] P771: App backend script and launch wiring discovery
+- [x] P772: App resource packaging and generated asset wiring discovery
+- [x] P773: App message media and Blob renderer discovery
+- [x] P774: App factory log and raw JSON detail discovery
+- [x] P775: App shell artifact output UI contract discovery
+- [x] P776: App factory logs page and detail discovery
+- [x] P777: App monitor timeline payload projection discovery
+- [x] P778: App raw JSON and truncation primitives discovery
+- [x] P779: App chat shell output rendering discovery
+- [x] P780: App monitor shell artifact projection discovery
+- [x] P781: App BlobRef and artifact preview contract discovery
+- [x] P782: Active Docs Boundary Wording Remediation
+- [x] P783: Runtime Cortex Business Device Source Residue Remediation
+- [x] P784: LogicalFS Sandbox VMuse Service Cleanup
+- [x] P785: App Resource Generated Asset And Backend Startup Remediation
+- [x] P786: App Frontend And Factory Logs UI Cleanup
+- [x] P787: Runtime Business Device Wording Cleanup
+- [x] P788: Cortex Step Result Projection BlobRef Contract Cleanup
+- [x] P789: Cortex Projection Contract Inspection
+- [x] P790: Cortex Projection BlobRef-Only Patch
+- [x] P791: LogicalFS Public Contract Cleanup
+- [x] P792: Sandbox Unused Filesystem Helper Cleanup
+- [x] P793: VMuse FastMCP Direct Media Entry Cleanup
+- [x] P794: VMuse active entry map
+- [x] P795: VMuse source FastMCP removal
+- [x] P796: VMuse contract tests after cleanup
+- [x] P797: VMuse delete FastMCP main module
+- [x] P798: VMuse CLI and package metadata HTTP contract
+- [x] P799: VMuse remove deleted main imports
+- [x] P800: App VMuse resource copy sync
+- [x] P801: App generated VMuse asset copy sync
+- [x] P802: App backend startup graph cleanup
+- [x] P803: VmControl HD screenshot contract comment cleanup
+- [x] P804: App backend startup graph audit
+- [x] P805: App backend startup graph remediation
+- [x] P806: Packaged Blob Binary Contract Remediation
+- [x] P807: Dev Startup Port And Service URL Contract Remediation
+- [x] P808: VMuse Runtime URL Config Contract Remediation
+- [x] P809: Backend Startup Resource And Generated Copy Synchronization
+- [x] P810: Resource Storage Binary Source Boundary
+- [x] P811: Follow-up: remove stale VMuse main.py assumption from app sync script
+- [x] P812: Child Problem: Factory logs safe payload projection
+- [x] P813: Child Problem: SmartValue unused raw renderer cleanup
+- [x] P814: Child Problem: AssistantMessage legacy events rendering cleanup
+- [x] P815: Child Problem: Frontend payload residue aggregate verification
+- [x] P816: Child Problem: Factory logs rendering inventory
+- [x] P817: Child Problem: Factory logs safe projection helper
+- [x] P818: Child Problem: Wire factory log renderers to safe projection
+- [x] P819: Child Problem: Factory logs projection verification
+- [x] P820: Queue service residual standalone entrypoint audit
+- [x] P821: LLM factory launch status audit
+- [x] P822: Blob service and Sandboxd dual entrypoint audit
+- [x] P823: Launch scripts cross-verification against service topology
+- [x] P824: Architecture docs topology alignment
+- [x] P825: Runbook topology alignment
+- [x] P826: CI guard topology alignment
+- [x] P827: Runtime process role docs accuracy audit
+- [x] P828: Deploy and build docs topology audit
+- [x] P829: Doc CI guards pass after topology changes
+- [x] P830: Health endpoint inventory and contract verification
+- [x] P831: LLM Factory log API and UI audit
+- [x] P832: Frontend runtime log and observability hooks audit
+- [x] P833: Smoke and deploy guard script inventory and contract check
+- [x] P834: Smoke and deploy guard local execution verification
+
+## Tickets
+- [done] T000: Split-first comprehensive optimization audit -> P000 (split)
+- [done] T001: Split repo inventory into fact gathering and residue scan -> P001 (split)
+- [done] T002: Split factual inventory by state and entrypoints -> P008 (split)
+- [done] T003: Split git state capture by superproject and submodules -> P010 (split)
+- [done] T004: Capture superproject git state -> P012 (one_go)
+- [done] T005: Capture submodule git state -> P013 (one_go)
+- [done] T006: Rerun robust per-submodule dirty-state capture -> P014 (one_go)
+- [done] T007: Capture repo layout and command entrypoints -> P011 (one_go)
+- [done] T008: Split residue hotspot search by pattern class -> P009 (split)
+- [done] T009: Split direct tool residue by capability family -> P015 (split)
+- [done] T010: Scan IM direct tool residue -> P018 (one_go)
+- [done] T011: Update current IM docs and placeholder strings -> P021 (one_go)
+- [done] T012: Scan payload direct tool residue -> P019 (one_go)
+- [done] T013: Delete generated dashboard and ignore future snapshots -> P022 (one_go)
+- [done] T014: Scan subagent and audio direct tool residue -> P020 (one_go)
+- [done] T015: Update vmuse long-command guidance -> P023 (one_go)
+- [done] T016: Ticket: Reconcile current perception/action architecture doc with shell-first subagent/audio contract -> P024 (one_go)
+- [done] T017: Ticket: Clean ActivityTimeline legacy direct-tool assumptions -> P025 (split)
+- [done] T018: Ticket: Inventory ActivityTimeline current and legacy behavior -> P026 (one_go)
+- [done] T019: Ticket: Implement ActivityTimeline shell-first cleanup -> P027 (one_go)
+- [done] T020: Ticket: Reconcile remaining current docs with shell-first tool contract -> P028 (split)
+- [done] T021: Ticket: Inventory current docs stale tool references -> P029 (one_go)
+- [done] T022: Ticket: Patch current docs to shell-first wording -> P030 (one_go)
+- [done] T023: Ticket: Update Cortex notification hint to shell-first IM read -> P031 (one_go)
+- [done] T024: Ticket: Neutralize internal reply-cap comments from direct im_reply wording -> P032 (one_go)
+- [done] T025: Classify and isolate remaining direct-tool vocabulary -> P033 (split)
+- [done] T026: Classify policy and API direct-tool vocabulary -> P034 (one_go)
+- [done] T027: Clean direct-tool vocabulary in tests -> P035 (split)
+- [done] T028: Clean common contract test fixtures -> P038 (one_go)
+- [done] T029: Clean runtime test direct-tool fixtures -> P039 (split)
+- [done] T030: Make runtime finalizer direct-reply fixtures explicitly legacy-negative -> P042 (one_go)
+- [done] T031: Clean runtime activity projection fixtures -> P043 (one_go)
+- [done] T032: Clean runtime guard and smoke assertion wording -> P044 (one_go)
+- [done] T033: Classify Cortex test direct-tool vocabulary -> P040 (one_go)
+- [done] T034: Classify app monitor test direct-tool fixtures -> P041 (one_go)
+- [done] T035: Isolate monitor activity legacy direct-tool boundary -> P036 (split)
+- [done] T036: Isolate backend activity projection legacy labels -> P045 (one_go)
+- [done] T037: Isolate frontend ActivityTimeline legacy detection -> P046 (one_go)
+- [done] T038: Final direct-tool residue scan and exception ledger -> P037 (one_go)
+- [done] T039: Scan and fix ephemeral path / media payload leakage -> P016 (split)
+- [done] T040: Scan ephemeral Cortex backing path residue -> P047 (one_go)
+- [done] T041: Ticket: enforce media and base64 output contract -> P048 (split)
+- [done] T042: Ticket: audit and fix media CLI stdout contract -> P050 (one_go)
+- [done] T043: Ticket: fix display and LLM image projection contract -> P051 (split)
+- [done] T044: Ticket: audit display tool history output -> P054 (one_go)
+- [done] T045: Ticket: verify displayed images survive context assembly -> P055 (one_go)
+- [done] T046: Ticket: audit provider image payload and log redaction contract -> P056 (one_go)
+- [done] T047: Ticket: add focused provider image adapter tests -> P057 (one_go)
+- [done] T048: Ticket: implement direct Anthropic image conversion test -> P058 (one_go)
+- [done] T049: Ticket: audit and enforce terminal-shaped shell observations -> P052 (split)
+- [done] T050: Ticket: audit runtime shell public output bounds -> P059 (one_go)
+- [done] T051: Ticket: audit Cortex shell step projection -> P060 (one_go)
+- [done] T052: Ticket: add media-like shell stdout regression test -> P061 (one_go)
+- [done] T053: Ticket: add active-path base64 leakage guards -> P053 (split)
+- [done] T054: Ticket: audit and classify base64 leakage surfaces -> P062 (one_go)
+- [done] T055: Ticket: implement public-surface base64 leakage guard -> P063 (one_go)
+- [done] T056: Ticket: update docs for terminal text plus blob/artifact output contract -> P049 (split)
+- [done] T057: Ticket: scan active docs for output-contract drift -> P064 (one_go)
+- [done] T058: Document final shell display blob output contract -> P065 (one_go)
+- [done] T059: Scan stale fallback compatibility and TODO residue -> P017 (split)
+- [done] T060: Split active code residue audit by implementation boundary -> P066 (split)
+- [done] T061: Audit runtime queue residue and clean safe hits -> P069 (one_go)
+- [done] T062: Audit Cortex common residue and clean safe hits -> P070 (one_go)
+- [done] T063: Clean active Cortex common PR history comments -> P072 (one_go)
+- [done] T064: Split app business MCP residue audit by adapter boundary -> P071 (split)
+- [done] T065: Audit app monitor UI residue and clean safe hits -> P073 (one_go)
+- [done] T066: Audit business dispatch adapter compatibility residue -> P074 (split)
+- [done] T067: Scan and clean business dispatch active residue -> P076 (one_go)
+- [done] T068: Classify/remove Business residue and run focused tests -> P077 (split)
+- [done] T069: Inspect/remove Business subagent no-op agent stub -> P078 (one_go)
+- [done] T070: Classify and clean Business entity/health stub wording -> P079 (one_go)
+- [done] T071: Classify Business environment IM endpoints as current shell boundary -> P080 (one_go)
+- [done] T072: Run Business focused tests and final active residue scan -> P081 (one_go)
+- [done] T073: MCP/scripts shell adapter residue scan -> P075 (split)
+- [done] T074: Scan and clean MCP/VMuse adapter residue -> P082 (one_go)
+- [done] T075: Scan and clean Cortex shell CLI adapter residue -> P083 (one_go)
+- [done] T076: Run final MCP/script shell-adapter scan and focused tests -> P084 (one_go)
+- [done] T077: Classify and clean non-monitor App active residue -> P085 (split)
+- [done] T078: Classify App settings/model config residue -> P086 (one_go)
+- [done] T079: Classify App device/WebRTC/UI media residue -> P087 (one_go)
+- [done] T080: Classify App chat audio/blob upload residue -> P088 (one_go)
+- [done] T081: Final App non-monitor residue scan and guard verification -> P089 (one_go)
+- [done] T082: Split test skip/TODO/fixture residue audit by test boundary -> P067 (split)
+- [done] T083: Runtime queue test residue scan -> P090 (one_go)
+- [done] T084: App test residue scan -> P091 (one_go)
+- [done] T085: Business Cortex Common test residue scan -> P092 (one_go)
+- [done] T086: MCP Scripts and CI Test Residue Scan -> P093 (split)
+- [done] T087: MCP Test Residue Scan Ticket -> P094 (one_go)
+- [done] T088: Scripts and CI Helper Residue Scan Ticket -> P095 (split)
+- [done] T089: Repository Scripts Residue Scan Ticket -> P097 (one_go)
+- [done] T090: CI and Lint Helper Residue Scan Ticket -> P098 (one_go)
+- [done] T091: MCP Scripts CI Final Residue Sweep Ticket -> P096 (one_go)
+- [done] T092: Active Docs Migration and Legacy Residue Scan Ticket -> P068 (split)
+- [done] T093: Active Architecture Docs Residue Scan Ticket -> P099 (one_go)
+- [done] T094: Reference and Runbook Docs Residue Scan Ticket -> P100 (one_go)
+- [done] T095: Active Docs Final Residue Sweep Ticket -> P101 (one_go)
+- [done] T096: Shell Tool Contract and CLI Usability Audit Ticket -> P002 (split)
+- [done] T097: Shell Output and Desc Contract Audit Ticket -> P102 (one_go)
+- [done] T098: Agentctl Devicectl Cortex CLI Coverage Audit Ticket -> P103 (split)
+- [done] T099: Agentctl CLI Coverage Audit Ticket -> P105 (split)
+- [done] T100: Agentctl IM CLI Contract Audit Ticket -> P108 (one_go)
+- [done] T101: Agentctl Subagent CLI Contract Audit Ticket -> P109 (one_go)
+- [done] T102: Agentctl Media Audio-QA CLI Contract Audit Ticket -> P110 (one_go)
+- [done] T103: Devicectl CLI Coverage and Artifact Contract Audit Ticket -> P106 (split)
+- [done] T104: Devicectl Artifact-Producing Commands Contract Audit Ticket -> P111 (one_go)
+- [done] T105: Devicectl Non-Media Command Coverage Audit Ticket -> P112 (one_go)
+- [done] T106: Cortex CLI Coverage and Workspace Access Audit Ticket -> P107 (split)
+- [done] T107: Cortex Payload CLI Coverage Audit Ticket -> P113 (one_go)
+- [done] T108: Cortex Stable Workspace Path Contract Audit Ticket -> P114 (split)
+- [done] T109: Stable Path Schema and Help Guidance Audit Ticket -> P115 (one_go)
+- [done] T110: Runtime Stale Backing Path Guard Audit Ticket -> P116 (one_go)
+- [done] T111: Stable Workspace Path Docs Residue Sweep Ticket -> P117 (split)
+- [done] T112: Active Docs Stable Path Residue Audit Ticket -> P119 (one_go)
+- [done] T113: Test and Schema Stable Path Residue Classification Ticket -> P120 (one_go)
+- [done] T114: Scripts and Examples Stable Path Residue Audit Ticket -> P121 (one_go)
+- [done] T115: Stable Workspace Path Regression Sweep Ticket -> P118 (one_go)
+- [done] T116: Blob Artifact and Display Contract Audit Ticket -> P104 (split)
+- [done] T117: Artifact-Producing CLI Blob Manifest Contract Audit Ticket -> P122 (one_go)
+- [done] T118: Display Tool History Sanitization Audit Ticket -> P123 (one_go)
+- [done] T119: Provider-Native Image Projection Audit Ticket -> P124 (one_go)
+- [done] T120: Blob Artifact and Display Base64 Regression Sweep Ticket -> P125 (one_go)
+- [done] T121: Cortex context projection and payload boundary audit -> P003 (split)
+- [done] T122: Map Cortex context assembly source and event boundary -> P126 (split)
+- [done] T123: Map ContextEvent stream and read model -> P133 (split)
+- [done] T124: Audit ContextEvent append-only store -> P138 (one_go)
+- [done] T125: Audit ContextEvent pure projection -> P139 (one_go)
+- [done] T126: Audit ContextEvent read model and budget boundary -> P140 (one_go)
+- [done] T127: Audit workspace materialized projections and payload references -> P134 (split)
+- [done] T128: Audit workspace payload store and blob externalization -> P141 (one_go)
+- [done] T129: Audit workspace tool step normalization and index contract -> P142 (split)
+- [done] T130: Verify normalize_step rejects unsafe legacy step shapes -> P145 (one_go)
+- [done] T131: Verify write_step payload_ref mirroring and external payload storage -> P146 (one_go)
+- [done] T132: Verify step index metadata and corrupt-index behavior -> P147 (one_go)
+- [done] T133: Audit active write_step_projection call sites -> P148 (split)
+- [done] T134: Verify Cortex API step projection endpoint -> P149 (one_go)
+- [done] T135: Verify runtime bridge emits structured step requests -> P150 (one_go)
+- [done] T136: Scan for direct workspace step write bypasses -> P151 (one_go)
+- [done] T137: Audit context.jsonl projection role and callers -> P143 (split)
+- [done] T138: Map workspace context.jsonl helper behavior -> P152 (one_go)
+- [done] T139: Classify context.jsonl helper callers -> P153 (one_go)
+- [done] T140: Prove LLM prepare path uses ContextEvent read model authority -> P154 (split)
+- [done] T141: Map Cortex prepare_for_llm read-model authority -> P156 (one_go)
+- [done] T142: Audit runtime LLM prepare caller authority -> P157 (one_go)
+- [done] T143: Install LLM prepare authority residue guards -> P158 (one_go)
+- [done] T144: Audit context projection regression tests -> P155 (one_go)
+- [done] T145: Map Cortex API materialization call sites -> P144 (one_go)
+- [done] T146: Audit runtime prepare-context handler chain -> P135 (split)
+- [done] T147: Map ReAct saga prepare-context ordering -> P159 (split)
+- [done] T148: Map ReAct saga source ordering -> P164 (one_go)
+- [done] T149: Add ReAct saga prepare-context ordering guard -> P165 (one_go)
+- [done] T150: Map runtime Cortex prepare handler and bridge contract -> P160 (split)
+- [done] T151: Map Cortex prepare handler response shape -> P166 (one_go)
+- [done] T152: Verify CortexBridge prepare_for_llm endpoint contract -> P167 (one_go)
+- [done] T153: Map runtime LLM payload handoff from prepared snapshot -> P161 (split)
+- [done] T154: Verify ReactThink prepared snapshot payload builder -> P168 (one_go)
+- [done] T155: Verify LLM handler provider request assembly -> P169 (split)
+- [done] T156: Verify LLMCall contract explicit provider payload source -> P171 (one_go)
+- [done] T157: Verify LLM handler transport delegation boundary -> P172 (one_go)
+- [done] T158: Audit LLM payload handoff regression coverage -> P170 (one_go)
+- [done] T159: Classify runtime continuity and context.read residue -> P162 (split)
+- [done] T160: Classify context read handler residue -> P173 (one_go)
+- [done] T161: Classify runtime wake continuity residue -> P174 (one_go)
+- [done] T162: Inventory runtime read_context callers and guard coverage -> P175 (one_go)
+- [done] T163: Audit runtime prepare-context regression coverage -> P163 (one_go)
+- [done] T164: Audit and harden tool result refs -> P136 (split)
+- [done] T165: Map runtime tool wrapper refs -> P176 (one_go)
+- [done] T166: Map Cortex step storage refs -> P177 (one_go)
+- [done] T167: Map formatted read and display projection refs -> P178 (one_go)
+- [done] T168: Audit externalized payload regression and ambiguity cleanup -> P179 (one_go)
+- [done] T169: Map active skill stack injection ordering and media interaction -> P137 (split)
+- [done] T170: Audit active stack source of truth and lifecycle projection -> P180 (one_go)
+- [done] T171: Map final active stack message injection ordering -> P181 (one_go)
+- [done] T172: Verify active stack plus current display media regression coverage -> P182 (one_go)
+- [done] T173: Audit stale active-stack injection and cleanup candidates -> P183 (one_go)
+- [done] T174: Audit step result projection contract across tool output types -> P127 (split)
+- [done] T175: Audit bounded terminal-style shell projection -> P184 (one_go)
+- [done] T176: Audit current display provider-media projection -> P185 (split)
+- [done] T177: Audit Cortex display projection contract -> P188 (one_go)
+- [done] T178: Audit runtime current display selection and active-stack ordering -> P189 (split)
+- [done] T179: Audit runtime step-ref projection selection -> P192 (one_go)
+- [done] T180: Audit active-stack-after-display media preservation -> P193 (one_go)
+- [done] T181: Audit provider media adapter conversion -> P190 (split)
+- [done] T182: Audit runtime-to-factory multimodal request preservation -> P194 (one_go)
+- [done] T183: Audit factory provider multimodal adapter preservation -> P195 (split)
+- [done] T184: Audit factory provider request adapter media preservation -> P196 (one_go)
+- [done] T185: Audit factory multimodal log detail serialization -> P197 (one_go)
+- [done] T186: Audit end-to-end display screenshot regression -> P191 (one_go)
+- [done] T187: Audit historical display and artifact manifest projection -> P186 (one_go)
+- [done] T188: Step result projection stale branch cleanup ticket -> P187 (split)
+- [done] T189: Projection branch inventory ticket -> P198 (split)
+- [done] T190: Cortex projection inventory ticket -> P202 (one_go)
+- [done] T191: Runtime and factory projection inventory ticket -> P203 (split)
+- [done] T192: Runtime projection inventory ticket -> P205 (one_go)
+- [done] T193: Factory/provider/log projection inventory ticket -> P206 (one_go)
+- [done] T194: Projection test branch inventory ticket -> P204 (one_go)
+- [done] T195: Remove stale production projection branches -> P199 (split)
+- [done] T196: Inventory `resolve_for_llm` live callers and exports -> P207 (one_go)
+- [done] T197: Delete `resolve_for_llm` and package export residue -> P208 (one_go)
+- [done] T198: Audit retained projection compatibility branches -> P209 (split)
+- [done] T199: Remove or justify nested `result` wrapper unwrapping -> P210 (one_go)
+- [done] T200: Verify MCP image/data-url branch is display-only -> P211 (one_go)
+- [done] T201: Bound generic unknown-dict projection fallback -> P212 (one_go)
+- [done] T202: Clean projection test residue and legacy-contract assertions -> P200 (split)
+- [done] T203: Delete stale `test_resolve_for_llm.py` -> P213 (one_go)
+- [done] T204: Rename projection guard tests away from legacy endorsement -> P214 (one_go)
+- [done] T205: Run focused projection cleanup verification -> P215 (one_go)
+- [done] T206: Aggressive projection stale-branch regression sweep -> P201 (split)
+- [done] T207: Run final projection static branch audit -> P216 (one_go)
+- [done] T208: Implement and test Google/Gemini multimodal conversion -> P217 (split)
+- [done] T209: Convert Gemini user list content into native parts -> P219 (one_go)
+- [done] T210: Add Google/Gemini multimodal provider regression tests -> P220 (one_go)
+- [done] T211: Run final focused projection regression chain -> P218 (split)
+- [done] T212: Execute focused Cortex/runtime/factory regression tests -> P221 (one_go)
+- [done] T213: Audit and classify remaining projection branches -> P222 (split)
+- [done] T214: Search active code for removed projection symbol -> P223 (one_go)
+- [done] T215: Enumerate and classify active projection branches -> P224 (one_go)
+- [done] T216: Audit runtime context client and history expansion projection boundaries -> P128 (split)
+- [done] T217: Map runtime LLM step-ref expansion flow -> P225 (one_go)
+- [done] T218: Verify runtime current/history media projection boundary -> P226 (one_go)
+- [done] T219: Verify active-stack system ordering around current display media -> P227 (one_go)
+- [done] T220: Audit payload API and pointer retrieval boundaries -> P129 (split)
+- [done] T221: Map and verify explicit Cortex payload inspection APIs -> P228 (one_go)
+- [done] T222: Audit payload write path and default context assembly boundary -> P229 (split)
+- [done] T223: Map and verify durable payload refs in tool step write path -> P231 (split)
+- [done] T224: Verify Cortex workspace persists tool step payload refs -> P235 (one_go)
+- [done] T225: Verify runtime durable payload handoff for heavy tool outputs -> P236 (split)
+- [done] T226: Verify runtime shell handoff projection boundary -> P237 (one_go)
+- [done] T227: Verify display/media handoff avoids raw image text history -> P238 (one_go)
+- [done] T228: Verify Cortex event projection preserves payload pointers -> P232 (one_go)
+- [done] T229: Verify runtime LLM context expansion avoids full payload reads -> P233 (one_go)
+- [done] T230: Verify combined large shell/display projection boundary -> P234 (one_go)
+- [done] T231: Audit tool guidance and payload boundary tests -> P230 (split)
+- [done] T232: Verify LLM tool schema and policy payload boundary -> P239 (one_go)
+- [done] T233: Remove Cortex tests top-level package ambiguity -> P241 (split)
+- [done] T234: Inventory generic test imports and marker files -> P242 (one_go)
+- [done] T235: Migrate Cortex tests off generic `tests.*` imports -> P243 (one_go)
+- [done] T236: Verify mixed pytest selection after namespace cleanup -> P244 (one_go)
+- [done] T237: Audit and harden shell capability payload guidance -> P240 (split)
+- [done] T238: Map shell payload and artifact guidance pointers -> P245 (one_go)
+- [done] T239: Tighten shell capability guidance wording -> P246 (one_go)
+- [done] T240: Verify shell payload and output boundary suite -> P247 (one_go)
+- [done] T241: Audit provider-native media boundary -> P130 (split)
+- [done] T242: Audit runtime history/media perception boundary -> P248 (one_go)
+- [done] T243: Audit provider-native media adapter formats -> P249 (one_go)
+- [done] T244: Ticket: Classify or fix media/base64 residue -> P250 (split)
+- [done] T245: Ticket: Audit runtime/context media residue -> P251 (one_go)
+- [done] T246: Ticket: Audit Cortex and shell CLI media residue -> P252 (one_go)
+- [done] T247: Ticket: Classify provider/factory media residue -> P253 (one_go)
+- [done] T248: Ticket: Final cross-repository media residue closure -> P254 (one_go)
+- [done] T249: Ticket: Large-output and base64 leakage sweep -> P131 (split)
+- [done] T250: Ticket: Runtime large-output boundary sweep -> P255 (one_go)
+- [done] T251: Ticket: Cortex projection and payload large-output sweep -> P256 (one_go)
+- [done] T252: Ticket: Factory log redaction and detail large-output sweep -> P257 (one_go)
+- [done] T253: Ticket: Final large-output leakage cross-scan -> P258 (one_go)
+- [done] T254: Cross-layer projection regression suite ticket -> P132 (split)
+- [done] T255: Cortex projection regression coverage ticket -> P259 (split)
+- [done] T256: Cortex projection coverage inventory ticket -> P263 (one_go)
+- [done] T257: Cortex projection implementation gap closure ticket -> P264 (one_go)
+- [done] T258: Cortex projection focused verification ticket -> P265 (one_go)
+- [done] T259: Agent-runtime current versus historical media regression coverage ticket -> P260 (split)
+- [done] T260: Runtime media regression coverage inventory ticket -> P266 (one_go)
+- [done] T261: Runtime media implementation gap closure ticket -> P267 (one_go)
+- [done] T262: Runtime media focused verification ticket -> P268 (one_go)
+- [done] T263: Ticket: Near-integrated screenshot manifest to display replay regression -> P261 (split)
+- [done] T264: Ticket: Inventory near-integrated screenshot/display coverage -> P269 (split)
+- [done] T265: Ticket: Runtime media seam inventory -> P272 (one_go)
+- [done] T266: Ticket: Cortex shell artifact seam inventory -> P273 (one_go)
+- [done] T267: Ticket: Cross-layer coverage comparison -> P274 (one_go)
+- [done] T268: Ticket: Implement near-integrated screenshot/display regression -> P270 (split)
+- [done] T269: Ticket: Add near-integrated screenshot/display regression test -> P275 (one_go)
+- [done] T270: Ticket: Production fix or no-op proof for near-integrated regression -> P276 (one_go)
+- [done] T271: Ticket: Focused verification for near-integrated screenshot/display contract -> P271 (one_go)
+- [done] T272: Ticket: Final cross-layer projection marker scan -> P262 (one_go)
+- [done] T273: Ticket: Queue FSM session and worker boundary audit -> P004 (split)
+- [done] T274: Ticket: Queue FSM and worker topology map -> P277 (one_go)
+- [done] T275: Ticket: Session state SSOT outbox and generation boundary audit -> P278 (split)
+- [done] T276: Ticket: Audit session schema and state ownership -> P282 (split)
+- [done] T277: Ticket: Inventory session schema tables -> P286 (split)
+- [done] T278: Ticket: Scan session DDL definitions -> P289 (one_go)
+- [done] T279: Ticket: Classify active usage of session tables -> P290 (one_go)
+- [done] T280: Ticket: Inventory session repository state mutations -> P287 (split)
+- [done] T281: Ticket: Inventory SessionLedgerRepository mutation APIs -> P291 (one_go)
+- [done] T282: Ticket: Inventory SessionRepository transaction and effect orchestration -> P292 (split)
+- [done] T283: Ticket: Audit SessionRepository dispatch transaction flow -> P294 (one_go)
+- [done] T284: Ticket: Refactor dispatch start-wake construction -> P297 (split)
+- [done] T285: Ticket: Design dispatch start-wake helper extraction -> P298 (one_go)
+- [done] T286: Ticket: Implement dispatch start-wake helper extraction -> P299 (one_go)
+- [done] T287: Verify dispatch start-wake helper behavior -> P300 (split)
+- [done] T288: Source-shape guard for dispatch helper -> P301 (one_go)
+- [done] T289: Focused behavior tests for dispatch helper -> P302 (one_go)
+- [done] T290: Audit session finalize restart rebuild transaction flows -> P295 (split)
+- [done] T291: Audit session finalize flow -> P303 (one_go)
+- [done] T292: Fix finalize pending restart atomicity -> P306 (split)
+- [done] T293: Design finalize restart atomicity fix -> P307 (one_go)
+- [done] T294: Implement finalize restart atomicity -> P308 (one_go)
+- [done] T295: Verify finalize restart atomicity -> P309 (one_go)
+- [done] T296: Audit session restart and recovery-start flow -> P304 (one_go)
+- [done] T297: Audit session rebuild projection flow -> P305 (one_go)
+- [done] T298: Audit after-transaction publish and outbox boundary -> P296 (one_go)
+- [done] T299: Remove repository eager attach publish -> P310 (split)
+- [done] T300: Design attach outbox worker-only cutover -> P311 (one_go)
+- [done] T301: Implement attach outbox worker-only cutover -> P312 (one_go)
+- [done] T302: Patch attach worker-only cutover test failures -> P314 (split)
+- [done] T303: Patch attach dispatch logger contract -> P315 (one_go)
+- [done] T304: Patch session outbox boundary source guards -> P316 (one_go)
+- [done] T305: Verify attach worker-only cutover after patches -> P317 (one_go)
+- [done] T306: Final attach outbox worker-only verification -> P313 (one_go)
+- [done] T307: Scan session mutation residue -> P293 (split)
+- [done] T308: Direct session SQL table access scan -> P318 (one_go)
+- [done] T309: Old session wrapper and compatibility branch scan -> P319 (one_go)
+- [done] T310: Rename attach outbox recording helper -> P321 (one_go)
+- [done] T311: Consolidate session residue scan classification -> P320 (one_go)
+- [done] T312: Audit session rebuild projection and state reads -> P288 (split)
+- [done] T313: Active session read path audit -> P322 (one_go)
+- [done] T314: Rebuild and pending projection writer audit -> P323 (one_go)
+- [done] T315: Rebuild projection coverage and guard audit -> P324 (one_go)
+- [done] T316: Patch PR-252 attach state test -> P325 (one_go)
+- [done] T317: Ticket: Audit session generation attach and finalize boundary -> P283 (split)
+- [done] T318: Ticket: Audit session generation lifecycle and advancement -> P326 (one_go)
+- [done] T319: Ticket: Audit attach expected-generation validation -> P327 (split)
+- [done] T320: Ticket: Audit repository-side attach payload generation -> P330 (one_go)
+- [done] T321: Ticket: Audit attach session outbox delivery -> P331 (one_go)
+- [done] T322: Ticket: Audit runtime attach handler generation enforcement -> P332 (one_go)
+- [done] T323: Ticket: Audit aggregate stale/missing attach generation regression coverage -> P333 (one_go)
+- [done] T324: Finalize/session-ended generation ownership audit -> P328 (split)
+- [done] T325: Finalize/session-ended entry-point inventory -> P334 (one_go)
+- [done] T326: Repository finalize generation atomicity -> P335 (one_go)
+- [done] T327: Session-ended outbox delivery generation contract -> P336 (split)
+- [done] T328: Session-ended delivery chain inventory -> P340 (one_go)
+- [done] T329: Wake-finalize payload positive generation -> P341 (one_go)
+- [done] T330: Session-ended handler client route contract -> P342 (one_go)
+- [done] T331: Session-ended compatibility residue cleanup -> P343 (split)
+- [done] T332: Direct session-ended delivery residue guard -> P345 (one_go)
+- [done] T333: Session-ended delivery tests compatibility cleanup -> P346 (one_go)
+- [done] T334: Upstream react generation default classification -> P347 (one_go)
+- [done] T335: Session-ended delivery aggregate verification -> P344 (one_go)
+- [done] T336: Runtime session-ended handler enforcement -> P337 (split)
+- [done] T337: Runtime finalize handler inventory -> P348 (one_go)
+- [done] T338: React contract positive session generation -> P349 (one_go)
+- [done] T339: Cortex finalize mutation identity guards -> P350 (split)
+- [done] T340: Cortex scope_end identity contract -> P353 (one_go)
+- [done] T341: Subagent finalize status identity guard -> P354 (split)
+- [done] T342: Subagent finalize status payload identity -> P357 (one_go)
+- [done] T343: Subagent finalize status handler validation -> P358 (one_go)
+- [done] T344: Wake finalize status gating order -> P359 (one_go)
+- [done] T345: Subagent finalize status identity aggregate verification -> P360 (one_go)
+- [done] T346: Wake finalize mutation payload propagation -> P355 (one_go)
+- [done] T347: Aggregate finalize mutation guard verification -> P356 (one_go)
+- [done] T348: Recovery compensation finalize identity hardening -> P351 (split)
+- [done] T349: Map recovery and compensation finalize sources -> P361 (one_go)
+- [done] T350: Harden compensation wake_finalize identity preservation -> P362 (one_go)
+- [done] T351: Harden session recovery archive identity handling -> P363 (one_go)
+- [done] T352: Recovery compensation finalize aggregate verification -> P364 (one_go)
+- [done] T353: Ticket: Remove Startup Rebuild Generation Default -> P365 (one_go)
+- [done] T354: Ticket: Runtime Finalize Enforcement Aggregate Verification -> P352 (one_go)
+- [done] T355: Ticket: Remaining Stack and Finalize Reason Archive Boundary -> P338 (split)
+- [done] T356: Ticket: Finalize Diagnostics Source Map -> P366 (one_go)
+- [done] T357: Ticket: Session Finalize Diagnostics Binding -> P367 (one_go)
+- [done] T358: Ticket: Finalize Diagnostics Assertion Hardening -> P370 (one_go)
+- [done] T359: Ticket: Cortex Archive Diagnostics Binding -> P368 (split)
+- [done] T360: Ticket: Cortex Archive Diagnostics Source Map -> P371 (one_go)
+- [done] T361: Ticket: Scope End Boundary Contract Propagation -> P372 (one_go)
+- [done] T362: Ticket: Cortex Archive Diagnostics Persistence -> P373 (split)
+- [done] T363: Ticket: Map Cortex Archive Diagnostics Persistence -> P375 (one_go)
+- [done] T364: Ticket: Persist Explicit Archive Diagnostics -> P376 (one_go)
+- [done] T365: Ticket: Verify Cortex Archive Diagnostics Persistence -> P377 (one_go)
+- [done] T366: Ticket: Aggregate Verify Cortex Archive Diagnostics -> P374 (one_go)
+- [done] T367: Ticket: Finalize Diagnostics Aggregate Verification -> P369 (one_go)
+- [done] T368: Finalize generation aggregate regression verification -> P339 (split)
+- [done] T369: Runtime finalize generation regression test pass -> P378 (split)
+- [done] T370: Run runtime focused finalize regression tests -> P381 (one_go)
+- [done] T371: Classify runtime finalize source guards -> P382 (one_go)
+- [done] T372: Cortex archive diagnostics aggregate regression -> P379 (split)
+- [done] T373: Run Cortex archive diagnostics focused tests -> P383 (one_go)
+- [done] T374: Classify Cortex archive diagnostics source guards -> P384 (one_go)
+- [done] T375: Run cross-repo stale compatibility residue guards -> P380 (one_go)
+- [done] T376: Fix remaining live generation coercions -> P385 (split)
+- [done] T377: Patch runtime attach generation validation -> P386 (one_go)
+- [done] T378: Patch Cortex operational store generation validation -> P387 (one_go)
+- [done] T379: Produce final cross-repo generation residue guard matrix -> P388 (one_go)
+- [done] T380: Normalize runtime generation default boundaries -> P389 (split)
+- [done] T381: Patch session FSM finalize generation validation -> P390 (one_go)
+- [done] T382: Normalize session repo and ledger generation adapters -> P391 (split)
+- [done] T383: Patch session repo state reconstruction generation validation -> P394 (one_go)
+- [done] T384: Patch session ledger generation helpers -> P395 (one_go)
+- [done] T385: Classify audit and generic FSM generation hits -> P392 (split)
+- [done] T386: Classify audit and projection generation defaults -> P396 (one_go)
+- [done] T387: Classify generic FSM generation counters -> P397 (one_go)
+- [done] T388: Normalize round and stack-depth defaults -> P393 (one_go)
+- [done] T389: Generation-like residue closure ticket -> P398 (split)
+- [done] T390: Session FSM event generation cleanup ticket -> P399 (one_go)
+- [done] T391: Subagent wake session generation cleanup ticket -> P400 (one_go)
+- [done] T392: Widened guard matrix ticket -> P401 (one_go)
+- [done] T393: Compatibility residue guard audit ticket -> P329 (split)
+- [done] T394: Guard inventory execution ticket -> P402 (one_go)
+- [done] T395: Runtime compatibility cleanup ticket -> P403 (split)
+- [done] T396: Runtime session authority cleanup ticket -> P407 (one_go)
+- [done] T397: Generic Queue infrastructure classification ticket -> P408 (one_go)
+- [done] T398: Task contracts and handler cleanup ticket -> P409 (split)
+- [done] T399: React contract classification ticket -> P412 (one_go)
+- [done] T400: Finalize saga and session handler classification ticket -> P413 (one_go)
+- [done] T401: Cortex handler and bridge classification ticket -> P414 (one_go)
+- [done] T402: Task contract and handler final verification ticket -> P415 (one_go)
+- [done] T403: Worker and health counter classification ticket -> P410 (one_go)
+- [done] T404: Runtime cleanup final verification ticket -> P411 (one_go)
+- [done] T405: Cortex compatibility residue cleanup ticket -> P404 (split)
+- [done] T406: Cortex residue inventory ticket -> P416 (one_go)
+- [done] T407: Cortex context event lifecycle cleanup ticket -> P417 (split)
+- [done] T408: ContextEvent store and writer contract audit ticket -> P421 (one_go)
+- [done] T409: ContextEvent projection and read-model cleanup ticket -> P422 (one_go)
+- [done] T410: Workspace step and payload normalization cleanup ticket -> P423 (one_go)
+- [done] T411: ContextEvent API lifecycle endpoint cleanup ticket -> P424 (one_go)
+- [done] T412: Ticket: ContextEvent lifecycle final verification -> P425 (split)
+- [done] T413: Ticket: Reconcile ContextEvent child outcomes -> P426 (one_go)
+- [done] T414: Ticket: Verify ContextEvent projection guards -> P427 (one_go)
+- [done] T415: Ticket: Sweep ContextEvent lifecycle residue -> P428 (split)
+- [done] T416: Ticket: Sweep live Cortex source residue -> P429 (one_go)
+- [done] T417: Ticket: Classify ContextEvent non-source residue -> P430 (one_go)
+- [done] T418: Ticket: Clean Cortex archive and diagnostic residue -> P418 (split)
+- [done] T419: Ticket: Inventory archive/direct diagnostics -> P431 (one_go)
+- [done] T420: Ticket: Verify direct scope-end contract -> P432 (one_go)
+- [done] T421: Ticket: Verify archive projection cleanup -> P433 (one_go)
+- [done] T422: Ticket: Clean Cortex API, CLI, and bridge surfaces -> P419 (split)
+- [done] T423: Ticket: Audit Cortex API surface -> P434 (one_go)
+- [done] T424: Ticket: Audit Cortex CLI and shell capability surface -> P435 (one_go)
+- [done] T425: Ticket: Audit and clean Cortex runtime bridge surface -> P436 (split)
+- [done] T426: Ticket: Inventory runtime bridge endpoint usage -> P437 (one_go)
+- [done] T427: Ticket: Fix runtime bridge focused test fixture session_generation -> P441 (one_go)
+- [done] T428: Ticket: Prove live agent loop LLM prepare path -> P438 (one_go)
+- [done] T429: Ticket: Decide and clean materialized context endpoint ownership -> P439 (split)
+- [done] T430: Ticket: Classify materialized context projection owners -> P442 (one_go)
+- [done] T431: Ticket: Narrow runtime bridge materialized context helper names -> P443 (one_go)
+- [done] T432: Ticket: Clarify runtime context task projection contract -> P444 (one_go)
+- [done] T433: Ticket: Clean Cortex materialized context endpoint and test wording -> P445 (one_go)
+- [done] T434: Ticket: Final runtime bridge guard verification -> P440 (one_go)
+- [done] T435: Ticket: Final Cortex compatibility guard matrix -> P420 (split)
+- [done] T436: Ticket: Run Cortex generation and active-state guard scans -> P446 (one_go)
+- [done] T437: Ticket: Run Cortex media payload and projection guard scans -> P447 (one_go)
+- [done] T438: Ticket: Rerun final focused Cortex runtime boundary tests -> P448 (one_go)
+- [done] T439: Ticket: Produce final Cortex compatibility classification matrix -> P449 (one_go)
+- [done] T440: Ticket: Audit and clean test/migration compatibility residues -> P405 (split)
+- [done] T441: Ticket: Audit tests and fixtures for unsafe compatibility assertions -> P450 (one_go)
+- [done] T442: Ticket: Audit migration-like and compatibility-named source files -> P451 (one_go)
+- [done] T443: Ticket: Final test/migration residue guard -> P452 (one_go)
+- [done] T444: Ticket: Aggregate compatibility residue final verification -> P406 (split)
+- [done] T445: Ticket: Rerun aggregate compatibility guard matrix -> P453 (one_go)
+- [done] T446: Ticket: Run aggregate compatibility focused behavior tests -> P454 (split)
+- [done] T447: Ticket: Run runtime focused compatibility behavior tests -> P456 (one_go)
+- [done] T448: Ticket: Run Cortex focused compatibility behavior tests -> P457 (one_go)
+- [done] T449: Ticket: Produce aggregate compatibility final matrix -> P455 (one_go)
+- [done] T450: Ticket: Audit session outbox side-effect ownership -> P284 (split)
+- [done] T451: Ticket: Map session outbox effect inventory -> P458 (one_go)
+- [done] T452: Ticket: Classify and fix session direct side-effect bypasses -> P459 (split)
+- [done] T453: Ticket: Classify dispatcher direct side-effect calls -> P461 (one_go)
+- [done] T454: Ticket: Remove or classify observed wake outbox residue -> P462 (one_go)
+- [done] T455: Ticket: Remove observed wake outbox production residue -> P464 (one_go)
+- [done] T456: Ticket: Run session side-effect bypass final guard -> P463 (one_go)
+- [done] T457: Ticket: Final session outbox ownership verification -> P460 (one_go)
+- [done] T458: Ticket: Audit session compatibility and legacy residue -> P285 (split)
+- [done] T459: Session legacy residue inventory ticket -> P465 (one_go)
+- [done] T460: Session hidden input and duplicate config audit ticket -> P466 (split)
+- [done] T461: Session hidden input inventory ticket -> P468 (one_go)
+- [done] T462: Session hidden input remediation ticket -> P469 (split)
+- [done] T463: Saga decision config injection ticket -> P472 (split)
+- [done] T464: React saga decision config model ticket -> P475 (one_go)
+- [done] T465: React saga config wiring ticket -> P476 (one_go)
+- [done] T466: React saga config tests ticket -> P477 (one_go)
+- [done] T467: Retained ServiceConfig boundary classification ticket -> P473 (one_go)
+- [done] T468: Hidden input remediation tests and guards ticket -> P474 (one_go)
+- [done] T469: Rerun hidden input focused tests from correct runtime cwd ticket -> P478 (one_go)
+- [done] T470: Duplicate session config and residue cleanup ticket -> P470 (one_go)
+- [done] T471: Rerun duplicate residue guard from repo root ticket -> P479 (one_go)
+- [done] T472: Session explicit-boundary final verification ticket -> P471 (one_go)
+- [done] T473: Session legacy residue final verification ticket -> P467 (one_go)
+- [done] T474: Legacy imperative dispatch and compatibility residue cleanup ticket -> P279 (split)
+- [done] T475: Imperative dispatch residue inventory ticket -> P480 (one_go)
+- [done] T476: Direct side-effect bypass cleanup ticket -> P481 (split)
+- [done] T477: Production side-effect callsite classification ticket -> P484 (one_go)
+- [done] T478: Generic task publish route boundary decision ticket -> P485 (one_go)
+- [done] T479: Session outbox dispatcher boundary hardening ticket -> P486 (one_go)
+- [done] T480: Direct side-effect bypass final verification ticket -> P487 (one_go)
+- [done] T481: Finalize and session compatibility branch cleanup ticket -> P482 (split)
+- [done] T482: Finalize/session residue inventory ticket -> P488 (one_go)
+- [done] T483: Finalize ownership cleanup ticket -> P489 (split)
+- [done] T484: Finalize producer stack contract audit ticket -> P493 (one_go)
+- [done] T485: Wake finalize stack strictness ticket -> P494 (one_go)
+- [done] T486: Finalize ownership final verification ticket -> P495 (one_go)
+- [done] T487: Attach generation compatibility cleanup ticket -> P490 (split)
+- [done] T488: Attach generation contract inventory ticket -> P496 (one_go)
+- [done] T489: Attach generation contract hardening ticket -> P497 (split)
+- [done] T490: Attach builder strictness implementation ticket -> P499 (one_go)
+- [done] T491: Attach generation hardening verification ticket -> P500 (one_go)
+- [done] T492: Attach generation final verification ticket -> P498 (one_go)
+- [done] T493: Recovery and session-ended compatibility cleanup ticket -> P491 (split)
+- [done] T494: Recovery/session-ended contract inventory ticket -> P501 (one_go)
+- [done] T495: Recovery stack diagnostics hardening ticket -> P502 (one_go)
+- [done] T496: Recovery/session-ended final verification ticket -> P503 (one_go)
+- [done] T497: Final finalize/session compatibility verification ticket -> P492 (one_go)
+- [done] T498: Imperative Dispatch Cleanup Final Verification -> P483 (split)
+- [done] T499: Final Guard Classification -> P504 (one_go)
+- [done] T500: Final Residue Cleanup -> P505 (one_go)
+- [done] T501: Final Focused Runtime Verification -> P506 (one_go)
+- [done] T502: Finalize Watchdog and Recovery Ownership Audit -> P280 (split)
+- [done] T503: Finalize Recovery Ownership Map -> P507 (one_go)
+- [done] T504: Finalize Recovery Remediation Decision -> P508 (one_go)
+- [done] T505: Finalize Recovery Final Verification -> P509 (one_go)
+- [done] T506: Queue FSM Focused Verification Ticket -> P281 (split)
+- [done] T507: Test Scope Inventory Ticket -> P510 (split)
+- [done] T508: Focused Pytest Target Inventory Ticket -> P513 (one_go)
+- [done] T509: Filter Focused Pytest Target Inventory Ticket -> P515 (one_go)
+- [done] T510: Static Residue Guard Design Ticket -> P514 (one_go)
+- [done] T511: Align Static Residue Guard Command Ticket -> P516 (one_go)
+- [done] T512: Queue FSM Focused Test Execution Ticket -> P511 (split)
+- [done] T513: Session Outbox Finalize Focused Tests Ticket -> P517 (one_go)
+- [done] T514: Repair Session Outbox Finalize Test Failures Ticket -> P520 (split)
+- [done] T515: Recovery Remaining Stack Failure Ticket -> P521 (one_go)
+- [done] T516: Attach Outbox Published Status Failure Ticket -> P522 (one_go)
+- [done] T517: Wrapper Boundary Count Failure Ticket -> P523 (one_go)
+- [done] T518: Rerun Session Outbox Finalize Subset Ticket -> P524 (one_go)
+- [done] T519: Task Saga Worker FSM Focused Tests Ticket -> P518 (split)
+- [done] T520: Build Task Saga Worker Test Subset Ticket -> P525 (one_go)
+- [done] T521: Run Task Saga Worker Focused Pytest Ticket -> P526 (one_go)
+- [done] T522: Audit Task Saga Worker Focused Result Ticket -> P527 (one_go)
+- [done] T523: Unit Tool Output and Task Queue Focused Tests Ticket -> P519 (split)
+- [done] T524: Build Unit Tool Output Test Subset Ticket -> P528 (one_go)
+- [done] T525: Run Unit Tool Output Focused Pytest Ticket -> P529 (one_go)
+- [done] T526: Audit Unit Tool Output Focused Result Ticket -> P530 (one_go)
+- [done] T527: Queue FSM Static Residue Classification Ticket -> P512 (split)
+- [done] T528: Run Static Residue Scan Ticket -> P531 (one_go)
+- [done] T529: Classify Static Residue Hits Ticket -> P532 (split)
+- [done] T530: Classify Production Residue Hits Ticket -> P534 (split)
+- [done] T531: Classify Queue Service Production Hits Ticket -> P537 (one_go)
+- [done] T532: Classify task queue production residue hits -> P538 (one_go)
+- [done] T533: Delete unimplemented saga optional-step API -> P540 (one_go)
+- [done] T534: Reconcile production residue classifications -> P539 (one_go)
+- [done] T535: Classify test residue hits by purpose groups -> P535 (split)
+- [done] T536: Classify lifecycle and recovery test hits -> P541 (one_go)
+- [done] T537: Classify cutover and guardrail test hits -> P542 (one_go)
+- [done] T538: Split low-density boundary test classification -> P543 (split)
+- [done] T539: Classify 2-4-hit low-density tests -> P545 (one_go)
+- [done] T540: Classify single-hit boundary tests -> P546 (one_go)
+- [done] T541: Reconcile low-density test classification -> P547 (one_go)
+- [done] T542: Reconcile test residue classifications -> P544 (one_go)
+- [done] T543: Reconcile full static residue classification -> P536 (one_go)
+- [done] T544: Audit Static Residue Classification -> P533 (split)
+- [done] T545: Run Fresh Static Residue Scan -> P548 (one_go)
+- [done] T546: Reconcile Static Residue Classification Artifacts -> P549 (one_go)
+- [done] T547: Verify Risky Saga Optional Residue Is Removed -> P550 (one_go)
+- [done] T548: Roll Up Static Residue Audit -> P551 (one_go)
+- [done] T549: Audit LogicalFS Sandbox Blob Layering -> P005 (split)
+- [done] T550: Map LogicalFS Sandbox Blob Topology -> P552 (split)
+- [done] T551: Inventory LogicalFS Sandbox Blob Modules -> P556 (one_go)
+- [done] T552: Map LogicalFS Sandbox Blob Call Paths -> P557 (split)
+- [done] T553: Map Cortex Boundary Call Paths -> P559 (one_go)
+- [done] T554: Map Sandbox LogicalFS Blob Service Call Paths -> P560 (one_go)
+- [done] T555: Map Artifact And Display Blob Usage -> P561 (one_go)
+- [done] T556: Map LogicalFS Sandbox Blob Entry Points And Tests -> P558 (one_go)
+- [done] T557: Audit LogicalFS Sandbox Blob Fallback Residue -> P553 (split)
+- [done] T558: Audit Cortex Materialization And Local Fallback Residue -> P562 (split)
+- [done] T559: Classify Cortex Materialize API Residue -> P566 (one_go)
+- [done] T560: Classify Cortex Shell Fallback And Executor Bypass Residue -> P567 (one_go)
+- [done] T561: Classify Cortex Stable Path Compatibility Residue -> P568 (one_go)
+- [done] T562: Build P568 Scan Manifest -> P569 (one_go)
+- [done] T563: Build P566 And P567 Scan Manifests -> P570 (one_go)
+- [done] T564: Classify LogicalFS And Blob Authority Boundaries -> P563 (split)
+- [done] T565: Classify Cortex BlobObjectStore Adapter Boundary -> P571 (one_go)
+- [done] T566: Classify LogicalFS Object Authority And Key Prefix Semantics -> P572 (one_go)
+- [done] T567: Classify Blob Service Namespace And Artifact Boundary -> P573 (one_go)
+- [done] T568: Classify Runtime Display And Tool Output Projection Residue -> P564 (split)
+- [done] T569: Classify Runtime LLM Request Projection Paths -> P574 (split)
+- [done] T570: Classify Runtime Message Assembly And Active Stack Ordering -> P578 (one_go)
+- [done] T571: Classify Provider Request Serialization And Multimodal Projection -> P579 (one_go)
+- [done] T572: Ticket: Display Tool Perception Contract Inventory -> P575 (split)
+- [done] T573: Ticket: Display Tool Implementation And Blob Artifact Contract Inventory -> P580 (one_go)
+- [done] T574: Ticket: BlobRef-backed display perception payload -> P584 (split)
+- [done] T575: Ticket: Display BlobRef Perception Design Map -> P585 (one_go)
+- [done] T576: Ticket: Implement BlobRef-Backed Display Perception -> P586 (split)
+- [done] T577: Ticket: Rewrite Runtime Display Durable Payload -> P588 (one_go)
+- [done] T578: Ticket: Derive Runtime Display Media Refs From Blob Metadata -> P592 (one_go)
+- [done] T579: Ticket: Preserve BlobRef Display Media References In Cortex Projection -> P589 (one_go)
+- [done] T580: Ticket: Resolve Current-Round Display ImageRefs In Runtime -> P590 (one_go)
+- [done] T581: Ticket: Display Perception Cleanup And Regression Audit -> P591 (one_go)
+- [done] T582: Ticket: Final Verify Display No-Base64 Durability And Image Delivery -> P587 (one_go)
+- [done] T583: Ticket: Audit Cortex Display Projection Contract -> P581 (one_go)
+- [done] T584: Ticket: Audit Display History and Perception Regression Tests -> P582 (split)
+- [done] T585: Ticket: Inventory Current Display Image Injection Tests -> P593 (one_go)
+- [done] T586: Ticket: Inventory Historical Display Replay Tests -> P594 (one_go)
+- [done] T587: Ticket: Inventory Durable Shell and Display Base64-Absence Tests -> P595 (split)
+- [done] T588: Ticket: Inventory Shell Screenshot BlobRef Manifest Tests -> P597 (one_go)
+- [done] T589: Ticket: Inventory Display Handler Durable ImageRef Tests -> P598 (one_go)
+- [done] T590: Ticket: Inventory Cortex Projection BlobRef No-Inline Tests -> P599 (one_go)
+- [done] T591: Ticket: Inventory Active Stack Display Ordering Tests -> P596 (one_go)
+- [done] T592: Ticket: Audit Display Monitor and UI Projection Boundary -> P583 (split)
+- [done] T593: Ticket: Audit Factory Log Request Context Boundary -> P600 (one_go)
+- [done] T594: Ticket: Audit Agent Monitor Step Preview Boundary -> P601 (split)
+- [done] T595: Ticket: Audit Backend Agent Progress Preview Payloads -> P603 (one_go)
+- [done] T596: Ticket: Collect Exact Backend Preview Evidence -> P605 (one_go)
+- [done] T597: Ticket: Audit Frontend Agent Monitor Timeline Preview -> P604 (split)
+- [done] T598: Ticket: Audit Timeline Preview Rendering -> P606 (one_go)
+- [done] T599: Ticket: Add ActivityTimeline Payload Text Redaction -> P609 (one_go)
+- [done] T600: Ticket: Audit Detail Modal and Raw JSON Rendering -> P607 (one_go)
+- [done] T601: Ticket: Audit Frontend Artifact and Image Rendering -> P608 (one_go)
+- [done] T602: Repair Explicit Session Generation Fixtures -> P610 (one_go)
+- [done] T603: Audit UI Display Artifact and BlobRef Rendering Boundary -> P602 (split)
+- [done] T604: Audit Chat Attachment BlobRef Rendering -> P611 (one_go)
+- [done] T605: Audit UI Monitor and Log Artifact Display Boundary -> P612 (one_go)
+- [done] T606: Classify UI Base64 and Data URL Residue -> P613 (one_go)
+- [done] T607: Audit Shell History Tool Output Contract -> P576 (split)
+- [done] T608: Audit Shell Wrapper Terminal Output Boundary -> P614 (one_go)
+- [done] T609: Audit Cortex Shell Step and Payload Persistence Boundary -> P615 (one_go)
+- [done] T610: Inventory Shell Output Contract Tests and Guardrails -> P616 (one_go)
+- [done] T611: Inventory Legacy Base64 and Multimodal Compatibility Residue -> P577 (split)
+- [done] T612: Audit Provider Adapter Multimodal Boundary Residue -> P617 (one_go)
+- [done] T613: Audit Runtime and Cortex Multimodal Compatibility Residue -> P618 (one_go)
+- [done] T614: Classify UI and Test Multimodal Residue -> P619 (one_go)
+- [done] T615: Inventory Sandbox Service SDK Compatibility Residue -> P565 (split)
+- [done] T616: Audit Sandbox Service Execution Boundary Residue -> P620 (one_go)
+- [done] T617: Audit Sandbox SDK Client Boundary Residue -> P621 (split)
+- [done] T618: Audit Sandbox SDK API and Wire Boundary -> P623 (one_go)
+- [done] T619: Audit Runtime Sandbox SDK Call Sites -> P624 (split)
+- [done] T620: Verify Runtime Shell Handler SDK Wiring -> P626 (one_go)
+- [done] T621: Classify Runtime Legacy Execution Residue -> P627 (one_go)
+- [done] T622: Verify Sandbox SDK Runtime Boundary Test Coverage -> P625 (one_go)
+- [done] T623: Classify Sandbox Wire Base64 and Mount Residue -> P622 (split)
+- [done] T624: Classify Sandbox Wire Base64 Public-History Residue -> P628 (one_go)
+- [done] T625: Classify Sandbox Mount Ownership and Bypass Residue -> P629 (one_go)
+- [done] T626: Remove Cortex Materialize and Legacy Scratch Fallback Residue -> P554 (split)
+- [done] T627: Remove Workspace.materialize Direct Materialization API -> P630 (split)
+- [done] T628: Inventory Workspace Materialize References -> P633 (one_go)
+- [done] T629: Remove Workspace.materialize and Its Stale Test Contract -> P634 (one_go)
+- [done] T630: Classify and Remove Legacy Root RW Scratch Layout -> P631 (split)
+- [done] T631: Inventory Root RW Scratch Usage -> P635 (one_go)
+- [done] T632: Remove Root RW Scratch Default Layout and Rewrite Cortex Fixtures -> P636 (split)
+- [done] T633: Remove Root Scratch From Workspace Initialization -> P638 (one_go)
+- [done] T634: Rewrite Cortex Root RW Scratch Fixtures -> P639 (split)
+- [done] T635: Rewrite Workspace and Authority Root Scratch Fixtures -> P641 (one_go)
+- [done] T636: Rewrite Runtime and Tool Root Scratch Fixtures -> P642 (one_go)
+- [done] T637: Rewrite Path Normalization and Abuse Root Scratch Fixtures -> P643 (one_go)
+- [done] T638: Verify RW Scratch Cleanup Residue -> P640 (one_go)
+- [done] T639: Final RW Scratch Contract Guard -> P637 (split)
+- [done] T640: Run Final RW Scratch Residue Scan -> P644 (one_go)
+- [done] T641: Run Final RW Scratch Focused Tests -> P645 (one_go)
+- [done] T642: Run Final LogicalFS Sandbox Fallback Guard -> P632 (split)
+- [done] T643: Audit Materialization Residue -> P646 (one_go)
+- [done] T644: Audit Sandbox Backing Path Residue -> P647 (one_go)
+- [done] T645: Audit Runtime Local Shell Fallback Residue -> P648 (one_go)
+- [done] T646: Remove Implicit Cortex API URL Defaults -> P651 (one_go)
+- [done] T647: Require Explicit Cortex API URL in Test Helper -> P652 (one_go)
+- [done] T648: Audit Blob Workspace Authority Residue -> P649 (split)
+- [done] T649: Scan and Classify Live Blob Workspace Authority Paths -> P653 (one_go)
+- [done] T650: Audit and Correct Blob/Workspace Authority Documentation -> P654 (one_go)
+- [done] T651: Audit Blob Workspace Boundary Tests and Guardrails -> P655 (one_go)
+- [done] T652: Focused LogicalFS Sandbox Boundary Verification -> P650 (one_go)
+- [done] T653: Run Final Layering Verification -> P555 (split)
+- [done] T654: Run Final Static Residue Scans -> P656 (one_go)
+- [done] T655: Run Final Boundary Tests and Guards -> P657 (one_go)
+- [done] T656: Classify Final Residual Risk and Worktree State -> P658 (one_go)
+- [done] T657: Audit Tests Docs and Architecture Guards -> P006 (split)
+- [done] T658: Audit Docs Architecture Stale Claims -> P659 (one_go)
+- [done] T659: Audit Tests for Stale Contracts -> P660 (one_go)
+- [done] T660: Audit Architecture Guards for Current Contracts -> P661 (split)
+- [done] T661: Inventory Architecture Guards -> P662 (one_go)
+- [done] T662: Remediate Architecture Guard Gaps -> P663 (split)
+- [done] T663: Build Guard Gap Matrix -> P665 (one_go)
+- [done] T664: Clean Generated Artifacts and Re-run Guard -> P666 (one_go)
+- [done] T665: Review Guard False Positives and Stale Assumptions -> P667 (one_go)
+- [done] T666: Verify Architecture Guards -> P664 (one_go)
+- [done] T667: Audit Deployment Runtime Observability and Smoke Paths -> P007 (split)
+- [done] T668: Audit Runtime Process Topology and Deployment Scripts -> P668 (split)
+- [done] T669: Inventory Deployment and Start Scripts -> P672 (split)
+- [done] T670: Discover and Classify Deployment Scripts -> P675 (split)
+- [done] T671: Generate Deployment Script Candidate Scan Artifacts -> P677 (one_go)
+- [done] T672: Classify Deployment Script Candidates -> P678 (one_go)
+- [done] T673: Remediate Active Deployment Script Stale Roles -> P676 (split)
+- [done] T674: Remediate Local Dev Backend Launcher -> P679 (one_go)
+- [done] T675: Remediate Packaged Backend Launcher -> P680 (one_go)
+- [done] T676: Verify and Patch Deployment Script Guards -> P681 (one_go)
+- [done] T677: Inventory Worker and Service Entrypoints -> P673 (split)
+- [done] T678: Build Entrypoint Discovery Scan Artifacts -> P682 (split)
+- [done] T679: Scan Script and Package Entrypoints -> P686 (one_go)
+- [done] T680: Scan Python Module and CLI Entrypoints -> P687 (one_go)
+- [done] T681: Scan Config and Deployment Launch References -> P688 (one_go)
+- [done] T682: Classify Queue and Runtime Worker Roles -> P683 (split)
+- [done] T683: Map Queue Service Worker and FSM Roles -> P689 (one_go)
+- [done] T684: Supplement Queue Service Launch Command Evidence -> P692 (one_go)
+- [done] T685: Map Agent Runtime Loop and Worker Roles -> P690 (one_go)
+- [done] T686: Clean Up Queue Runtime Stale Entrypoint Residue -> P691 (split)
+- [done] T687: Scan Queue Runtime Stale Entrypoint Residue -> P693 (one_go)
+- [done] T688: Remediate Queue Runtime Stale Entrypoint Findings -> P694 (one_go)
+- [done] T689: Extracted service entrypoint classification and boundary audit -> P684 (split)
+- [done] T690: Extracted service entrypoint discovery scan -> P695 (one_go)
+- [done] T691: Foundational service boundary classification for Blob LogicalFS and Sandbox -> P696 (split)
+- [done] T692: Blob service boundary map implementation -> P699 (one_go)
+- [done] T693: LogicalFS boundary map implementation -> P700 (one_go)
+- [done] T694: Sandbox and Sandboxd boundary map implementation -> P701 (one_go)
+- [done] T695: Foundational boundary residue cleanup and verification -> P702 (split)
+- [done] T696: Foundational boundary residue scan -> P703 (one_go)
+- [done] T697: Foundational boundary residue remediation -> P704 (one_go)
+- [done] T698: Ticket: Semantic/app/device service boundary classification -> P697 (split)
+- [done] T699: Ticket: Cortex semantic state/context boundary classification -> P705 (split)
+- [done] T700: Ticket: Cortex boundary discovery and map -> P710 (one_go)
+- [done] T701: Ticket: Cortex boundary residue remediation and verification -> P711 (one_go)
+- [done] T702: Ticket: Patch active Cortex boundary residue -> P712 (one_go)
+- [done] T703: Ticket: Gateway and app edge service boundary classification -> P706 (split)
+- [done] T704: Ticket: Gateway/app edge boundary discovery and map -> P713 (one_go)
+- [done] T705: Ticket: Gateway/app edge residue remediation and verification -> P714 (one_go)
+- [done] T706: Ticket: Business service and subscriber boundary classification -> P707 (split)
+- [done] T707: Ticket: Business/subscriber boundary discovery and map -> P715 (one_go)
+- [done] T708: Business/subscriber residue remediation ticket -> P716 (split)
+- [done] T709: Business/subscriber candidate disposition ticket -> P717 (one_go)
+- [done] T710: Business/subscriber active documentation remediation ticket -> P718 (one_go)
+- [done] T711: Business/subscriber code dependency boundary audit ticket -> P719 (one_go)
+- [done] T712: Business/subscriber boundary verification sweep ticket -> P720 (one_go)
+- [done] T713: Device/devicectl and artifact-display boundary classification ticket -> P708 (split)
+- [done] T714: Device/devicectl surface discovery ticket -> P721 (one_go)
+- [done] T715: Artifact/display/context projection discovery ticket -> P722 (split)
+- [done] T716: Shell artifact manifest output contract discovery ticket -> P725 (one_go)
+- [done] T717: Blob artifact manifest and history replay discovery ticket -> P726 (split)
+- [done] T718: Runtime artifact manifest handling discovery ticket -> P729 (one_go)
+- [done] T719: Cortex tool output and context projection discovery ticket -> P730 (one_go)
+- [done] T720: Historical image replay guardrail discovery ticket -> P731 (one_go)
+- [done] T721: Display current-round LLM image projection discovery ticket -> P727 (one_go)
+- [done] T722: Legacy and standalone media-byte surface classification ticket -> P728 (split)
+- [done] T723: Active non-test media-byte surface classification ticket -> P732 (one_go)
+- [done] T724: Residual production media-byte classification ticket -> P734 (split)
+- [done] T725: Device VmControl screenshot route classification ticket -> P735 (one_go)
+- [done] T726: VMuse MCP tool media-byte classification ticket -> P736 (split)
+- [done] T727: VMuse desktop screenshot MCP surface classification ticket -> P738 (one_go)
+- [done] T728: VMuse browser and window MCP media classification ticket -> P739 (one_go)
+- [done] T729: VMuse HTTP and file binary API classification ticket -> P737 (one_go)
+- [done] T730: Docs and test media-byte residue classification ticket -> P733 (split)
+- [done] T731: Documentation media-byte residue classification ticket -> P740 (one_go)
+- [done] T732: Test and generated-resource media-byte residue classification ticket -> P741 (one_go)
+- [done] T733: Review and patch Device/artifact/display remediation candidates -> P723 (split)
+- [done] T734: Patch VMuse protocol mapping doc -> P742 (one_go)
+- [done] T735: Clean VMuse source residue and verify resource sync -> P743 (one_go)
+- [done] T736: Disposition Device VmControl screenshot route -> P744 (split)
+- [done] T737: Analyze Device screenshot route usage -> P745 (one_go)
+- [done] T738: Remove Device Service screenshot route -> P746 (one_go)
+- [done] T739: Verify Device/artifact/display boundary after remediation -> P724 (split)
+- [done] T740: Run post-remediation media-boundary scan -> P747 (one_go)
+- [done] T741: Run focused media-boundary tests -> P748 (one_go)
+- [done] T742: Semantic/app/device service residue cleanup and verification ticket -> P709 (split)
+- [done] T743: Cross-service semantic residue discovery and classification ticket -> P749 (split)
+- [done] T744: Active docs and scripts semantic residue discovery ticket -> P752 (one_go)
+- [done] T745: Service code semantic residue discovery ticket -> P753 (split)
+- [done] T746: Runtime Queue Cortex service-code residue discovery ticket -> P755 (one_go)
+- [done] T747: Gateway Business Device service-code residue discovery ticket -> P756 (one_go)
+- [done] T748: Gateway Business Device test residue discovery ticket -> P758 (split)
+- [done] T749: Gateway test residue discovery ticket -> P759 (one_go)
+- [done] T750: Business test residue discovery ticket -> P760 (one_go)
+- [done] T751: Device test residue discovery ticket -> P761 (one_go)
+- [done] T752: Blob LogicalFS Sandbox VMuse service-code residue discovery ticket -> P757 (split)
+- [done] T753: Blob service residue discovery ticket -> P762 (one_go)
+- [done] T754: LogicalFS residue discovery ticket -> P763 (one_go)
+- [done] T755: Sandbox service residue discovery ticket -> P764 (one_go)
+- [done] T756: VMuse service residue discovery ticket -> P765 (one_go)
+- [done] T757: App resource copy residue discovery ticket -> P766 (one_go)
+- [done] T758: App resource and generated asset semantic residue discovery ticket -> P754 (split)
+- [done] T759: App VMuse copied resource sync discovery ticket -> P767 (one_go)
+- [done] T760: App Tauri backend and VmControl wiring discovery ticket -> P768 (split)
+- [done] T761: App Tauri Rust VmControl route wiring discovery ticket -> P770 (one_go)
+- [done] T762: App backend script and launch wiring discovery ticket -> P771 (one_go)
+- [done] T763: App resource packaging and generated asset wiring discovery ticket -> P772 (one_go)
+- [done] T764: App frontend and Monitor output contract discovery ticket -> P769 (split)
+- [done] T765: App message media and Blob renderer discovery ticket -> P773 (one_go)
+- [done] T766: App factory log and raw JSON detail discovery ticket -> P774 (split)
+- [done] T767: App factory logs page and detail discovery ticket -> P776 (one_go)
+- [done] T768: App monitor timeline payload projection discovery ticket -> P777 (one_go)
+- [done] T769: App raw JSON and truncation primitives discovery ticket -> P778 (one_go)
+- [done] T770: App shell artifact output UI contract discovery ticket -> P775 (split)
+- [done] T771: App chat shell output rendering discovery ticket -> P779 (one_go)
+- [done] T772: App monitor shell artifact projection discovery ticket -> P780 (one_go)
+- [done] T773: App BlobRef and artifact preview contract discovery ticket -> P781 (one_go)
+- [done] T774: Safe Active-Surface Semantic Residue Remediation Ticket -> P750 (split)
+- [done] T775: Active Docs Boundary Wording Patch Ticket -> P782 (one_go)
+- [done] T776: Runtime Cortex Business Device Source Residue Patch Ticket -> P783 (split)
+- [done] T777: Runtime Business Device Wording Cleanup Ticket -> P787 (one_go)
+- [done] T778: Cortex Step Result Projection BlobRef Contract Patch Ticket -> P788 (split)
+- [done] T779: Cortex Projection Contract Inspection Ticket -> P789 (one_go)
+- [done] T780: Cortex Projection BlobRef-Only Patch Ticket -> P790 (one_go)
+- [done] T781: LogicalFS Sandbox VMuse Service Cleanup Ticket -> P784 (split)
+- [done] T782: LogicalFS Public Contract Wording Ticket -> P791 (one_go)
+- [done] T783: Sandbox Unused Filesystem Helper Cleanup Ticket -> P792 (one_go)
+- [done] T784: VMuse direct media entry cleanup ticket -> P793 (split)
+- [done] T785: VMuse active entry map ticket -> P794 (one_go)
+- [done] T786: VMuse source FastMCP removal ticket -> P795 (split)
+- [done] T787: Delete VMuse FastMCP main module ticket -> P797 (one_go)
+- [done] T788: Remove deleted main imports ticket -> P799 (one_go)
+- [done] T789: VMuse CLI and package metadata HTTP contract ticket -> P798 (one_go)
+- [done] T790: VMuse contract tests after cleanup ticket -> P796 (one_go)
+- [done] T791: App resource/generated and backend startup remediation ticket -> P785 (split)
+- [done] T792: App VMuse resource copy sync ticket -> P800 (one_go)
+- [done] T793: App generated VMuse asset copy sync ticket -> P801 (one_go)
+- [done] T794: App backend startup graph cleanup ticket -> P802 (split)
+- [done] T795: App backend startup graph audit ticket -> P804 (one_go)
+- [done] T796: App Backend Startup Graph Remediation -> P805 (split)
+- [done] T797: Packaged Blob Binary Startup Alignment -> P806 (one_go)
+- [done] T798: Resolve Resource Storage Binary Source Boundary -> P810 (one_go)
+- [done] T799: Clarify Dev Startup Cortex And VMControl URLs -> P807 (one_go)
+- [done] T800: Remove Stale VMuse MCP URL Config -> P808 (one_go)
+- [done] T801: Verify Backend Startup Resource And Generated Synchronization -> P809 (one_go)
+- [done] T802: Update HD Screenshot Contract Comments -> P803 (one_go)
+- [done] T803: Ticket: Fix VMuse App Sync Script Source Contract -> P811 (one_go)
+- [done] T804: Ticket: Clean App Frontend And Factory Logs Payload Surfaces -> P786 (split)
+- [done] T805: Ticket: Add Safe Projection To Factory Logs Detail Rendering -> P812 (split)
+- [done] T806: Ticket: Inventory Factory Logs Raw Rendering Entrypoints -> P816 (one_go)
+- [done] T807: Ticket: Implement Factory Logs Safe Projection Helper -> P817 (one_go)
+- [done] T808: Ticket: Wire Factory Log Renderers To Safe Projection -> P818 (one_go)
+- [done] T809: Ticket: Verify Factory Logs Projection End To End -> P819 (one_go)
+- [done] T810: Delete unused SmartValue component -> P813 (one_go)
+- [done] T811: Guard extractContent JSON.stringify fallback in AssistantMessage -> P814 (one_go)
+- [done] T812: Aggregate frontend payload residue verification -> P815 (one_go)
+- [done] T813: Verify cross-service semantic residue remediation closure -> P751 (one_go)
+- [done] T814: Audit and remediate extracted service entrypoint residue -> P698 (split)
+- [done] T815: Classify queue_service/main.py as active app module -> P820 (one_go)
+- [done] T816: Classify llm-factory as intentionally standalone -> P821 (one_go)
+- [done] T817: Classify blob/sandboxd dual entrypoints as intentional wrapper pattern -> P822 (one_go)
+- [done] T818: Cross-verify launch scripts against service topology -> P823 (one_go)
+- [done] T819: Align topology docs, runbooks, and CI guards with service topology evidence -> P685 (split)
+- [done] T820: Verify architecture docs match service topology -> P824 (one_go)
+- [done] T821: Verify runbooks match service topology -> P825 (one_go)
+- [done] T822: Verify CI guards match current service topology -> P826 (one_go)
+- [done] T823: Audit runtime topology docs and runbooks for consistency -> P674 (split)
+- [done] T824: Verify runtime process role docs -> P827 (one_go)
+- [done] T825: Deploy and build docs topology audit -> P828 (one_go)
+- [done] T826: Doc CI guards pass after topology changes -> P829 (one_go)
+- [done] T827: Runtime health and log access observability audit -> P669 (split)
+- [done] T828: Health endpoint inventory and contract verification -> P830 (one_go)
+- [done] T829: LLM Factory log API and UI audit -> P831 (one_go)
+- [done] T830: Frontend runtime log and observability hooks audit -> P832 (one_go)
+- [done] T831: Smoke-test ergonomics and deployment freshness guard audit -> P670 (split)
+- [done] T832: Smoke and deploy guard script inventory and contract check -> P833 (one_go)
+- [done] T833: Smoke and deploy guard local execution verification -> P834 (one_go)
+- [done] T834: Deployment runtime residual-risk and evidence ledger audit -> P671 (one_go)
+
+## Latest Checks
+- [success] C874: P830 All services inventoried with health endpoints. Contracts verified against code. No stale or broken paths found.
+- [success] C875: P831 factory-logs.html correctly references backend API paths. All fetch paths match backend route definitions. No stale references.
+- [success] C876: P832 Frontend observability code is clean. No raw payload exposure, no stale API references. Data flows through Entangled store, not direct HTTP.
+- [success] C877: P669 All four success criteria met through comprehensive split child work. Health endpoints, LLM Factory log UI, and frontend observability code all verified clean.
+- [success] C878: P833 All smoke/deploy guard scripts inventoried. Service references and file paths verified against current topology. No stale or broken references.
+- [success] C879: P834 All three locally-runnable smoke/deploy guard scripts pass with exit 0 and confirmation messages.
+- [success] C880: P670 All criteria met. Smoke/deploy guard scripts inventoried, contracts verified, and all pass locally.
+- [success] C881: P671 All four criteria met. Child results consolidated with complete evidence map. No local-fix-needed risks hidden.
+- [success] C882: P007 Comprehensive audit completed across process topology, health/observability, smoke/deploy guards, and residual risk consolidation. All criteria from the original problem met.
+- [success] C883: P000 All 7 root-level children completed with comprehensive auditing, implementation, and verification. The ledger discipline was maintained throughout with strict split-before-one_go policy.

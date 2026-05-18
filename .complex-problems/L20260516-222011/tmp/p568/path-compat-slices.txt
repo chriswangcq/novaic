@@ -1,0 +1,292 @@
+## stable path constants and capability notes
+    31	STABLE_CORTEX_ROOT = "/cortex"
+    32	STABLE_CORTEX_RO = f"{STABLE_CORTEX_ROOT}/ro"
+    33	STABLE_CORTEX_RW = f"{STABLE_CORTEX_ROOT}/rw"
+    34	STABLE_CORTEX_BIN = f"{STABLE_CORTEX_ROOT}/bin"
+    35	_MATERIALIZE_CONCURRENCY = 16
+    36	
+    98	def _detect_logicalfs_capabilities() -> LogicalFSCapabilities:
+    99	    return LogicalFSCapabilities(
+   100	        provider="sandboxd-logicalfs",
+   101	        true_stable_path_mount=True,
+   102	        outer_command_path_adapter=False,
+   103	        notes=(
+   104	            "Cortex projects Workspace data into LogicalFS and asks sandboxd to "
+   105	            "bind-mount the materialized view at /cortex. Cortex does not "
+   106	            "execute local shell processes."
+   107	        ),
+   108	    )
+   259	    def _rw_layout(self, extra_env: Mapping[str, str] | None) -> LogicalFSLayout:
+   260	        subagent_id = _safe_subagent_path_component((extra_env or {}).get("NOVAIC_SUBAGENT_ID"), "main")
+   261	        writable_env = {
+   262	            "RW_PUBLIC": f"{STABLE_CORTEX_RW}/public",
+   263	            "RW_SELF": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}",
+   264	            "RW_TMP": f"{STABLE_CORTEX_RW}/tmp",
+   265	            "RW_ARTIFACTS": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/artifacts",
+   266	            "RW_SCRATCH": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/scratch",
+   267	        }
+   268	        return LogicalFSLayout(
+   269	            paths=StableLogicalPaths(
+   270	                root=STABLE_CORTEX_ROOT,
+   271	                ro=STABLE_CORTEX_RO,
+   272	                rw=STABLE_CORTEX_RW,
+   273	                bin=STABLE_CORTEX_BIN,
+   274	            ),
+   275	            writable_env=writable_env,
+   276	            writable_dirs=(f"{STABLE_CORTEX_RW}/system",),
+   277	        )
+   278	
+   279	    def _execution_env(self, extra_env: Mapping[str, str] | None, token: str | None) -> LogicalFSEnv:
+   280	        values = {
+   281	            "NOVAIC_API": self._cortex_api_url,
+   282	            "CORTEX_FS_PROVIDER": self.capabilities.provider,
+   283	            "CORTEX_TRUE_STABLE_PATH_MOUNT": "1" if self.capabilities.true_stable_path_mount else "0",
+   284	        }
+   285	        values.update(_capability_env(dict(extra_env or {})))
+   286	        if token is not None:
+   287	            values["NOVAIC_TOKEN"] = token
+   288	        return LogicalFSEnv(values)
+   330	    def process_mount_plan(self, view: LogicalFSView) -> SandboxBindMount:
+   331	        if not view.capabilities.true_stable_path_mount:
+   332	            raise RuntimeError(view.capabilities.notes)
+   333	        return SandboxBindMount(
+   334	            source_root=str(view.root.resolve()),
+   335	            mount_point=STABLE_CORTEX_ROOT,
+   336	            stable_cwd=view.stable_cwd,
+   337	        )
+   338	
+   339	    def process_cwd(self, view: LogicalFSView) -> Path:
+   340	        return view.root
+   341	
+   342	    def sanitize_output(self, text: str, view: LogicalFSView) -> str:
+   343	        return self._provider.sanitize_output(text, view.substrate)
+
+## ephemeral path rejection
+    31	_EPHEMERAL_SANDBOX_MARKER = "novaic-cortex-sandbox-"
+    32	
+    33	
+    34	class SandboxExecutor(Protocol):
+    35	    async def execute(self, spec: SandboxExecSpec) -> SandboxExecResult:
+    36	        ...
+    37	
+    38	def _reject_ephemeral_sandbox_paths(command: str) -> ShellResult | None:
+    39	    """Reject commands that reuse temp backing paths leaked from older shell output."""
+    40	    if _EPHEMERAL_SANDBOX_MARKER not in command:
+    41	        return None
+    42	    return ShellResult(
+    43	        stdout="",
+    44	        stderr=(
+    45	            "Cortex shell paths under novaic-cortex-sandbox-* are ephemeral. "
+    46	            f"Use {STABLE_CORTEX_RO}, {STABLE_CORTEX_RW}, $RO, or $RW instead."
+    47	        ),
+    48	        exit_code=-2,
+    49	        files_changed=[],
+    50	    )
+    67	    async def exec(
+    68	        self,
+    69	        command: str,
+    70	        timeout: int = 30,
+    71	        cwd: str | None = None,
+    72	        extra_env: dict[str, str] | None = None,
+    73	    ) -> ShellResult:
+    74	        rejected = _reject_ephemeral_sandbox_paths(command)
+    75	        if rejected is not None:
+    76	            return rejected
+
+## logicalfs sanitize output
+    57	def _stable_path_for_actual(path: Path, *, view_root: Path, ro: Path, rw: Path, stable: StableLogicalPaths) -> str:
+    58	    resolved = path.resolve()
+    59	    for actual_root, stable_root in [
+    60	        (rw.resolve(), stable.rw),
+    61	        (ro.resolve(), stable.ro),
+    62	        (view_root.resolve(), stable.root),
+    63	    ]:
+    64	        try:
+    65	            rel = resolved.relative_to(actual_root)
+    66	        except ValueError:
+    67	            continue
+    68	        if rel.as_posix() == ".":
+    69	            return stable_root
+    70	        suffix = rel.as_posix()
+    71	        return stable_root if not suffix else f"{stable_root}/{suffix}"
+    72	    return str(resolved)
+    73	
+    74	
+    75	def _logical_rw_path(rel: str, stable: StableLogicalPaths) -> str:
+    76	    return f"{stable.rw}/{rel}" if rel else stable.rw
+    77	
+    78	
+    79	def sanitize_paths(text: str, replacements: Mapping[str, str]) -> str:
+    80	    out = text
+    81	    for actual, stable in replacements.items():
+    82	        out = out.replace(actual, stable)
+    83	    return out
+   119	        proc_cwd = _resolve_cwd_under_root(rw, cwd)
+   120	        base_env = {
+   121	            "PATH": f"{layout.paths.bin}:/usr/local/bin:/usr/bin:/bin",
+   122	            "RO": layout.paths.ro,
+   123	            "RW": layout.paths.rw,
+   124	            "CORTEX_RO": layout.paths.ro,
+   125	            "CORTEX_RW": layout.paths.rw,
+   126	            "CORTEX_ROOT": layout.paths.root,
+   127	            "CORTEX_FS_PROVIDER": "logicalfs",
+   128	            "CORTEX_TRUE_STABLE_PATH_MOUNT": "1",
+   129	            "HOME": layout.paths.rw,
+   130	        }
+   131	        base_env.update(dict(layout.writable_env))
+   132	        base_env.update(dict(env.values))
+   133	        return LogicalFSView(
+   134	            root=root,
+   135	            ro=ro,
+   136	            rw=rw,
+   137	            bin=bin_dir,
+   138	            cwd=proc_cwd,
+   139	            stable_cwd=_stable_path_for_actual(
+   140	                proc_cwd,
+   141	                view_root=root,
+   142	                ro=ro,
+   143	                rw=rw,
+   144	                stable=layout.paths,
+   145	            ),
+   146	            env=base_env,
+   147	            before_rw=_file_stats(rw),
+   148	            paths=layout.paths,
+   149	        )
+   163	    def sanitize_output(self, text: str, view: LogicalFSView) -> str:
+   164	        return sanitize_paths(
+   165	            text,
+   166	            {
+   167	                str(view.ro.resolve()): view.paths.ro,
+   168	                str(view.rw.resolve()): view.paths.rw,
+   169	                str(view.root.resolve()): view.paths.root,
+   170	            },
+   171	        )
+
+## path abuse tests
+     1	from __future__ import annotations
+     2	
+     3	import pytest
+     4	
+     5	from novaic_cortex import MemoryStore
+     6	from novaic_cortex.sandbox import Sandbox
+     7	from novaic_cortex.workspace import Workspace
+     8	from cortex_tests.workspace_test_utils import make_workspace_with_store
+     9	
+    10	
+    11	@pytest.mark.asyncio
+    12	async def test_shell_has_no_local_fallback_without_sandboxd_executor() -> None:
+    13	    ws, store = make_workspace_with_store("no-local-fallback")
+    14	    await ws.initialize()
+    15	    sandbox = Sandbox(ws)
+    16	
+    17	    caps = sandbox.logical_fs_capabilities
+    18	    assert caps.provider == "sandboxd-logicalfs"
+    19	    assert caps.true_stable_path_mount is True
+    20	    assert caps.outer_command_path_adapter is False
+    21	
+    22	    result = await sandbox.exec("echo must-not-run", timeout=5)
+    23	
+    24	    assert result.exit_code == -2
+    25	    assert "must go through sandboxd" in result.stderr
+    26	    assert result.stdout == ""
+    27	
+    28	
+    29	@pytest.mark.asyncio
+    30	async def test_shell_rejects_ephemeral_cortex_backing_paths_before_execution() -> None:
+    31	    ws, store = make_workspace_with_store("ephemeral-path-guard")
+    32	    await ws.initialize()
+    33	    sandbox = Sandbox(ws)
+    34	
+    35	    result = await sandbox.exec(
+    36	        "cat /tmp/novaic-cortex-sandbox-old/ro/active/scope/context.jsonl",
+    37	        timeout=5,
+    38	    )
+    39	
+    40	    assert result.exit_code == -2
+    41	    assert result.stdout == ""
+    42	    assert result.files_changed == []
+    43	    assert "novaic-cortex-sandbox-*" in result.stderr
+    44	    assert "/cortex/ro" in result.stderr
+    45	    assert "/cortex/rw" in result.stderr
+    46	    assert "must go through sandboxd" not in result.stderr
+    47	
+    48	
+    49	@pytest.mark.asyncio
+    50	async def test_shell_rejects_quoted_ephemeral_cortex_backing_paths_before_execution() -> None:
+    51	    ws, store = make_workspace_with_store("quoted-ephemeral-path-guard")
+    52	    await ws.initialize()
+    53	    sandbox = Sandbox(ws)
+    54	
+    55	    result = await sandbox.exec(
+    56	        'printf %s "/tmp/novaic-cortex-sandbox-old/rw/reply.md"',
+    57	        timeout=5,
+    58	    )
+    59	
+    60	    assert result.exit_code == -2
+    61	    assert result.stdout == ""
+    62	    assert result.files_changed == []
+    63	    assert "novaic-cortex-sandbox-*" in result.stderr
+    64	    assert "/cortex/ro" in result.stderr
+    65	    assert "/cortex/rw" in result.stderr
+    66	    assert "must go through sandboxd" not in result.stderr
+    35	        return SandboxExecResult(
+    36	            stdout=self.stdout,
+    37	            stderr=b"",
+    38	            exit_code=0,
+    39	            duration_s=0.01,
+    40	        )
+    41	
+    42	
+    43	@pytest.mark.asyncio
+    44	async def test_sandbox_passes_raw_command_and_mount_plan_to_runner() -> None:
+    45	    ws, store = make_workspace_with_store("sandboxd-wiring")
+    46	    await ws.initialize()
+    47	    runner = RecordingRunner(stdout=b"runner-out")
+    48	
+    49	    result = await Sandbox(ws, process_runner=runner).exec("printf raw-command")
+    50	
+    51	    assert result.exit_code == 0
+    52	    assert result.stdout == "runner-out"
+    53	    assert len(runner.seen) == 1
+    54	    spec = runner.seen[0]
+    55	    assert spec.command == "printf raw-command"
+    56	    assert not spec.command.startswith("unshare ")
+    57	    assert spec.mount is not None
+    58	    assert spec.mount.mount_point == "/cortex"
+    59	    assert spec.mount.stable_cwd == "/cortex/rw"
+    60	    assert runner.seen_capability_bins == [["agentctl", "cortex", "devicectl"]]
+    61	    assert spec.env["PATH"].startswith("/cortex/bin:")
+    62	    assert spec.env["RO"] == "/cortex/ro"
+    63	    assert spec.env["RW"] == "/cortex/rw"
+    64	
+    65	
+    66	@pytest.mark.asyncio
+    67	async def test_sandbox_runner_sees_logicalfs_view_and_rw_patch_is_persisted() -> None:
+    68	    ws, store = make_workspace_with_store("sandboxd-logicalfs-patch")
+    69	    await ws.initialize()
+    70	    await ws._sys_write("/ro/config/source.txt", "readonly")
+    71	    await ws.write_bytes("/rw/existing.txt", b"old")
+    72	
+    73	    def mutate_view(spec: SandboxExecSpec) -> None:
+    74	        assert spec.mount is not None
+    75	        root = Path(spec.mount.source_root)
+    76	        assert not (root / "ro/config/source.txt").exists()
+    77	        assert (root / "rw/existing.txt").read_bytes() == b"old"
+    78	        assert sorted(path.name for path in (root / "bin").iterdir()) == [
+    79	            "agentctl",
+    80	            "cortex",
+    81	            "devicectl",
+    82	        ]
+    83	        (root / "rw/existing.txt").write_bytes(b"new")
+    84	        (root / "rw/created.txt").write_bytes(b"created")
+    85	
+    86	    runner = RecordingRunner(stdout=b"patched", on_execute=mutate_view)
+    87	
+    88	    result = await Sandbox(ws, process_runner=runner).exec("touch created.txt")
+    89	
+    90	    assert result.exit_code == 0
+    91	    assert result.stdout == "patched"
+    92	    assert result.files_changed == ["/rw/created.txt", "/rw/existing.txt"]
+    93	    assert await ws.read_bytes("/rw/existing.txt") == b"new"
+    94	    assert await ws.read_bytes("/rw/created.txt") == b"created"
+    95	

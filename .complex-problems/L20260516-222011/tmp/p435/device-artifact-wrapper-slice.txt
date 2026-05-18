@@ -1,0 +1,151 @@
+        raise SystemExit(1)
+    return blob
+
+
+def _tool_output(
+    *,
+    ok: bool,
+    text: str,
+    artifacts: list[dict] | None = None,
+    events: list[dict] | None = None,
+    diagnostics: dict | None = None,
+    error: str = "",
+) -> dict:
+    out = {{
+        "version": "tool-output.v1",
+        "ok": bool(ok),
+        "text": text,
+        "artifacts": artifacts or [],
+        "events": events or [],
+        "diagnostics": {{"truncated": False, **(diagnostics or {{}})}},
+    }}
+    if error:
+        out["error"] = error
+    return out
+
+
+def _artifact_manifest(
+    *,
+    uri: str,
+    modality: str,
+    name: str,
+    mime_type: str,
+    size_bytes: int,
+    sha256: str,
+    summary: str,
+    source: dict | None = None,
+    access: dict | None = None,
+    projection: dict | None = None,
+) -> dict:
+    return {{
+        "uri": uri,
+        "modality": modality,
+        "name": name,
+        "mime_type": mime_type,
+        "size_bytes": size_bytes,
+        "sha256": sha256,
+        "summary": summary,
+        "source": source or {{}},
+        "access": access or {{}},
+        "projection": projection or {{}},
+    }}
+
+
+def _decode_b64_field(value: str, *, field: str) -> bytes:
+    try:
+        return base64.b64decode(value.encode("ascii"), validate=True)
+    except Exception as exc:
+        print(f"{{COMMAND}}: invalid base64 {{field}} in device response: {{exc}}", file=sys.stderr)
+        raise SystemExit(1)
+
+
+def _wrap_hd_screenshot(result: dict) -> dict:
+    if result.get("success") is False or not result.get("screenshot"):
+        return result
+    fmt = str(result.get("format") or "jpeg").lower().strip(".") or "jpeg"
+    mime_type = "image/jpeg" if fmt in ("jpg", "jpeg") else f"image/{{fmt}}"
+    data = _decode_b64_field(str(result.get("screenshot") or ""), field="screenshot")
+    blob = _put_blob(
+        data,
+        mime_type=mime_type,
+        filename=f"hd-screenshot.{{'jpg' if fmt == 'jpeg' else fmt}}",
+        source_ref="devicectl hd screenshot",
+    )
+    blob_ref = str(blob["blob_ref"])
+    size = int(blob.get("size") or len(data))
+    sha = str(blob.get("sha256") or hashlib.sha256(data).hexdigest())
+    width = result.get("width")
+    height = result.get("height")
+    artifact = _artifact_manifest(
+        uri=blob_ref,
+        modality="image",
+        name="hd-screenshot.jpg" if fmt == "jpeg" else f"hd-screenshot.{{fmt}}",
+        mime_type=mime_type,
+        size_bytes=size,
+        sha256=sha,
+        summary="Host desktop screenshot",
+        source={{
+            "tool": "devicectl hd screenshot",
+            "width": width,
+            "height": height,
+            "format": fmt,
+        }},
+        access={{"display": {{"tool": "display", "args": {{"file_url": blob_ref}}}}}},
+        projection={{"history": "manifest_only", "monitor": "thumbnail_allowed"}},
+    )
+    return _tool_output(
+        ok=True,
+        text=f"Captured host desktop screenshot: {{width}}x{{height}}, stored as {{blob_ref}}.",
+        artifacts=[artifact],
+        events=[{{"type": "device.screenshot.captured", "summary": "Screenshot stored as runtime artifact."}}],
+        diagnostics={{
+            "device_result": {{k: v for k, v in result.items() if k != "screenshot"}},
+        }},
+    )
+
+
+def _wrap_hd_file_pull(result: dict, request_body: dict) -> dict:
+    if result.get("success") is False or not result.get("data") or result.get("is_base64") is not True:
+        return result
+    path = str(request_body.get("path") or result.get("path") or "")
+    data = _decode_b64_field(str(result.get("data") or ""), field="data")
+    name = Path(path).name or "pulled-file"
+    mime_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
+    blob = _put_blob(
+        data,
+        mime_type=mime_type,
+        filename=name,
+        source_ref=f"devicectl hd file-pull {{path}}".strip(),
+    )
+    blob_ref = str(blob["blob_ref"])
+    size = int(blob.get("size") or len(data))
+    sha = str(blob.get("sha256") or hashlib.sha256(data).hexdigest())
+    artifact = _artifact_manifest(
+        uri=blob_ref,
+        modality="binary",
+        name=name,
+        mime_type=mime_type,
+        size_bytes=size,
+        sha256=sha,
+        summary=f"Host desktop file pulled from {{path}}" if path else "Host desktop file pulled",
+        source={{"tool": "devicectl hd file-pull", "path": path}},
+        projection={{"history": "manifest_only"}},
+    )
+    return _tool_output(
+        ok=True,
+        text=f"Pulled host desktop file {{path or name}} into runtime artifact {{blob_ref}}.",
+        artifacts=[artifact],
+        events=[{{"type": "device.file.pulled", "summary": "File stored as runtime artifact."}}],
+        diagnostics={{
+            "device_result": {{k: v for k, v in result.items() if k != "data"}},
+        }},
+    )
+
+
+def _wrap_hd_result(subcmd: str, result: dict, request_body: dict) -> dict:
+    if subcmd == "screenshot":
+        return _wrap_hd_screenshot(result)
+    if subcmd == "file-pull":
+        return _wrap_hd_file_pull(result, request_body)
+    return result
+

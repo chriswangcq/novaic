@@ -1,0 +1,4 @@
+novaic-cortex/novaic_cortex/api.py:59:_cortex_api_url: str | None = None
+novaic-cortex/tests/test_pr75_proxy_boundary.py:25:    assert "/tmp/.novaic_env.json" not in source
+novaic-cortex/tests/test_pr75_proxy_boundary.py:26:    assert "localhost:19996" not in source
+docs/architecture/cortex.md:86:| 健康检查 | `GET http://localhost:19996/health` |

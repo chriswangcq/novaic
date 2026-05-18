@@ -1,0 +1,136 @@
+            ),
+            wake_scope_id=req.scope_id,
+            scope_name=req.name,
+        )
+        _write_active_stack_projection(
+            ws,
+            root_scope_id=root_scope_id,
+            frames=[
+                _active_stack_frame(
+                    scope_path=path,
+                    parent_path=root_scope_path,
+                    scope_id=req.scope_id,
+                    skill_name=req.skill,
+                    name=req.name,
+                    depth=1,
+                )
+            ],
+            reason="wake_started",
+        )
+    return {"scope_path": path, "idempotent": False}
+
+
+@app.post("/v1/scope/end")
+async def scope_end(req: ScopeEndRequest):
+    """Archive a scope. P2-4: idempotent — replaying after the scope is already
+    archived returns the archive path without raising (``wake_finalize`` →
+    ``cortex_scope_end`` can safely retry after a transient failure).
+
+    Structural scope_end is not a summary API. Non-empty reports must go
+    through /v1/context/skill_end on an LLM-opened child skill.
+    """
+    ws = _get_workspace(req.user_id, req.agent_id)
+
+    if req.report and req.report.strip():
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "scope_end is structural and does not accept report; "
+                "use /v1/context/skill_end for child scope summaries"
+            ),
+        )
+
+    if req.is_root:
+        archived_path = f"/ro/scopes/{req.scope_id}"
+        archived_meta = await ws.read_session_meta(archived_path)
+        if archived_meta and archived_meta.get("phase") == "archived":
+            return {
+                "ok": True,
+                "scope_id": req.scope_id,
+                "archive_path": archived_path + "/",
+                "idempotent": True,
+            }
+        active_path = _root_scope_path(req.scope_id)
+        active_meta = await ws.read_session_meta(active_path)
+        active_stack = read_active_stack_projection(
+            ws.operational_store,
+            root_scope_id=req.scope_id,
+            root_scope_path=active_path,
+        )["frames"]
+        await _append_wake_archived_event(
+            req,
+            ws,
+            scope_path=active_path,
+            meta=active_meta,
+            reason="scope_end_root",
+            remaining_stack=_semantic_remaining_stack_after_archive(
+                active_stack,
+                archived_scope_id=req.scope_id,
+            ),
+        )
+        await _finalize_active_stack_for_archive(
+            ws,
+            root_scope_id=req.scope_id,
+            finalized_scope_id=req.scope_id,
+            frames=active_stack,
+            reason="scope_end_root",
+        )
+        archive_path = await ws.archive_root_scope_projection(req.scope_id, "")
+        await _drop_scope_lock(req.user_id, req.agent_id, req.scope_id)
+    else:
+        scope_path = await _resolve_scope_path(
+            ws,
+            req.scope_id,
+            scope_path=req.scope_path,
+            include_archived=True,
+        )
+        child_meta = await ws.read_session_meta(scope_path)
+        if child_meta.get("phase") == "archived":
+            return {
+                "ok": True,
+                "scope_id": req.scope_id,
+                "archive_path": scope_path.rstrip("/") + "/",
+                "idempotent": True,
+            }
+        root_scope_id, root_scope_path = _root_scope_identity_from_path(scope_path)
+        active_stack = read_active_stack_projection(
+            ws.operational_store,
+            root_scope_id=root_scope_id,
+            root_scope_path=root_scope_path,
+        )["frames"]
+        await _append_wake_archived_event(
+            req,
+            ws,
+            scope_path=scope_path,
+            meta=child_meta,
+            reason="scope_end_child",
+            remaining_stack=_semantic_remaining_stack_after_archive(
+                active_stack,
+                archived_scope_id=_scope_id_from_path(scope_path),
+            ),
+        )
+        if child_meta.get("skill") == "wake":
+            await _finalize_active_stack_for_archive(
+                ws,
+                root_scope_id=root_scope_id,
+                finalized_scope_id=_scope_id_from_path(scope_path),
+                frames=active_stack,
+                reason="scope_end_child",
+            )
+        auto_closed = await ws._auto_close_open_children(scope_path)
+        if auto_closed:
+            log_cortex(
+                "scope.auto_closed_children",
+                scope_id=req.scope_id,
+                count=auto_closed,
+            )
+        await ws.complete_child_scope_projection(scope_path, "")
+        archive_path = scope_path + "/"
+    return {
+        "ok": True,
+        "scope_id": req.scope_id,
+        "archive_path": archive_path,
+        "idempotent": False,
+    }
+
+

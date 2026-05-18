@@ -1,0 +1,121 @@
+     1	from __future__ import annotations
+     2	
+     3	import pytest
+     4	
+     5	from logicalfs import (
+     6	    LocalLogicalFSProvider,
+     7	    LogicalFSEnv,
+     8	    LogicalFSFile,
+     9	    LogicalFSLayout,
+    10	    LogicalFSSnapshot,
+    11	    StableLogicalPaths,
+    12	)
+    13	
+    14	
+    15	def test_materializes_snapshot_and_explicit_env_layout(tmp_path) -> None:
+    16	    provider = LocalLogicalFSProvider()
+    17	    view = provider.materialize(
+    18	        snapshot=LogicalFSSnapshot(
+    19	            files=(
+    20	                LogicalFSFile(path="config/tool.json", data=b"ro"),
+    21	                LogicalFSFile(path="scratch/existing.txt", data=b"rw", writable=True),
+    22	            )
+    23	        ),
+    24	        root=tmp_path,
+    25	        layout=LogicalFSLayout(
+    26	            paths=StableLogicalPaths(),
+    27	            writable_env={
+    28	                "RW_SELF": "/cortex/rw/subagents/sub-1",
+    29	                "RW_TMP": "/cortex/rw/tmp",
+    30	            },
+    31	            writable_dirs=("/cortex/rw/system",),
+    32	        ),
+    33	        env=LogicalFSEnv({"NOVAIC_TOKEN": "token-1", "NOVAIC_API": "http://cortex"}),
+    34	        cwd="scratch",
+    35	    )
+    36	
+    37	    assert (view.ro / "config/tool.json").read_bytes() == b"ro"
+    38	    assert (view.rw / "scratch/existing.txt").read_bytes() == b"rw"
+    39	    assert (view.rw / "subagents/sub-1").is_dir()
+    40	    assert (view.rw / "tmp").is_dir()
+    41	    assert (view.rw / "system").is_dir()
+    42	    assert view.stable_cwd == "/cortex/rw/scratch"
+    43	    assert view.env["RW_SELF"] == "/cortex/rw/subagents/sub-1"
+    44	    assert view.env["NOVAIC_TOKEN"] == "token-1"
+    45	
+    46	
+    47	def test_observe_patch_reports_upserts_and_deletes(tmp_path) -> None:
+    48	    provider = LocalLogicalFSProvider()
+    49	    view = provider.materialize(
+    50	        snapshot=LogicalFSSnapshot(
+    51	            files=(
+    52	                LogicalFSFile(path="keep.txt", data=b"old", writable=True),
+    53	                LogicalFSFile(path="delete.txt", data=b"bye", writable=True),
+    54	            )
+    55	        ),
+    60	
+    61	def authority() -> StoreBackedLogicalFileAuthority:
+    62	    return StoreBackedLogicalFileAuthority(
+    63	        MemoryObjectStore(),
+    64	        LogicalFileAuthorityLayout(owner_prefix="owners/o1"),
+    65	    )
+    66	
+    67	
+    68	def test_maps_logical_paths_from_explicit_layout() -> None:
+    69	    layout = LogicalFileAuthorityLayout(owner_prefix="owners/o1", ro_prefix="readonly", rw_prefix="writeable")
+    70	
+    71	    assert logical_to_object_key(layout, "/ro/config/tool.json") == "owners/o1/readonly/config/tool.json"
+    72	    assert logical_to_object_key(layout, "rw/scratch/a.txt") == "owners/o1/writeable/scratch/a.txt"
+    73	
+    74	
+    75	@pytest.mark.asyncio
+    76	async def test_read_write_append_exists_delete_roundtrip() -> None:
+    77	    fs = authority()
+    78	
+    79	    await fs.write_text("/rw/scratch/a.txt", "one")
+    80	    await fs.append_line("/rw/scratch/a.txt", "two")
+    81	
+    82	    assert await fs.exists("/rw/scratch/a.txt")
+    83	    assert await fs.read_text("/rw/scratch/a.txt") == "onetwo\n"
+    84	
+    85	    await fs.delete("/rw/scratch/a.txt")
+    86	
+    87	    assert not await fs.exists("/rw/scratch/a.txt")
+    88	
+    89	
+    90	@pytest.mark.asyncio
+    91	async def test_lists_directory_entries_and_tree_bytes() -> None:
+    92	    fs = authority()
+    93	    await fs.write_text("/ro/config/tool.json", "{}")
+    94	    await fs.write_text("/ro/config/nested/a.txt", "a")
+    95	
+    96	    entries = await fs.list_dir("/ro/config/")
+    97	
+    98	    assert [(entry.name, entry.path, entry.is_dir) for entry in entries] == [
+    99	        ("nested", "/ro/config/nested/", True),
+   100	        ("tool.json", "/ro/config/tool.json", False),
+   101	    ]
+   102	    assert await fs.list_tree_bytes("/ro/config") == [
+   103	        ("nested/a.txt", b"a"),
+   104	        ("tool.json", b"{}"),
+   105	    ]
+   106	
+   107	
+   108	@pytest.mark.asyncio
+   109	async def test_moves_tree_and_initializes_layout() -> None:
+   110	    fs = authority()
+   111	    await fs.write_text("/ro/active/s1/meta.json", "{}")
+   112	    await fs.initialize_layout(("/ro/config/tools", "/rw/scratch"))
+   113	
+   114	    moved = await fs.move_tree("/ro/active/s1", "/ro/scopes/s1")
+   115	
+   116	    assert moved == 1
+   117	    assert await fs.read_text("/ro/scopes/s1/meta.json") == "{}"
+   118	    assert await fs.exists("/ro/config/tools/.keep")
+   119	    assert await fs.exists("/rw/scratch/.keep")
+   120	
+   121	
+   122	@pytest.mark.asyncio
+   123	async def test_rejects_invalid_logical_paths() -> None:
+   124	    fs = authority()
+   125	

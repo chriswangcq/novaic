@@ -1,0 +1,46 @@
+            "file": filename,
+        }
+        if isinstance(record.get("tool_calls"), list):
+            index_entry["has_tool_calls"] = True
+        await self._sys_append_line(
+            f"{scope_path.rstrip('/')}/steps/_index.jsonl",
+            json.dumps(index_entry, ensure_ascii=False),
+        )
+        return seq
+
+    async def normalize_step(self, scope_path: str, step: dict) -> dict:
+        """Return the durable step shape used by step files and event records.
+
+        Normalization validates tool-step shape, externalizes any inline
+        ``payload`` into the scope payload store, and mirrors the resulting
+        ``payload_ref`` into the observation percept. The caller's input is not
+        mutated, so API/event paths can safely inspect the normalized step
+        before deciding which durable write path to invoke.
+        """
+        normalized = copy.deepcopy(step)
+        step_type = normalized.get("type", "tool")
+        step_id = normalized.get("call_id") or normalized.get("id") or "unknown"
+        if "/" in str(step_id) or ".." in str(step_id) or "\x00" in str(step_id):
+            raise ValueError(f"invalid step id: {step_id!r}")
+
+        if step_type == "tool" and "result" in normalized:
+            raise ValueError("tool steps must use payload/payload_ref, not inline result")
+        if step_type == "tool" and not isinstance(normalized.get("observation"), dict):
+            raise ValueError("tool steps require an observation percept")
+        if "payload" in normalized:
+            payload = normalized.pop("payload")
+            payload_ref = normalized.get("payload_ref")
+            if not payload_ref:
+                raise ValueError("payload_ref is required when writing payload")
+            stable_step_ref = str(normalized.get("step_ref") or payload_ref)
+            actual_payload_ref = await self.write_payload(
+                scope_path,
+                str(payload_ref),
+                payload,
+                step_ref=stable_step_ref,
+            )
+            normalized["step_ref"] = stable_step_ref
+            normalized["payload_ref"] = actual_payload_ref
+            if isinstance(normalized.get("observation"), dict):
+                normalized["observation"]["payload_ref"] = actual_payload_ref
+

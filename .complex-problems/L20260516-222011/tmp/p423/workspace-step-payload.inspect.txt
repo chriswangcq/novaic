@@ -1,0 +1,231 @@
+
+    # ── Steps (unified timeline) ──
+
+    async def write_payload(
+        self,
+        scope_path: str,
+        payload_ref: str,
+        payload: Any,
+        *,
+        step_ref: str | None = None,
+    ) -> str:
+        """Persist a raw tool payload outside the default step trace."""
+        if not payload_ref or not isinstance(payload_ref, str):
+            raise ValueError("payload_ref is required")
+        encoded = encode_payload_bytes(payload)
+        payload_sha256 = hashlib.sha256(encoded).hexdigest()
+        externalize = self._payload_blob_policy.should_externalize(len(encoded))
+        actual_payload_ref = payload_ref
+        record: dict[str, Any]
+        if externalize:
+            if self._payload_blob_client is None:
+                raise RuntimeError("large Cortex payload requires CORTEX_BLOB_SERVICE_URL")
+            actual_payload_ref = await self._payload_blob_client.put_payload(
+                tenant_id=self._agent_id,
+                scope_path=scope_path,
+                source_payload_ref=payload_ref,
+                payload=payload,
+                payload_bytes=encoded,
+            )
+            record = {
+                "payload_ref": actual_payload_ref,
+                "source_payload_ref": payload_ref,
+                "blob_ref": actual_payload_ref,
+                "content_type": "external_blob",
+                "payload_bytes": len(encoded),
+                "created_at": self._now(),
+            }
+        else:
+            record = {
+                "payload_ref": payload_ref,
+                "content": payload,
+                "content_type": "local_json",
+                "payload_bytes": len(encoded),
+                "created_at": self._now(),
+            }
+        path = f"{scope_path.rstrip('/')}/payloads/{_payload_filename(actual_payload_ref)}"
+        await self._sys_write_json(path, record)
+        root_scope_id, scope_id = _payload_scope_ids(scope_path)
+        self._require_operational_store().put_payload_manifest(
+            payload_ref=actual_payload_ref,
+            source_payload_ref=payload_ref,
+            root_scope_id=root_scope_id,
+            scope_id=scope_id,
+            step_ref=step_ref or payload_ref,
+            blob_ref=actual_payload_ref if externalize else None,
+            mime_type="application/json",
+            size_bytes=len(encoded),
+            sha256=payload_sha256,
+            status="available",
+            retention_class="external_blob" if externalize else "scope_local",
+        )
+        return actual_payload_ref
+
+    async def read_payload(self, scope_path: str, payload_ref: str) -> Any:
+        """Read a raw tool payload by ref from the scope-local payload store."""
+        path = f"{scope_path.rstrip('/')}/payloads/{_payload_filename(payload_ref)}"
+        try:
+            raw = await self.read(path)
+        except (KeyError, FileNotFoundError) as exc:
+            raise self._payload_read_error(
+                payload_ref=payload_ref,
+                code="payload_record_missing",
+                status="missing",
+                message=f"payload record not found for {payload_ref!r}",
+            ) from exc
+        try:
+            record = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise self._payload_read_error(
+                payload_ref=payload_ref,
+                code="payload_record_corrupt",
+                status="corrupt",
+                message=f"payload record is not valid JSON for {payload_ref!r}",
+            ) from exc
+        if record.get("payload_ref") != payload_ref:
+            raise self._payload_read_error(
+                payload_ref=payload_ref,
+                code="payload_ref_mismatch",
+                status="corrupt",
+                message=f"payload record ref mismatch for {payload_ref!r}",
+            )
+        if record.get("blob_ref"):
+            if self._payload_blob_client is None:
+                raise self._payload_read_error(
+                    payload_ref=payload_ref,
+                    code="payload_blob_client_missing",
+                    status="unavailable",
+                    message="external Cortex payload requires CORTEX_BLOB_SERVICE_URL",
+                )
+            try:
+                return await self._payload_blob_client.get_payload(
+                    tenant_id=self._agent_id,
+                    blob_ref=str(record["blob_ref"]),
+                )
+            except Exception as exc:
+                raise self._payload_read_error(
+                    payload_ref=payload_ref,
+                    code="payload_blob_fetch_failed",
+                    status="unavailable",
+                    message=f"failed to fetch external Cortex payload {payload_ref!r}",
+                ) from exc
+        return record.get("content")
+
+    async def write_assistant(self, scope_path: str, message: dict, round_num: int = 0) -> int:
+        """Append an assistant message file to a scope's steps/ timeline."""
+        seq = await self._count_step_dirs(scope_path)
+        ts = self._now()
+        record = copy.deepcopy(message)
+        record["seq"] = seq
+        record["ts"] = ts
+        record["round"] = round_num
+        filename = f"ast_{seq:03d}.json"
+        path = f"{scope_path.rstrip('/')}/steps/{filename}"
+        await self._sys_write_json(path, record)
+
+        index_entry: Dict[str, Any] = {
+            "seq": seq,
+            "type": "assistant",
+            "round": round_num,
+            "ts": ts,
+            "file": filename,
+        }
+        if isinstance(record.get("tool_calls"), list):
+            index_entry["has_tool_calls"] = True
+        await self._sys_append_line(
+            f"{scope_path.rstrip('/')}/steps/_index.jsonl",
+            json.dumps(index_entry, ensure_ascii=False),
+        )
+        return seq
+
+    async def normalize_step(self, scope_path: str, step: dict) -> dict:
+        """Return the durable step shape used by step files and event records.
+
+        Normalization validates tool-step shape, externalizes any inline
+        ``payload`` into the scope payload store, and mirrors the resulting
+        ``payload_ref`` into the observation percept. The caller's input is not
+        mutated, so API/event paths can safely inspect the normalized step
+        before deciding which durable write path to invoke.
+        """
+        normalized = copy.deepcopy(step)
+        step_type = normalized.get("type", "tool")
+        step_id = normalized.get("call_id") or normalized.get("id") or "unknown"
+        if "/" in str(step_id) or ".." in str(step_id) or "\x00" in str(step_id):
+            raise ValueError(f"invalid step id: {step_id!r}")
+
+        if step_type == "tool" and "result" in normalized:
+            raise ValueError("tool steps must use payload/payload_ref, not inline result")
+        if step_type == "tool" and not isinstance(normalized.get("observation"), dict):
+            raise ValueError("tool steps require an observation percept")
+        if "payload" in normalized:
+            payload = normalized.pop("payload")
+            payload_ref = normalized.get("payload_ref")
+            if not payload_ref:
+                raise ValueError("payload_ref is required when writing payload")
+            stable_step_ref = str(normalized.get("step_ref") or payload_ref)
+            actual_payload_ref = await self.write_payload(
+                scope_path,
+                str(payload_ref),
+                payload,
+                step_ref=stable_step_ref,
+            )
+            normalized["step_ref"] = stable_step_ref
+            normalized["payload_ref"] = actual_payload_ref
+            if isinstance(normalized.get("observation"), dict):
+                normalized["observation"]["payload_ref"] = actual_payload_ref
+
+        return normalized
+
+    async def write_step(self, scope_path: str, step: dict) -> str:
+        """Append a tool step to a scope's steps/ (Cortex system operation).
+
+        Only for tool-type steps (files). Scope-type steps are created
+        via ``create_scope(parent_path=...)``.
+
+        Returns the logical path written.
+        """
+        step = await self.normalize_step(scope_path, step)
+        seq = await self._count_step_dirs(scope_path)
+        step_type = step.get("type", "tool")
+        step_id = step.get("call_id") or step.get("id") or "unknown"
+
+        step["seq"] = seq
+        filename = f"{seq:04d}_{step_type}_{step_id}.json"
+        path = f"{scope_path}/steps/{filename}"
+        await self._sys_write_json(path, step)
+
+        index_entry: Dict[str, Any] = {
+            "seq": seq,
+            "type": step_type,
+            "id": step_id,
+            "status": step.get("status", ""),
+            "ts": step.get("started_at") or self._now(),
+            "file": filename,
+        }
+        if step.get("tool"):
+            index_entry["tool"] = step["tool"]
+        if step.get("duration_ms") is not None:
+            index_entry["duration_ms"] = step["duration_ms"]
+        if step.get("step_ref"):
+            index_entry["step_ref"] = step["step_ref"]
+        if step.get("payload_ref"):
+            index_entry["payload_ref"] = step["payload_ref"]
+        observation = step.get("observation")
+        observation_artifacts = (
+            observation.get("artifacts")
+            if isinstance(observation, dict)
+            else None
+        )
+        if step.get("artifacts") or observation_artifacts:
+            index_entry["has_artifacts"] = True
+
+        index_line = json.dumps(index_entry, ensure_ascii=False)
+        await self._sys_append_line(
+            f"{scope_path}/steps/_index.jsonl", index_line
+        )
+        return path
+
+    async def write_step_projection(self, scope_path: str, step: dict) -> str:
+        """Materialize a tool-step projection after ToolStepRecorded."""
+        return await self.write_step(scope_path, step)
+

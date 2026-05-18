@@ -1,0 +1,4 @@
+target_count=26
+initial_root_pytest_exit=1
+corrected_command=cd novaic-agent-runtime && python -m pytest $(/bin/cat ../.complex-problems/L20260516-222011/tmp/p526/task-saga-worker-test-files.runtime-cwd.txt)
+pytest_exit=0

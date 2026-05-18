@@ -1,0 +1,887 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.7, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/wangchaoqun/new-build-novaic/novaic-agent-runtime
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-4.1.0, asyncio-1.3.0, mock-3.12.0, langsmith-0.3.42
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 124 items
+
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py .....   [  4%]
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py F.F       [  6%]
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py F..... [ 11%]
+.                                                                        [ 12%]
+novaic-agent-runtime/tests/test_pr261_generic_fsm_residue_cleanup.py F   [ 12%]
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py ............ [ 22%]
+..F                                                                      [ 25%]
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py .F.       [ 27%]
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py ...       [ 29%]
+novaic-agent-runtime/tests/test_pr307_taskqueue_old_sql_residue_cleanup.py . [ 30%]
+.                                                                        [ 31%]
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py .......      [ 37%]
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py .F.       [ 39%]
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py ... [ 41%]
+                                                                         [ 41%]
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py . [ 42%]
+........F                                                                [ 50%]
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py FF [ 51%]
+FFF.                                                                     [ 54%]
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py ....           [ 58%]
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py . [ 58%]
+....F                                                                    [ 62%]
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py F [ 63%]
+FFF                                                                      [ 66%]
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py . [ 66%]
+....                                                                     [ 70%]
+novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py . [ 70%]
+...                                                                      [ 73%]
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py F [ 74%]
+F                                                                        [ 75%]
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py .... [ 78%]
+F                                                                        [ 79%]
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py ... [ 81%]
+.F                                                                       [ 83%]
+novaic-agent-runtime/tests/test_pr340_saga_launch_plans.py ....          [ 86%]
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py F [ 87%]
+..F                                                                      [ 89%]
+novaic-agent-runtime/tests/test_pr344_queue_claim_busy_handling.py ....  [ 92%]
+novaic-agent-runtime/tests/test_pr345_recovery_background_defer.py ..F   [ 95%]
+novaic-agent-runtime/tests/test_saga_creation_policy_boundary.py ......  [100%]
+
+=================================== FAILURES ===================================
+____________ test_generic_fsm_core_is_io_free_and_business_agnostic ____________
+
+    def test_generic_fsm_core_is_io_free_and_business_agnostic():
+>       source = Path("queue_service/fsm/core.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/fsm/core.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/fsm/core.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+__________ test_session_dispatch_runs_through_generic_transition_core __________
+
+    def test_session_dispatch_runs_through_generic_transition_core():
+>       source = Path("queue_service/session_fsm.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:102: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/session_fsm.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/session_fsm.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+__________ test_session_ledger_is_thin_adapter_over_generic_fsm_store __________
+
+    def test_session_ledger_is_thin_adapter_over_generic_fsm_store():
+>       source = Path("queue_service/session_ledger.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/session_ledger.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/session_ledger.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+_____________ test_unused_session_ledger_record_shells_are_deleted _____________
+
+    def test_unused_session_ledger_record_shells_are_deleted():
+>       source = Path("queue_service/session_ledger.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr261_generic_fsm_residue_cleanup.py:9: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/session_ledger.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/session_ledger.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+_______________ test_task_lifecycle_fsm_has_no_hidden_io_inputs ________________
+
+    def test_task_lifecycle_fsm_has_no_hidden_io_inputs():
+        source_path = Path("queue_service/task_fsm.py")
+>       source = source_path.read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:202: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/task_fsm.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/task_fsm.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+___________ test_task_ledger_is_thin_adapter_over_generic_fsm_store ____________
+
+    def test_task_ledger_is_thin_adapter_over_generic_fsm_store():
+>       source = Path("queue_service/task_ledger.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/task_ledger.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/task_ledger.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+________________ test_saga_ledger_is_thin_generic_store_adapter ________________
+
+    def test_saga_ledger_is_thin_generic_store_adapter():
+>       source = Path("queue_service/saga_ledger.py").read_text()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/saga_ledger.py'), mode = 'r', buffering = -1
+encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/saga_ledger.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+________ test_saga_mark_failed_has_no_direct_compensation_side_effects _________
+
+    def test_saga_mark_failed_has_no_direct_compensation_side_effects():
+>       source = Path("queue_service/saga_repo.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/saga_repo.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/saga_repo.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+______ test_saga_lifecycle_methods_do_not_embed_direct_status_update_sql _______
+
+    def test_saga_lifecycle_methods_do_not_embed_direct_status_update_sql():
+        lifecycle_methods = [
+            "claim",
+            "recover_stale",
+            "mark_launched",
+            "append_step_result",
+            "check_saga_complete",
+            "mark_completed",
+            "mark_failed",
+            "cancel_all",
+            "cancel_pending",
+        ]
+    
+        for method_name in lifecycle_methods:
+>           method_source = _method("SagaRepository", method_name)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:47: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:25: in _method
+    cls = _class(class_name)
+          ^^^^^^^^^^^^^^^^^^
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:17: in _class
+    tree = ast.parse(_source())
+                     ^^^^^^^^^
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:13: in _source
+    return SAGA_REPO.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/saga_repo.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/saga_repo.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+___________ test_saga_lifecycle_methods_use_single_projection_writer ___________
+
+    def test_saga_lifecycle_methods_use_single_projection_writer():
+        projection_methods = [
+            "claim",
+            "recover_stale",
+            "mark_launched",
+            "append_step_result",
+            "check_saga_complete",
+            "mark_completed",
+            "mark_failed",
+            "cancel_all",
+            "cancel_pending",
+        ]
+    
+        for method_name in projection_methods:
+>           assert "_apply_saga_projection(" in _method("SagaRepository", method_name)
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:25: in _method
+    cls = _class(class_name)
+          ^^^^^^^^^^^^^^^^^^
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:17: in _class
+    tree = ast.parse(_source())
+                     ^^^^^^^^^
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:13: in _source
+    return SAGA_REPO.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/saga_repo.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/saga_repo.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+_________________ test_tq_sagas_has_no_direct_update_sql_path __________________
+
+    def test_tq_sagas_has_no_direct_update_sql_path():
+>       source = _source()
+                 ^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:70: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:13: in _source
+    return SAGA_REPO.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/saga_repo.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/saga_repo.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+_______ test_saga_mark_failed_contains_no_direct_compensation_publishers _______
+
+    def test_saga_mark_failed_contains_no_direct_compensation_publishers():
+>       method_source = _method("SagaOrchestrator", "mark_failed")
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:25: in _method
+    cls = _class(class_name)
+          ^^^^^^^^^^^^^^^^^^
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:17: in _class
+    tree = ast.parse(_source())
+                     ^^^^^^^^^
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:13: in _source
+    return SAGA_REPO.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/saga_repo.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/saga_repo.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+________ test_session_event_insert_is_not_in_saga_failure_decision_path ________
+
+    def test_session_event_insert_is_not_in_saga_failure_decision_path():
+>       method_source = _method("SagaOrchestrator", "mark_failed")
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:90: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:25: in _method
+    cls = _class(class_name)
+          ^^^^^^^^^^^^^^^^^^
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:17: in _class
+    tree = ast.parse(_source())
+                     ^^^^^^^^^
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:13: in _source
+    return SAGA_REPO.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/saga_repo.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/saga_repo.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+____ test_queue_fsm_audit_helper_has_no_write_sql_or_boundary_side_effects _____
+
+    def test_queue_fsm_audit_helper_has_no_write_sql_or_boundary_side_effects():
+>       source = Path("queue_service/queue_audit.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:224: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/queue_audit.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/queue_audit.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+____ test_queue_fsm_reducers_have_no_hidden_boundary_imports_or_io_strings _____
+
+    def test_queue_fsm_reducers_have_no_hidden_boundary_imports_or_io_strings():
+        banned_imports = {"datetime", "os", "random", "sqlite3", "time", "uuid"}
+        banned_strings = ("INSERT ", "UPDATE ", "DELETE ", "SELECT ", "requests.", "open(")
+    
+        for path in QUEUE_FSM_REDUCERS:
+>           source = _source(path)
+                     ^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:51: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:29: in _source
+    return path.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/session_fsm.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/session_fsm.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+___ test_task_and_saga_projection_writers_are_the_only_direct_projection_sql ___
+
+    def test_task_and_saga_projection_writers_are_the_only_direct_projection_sql():
+>       task_source = _source(Path("queue_service/queue_db.py"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:65: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:29: in _source
+    return path.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/queue_db.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/queue_db.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+_______ test_active_queue_coordinators_have_no_legacy_dual_path_language _______
+
+    def test_active_queue_coordinators_have_no_legacy_dual_path_language():
+>       combined = "\n".join(_source(path) for path in ACTIVE_QUEUE_COORDINATORS)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:83: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:83: in <genexpr>
+    combined = "\n".join(_source(path) for path in ACTIVE_QUEUE_COORDINATORS)
+                         ^^^^^^^^^^^^^
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:29: in _source
+    return path.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/session_repo.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/session_repo.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+_______ test_generation_must_come_from_fsm_state_not_projection_fallback _______
+
+    def test_generation_must_come_from_fsm_state_not_projection_fallback():
+>       queue_source = _source(Path("queue_service/queue_db.py"))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:29: in _source
+    return path.read_text(encoding="utf-8")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/queue_db.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/queue_db.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+___________ test_session_outbox_entrypoint_has_no_bespoke_drain_loop ___________
+
+    def test_session_outbox_entrypoint_has_no_bespoke_drain_loop():
+>       registry_source = Path("task_queue/workers/worker_assemblies.py").read_text(encoding="utf-8")
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:8: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('task_queue/workers/worker_assemblies.py'), mode = 'r'
+buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'task_queue/workers/worker_assemblies.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+_________________ test_session_outbox_handler_is_business_thin _________________
+
+    def test_session_outbox_handler_is_business_thin():
+>       source = Path("queue_service/session_outbox_worker.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:31: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/session_outbox_worker.py'), mode = 'r'
+buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/session_outbox_worker.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+____________ test_saga_outbox_entrypoint_has_no_bespoke_drain_loop _____________
+
+    def test_saga_outbox_entrypoint_has_no_bespoke_drain_loop():
+>       registry_source = Path("task_queue/workers/worker_assemblies.py").read_text(encoding="utf-8")
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:74: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('task_queue/workers/worker_assemblies.py'), mode = 'r'
+buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'task_queue/workers/worker_assemblies.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+___________ test_saga_worker_no_longer_owns_thread_bookkeeping_loop ____________
+
+    def test_saga_worker_no_longer_owns_thread_bookkeeping_loop():
+>       handler_source = Path("task_queue/workers/saga_worker.py").read_text(encoding="utf-8")
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:150: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('task_queue/workers/saga_worker.py'), mode = 'r'
+buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'task_queue/workers/saga_worker.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+_________________ test_transition_runner_has_no_hidden_inputs __________________
+
+    def test_transition_runner_has_no_hidden_inputs():
+>       source = Path("queue_service/fsm/runner.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:39: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/fsm/runner.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/fsm/runner.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+___________ test_active_paths_do_not_hand_write_transition_mechanics ___________
+
+    def test_active_paths_do_not_hand_write_transition_mechanics():
+>       task_queue_source = Path("queue_service/queue_db.py").read_text(encoding="utf-8")
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:168: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/queue_db.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/queue_db.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+________ test_recovery_repositories_use_bounded_background_transactions ________
+
+    def test_recovery_repositories_use_bounded_background_transactions():
+>       queue_db_source = Path("queue_service/queue_db.py").read_text(encoding="utf-8")
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+novaic-agent-runtime/tests/test_pr345_recovery_background_defer.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1058: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('queue_service/queue_db.py'), mode = 'r', buffering = -1
+encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'queue_service/queue_db.py'
+
+/opt/homebrew/anaconda3/lib/python3.11/pathlib.py:1044: FileNotFoundError
+=========================== short test summary info ============================
+FAILED novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py::test_generic_fsm_core_is_io_free_and_business_agnostic
+FAILED novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py::test_session_dispatch_runs_through_generic_transition_core
+FAILED novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py::test_session_ledger_is_thin_adapter_over_generic_fsm_store
+FAILED novaic-agent-runtime/tests/test_pr261_generic_fsm_residue_cleanup.py::test_unused_session_ledger_record_shells_are_deleted
+FAILED novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py::test_task_lifecycle_fsm_has_no_hidden_io_inputs
+FAILED novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py::test_task_ledger_is_thin_adapter_over_generic_fsm_store
+FAILED novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py::test_saga_ledger_is_thin_generic_store_adapter
+FAILED novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py::test_saga_mark_failed_has_no_direct_compensation_side_effects
+FAILED novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py::test_saga_lifecycle_methods_do_not_embed_direct_status_update_sql
+FAILED novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py::test_saga_lifecycle_methods_use_single_projection_writer
+FAILED novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py::test_tq_sagas_has_no_direct_update_sql_path
+FAILED novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py::test_saga_mark_failed_contains_no_direct_compensation_publishers
+FAILED novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py::test_session_event_insert_is_not_in_saga_failure_decision_path
+FAILED novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py::test_queue_fsm_audit_helper_has_no_write_sql_or_boundary_side_effects
+FAILED novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py::test_queue_fsm_reducers_have_no_hidden_boundary_imports_or_io_strings
+FAILED novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py::test_task_and_saga_projection_writers_are_the_only_direct_projection_sql
+FAILED novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py::test_active_queue_coordinators_have_no_legacy_dual_path_language
+FAILED novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py::test_generation_must_come_from_fsm_state_not_projection_fallback
+FAILED novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py::test_session_outbox_entrypoint_has_no_bespoke_drain_loop
+FAILED novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py::test_session_outbox_handler_is_business_thin
+FAILED novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py::test_saga_outbox_entrypoint_has_no_bespoke_drain_loop
+FAILED novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py::test_saga_worker_no_longer_owns_thread_bookkeeping_loop
+FAILED novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py::test_transition_runner_has_no_hidden_inputs
+FAILED novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py::test_active_paths_do_not_hand_write_transition_mechanics
+FAILED novaic-agent-runtime/tests/test_pr345_recovery_background_defer.py::test_recovery_repositories_use_bounded_background_transactions
+======================== 25 failed, 99 passed in 1.18s =========================

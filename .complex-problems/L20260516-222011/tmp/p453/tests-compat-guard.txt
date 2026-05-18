@@ -1,0 +1,124 @@
+=== tests compatibility guard ===
+novaic-cortex/tests/test_operational_store.py:36:def test_initialize_creates_schema_and_rejects_memory_fallback(tmp_path):
+novaic-cortex/tests/test_operational_store.py:72:def test_initialize_resets_incompatible_payload_manifest_schema(tmp_path):
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:1:"""PR-255 - retired session harness compatibility paths stay removed."""
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:15:def test_legacy_dispatch_route_module_is_removed():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:29:    assert "shadow_legacy_action" not in session_repo
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:31:    assert '"legacy_pending"' not in session_repo
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:43:    assert "tq_active_sessions" not in source
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:51:    assert "Missing required field: expected_session_generation" in runtime_handlers
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:53:    assert "requires expected_session_generation" in session_outbox
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:149:    assert body["version"] == "tool-output.v1"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:178:    assert body["version"] == "tool-output.v1"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:204:    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+novaic-cortex/tests/test_step_result_projection.py:3:    format_for_display_perception_llm,
+novaic-cortex/tests/test_step_result_projection.py:60:def test_parse_tool_result_unknown_dict_fallback_is_bounded_text_only():
+novaic-cortex/tests/test_step_result_projection.py:84:def test_display_perception_projection_data_url():
+novaic-cortex/tests/test_step_result_projection.py:91:    formatted_str = format_for_display_perception_llm(result_data)
+novaic-cortex/tests/test_step_result_projection.py:100:def test_empty_display_perception_projection_is_diagnostic_not_ok():
+novaic-cortex/tests/test_step_result_projection.py:101:    formatted = json.loads(format_for_display_perception_llm({
+novaic-cortex/tests/test_context_budget.py:40:def test_compact_level_only_emits_contract_literals_not_legacy_compact_alias() -> None:
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:15:def test_cortex_api_has_no_legacy_root_summary_read_routes() -> None:
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:21:def test_workspace_has_no_legacy_root_summary_read_helpers() -> None:
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:26:def test_active_cortex_source_no_longer_mentions_legacy_prompt_blocks() -> None:
+novaic-cortex/tests/test_tool_schemas_limits.py:114:def test_skill_end_schema_does_not_advertise_root_summary_fallback() -> None:
+novaic-cortex/tests/test_context_event_store.py:233:async def test_context_event_store_initializes_fresh_root_without_legacy_migration() -> None:
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:12:async def test_shell_has_no_local_fallback_without_sandboxd_executor() -> None:
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:13:    ws, store = make_workspace_with_store("no-local-fallback")
+novaic-cortex/tests/test_pr76_boundary_guard.py:80:    rel = "novaic-cortex/novaic_cortex/compat.py"
+novaic-agent-runtime/tests/test_health_dispatch.py:110:# ── PR-19 invariant: no fallback-dispatch surface ──────────────────────────
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:76:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:105:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:150:            "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:243:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:276:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:318:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:134:        {"role": "user", "content": "legacy context.read projection"},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:159:    assert "legacy context.read projection" not in contents
+novaic-agent-runtime/tests/test_pr261_generic_fsm_residue_cleanup.py:1:"""PR-261 - generic FSM migration residue stays deleted."""
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:154:def test_wake_created_observation_rejects_stale_generation_and_scope(tmp_path):
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:1:"""PR-43 legacy ``previous_scope_id`` transport retired by PR-69."""
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:90:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:111:    with pytest.raises(ValidationError, match="expected_session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:144:                "expected_session_generation": True,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:171:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:184:def test_session_attach_input_rejects_stale_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:203:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:32:            "missing_generation",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:36:                "reason": "missing_generation",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:154:    assert decision.reason == "missing_generation"
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:131:    assert outbox[0]["payload"]["expected_session_generation"] == 7
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:149:    assert json.loads(row[1])["expected_session_generation"] == 7
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:186:        "version": "tool-output.v1",
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:15:def test_runtime_has_no_legacy_recap_builder_or_env_flags() -> None:
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:23:def test_runtime_handler_source_no_longer_mentions_legacy_recap_blocks() -> None:
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:1:"""PR-273 - final residue guard for the session harness migration."""
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:26:    assert "legacy" not in combined
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:28:    assert "tq_active_sessions" not in combined
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:70:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:130:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:162:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:43:def test_schema_migration_and_saga_flow():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:48:def test_display_perception_can_create_user_image_message_and_strips_marker():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:50:        [_image_tool_message(_projection="display_perception")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:63:def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:76:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:102:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:127:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:148:        _image_tool_message(_projection="display_perception"),
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:152:    assert sanitized[1]["_projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:187:    assert public_content.get("version") != "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:198:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:275:    assert calls[0]["projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:298:        '{"version":"tool-output.v1","ok":true,'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:314:            if tool_call_id == "display:2" and projection == "display_perception":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:396:    assert [call["projection"] for call in calls] == ["history", "display_perception"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:472:    assert public_content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:8:be a byte-for-byte behaviour migration.
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:64:        expected_session_generation=3,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:75:            "expected_session_generation": 3,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:99:            expected_session_generation=1,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:107:    with pytest.raises(ValueError, match="requires expected_session_generation"):
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:131:                "expected_session_generation": True,
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py:1:"""PR-83: active Runtime must not expose legacy summary producers."""
+novaic-agent-runtime/tests/test_pr234_tool_logical_failure.py:32:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:1:"""PR-43 legacy ``last_scope_id`` path retired by PR-69."""
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:91:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:113:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:42:        "version": "tool-output.v1",
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:101:        "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:38:    """Build a tool_call dict in the OpenAI-compatible shape the saga
+novaic-agent-runtime/tests/test_pr112_business_client_boundary.py:46:def test_business_client_init_has_no_ignored_backcompat_parameters():
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:106:    assert task_payload["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:1:"""PR-315 - final residue guard for Queue durable FSM host migration."""
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:82:def test_active_queue_coordinators_have_no_legacy_dual_path_language():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:86:        "tq_active_sessions",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:90:        "legacy",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:91:        "compat",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:92:        "fallback",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:100:def test_generation_must_come_from_fsm_state_not_projection_fallback():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:106:    assert "fallback" not in queue_source
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:107:    assert "fallback" not in saga_source
+novaic-cortex/tests/test_tool_output_projection.py:5:    format_for_display_perception_llm,
+novaic-cortex/tests/test_tool_output_projection.py:14:        "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:59:def test_tool_output_v1_display_perception_never_inlines_artifact_image():
+novaic-cortex/tests/test_tool_output_projection.py:61:    formatted = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:88:def test_mcp_image_content_is_only_visual_in_display_perception_projection():
+novaic-cortex/tests/test_tool_output_projection.py:100:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:126:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:134:            "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:160:            "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:182:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:214:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:234:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:120:    assert outbox[0]["payload"]["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:153:    assert task_payload["expected_session_generation"] == 1
+novaic-cortex/tests/test_context_event_no_compat.py:43:async def test_prepare_for_llm_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-cortex/tests/test_context_event_no_compat.py:59:async def test_status_include_usage_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:62:def test_session_repository_no_longer_imports_legacy_dispatch_route():
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:79:    assert "tq_active_sessions" not in _table_names(db)
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:100:    assert "tq_active_sessions" not in _table_names(db)
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:114:    assert "tq_active_sessions" not in source
+novaic-cortex/tests/test_legacy_skill_lifecycle_removed.py:7:def test_legacy_jwt_skill_routes_are_removed() -> None:
+novaic-cortex/tests/test_context_event_read_source_guards.py:28:def test_prepare_for_llm_has_no_dfs_read_fallback() -> None:
+novaic-cortex/tests/test_context_event_read_source_guards.py:42:def test_status_usage_has_no_dfs_read_fallback() -> None:

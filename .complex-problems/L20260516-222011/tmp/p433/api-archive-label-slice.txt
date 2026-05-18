@@ -1,0 +1,106 @@
+# ── Tool schemas (internal, for workers) ────────────────────────────────
+
+class InternalToolsRequest(_TenantMixin):
+    subagent_id: str | None = None
+
+
+@app.post("/v1/internal/tools")
+async def tools_internal(req: InternalToolsRequest):
+    """Return builtin tool schemas. No JWT needed."""
+    from novaic_cortex.tool_schemas import tool_schemas_for_subagent
+    return {"tools": tool_schemas_for_subagent(req.subagent_id)}
+
+
+class ReindexRequest(_TenantMixin):
+    force: bool = False
+
+
+@app.post("/v1/internal/reindex")
+async def reindex_scopes(req: ReindexRequest):
+    """Rebuild _index.jsonl with enriched names. force=true re-extracts all."""
+    ws = _get_workspace(req.user_id, req.agent_id)
+    index_path = "/ro/scopes/_index.jsonl"
+
+    try:
+        raw = await ws.read(index_path)
+    except (KeyError, FileNotFoundError):
+        return {"ok": False, "error": "No index found"}
+
+    entries = []
+    updated = 0
+    generic_names = {
+        "session", "unnamed", "", "user conversation",
+        "scheduled wake", "system wake", "subagent task",
+    }
+    for line in raw.strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        name = (entry.get("name") or "").strip()
+        sid = entry.get("scope_id", "")
+
+        needs_update = req.force or name.lower() in generic_names
+        if needs_update and sid:
+            better = await _extract_scope_label(ws, sid)
+            if better:
+                entry["name"] = better
+                updated += 1
+
+        entries.append(entry)
+
+    if updated > 0:
+        new_content = "\n".join(
+            json.dumps(e, ensure_ascii=False) for e in entries
+        ) + "\n"
+        # Bypass agent /rw ACL through the Cortex system write path.
+        await ws._sys_write(index_path, new_content)
+
+    return {"ok": True, "total": len(entries), "updated": updated}
+
+
+async def _extract_scope_label(ws, scope_id: str) -> str | None:
+    """Extract meaningful label: first user message > summary content."""
+    # Best archive label: first user message from the materialized context projection.
+    context_path = f"/ro/scopes/{scope_id}/context.jsonl"
+    try:
+        if await ws.exists(context_path):
+            raw = await ws.read(context_path)
+            for json_line in raw.strip().splitlines():
+                try:
+                    msg = json.loads(json_line)
+                except json.JSONDecodeError:
+                    continue
+                if msg.get("role") == "user":
+                    content = (msg.get("content") or "").strip().replace("\n", " ")
+                    if content and len(content) > 3:
+                        if len(content) > 60:
+                            content = content[:57] + "..."
+                        return content
+    except Exception:
+        pass
+
+    # Secondary archive label source: summary projection — skip format headers and [Think] prefixes.
+    summary_path = f"/ro/scopes/{scope_id}/summary.md"
+    try:
+        if await ws.exists(summary_path):
+            text = await ws.read(summary_path)
+            for line in text.strip().splitlines():
+                line = line.strip().lstrip("#").strip()
+                if not line or len(line) < 4:
+                    continue
+                if line.startswith("===") or line.startswith("---"):
+                    continue
+                for prefix in ("[Think]", "[Action]", "[Result]"):
+                    if line.startswith(prefix):
+                        line = line[len(prefix):].strip()
+                if not line or len(line) < 4:
+                    continue
+                return line[:80]
+    except Exception:
+        pass
+

@@ -1,0 +1,69 @@
+novaic-cortex/tests/test_pr67_wake_child_api.py:96:async def test_context_projection_meta_and_input_can_target_wake_child_scope():
+novaic-cortex/tests/test_pr67_wake_child_api.py:231:async def test_context_status_include_usage_uses_event_projection() -> None:
+novaic-cortex/novaic_cortex/api.py:34:from novaic_cortex.active_stack_projection import (
+novaic-cortex/novaic_cortex/api.py:35:    finalize_active_stack_projection,
+novaic-cortex/novaic_cortex/api.py:36:    read_active_stack_projection,
+novaic-cortex/novaic_cortex/api.py:37:    write_active_stack_projection,
+novaic-cortex/novaic_cortex/api.py:70:# Every mutating endpoint (skill_begin/end, steps/write, context/append,
+novaic-cortex/novaic_cortex/api.py:71:# context/batch, meta/counter_inc, meta/advance_round) holds a distributed
+novaic-cortex/novaic_cortex/api.py:248:    projections: list[dict[str, Any]]
+novaic-cortex/novaic_cortex/api.py:251:        row = ws.operational_store.get_scope_projection(
+novaic-cortex/novaic_cortex/api.py:255:        projections = [row] if row is not None else []
+novaic-cortex/novaic_cortex/api.py:257:        projections = ws.operational_store.list_scope_projections(scope_id=scope_id)
+novaic-cortex/novaic_cortex/api.py:259:    for row in projections:
+novaic-cortex/novaic_cortex/api.py:503:    events use this post-archive stack so LLM context projection does not keep
+novaic-cortex/novaic_cortex/api.py:531:    return finalize_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:569:            _write_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:600:                _write_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:621:    path = await ws.create_scope_projection(
+novaic-cortex/novaic_cortex/api.py:637:        _write_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:654:        _write_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:704:        active_stack = read_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:727:        archive_path = await ws.archive_root_scope_projection(req.scope_id, "")
+novaic-cortex/novaic_cortex/api.py:745:        active_stack = read_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:776:        await ws.complete_child_scope_projection(scope_path, "")
+novaic-cortex/novaic_cortex/api.py:816:    active_path = read_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:886:@app.post("/v1/context/read")
+novaic-cortex/novaic_cortex/api.py:888:    """Read the materialized context.jsonl projection for diagnostics/idempotency.
+novaic-cortex/novaic_cortex/api.py:890:    This endpoint is not the LLM prepare source. LLM requests use
+novaic-cortex/novaic_cortex/api.py:904:@app.post("/v1/context/append")
+novaic-cortex/novaic_cortex/api.py:906:    """Append a ContextEvent and materialize its context.jsonl projection."""
+novaic-cortex/novaic_cortex/api.py:907:    # The materialized context projection uses append-line writes; serialize per
+novaic-cortex/novaic_cortex/api.py:908:    # root scope to prevent concurrent projection updates losing lines.
+novaic-cortex/novaic_cortex/api.py:924:        await ws.append_context_projection(scope_path, req.message)
+novaic-cortex/novaic_cortex/api.py:928:@app.post("/v1/context/batch")
+novaic-cortex/novaic_cortex/api.py:930:    """Batch append ContextEvents and materialize their context.jsonl projection."""
+novaic-cortex/novaic_cortex/api.py:948:        await ws.append_context_batch_projection(scope_path, req.messages)
+novaic-cortex/novaic_cortex/api.py:1046:        raise RuntimeError("Workspace clock is required for active stack projection writes")
+novaic-cortex/novaic_cortex/api.py:1050:def _write_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:1058:    return write_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:1083:    active_stack = read_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:1106:        existing_scope = ws.operational_store.get_scope_projection(
+novaic-cortex/novaic_cortex/api.py:1143:        child_path = await ws.create_scope_projection(
+novaic-cortex/novaic_cortex/api.py:1172:        _write_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:1220:    active_stack = read_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:1280:        await ws.complete_child_scope_projection(active_path, req.report)
+novaic-cortex/novaic_cortex/api.py:1282:        _write_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:1322:    stack read from the materialized scope projection. Runtime calls it every
+novaic-cortex/novaic_cortex/api.py:1325:    token/message estimates; that usage path is event-projection backed and
+novaic-cortex/novaic_cortex/api.py:1332:        active_stack = read_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:1494:        merged = await ws.append_input_message_ids_projection(
+novaic-cortex/novaic_cortex/api.py:1595:            active_path = read_active_stack_projection(
+novaic-cortex/novaic_cortex/api.py:1619:            path = await ws.write_step_projection(active_path, normalized_step)
+novaic-cortex/novaic_cortex/api.py:1658:    projection: str = "history"
+novaic-cortex/novaic_cortex/api.py:1832:    from novaic_cortex.step_result_projection import (
+novaic-cortex/novaic_cortex/api.py:1849:    projection = (req.projection or "").strip()
+novaic-cortex/novaic_cortex/api.py:1850:    if projection == "display_perception":
+novaic-cortex/novaic_cortex/api.py:1852:    elif projection == "current_tool_result":
+novaic-cortex/novaic_cortex/api.py:1854:    elif projection == "history":
+novaic-cortex/novaic_cortex/api.py:1860:                "error_code": "unsupported_step_projection",
+novaic-cortex/novaic_cortex/api.py:1861:                "projection": projection,
+novaic-cortex/novaic_cortex/api.py:1871:    from novaic_cortex.step_result_projection import parse_tool_result, preview_for_text
+novaic-cortex/novaic_cortex/api.py:2264:    # Best archive label: first user message from the materialized context projection.
+novaic-cortex/novaic_cortex/api.py:2283:    # Secondary archive label source: summary projection — skip format headers and [Think] prefixes.
+novaic-cortex/novaic_cortex/api.py:2337:# ``/v1/context/append`` use, so stack pushes/pops, step writes, and
+novaic-cortex/tests/test_context_event_api_context_writes.py:60:async def test_context_append_emits_event_and_materializes_projection() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:86:async def test_context_batch_emits_ordered_events_and_materializes_projection() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:120:async def test_context_append_keyed_retry_dedupes_event_but_preserves_context_projection() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:162:async def test_read_context_projection_rejects_corrupt_jsonl() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:170:    with pytest.raises(ValueError, match="corrupt context projection"):

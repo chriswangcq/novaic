@@ -1,0 +1,271 @@
+# P416 Cortex generation / active-state guard
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:26:from task_queue.contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:64:    agent_root_scope_id = payload.get("agent_root_scope_id")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:65:    wake_scope_path = payload.get("wake_scope_path") or payload.get("scope_path")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:70:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:79:    session_generation = require_positive_session_generation(payload, "cortex.scope_end")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:80:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:81:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:83:    bridge_scope_id = agent_root_scope_id or scope_id
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:91:        meta = bridge.read_session_meta(bridge_scope_id, scope_path=wake_scope_path) or {}
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:104:        "[cortex.scope_end] scope=%s generation=%s reason=%s round=%s report_len=%d inputs=%d",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:105:        scope_id, session_generation, finalize_reason, round_num,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:112:            is_root=(not agent_root_scope_id or agent_root_scope_id == scope_id),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:113:            scope_path=wake_scope_path,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:114:            session_generation=session_generation,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:116:            remaining_stack=dict(remaining_stack),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:162:    if agent_root_scope_id:
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:163:        remove_cortex_bridge(agent_root_scope_id, user_id=user_id, agent_id=agent_id)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:170:        "session_generation": session_generation,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:185:    agent_root_scope_id = payload.get("agent_root_scope_id")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:197:    bridge_scope_id = agent_root_scope_id or scope_id
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:225:    agent_root_scope_id = payload.get("agent_root_scope_id")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:236:    bridge_scope_id = agent_root_scope_id or scope_id
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:260:    agent_root_scope_id = payload.get("agent_root_scope_id")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:269:    bridge_scope_id = agent_root_scope_id or scope_id
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:316:        "agent_root_scope_id": prepare_input.agent_root_scope_id,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:317:        "wake_scope_path": prepare_input.wake_scope_path,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:332:        prepare_input.agent_root_scope_id,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:336:    prepare_result = bridge.prepare_for_llm(prepare_input.agent_root_scope_id)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:17:from ..contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:128:        session_generation: int | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:130:        remaining_stack: dict[str, Any] | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:141:        if session_generation is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:142:            payload["session_generation"] = require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:143:                session_generation,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:148:        if remaining_stack is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:149:            payload["remaining_stack"] = dict(remaining_stack)
+novaic-cortex/scripts/check_cortex_boundary.py:45:        "Cortex must not reintroduce automatic summary generation.",
+novaic-cortex/tests/test_operational_store.py:148:        generation=7,
+novaic-cortex/tests/test_operational_store.py:158:        generation=7,
+novaic-cortex/tests/test_operational_store.py:167:        generation=8,
+novaic-cortex/tests/test_operational_store.py:168:        payload={"remaining_stack": []},
+novaic-cortex/tests/test_operational_store.py:188:        generation=1,
+novaic-cortex/tests/test_operational_store.py:197:            generation=1,
+novaic-cortex/tests/test_operational_store.py:212:        generation=10,
+novaic-cortex/tests/test_operational_store.py:224:        generation=11,
+novaic-cortex/tests/test_operational_store.py:233:    assert stored["generation"] == 11
+novaic-cortex/tests/test_operational_store.py:240:        generation=12,
+novaic-cortex/tests/test_operational_store.py:250:        "generation": 0,
+novaic-cortex/tests/test_operational_store.py:255:def test_operational_store_rejects_invalid_generation_boundaries(tmp_path):
+novaic-cortex/tests/test_operational_store.py:258:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-cortex/tests/test_operational_store.py:263:            generation=True,
+novaic-cortex/tests/test_operational_store.py:265:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-cortex/tests/test_operational_store.py:271:            generation=False,
+novaic-cortex/tests/test_operational_store.py:273:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-cortex/tests/test_operational_store.py:277:            generation=-1,
+novaic-cortex/tests/test_operational_store.py:306:        generation=55,
+novaic-cortex/tests/test_operational_store.py:333:        "generation": 55,
+novaic-cortex/novaic_cortex/context_event_writer.py:64:        wake_scope_id: str,
+novaic-cortex/novaic_cortex/context_event_writer.py:70:            payload={"wake_scope_id": wake_scope_id, "scope_name": scope_name},
+novaic-cortex/novaic_cortex/context_event_writer.py:71:            idempotency_key=f"context-wake:start:{ctx.stream_id}:{wake_scope_id}",
+novaic-cortex/novaic_cortex/context_event_writer.py:78:        wake_scope_id: str,
+novaic-cortex/novaic_cortex/context_event_writer.py:80:        remaining_stack: list[str],
+novaic-cortex/novaic_cortex/context_event_writer.py:84:            "wake_scope_id": wake_scope_id,
+novaic-cortex/novaic_cortex/context_event_writer.py:86:            "remaining_stack": remaining_stack,
+novaic-cortex/novaic_cortex/context_event_writer.py:94:            idempotency_key=f"context-wake:archive:{ctx.stream_id}:{wake_scope_id}",
+novaic-cortex/novaic_cortex/active_stack_projection.py:28:def _require_non_negative_generation(value: Any, owner: str) -> int:
+novaic-cortex/novaic_cortex/active_stack_projection.py:30:        raise ValueError(f"generation is required for {owner}")
+novaic-cortex/novaic_cortex/active_stack_projection.py:32:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-cortex/novaic_cortex/active_stack_projection.py:34:        generation = int(value)
+novaic-cortex/novaic_cortex/active_stack_projection.py:36:        raise ValueError(f"non-negative generation is required for {owner}") from exc
+novaic-cortex/novaic_cortex/active_stack_projection.py:37:    if generation < 0:
+novaic-cortex/novaic_cortex/active_stack_projection.py:38:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-cortex/novaic_cortex/active_stack_projection.py:39:    return generation
+novaic-cortex/novaic_cortex/active_stack_projection.py:81:    generation: int,
+novaic-cortex/novaic_cortex/active_stack_projection.py:91:    projection_generation = _require_non_negative_generation(
+novaic-cortex/novaic_cortex/active_stack_projection.py:92:        generation,
+novaic-cortex/novaic_cortex/active_stack_projection.py:103:        generation=projection_generation,
+novaic-cortex/novaic_cortex/active_stack_projection.py:111:            generation=projection_generation,
+novaic-cortex/novaic_cortex/active_stack_projection.py:161:        "generation": _require_non_negative_generation(
+novaic-cortex/novaic_cortex/active_stack_projection.py:162:            row.get("generation", 0),
+novaic-cortex/novaic_cortex/active_stack_projection.py:174:    generation: int,
+novaic-cortex/novaic_cortex/active_stack_projection.py:184:    finalize_generation = _require_non_negative_generation(
+novaic-cortex/novaic_cortex/active_stack_projection.py:185:        generation,
+novaic-cortex/novaic_cortex/active_stack_projection.py:201:        generation=finalize_generation,
+novaic-cortex/novaic_cortex/active_stack_projection.py:204:            "remaining_stack": normalized,
+novaic-cortex/novaic_cortex/active_stack_projection.py:213:        generation=finalize_generation,
+novaic-cortex/novaic_cortex/scope_transition_events.py:86:        generation=int(created_at_ms),
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:130:        session_generation=3,
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:132:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:134:    assert req.session_generation == 3
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:137:    with pytest.raises(PydanticValidationError, match="session_generation is required"):
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:143:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:146:    with pytest.raises(PydanticValidationError, match="positive session_generation"):
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:151:            session_generation=0,
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:153:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:156:    with pytest.raises(PydanticValidationError, match="positive session_generation"):
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:161:            session_generation=True,
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:163:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:166:    with pytest.raises(PydanticValidationError, match="remaining_stack is required"):
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:171:            session_generation=3,
+novaic-cortex/novaic_cortex/workspace.py:341:                generation=int(now * 1000),
+novaic-cortex/novaic_cortex/workspace.py:533:                generation=int(ended_at * 1000),
+novaic-cortex/tests/test_context_event_model.py:125:    changed_type = _event(type="WakeStarted", payload={"wake_scope_id": "wake-1"})
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:478:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:508:        "remaining_stack": [{"depth": 1, "kind": "wake", "name": "user conversation", "parent_path": root["scope_path"], "parent_scope_id": "agent-root", "scope_id": "wake-1", "scope_path": _wake["scope_path"], "skill_name": "wake"}],
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:517:async def test_scope_end_wake_records_remaining_stack_and_retry_is_idempotent() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:561:    assert [frame["scope_id"] for frame in finalize_events[0]["payload"]["remaining_stack"]] == [
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:565:    assert finalize_events[0]["payload"]["remaining_stack"][0]["scope_path"] == opened["child_path"]
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:566:    assert finalize_events[0]["payload"]["remaining_stack"][1]["scope_path"] == wake["scope_path"]
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:570:        "wake_scope_id": "wake-1",
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:572:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_writer.py:42:        wake_scope_id="wake-1",
+novaic-cortex/tests/test_context_event_writer.py:51:        "wake_scope_id": "wake-1",
+novaic-cortex/tests/test_context_event_writer.py:217:            wake_scope_id="wake-1",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:70:        "wake_scope_id": "wake-1",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:166:        "wake_scope_id": "wake-1",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:168:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_lifecycle.py:203:            session_generation=7,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:205:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:214:        "wake_scope_id": "wake-1",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:216:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_lifecycle.py:218:            "session_generation": 7,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:220:            "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:226:def test_scope_end_rejects_bool_archive_diagnostics_generation() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:227:    with pytest.raises(ValidationError, match="positive session_generation"):
+novaic-cortex/tests/test_context_event_api_lifecycle.py:233:            session_generation=True,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:235:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:246:            session_generation=1,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:247:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/novaic_cortex/api.py:415:    session_generation: int | None = None
+novaic-cortex/novaic_cortex/api.py:417:    remaining_stack: dict[str, Any] | None = None
+novaic-cortex/novaic_cortex/api.py:420:    @field_validator("session_generation", mode="before")
+novaic-cortex/novaic_cortex/api.py:422:    def _reject_bool_session_generation(cls, value: Any) -> Any:
+novaic-cortex/novaic_cortex/api.py:424:            raise ValueError("positive session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:430:            self.session_generation is not None
+novaic-cortex/novaic_cortex/api.py:432:            or self.remaining_stack is not None
+novaic-cortex/novaic_cortex/api.py:436:        if self.session_generation is None:
+novaic-cortex/novaic_cortex/api.py:437:            raise ValueError("session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:438:        if self.session_generation < 1:
+novaic-cortex/novaic_cortex/api.py:439:            raise ValueError("positive session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:442:        if self.remaining_stack is None:
+novaic-cortex/novaic_cortex/api.py:443:            raise ValueError("remaining_stack is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:454:    remaining_stack: list[str],
+novaic-cortex/novaic_cortex/api.py:465:        wake_scope_id=_scope_id_from_path(scope_path),
+novaic-cortex/novaic_cortex/api.py:467:        remaining_stack=remaining_stack,
+novaic-cortex/novaic_cortex/api.py:474:        req.session_generation is None
+novaic-cortex/novaic_cortex/api.py:476:        and req.remaining_stack is None
+novaic-cortex/novaic_cortex/api.py:480:        "session_generation": req.session_generation,
+novaic-cortex/novaic_cortex/api.py:482:        "remaining_stack": dict(req.remaining_stack or {}),
+novaic-cortex/novaic_cortex/api.py:495:def _semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:535:        generation=_active_stack_generation_ms(ws),
+novaic-cortex/novaic_cortex/api.py:597:                    wake_scope_id=req.scope_id,
+novaic-cortex/novaic_cortex/api.py:651:            wake_scope_id=req.scope_id,
+novaic-cortex/novaic_cortex/api.py:715:            remaining_stack=_semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:756:            remaining_stack=_semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:1036:def _active_stack_generation_ms(ws: Any) -> int:
+novaic-cortex/novaic_cortex/api.py:1055:        generation=_active_stack_generation_ms(ws),
+novaic-cortex/novaic_cortex/operational_store.py:37:def _require_non_negative_generation(value: Any, owner: str) -> int:
+novaic-cortex/novaic_cortex/operational_store.py:39:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-cortex/novaic_cortex/operational_store.py:41:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-cortex/novaic_cortex/operational_store.py:43:        generation = int(value)
+novaic-cortex/novaic_cortex/operational_store.py:45:        raise ValueError(f"non-negative generation is required for {owner}") from exc
+novaic-cortex/novaic_cortex/operational_store.py:46:    if generation < 0:
+novaic-cortex/novaic_cortex/operational_store.py:47:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-cortex/novaic_cortex/operational_store.py:48:    return generation
+novaic-cortex/novaic_cortex/operational_store.py:103:                    generation INTEGER NOT NULL,
+novaic-cortex/novaic_cortex/operational_store.py:122:                    generation INTEGER NOT NULL,
+novaic-cortex/novaic_cortex/operational_store.py:137:                    generation INTEGER NOT NULL,
+novaic-cortex/novaic_cortex/operational_store.py:241:        generation: int,
+novaic-cortex/novaic_cortex/operational_store.py:249:        event_generation = _require_non_negative_generation(
+novaic-cortex/novaic_cortex/operational_store.py:250:            generation,
+novaic-cortex/novaic_cortex/operational_store.py:259:            "generation": event_generation,
+novaic-cortex/novaic_cortex/operational_store.py:276:                        "generation": existing_dict["generation"],
+novaic-cortex/novaic_cortex/operational_store.py:292:                    generation, reason, payload_json, occurred_at_ms, idempotency_key
+novaic-cortex/novaic_cortex/operational_store.py:302:                    event_generation,
+novaic-cortex/novaic_cortex/operational_store.py:345:        generation: int,
+novaic-cortex/novaic_cortex/operational_store.py:354:        projection_generation = _require_non_negative_generation(
+novaic-cortex/novaic_cortex/operational_store.py:355:            generation, "scope projection upsert"
+novaic-cortex/novaic_cortex/operational_store.py:363:                    generation, skill_name, name, task, opened_at_ms, closed_at_ms,
+novaic-cortex/novaic_cortex/operational_store.py:372:                    generation=excluded.generation,
+novaic-cortex/novaic_cortex/operational_store.py:388:                    projection_generation,
+novaic-cortex/novaic_cortex/operational_store.py:438:        generation: int,
+novaic-cortex/novaic_cortex/operational_store.py:442:        stack_generation = _require_non_negative_generation(
+novaic-cortex/novaic_cortex/operational_store.py:443:            generation, "active stack projection"
+novaic-cortex/novaic_cortex/operational_store.py:449:                INSERT INTO active_stack_projection(root_scope_id, top_scope_id, frames_json, generation, updated_at_ms)
+novaic-cortex/novaic_cortex/operational_store.py:454:                    generation=excluded.generation,
+novaic-cortex/novaic_cortex/operational_store.py:457:                (root_scope_id, top_scope_id, frames_json, stack_generation, updated_at_ms),
+novaic-cortex/novaic_cortex/operational_store.py:476:                    "generation": 0,
+novaic-cortex/tests/test_scope_state.py:281:    assert rows[0]["generation"] == 12500
+novaic-cortex/tests/test_active_stack_projection.py:75:        generation=10,
+novaic-cortex/tests/test_active_stack_projection.py:106:        generation=20,
+novaic-cortex/tests/test_active_stack_projection.py:114:        generation=20,
+novaic-cortex/tests/test_active_stack_projection.py:134:        write_active_stack_projection(None, root_scope_id="root", frames=[], generation=1, reason="r")
+novaic-cortex/tests/test_active_stack_projection.py:136:        write_active_stack_projection(store, root_scope_id="", frames=[], generation=1, reason="r")
+novaic-cortex/tests/test_active_stack_projection.py:137:    with pytest.raises(ValueError, match="generation"):
+novaic-cortex/tests/test_active_stack_projection.py:138:        write_active_stack_projection(store, root_scope_id="root", frames=[], generation=None, reason="r")  # type: ignore[arg-type]
+novaic-cortex/tests/test_active_stack_projection.py:140:        write_active_stack_projection(store, root_scope_id="root", frames=[], generation=1, reason="")
+novaic-cortex/tests/test_active_stack_projection.py:159:        "generation": 0,
+novaic-cortex/tests/test_active_stack_projection.py:182:        generation=7,
+novaic-cortex/tests/test_active_stack_projection.py:195:    assert result["generation"] == 7
+novaic-cortex/tests/test_active_stack_projection.py:203:        generation=7,
+novaic-cortex/tests/test_active_stack_projection.py:230:    store.set_active_stack(root_scope_id="root", frames=[], generation=9)
+novaic-cortex/tests/test_active_stack_projection.py:236:        generation=10,
+novaic-cortex/tests/test_active_stack_projection.py:244:        generation=10,
+novaic-cortex/tests/test_active_stack_projection.py:253:        "remaining_stack": [],
+novaic-cortex/tests/test_active_stack_projection.py:264:def test_finalize_active_stack_projection_records_remaining_stack_then_clears(tmp_path):
+novaic-cortex/tests/test_active_stack_projection.py:285:    store.set_active_stack(root_scope_id="root", frames=frames, generation=19)
+novaic-cortex/tests/test_active_stack_projection.py:291:        generation=20,
+novaic-cortex/tests/test_active_stack_projection.py:296:    remaining = result["event"]["payload"]["remaining_stack"]
+novaic-cortex/tests/test_active_stack_projection.py:314:    assert store.get_active_stack(root_scope_id="root")["generation"] == 20
+novaic-cortex/tests/test_active_stack_projection.py:324:            generation=1,
+novaic-cortex/tests/test_active_stack_projection.py:329:        finalize_active_stack_projection(store, root_scope_id="", frames=[], generation=1, reason="r", idempotency_key="k")
+novaic-cortex/tests/test_active_stack_projection.py:330:    with pytest.raises(ValueError, match="generation"):
+novaic-cortex/tests/test_active_stack_projection.py:335:            generation=None,
+novaic-cortex/tests/test_active_stack_projection.py:340:        finalize_active_stack_projection(store, root_scope_id="root", frames=[], generation=1, reason="", idempotency_key="k")
+novaic-cortex/tests/test_active_stack_projection.py:342:        finalize_active_stack_projection(store, root_scope_id="root", frames=[], generation=1, reason="r", idempotency_key="")
+novaic-cortex/tests/test_pr67_wake_child_api.py:116:        updates={"wake_scope_id": "wake-1"},
+novaic-cortex/tests/test_pr67_wake_child_api.py:124:    assert meta["meta"]["wake_scope_id"] == "wake-1"
+novaic-cortex/tests/test_pr67_wake_child_api.py:137:async def test_meta_counter_inc_targets_wake_scope_not_agent_root():
+novaic-cortex/tests/test_context_event_write_authority.py:171:        "wake_scope_id": "wake-1",
+novaic-cortex/tests/test_context_event_write_authority.py:202:        "wake_scope_id": "wake-1",
+novaic-cortex/tests/test_context_event_write_authority.py:204:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_store.py:89:    second = _event(seq=2, type="WakeStarted", payload={"wake_scope_id": "wake-1"})
+novaic-cortex/tests/test_context_event_store.py:206:        payload={"wake_scope_id": "wake-1"},
+novaic-cortex/tests/test_context_event_projection.py:173:                {"wake_scope_id": "wake-1", "scope_name": "user conversation"},
+novaic-cortex/tests/test_context_event_projection.py:179:                    "wake_scope_id": "wake-1",
+novaic-cortex/tests/test_context_event_projection.py:181:                    "remaining_stack": [],
+novaic-cortex/tests/test_context_event_projection.py:197:                {"wake_scope_id": "wake-old", "scope_name": "old wake"},
+novaic-cortex/tests/test_context_event_projection.py:210:                {"wake_scope_id": "wake-new", "scope_name": "new wake"},
+novaic-cortex/tests/test_context_event_projection.py:243:                {"wake_scope_id": "wake-1", "scope_name": "user conversation"},
+novaic-cortex/tests/test_context_event_projection.py:273:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:301:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:322:                _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:349:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:384:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:412:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:449:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:494:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:531:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:714:            _event(1, "WakeStarted", {"wake_scope_id": "wake-1"}),
+novaic-cortex/tests/test_context_event_projection.py:777:        ("WakeStarted", {"scope_name": "wake"}, "payload.wake_scope_id"),
+novaic-cortex/novaic_cortex/context_event_projection.py:50:    active_wake_scope_id: str | None = None
+novaic-cortex/novaic_cortex/context_event_projection.py:102:        wake_scope_id = _required_payload_str(event, "wake_scope_id")
+novaic-cortex/novaic_cortex/context_event_projection.py:104:        state.active_wake_scope_id = wake_scope_id
+novaic-cortex/novaic_cortex/context_event_projection.py:108:                "scope_id": wake_scope_id,
+novaic-cortex/novaic_cortex/context_event_projection.py:114:        remaining = event.payload.get("remaining_stack")
+novaic-cortex/novaic_cortex/context_event_projection.py:121:            wake_scope_id = event.payload.get("wake_scope_id")
+novaic-cortex/novaic_cortex/context_event_projection.py:122:            if wake_scope_id is not None:
+novaic-cortex/novaic_cortex/context_event_projection.py:124:                    frame for frame in snapshot.stack if frame.get("scope_id") != wake_scope_id
+novaic-cortex/novaic_cortex/context_event_projection.py:126:                if state.active_wake_scope_id == wake_scope_id:
+novaic-cortex/novaic_cortex/context_event_projection.py:127:                    state.active_wake_scope_id = None
+novaic-cortex/novaic_cortex/context_event_projection.py:210:        if scope_id == state.active_wake_scope_id:
+novaic-cortex/novaic_cortex/context_event_projection.py:216:        if state.active_wake_scope_id is not None:
+novaic-cortex/novaic_cortex/context_event_projection.py:249:    if state.active_wake_scope_id == scope_id:
+novaic-cortex/novaic_cortex/context_event_projection.py:263:        state.active_wake_scope_id = None
+novaic-cortex/novaic_cortex/context_event_projection.py:282:    if state.active_wake_scope_id is None:
+novaic-cortex/novaic_cortex/context_event_projection.py:284:    stale_roots = {state.active_wake_scope_id}
+novaic-cortex/tests/test_context_event_read_model.py:74:            {"wake_scope_id": "wake-1", "scope_name": "user conversation"},
+novaic-cortex/novaic_cortex/shell_capabilities.py:483:def _wake_scope_path() -> str:
+novaic-cortex/novaic_cortex/shell_capabilities.py:590:    if _wake_scope_path():
+novaic-cortex/novaic_cortex/shell_capabilities.py:591:        payload["scope_path"] = _wake_scope_path()
+novaic-cortex/novaic_cortex/shell_capabilities.py:602:    if _wake_scope_path():
+novaic-cortex/novaic_cortex/shell_capabilities.py:603:        payload["scope_path"] = _wake_scope_path()
+novaic-cortex/novaic_cortex/shell_capabilities.py:612:    if _wake_scope_path():
+novaic-cortex/novaic_cortex/shell_capabilities.py:613:        payload["scope_path"] = _wake_scope_path()
+novaic-cortex/novaic_cortex/logical_fs.py:235:        wake_scope_path = str((extra_env or {}).get("NOVAIC_WAKE_SCOPE_PATH") or "").strip().rstrip("/")
+novaic-cortex/novaic_cortex/logical_fs.py:241:            if wake_scope_path and (
+novaic-cortex/novaic_cortex/logical_fs.py:242:                wake_scope_path == root_path or wake_scope_path.startswith(root_path + "/")
+novaic-cortex/novaic_cortex/logical_fs.py:244:                await self._add_tree(files, wake_scope_path + "/")
+novaic-cortex/novaic_cortex/scope_state.py:239:        generation=int(created_at_ms),

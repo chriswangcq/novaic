@@ -1,0 +1,8 @@
+COMMAND:
+cd novaic-agent-runtime && PYTHONPATH=.:../novaic-common pytest -q tests/test_pr249_observed_wake_outbox_cleanup.py tests/test_pr250_observed_wake_effect_rename.py tests/test_pr251_wake_creation_outbox_cutover.py
+
+OUTPUT:
+.............                                                            [100%]
+13 passed in 0.18s
+
+EXIT_STATUS=0

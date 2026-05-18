@@ -1,0 +1,120 @@
+"""ContextEvent-backed read model for LLM context preparation.
+
+This module reads the authoritative event stream, projects it through the pure
+projection function, then applies the context budget boundary.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from novaic_cortex.context_event_projection import (
+    ContextProjectionSnapshot,
+    project_context_events,
+)
+from novaic_cortex.context_event_store import ContextEventStore
+from novaic_cortex.context_stack.budget import budget_compact
+from novaic_cortex.context_stack.types import (
+    CompactConfig,
+    Phase,
+    StackStatus,
+    TokenCounter,
+    count_all_tokens,
+)
+
+if TYPE_CHECKING:
+    from novaic_cortex.workspace import Workspace
+
+
+@dataclass(frozen=True)
+class ContextEventPreparedContext:
+    """Prepared LLM context derived from one ContextEvent stream."""
+
+    messages: list[dict]
+    stack: list[dict]
+    estimated_tokens: int
+    usage_ratio: float
+    applied_seq: int
+    projection: ContextProjectionSnapshot
+
+    def status(self) -> StackStatus:
+        current = self.stack[0].get("skill_name") if self.stack else None
+        if current is None and self.stack:
+            current = self.stack[0].get("name")
+        return StackStatus(
+            stack_depth=len(self.stack),
+            current_skill=str(current) if current is not None else None,
+            frames=self.stack,
+            total_messages=len(self.messages),
+            estimated_tokens=self.estimated_tokens,
+            usage_ratio=self.usage_ratio,
+            phase=Phase.EXECUTING if self.stack else Phase.CLOSED,
+        )
+
+
+class ContextEventReadModelResetRequired(RuntimeError):
+    """Raised when a root has no event stream and reset is required."""
+
+    def __init__(self, root_scope_path: str) -> None:
+        super().__init__(
+            f"context event stream missing or empty for {root_scope_path}; reset required"
+        )
+        self.root_scope_path = root_scope_path
+
+
+class ContextEventReadModel:
+    """Prepare LLM context from the authoritative ContextEvent stream."""
+
+    def __init__(
+        self,
+        *,
+        workspace: "Workspace",
+        root_scope_path: str,
+        config: CompactConfig | None = None,
+        token_counter: TokenCounter | None = None,
+        event_store: ContextEventStore | None = None,
+    ) -> None:
+        self._workspace = workspace
+        self._root_scope_path = root_scope_path.rstrip("/")
+        self._config = config or CompactConfig()
+        self._token_counter = token_counter
+        self._event_store = event_store or ContextEventStore(workspace)
+
+    async def prepare(self) -> ContextEventPreparedContext:
+        if not self._root_scope_path:
+            return ContextEventPreparedContext(
+                messages=[],
+                stack=[],
+                estimated_tokens=0,
+                usage_ratio=0.0,
+                applied_seq=0,
+                projection=ContextProjectionSnapshot(),
+            )
+
+        events = await self._event_store.read_events(self._root_scope_path)
+        if not events:
+            raise ContextEventReadModelResetRequired(self._root_scope_path)
+        projection = project_context_events(events)
+        messages = budget_compact(
+            projection.messages,
+            self._config,
+            counter=self._token_counter,
+        )
+        estimated_tokens = count_all_tokens(messages, self._token_counter)
+        usage_ratio = (
+            estimated_tokens / self._config.context_window
+            if self._config.context_window > 0
+            else 0.0
+        )
+        return ContextEventPreparedContext(
+            messages=messages,
+            stack=_top_first_stack(projection.stack),
+            estimated_tokens=estimated_tokens,
+            usage_ratio=usage_ratio,
+            applied_seq=projection.applied_seq,
+            projection=projection,
+        )
+
+
+def _top_first_stack(stack: list[dict]) -> list[dict]:

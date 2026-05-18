@@ -1,0 +1,403 @@
+## ActivityTimeline production safe projection lines
+    25	const DEBUG_DETAIL_PATTERN = new RegExp([
+    26	  ['result', 'id'].join('_'),
+    27	  `_${['mcp', 'content'].join('_')}`,
+    28	  ['child', 'path'].join('_'),
+    29	  '\\/ro\\/active',
+    30	  `gateway ${'error'}`,
+    31	  `stack ${'trace'}`,
+    32	].join('|'), 'i');
+    33	const BOTTOM_FOLLOW_THRESHOLD_PX = 48;
+    34	const DETAIL_PREVIEW_LIMIT = 84;
+    35	const BOOKKEEPING_TOOLS = new Set(['skill_end']);
+    36	const AGENTCTL_IM_READ_PATTERN = /\bagentctl\s+im\s+read\b/i;
+    37	const AGENTCTL_IM_REPLY_PATTERN = /\bagentctl\s+im\s+reply\b/i;
+    38	const DATA_IMAGE_BASE64_PATTERN = /\bdata:image\/[a-z0-9.+-]+;base64,/i;
+    39	const BINARY_BASE64_PREFIX_PATTERN = /^(\/9j\/|iVBORw0KGgo|R0lGODlh|UklGR)/;
+    40	const RAW_PAYLOAD_DETAIL = '输出包含较大的原始文件数据，已在监控中隐藏。';
+    41	
+    42	function isNearBottom(element: HTMLElement): boolean {
+    43	  return element.scrollHeight - element.scrollTop - element.clientHeight <= BOTTOM_FOLLOW_THRESHOLD_PX;
+    44	}
+    45	
+    46	export function isActivityTimelineRecordRunning(record: ActivityTimelineRecord): boolean {
+    47	  return record.status === 'running';
+    48	}
+    49	
+    50	function isFailed(record: ActivityTimelineRecord): boolean {
+    51	  return record.status === 'failed' || record.status === 'error';
+    52	}
+    53	
+    54	function recordSearchText(record: ActivityTimelineRecord): string {
+    55	  return `${record.kind} ${record.tool ?? ''} ${record.title} ${record.text ?? ''}`.toLowerCase();
+    56	}
+    57	
+    58	function isAgentctlImReadRecord(record: ActivityTimelineRecord): boolean {
+    59	  return normalizedTool(record) === 'shell' && AGENTCTL_IM_READ_PATTERN.test(recordSearchText(record));
+    60	}
+    61	
+    62	function isAgentctlImReplyRecord(record: ActivityTimelineRecord): boolean {
+    63	  return normalizedTool(record) === 'shell' && AGENTCTL_IM_REPLY_PATTERN.test(recordSearchText(record));
+    64	}
+    65	
+    66	export function activityTimelinePublicTitle(record: ActivityTimelineRecord): string {
+    67	  const fingerprint = `${record.kind} ${record.tool ?? ''} ${record.title}`.toLowerCase();
+    68	  if (fingerprint.includes('skill_end')) return '已保存本轮上下文';
+    69	  if (isAgentctlImReadRecord(record)) return '读取了你的消息';
+    70	  if (isAgentctlImReplyRecord(record)) return '已回复你';
+    71	  if (fingerprint.includes('message') || fingerprint.includes('消息')) return '读取了你的消息';
+    72	  if (record.phase === 'reasoning') {
+    73	    const reasoningText = record.text?.toLowerCase() ?? '';
+    74	    if (
+    75	      AGENTCTL_IM_READ_PATTERN.test(reasoningText) ||
+    76	      reasoningText.includes('读取消息') ||
+    77	      reasoningText.includes('新消息')
+    78	    ) {
+    79	      return '正在查看你的消息';
+    80	    }
+    81	    if (AGENTCTL_IM_REPLY_PATTERN.test(reasoningText) || reasoningText.includes('回复')) {
+    82	      return '正在组织回复';
+    83	    }
+    84	    if (
+    85	      reasoningText.includes('skill_end') ||
+    86	      reasoningText.includes('summary') ||
+    87	      reasoningText.includes('上下文') ||
+    88	      reasoningText.includes('结束本轮')
+    89	    ) {
+    90	      return '正在整理上下文';
+    91	    }
+    92	    return isActivityTimelineRecordRunning(record) ? '正在思考' : '完成思考';
+    93	  }
+    94	  if (record.phase === 'summary') return '已保存本轮上下文';
+    95	  return record.title || PHASE_FALLBACK_LABELS[record.phase];
+    96	}
+    97	
+    98	function publicFullDetail(record: ActivityTimelineRecord): string | undefined {
+    99	  const text = record.text?.trim();
+   100	  if (!text) return record.has_payload ? '结果已保存，需要时可以继续查看细节' : undefined;
+   101	  if (looksLikeRawPayloadText(text)) return RAW_PAYLOAD_DETAIL;
+   102	  if (/[{}]/.test(text)) return undefined;
+   103	  if (DEBUG_DETAIL_PATTERN.test(text)) return undefined;
+   104	  if (record.phase === 'action' && record.tool) return undefined;
+   105	  return text.replace(/\r\n/g, '\n');
+   106	}
+   107	
+   108	function looksLikeRawPayloadText(text: string): boolean {
+   109	  if (DATA_IMAGE_BASE64_PATTERN.test(text)) return true;
+   110	  const compact = text.replace(/\s+/g, '');
+   111	  if (compact.length < 120) return false;
+   112	  if (BINARY_BASE64_PREFIX_PATTERN.test(compact)) return true;
+   113	  return compact.length > 800 && /^[A-Za-z0-9+/=]+$/.test(compact) && /[+/=]/.test(compact);
+   114	}
+   115	
+   116	function publicPreviewDetail(record: ActivityTimelineRecord): string | undefined {
+   117	  const fullDetail = publicFullDetail(record);
+   118	  if (!fullDetail) return undefined;
+   119	  const oneLine = fullDetail.replace(/\s+/g, ' ');
+   120	  return oneLine.length > DETAIL_PREVIEW_LIMIT ? `${oneLine.slice(0, DETAIL_PREVIEW_LIMIT)}…` : oneLine;
+   121	}
+   122	
+   123	function isExpandableDetail(record: ActivityTimelineRecord): boolean {
+   124	  const fullDetail = publicFullDetail(record);
+   125	  if (!fullDetail) return false;
+   126	  const oneLine = fullDetail.replace(/\s+/g, ' ');
+   127	  return Boolean(record.truncated || fullDetail.includes('\n') || oneLine.length > DETAIL_PREVIEW_LIMIT);
+   128	}
+   129	
+   130	function normalizedTool(record: ActivityTimelineRecord): string {
+   131	  return (record.tool ?? '').toLowerCase();
+   132	}
+   133	
+   134	function shouldHidePublicRecord(record: ActivityTimelineRecord): boolean {
+   135	  const tool = normalizedTool(record);
+   136	  if (record.phase === 'action' && BOOKKEEPING_TOOLS.has(tool)) return true;
+   137	  if (record.phase === 'observation' && tool === 'skill_end') return true;
+   138	  return false;
+   139	}
+   140	
+   153	export function projectActivityTimelineRecords(records: ActivityTimelineRecord[]): ActivityTimelineRecord[] {
+   154	  const projected: ActivityTimelineRecord[] = [];
+   155	  const sortedRecords = [...records].sort((a, b) => a.order - b.order);
+   156	  for (const record of sortedRecords) {
+   157	    if (shouldHidePublicRecord(record)) continue;
+   158	    const previous = projected[projected.length - 1];
+   159	    if (previous && isDuplicatePublicRecord(previous, record)) continue;
+   160	    projected.push(record);
+   161	  }
+   162	  return projected;
+   163	}
+   164	
+   165	function ActivityTimelineRow({ record, isLast }: { record: ActivityTimelineRecord; isLast: boolean }) {
+   166	  const [expanded, setExpanded] = useState(false);
+   167	  const running = isActivityTimelineRecordRunning(record);
+   168	  const failed = isFailed(record);
+   169	  const previewDetail = publicPreviewDetail(record);
+   170	  const fullDetail = publicFullDetail(record);
+   171	  const expandable = isExpandableDetail(record);
+   172	  const detail = expanded && fullDetail ? fullDetail : previewDetail;
+   173	  const title = activityTimelinePublicTitle(record);
+   174	  return (
+   175	    <div className="relative flex gap-3">
+   176	      {!isLast && (
+   177	        <div className="absolute left-[10px] top-6 bottom-0 w-px bg-nb-border/45" />
+   178	      )}
+   179	      <div className={`relative z-10 w-5 h-5 mt-0.5 rounded-full flex items-center justify-center shrink-0 ${
+   180	        failed
+   181	          ? 'bg-nb-error/10 text-nb-error'
+   182	          : running
+   183	            ? 'bg-orange-500/10 text-orange-400'
+   184	            : 'bg-nb-success/10 text-nb-success'
+   185	      }`}>
+   186	        {failed ? (
+   187	          <AlertCircle size={13} />
+   188	        ) : running ? (
+   189	          <Loader2 size={13} className="animate-spin" />
+   190	        ) : (
+   191	          <CheckCircle size={13} />
+   192	        )}
+   193	      </div>
+   194	      <div className="min-w-0 flex-1 pb-3">
+   195	        <div className="flex items-center gap-2 min-w-0">
+   196	          <span className="text-[13px] font-medium text-nb-text truncate">{title}</span>
+   197	          {running && (
+   198	            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-400 shrink-0">
+   199	              进行中
+   200	            </span>
+   201	          )}
+   202	        </div>
+   203	        {detail && expandable && (
+   204	          <button
+   205	            type="button"
+   206	            onClick={() => setExpanded((value) => !value)}
+   207	            aria-expanded={expanded}
+   208	            className="mt-1 block w-full text-left text-[11px] leading-relaxed text-nb-text-secondary hover:text-nb-text transition-colors break-words whitespace-pre-wrap"
+   209	          >
+   210	            {detail}{record.truncated && !expanded ? '…' : ''}
+   211	            <span className="ml-1 text-[10px] text-nb-text-muted">
+   212	              {expanded ? '收起' : '展开'}
+   213	            </span>
+   214	          </button>
+   215	        )}
+   216	        {detail && !expandable && (
+   217	          <div className="mt-1 text-[11px] leading-relaxed text-nb-text-secondary break-words whitespace-pre-wrap">
+   218	            {detail}{record.truncated ? '…' : ''}
+   219	          </div>
+   220	        )}
+
+## Hook allowlist lines
+    24	export function normalizeActivityRecord(item: unknown): ActivityTimelineRecord | null {
+    25	  if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    26	  const record = item as Record<string, unknown>;
+    27	  if (typeof record.sort_order !== 'number') return null;
+    28	  if (!isPhase(record.phase)) return null;
+    29	  if (typeof record.kind !== 'string' || typeof record.title !== 'string') return null;
+    30	  return {
+    31	    order: record.sort_order,
+    32	    phase: record.phase,
+    33	    kind: record.kind,
+    34	    title: record.title,
+    35	    text: typeof record.text === 'string' ? record.text : undefined,
+    36	    truncated: typeof record.truncated === 'boolean' ? record.truncated : undefined,
+    37	    tool: typeof record.tool === 'string' ? record.tool : undefined,
+    38	    status: typeof record.status === 'string' ? record.status : undefined,
+    39	    has_payload: typeof record.has_payload === 'boolean' ? record.has_payload : undefined,
+    40	  };
+
+## Guard and behavior tests
+     1	import { readFileSync } from 'node:fs';
+     2	import { resolve } from 'node:path';
+     3	import { describe, expect, it } from 'vitest';
+     4	
+     5	describe('ActivityTimeline public monitor guardrails', () => {
+     6	  it('does not contain raw diagnostic rendering vocabulary', () => {
+     7	    const source = readFileSync(resolve(process.cwd(), 'src/components/Visual/ActivityTimeline.tsx'), 'utf8');
+     8	
+     9	    expect(source).not.toContain('result_id');
+    10	    expect(source).not.toContain('_mcp_content');
+    11	    expect(source).not.toContain('Execution Result');
+    12	    expect(source).not.toContain('Input Parameters');
+    13	    expect(source).not.toContain('Factory Log');
+    14	    expect(source).not.toContain('Gateway error');
+    15	    expect(source).not.toContain('stack trace');
+    16	    expect(source).not.toContain('LEGACY_DIRECT');
+    17	    expect(source).not.toContain('legacyDirectTool');
+    18	    expect(source).not.toContain('isLegacyDirect');
+    19	  });
+    20	
+    21	  it('keeps Activity Timeline records on a public-field allowlist', () => {
+    22	    const source = readFileSync(resolve(process.cwd(), 'src/components/hooks/useActivityTimeline.ts'), 'utf8');
+    23	
+    24	    expect(source).toContain('normalizeActivityRecord');
+    25	    expect(source).toContain('has_payload');
+    26	    expect(source).not.toContain('...item');
+    27	    expect(source).not.toContain('entangledMethod');
+    28	    expect(source).not.toContain('setInterval');
+    29	    expect(source).not.toContain('pollMs');
+    30	    expect(source).not.toContain('activity_timeline');
+    31	    expect(source).not.toContain('result_id');
+    32	    expect(source).not.toContain('_mcp_content');
+    33	    expect(source).not.toContain('wake_triggers');
+    34	    expect(source).not.toContain('summary_lock');
+    35	  });
+    36	
+    37	  it('keeps the floating monitor as a bottom-following activity channel', () => {
+    38	    const source = readFileSync(resolve(process.cwd(), 'src/components/Visual/ActivityTimeline.tsx'), 'utf8');
+    39	
+    40	    expect(source).toContain('sort((a, b) => a.order - b.order)');
+    41	    expect(source).toContain('requestAnimationFrame');
+    42	    expect(source).toContain('isNearBottom');
+    43	    expect(source).toContain('data-testid="activity-timeline-scroll"');
+    44	  });
+    45	});
+    50	            text: '已回复当前状态。',
+    51	          },
+    52	        ]}
+    53	      />,
+    54	    );
+    55	
+    56	    expect(screen.getByText('读取了你的消息')).toBeTruthy();
+    57	    expect(screen.getByText('正在组织回复')).toBeTruthy();
+    58	    expect(screen.getByText('已回复你')).toBeTruthy();
+    59	    expect(screen.getByText('已保存本轮上下文')).toBeTruthy();
+    60	    expect(screen.queryByText(/Execution Result/i)).toBeNull();
+    61	    expect(screen.queryByText(/result_id/i)).toBeNull();
+    62	    expect(screen.queryByText(/_mcp_content/i)).toBeNull();
+    63	    expect(screen.queryByText(/agentctl im reply/i)).toBeNull();
+    64	  });
+    65	});
+    49	describe('Agent Monitor Entangled timeline hook', () => {
+    50	  it('keeps only public record fields', () => {
+    51	    const normalized = normalizeActivityRecord({
+    52	      record_id: 'r1',
+    53	      sort_order: 1,
+    54	      phase: 'reasoning',
+    55	      kind: 'llm_reasoning',
+    56	      title: '正在思考',
+    57	      text: 'Need answer.',
+    58	      step_ref: 'step-ref:debug',
+    59	      _mcp_content: [{ type: 'text', text: 'raw' }],
+    60	    });
+    61	
+    62	    expect(normalized).toEqual({
+    63	      order: 1,
+    64	      phase: 'reasoning',
+    65	      kind: 'llm_reasoning',
+    66	      title: '正在思考',
+    67	      text: 'Need answer.',
+    68	      truncated: undefined,
+    69	      tool: undefined,
+    70	      status: undefined,
+    71	      has_payload: undefined,
+    72	    });
+    73	    expect(JSON.stringify(normalized)).not.toContain('step-ref:debug');
+    74	    expect(JSON.stringify(normalized)).not.toContain('_mcp_content');
+    75	  });
+   202	  it('hides raw image data urls from timeline details', () => {
+   203	    render(
+   204	      <ActivityTimeline
+   205	        currentAgentId="agent-1"
+   206	        records={[
+   207	          {
+   208	            order: 1,
+   209	            phase: 'observation',
+   210	            kind: 'tool_observation',
+   211	            title: 'display 完成',
+   212	            text: `data:image/jpeg;base64,${'A'.repeat(400)}SECRET_IMAGE_PAYLOAD`,
+   213	          },
+   214	        ]}
+   215	      />,
+   216	    );
+   217	
+   218	    expect(screen.getByText('输出包含较大的原始文件数据，已在监控中隐藏。')).toBeTruthy();
+   219	    expect(screen.queryByText(/SECRET_IMAGE_PAYLOAD/)).toBeNull();
+   220	    expect(screen.queryByText(/data:image/)).toBeNull();
+   221	    expect(screen.queryByText('展开')).toBeNull();
+   222	  });
+   223	
+   224	  it('hides long jpeg-like base64 text from expanded timeline details', () => {
+   225	    const jpegLikePayload = `/9j/${'A'.repeat(220)}+/${'B'.repeat(220)}=SECRET_RAW`;
+   226	
+   227	    render(
+   228	      <ActivityTimeline
+   229	        currentAgentId="agent-1"
+   230	        records={[
+   231	          {
+   232	            order: 1,
+   233	            phase: 'observation',
+   234	            kind: 'tool_observation',
+   235	            title: 'display 完成',
+   236	            text: jpegLikePayload,
+   237	            has_payload: true,
+   238	          },
+   239	        ]}
+   240	      />,
+   241	    );
+   242	
+   243	    expect(screen.getByText('输出包含较大的原始文件数据，已在监控中隐藏。')).toBeTruthy();
+   244	    expect(screen.queryByText(/SECRET_RAW/)).toBeNull();
+   245	    expect(screen.queryByText(/\/9j\//)).toBeNull();
+   246	    expect(screen.queryByText('展开')).toBeNull();
+   247	  });
+   249	  it('does not render debug-only fields even if caller passes them', () => {
+   250	    render(
+   251	      <ActivityTimeline
+   252	        currentAgentId="agent-1"
+   253	        records={[
+   254	          {
+   255	            order: 1,
+   256	            phase: 'summary',
+   257	            kind: 'scope_summary',
+   258	            title: 'user conversation 已完成',
+   259	            text: '用户要被称呼为大哥。',
+   260	            step_ref: 'step-ref:wake:round1:skill_end:1',
+   261	            _mcp_content: [{ type: 'text', text: 'raw' }],
+   262	          } as any,
+   263	        ]}
+   264	      />,
+   265	    );
+   266	
+   267	    expect(screen.getAllByText('已保存本轮上下文').length).toBeGreaterThanOrEqual(1);
+   268	    expect(screen.getByText('用户要被称呼为大哥。')).toBeTruthy();
+   269	    expect(screen.queryByText(/step-ref:wake/)).toBeNull();
+   270	    expect(screen.queryByText(/_mcp_content/)).toBeNull();
+   271	    expect(screen.queryByText(/raw/)).toBeNull();
+   272	  });
+   273	
+   274	  it('does not expose raw transport errors in the normal monitor', () => {
+   275	    render(
+   276	      <ActivityTimeline
+   277	        currentAgentId="agent-1"
+   278	        records={[]}
+   279	        error={'Gateway error 500: {"detail":"stack trace"}'}
+   280	      />,
+   281	    );
+   282	
+   283	    expect(screen.getByText('活动轨迹暂时不可用')).toBeTruthy();
+   284	    expect(screen.getByText('稍后会自动重试')).toBeTruthy();
+   285	    expect(screen.queryByText(/Gateway error/)).toBeNull();
+   286	    expect(screen.queryByText(/stack trace/)).toBeNull();
+   287	  });
+   321	  it('does not expose debug-only fields inside the floating layer', () => {
+   322	    render(
+   323	      <ActivityTimelineModal
+   324	        participantLabel="Main Agent"
+   325	        currentAgentId="agent-1"
+   326	        onClose={() => undefined}
+   327	        records={[
+   328	          {
+   329	            order: 1,
+   330	            phase: 'summary',
+   331	            kind: 'scope_summary',
+   332	            title: '本轮已完成',
+   333	            text: '已回复用户。',
+   334	            result_id: 'debug-payload-ref',
+   335	            _mcp_content: [{ type: 'text', text: 'raw mcp' }],
+   336	          } as any,
+   337	        ]}
+   338	      />,
+   339	    );
+   340	
+   341	    expect(screen.getAllByText('已保存本轮上下文').length).toBeGreaterThanOrEqual(1);
+   342	    expect(screen.queryByText(/debug-payload-ref/)).toBeNull();
+   343	    expect(screen.queryByText(/raw mcp/)).toBeNull();
+   344	  });

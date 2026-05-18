@@ -1,0 +1,161 @@
+=== stable_json / observation fallback ===
+novaic-cortex/novaic_cortex/auth.py:64:        _b64url_encode(json.dumps(payload, separators=(",", ":")).encode()),
+novaic-cortex/novaic_cortex/blob_payload.py:133:    return json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+novaic-cortex/novaic_cortex/operational_store.py:253:        payload_json = _stable_json(payload or {})
+=== fallback / compat / legacy in lifecycle surface ===
+novaic-cortex/novaic_cortex/step_result_projection.py:185:    # 5. Unknown dict fallback: diagnostic text only, bounded so unexpected
+=== display/base64/history/current projection surface ===
+novaic-cortex/novaic_cortex/api.py:786:# Scope state transition history.
+novaic-cortex/novaic_cortex/api.py:791:@app.get("/v1/scope/history")
+novaic-cortex/novaic_cortex/api.py:792:async def scope_history(scope_path: str, limit: int = 50):
+novaic-cortex/novaic_cortex/api.py:825:# ── Context (conversation history) ──────────────────────────────────────
+novaic-cortex/novaic_cortex/api.py:1651:    projection: str = "history"
+novaic-cortex/novaic_cortex/api.py:1824:    """Read a step and return its result formatted as _mcp_content for LLM."""
+novaic-cortex/novaic_cortex/api.py:1827:        format_for_current_tool_result_llm,
+novaic-cortex/novaic_cortex/api.py:1828:        format_for_display_perception_llm,
+novaic-cortex/novaic_cortex/api.py:1829:        format_for_history_llm,
+novaic-cortex/novaic_cortex/api.py:1843:    if projection == "display_perception":
+novaic-cortex/novaic_cortex/api.py:1844:        content = format_for_display_perception_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1845:    elif projection == "current_tool_result":
+novaic-cortex/novaic_cortex/api.py:1846:        content = format_for_current_tool_result_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1847:    elif projection == "history":
+novaic-cortex/novaic_cortex/api.py:1848:        content = format_for_history_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1855:                "allowed": ["history", "current_tool_result", "display_perception"],
+novaic-cortex/novaic_cortex/api.py:1954:        "_mcp_content": [{"type": "text", "text": sliced["text"]}],
+novaic-cortex/novaic_cortex/api.py:2002:        "_mcp_content": [{"type": "text", "text": summary}],
+novaic-cortex/novaic_cortex/api.py:2163:        "_mcp_content": [{"type": "text", "text": interpreted_text}],
+novaic-cortex/novaic_cortex/workspace.py:854:    # ── Session context (conversation history) ──
+novaic-cortex/novaic_cortex/step_result_projection.py:143:    content = raw.get("content") or raw.get("_mcp_content")
+novaic-cortex/novaic_cortex/step_result_projection.py:154:                # 支持 URL 形式或直接的 data(base64) 形式
+novaic-cortex/novaic_cortex/step_result_projection.py:164:                        "url": f"data:{mime};base64,{item['data']}",
+novaic-cortex/novaic_cortex/step_result_projection.py:202:def _format_mcp_content(
+novaic-cortex/novaic_cortex/step_result_projection.py:205:    include_display: bool,
+novaic-cortex/novaic_cortex/step_result_projection.py:218:    if include_display:
+novaic-cortex/novaic_cortex/step_result_projection.py:244:    return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
+novaic-cortex/novaic_cortex/step_result_projection.py:247:def format_for_history_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:254:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:257:def format_for_current_tool_result_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:264:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:267:def format_for_display_perception_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:274:    return _format_mcp_content(
+novaic-cortex/novaic_cortex/step_result_projection.py:276:        include_display=True,
+=== inline result / payload ref enforcement ===
+novaic-cortex/novaic_cortex/context_event_projection.py:356:    observation = event.payload.get("observation")
+novaic-cortex/novaic_cortex/context_event_projection.py:358:    payload_ref = event.payload.get("payload_ref")
+novaic-cortex/novaic_cortex/context_event_projection.py:359:    content = _tool_result_content(observation, payload_ref=payload_ref)
+novaic-cortex/novaic_cortex/context_event_projection.py:364:        "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/context_event_projection.py:377:    lookup_ref = step_ref if isinstance(step_ref, str) and step_ref else payload_ref
+novaic-cortex/novaic_cortex/context_event_projection.py:383:def _tool_result_content(observation: Any, *, payload_ref: Any = None) -> str:
+novaic-cortex/novaic_cortex/context_event_projection.py:384:    if isinstance(observation, dict):
+novaic-cortex/novaic_cortex/context_event_projection.py:386:            value = observation.get(key)
+novaic-cortex/novaic_cortex/context_event_projection.py:389:        ref = payload_ref if isinstance(payload_ref, str) and payload_ref.strip() else None
+novaic-cortex/novaic_cortex/context_event_projection.py:390:        keys = ", ".join(sorted(str(key) for key in observation.keys())[:8])
+novaic-cortex/novaic_cortex/context_event_projection.py:393:            return f"[Tool result omitted from context; inspect payload_ref={ref}{detail}]"
+novaic-cortex/novaic_cortex/context_event_projection.py:395:    if observation is None:
+novaic-cortex/novaic_cortex/context_event_projection.py:397:    return str(observation)
+novaic-cortex/novaic_cortex/workspace.py:34:    def __init__(self, *, code: str, payload_ref: str, message: str) -> None:
+novaic-cortex/novaic_cortex/workspace.py:37:        self.payload_ref = payload_ref
+novaic-cortex/novaic_cortex/workspace.py:41:def _payload_filename(payload_ref: str) -> str:
+novaic-cortex/novaic_cortex/workspace.py:42:    digest = hashlib.sha256(payload_ref.encode("utf-8")).hexdigest()
+novaic-cortex/novaic_cortex/workspace.py:143:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:149:        manifest = operational_store.get_payload_manifest(payload_ref=payload_ref)
+novaic-cortex/novaic_cortex/workspace.py:153:            payload_ref=manifest["payload_ref"],
+novaic-cortex/novaic_cortex/workspace.py:154:            source_payload_ref=manifest.get("source_payload_ref"),
+novaic-cortex/novaic_cortex/workspace.py:170:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:176:            payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:181:        return PayloadReadError(code=code, payload_ref=payload_ref, message=message)
+novaic-cortex/novaic_cortex/workspace.py:563:    async def write_payload(
+novaic-cortex/novaic_cortex/workspace.py:566:        payload_ref: str,
+novaic-cortex/novaic_cortex/workspace.py:572:        if not payload_ref or not isinstance(payload_ref, str):
+novaic-cortex/novaic_cortex/workspace.py:573:            raise ValueError("payload_ref is required")
+novaic-cortex/novaic_cortex/workspace.py:577:        actual_payload_ref = payload_ref
+novaic-cortex/novaic_cortex/workspace.py:582:            actual_payload_ref = await self._payload_blob_client.put_payload(
+novaic-cortex/novaic_cortex/workspace.py:585:                source_payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:590:                "payload_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:591:                "source_payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:592:                "blob_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:599:                "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:605:        path = f"{scope_path.rstrip('/')}/payloads/{_payload_filename(actual_payload_ref)}"
+novaic-cortex/novaic_cortex/workspace.py:609:            payload_ref=actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:610:            source_payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:613:            step_ref=step_ref or payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:614:            blob_ref=actual_payload_ref if externalize else None,
+novaic-cortex/novaic_cortex/workspace.py:621:        return actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:623:    async def read_payload(self, scope_path: str, payload_ref: str) -> Any:
+novaic-cortex/novaic_cortex/workspace.py:625:        path = f"{scope_path.rstrip('/')}/payloads/{_payload_filename(payload_ref)}"
+novaic-cortex/novaic_cortex/workspace.py:630:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:633:                message=f"payload record not found for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:639:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:642:                message=f"payload record is not valid JSON for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:644:        if record.get("payload_ref") != payload_ref:
+novaic-cortex/novaic_cortex/workspace.py:646:                payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:647:                code="payload_ref_mismatch",
+novaic-cortex/novaic_cortex/workspace.py:649:                message=f"payload record ref mismatch for {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:654:                    payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:666:                    payload_ref=payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:669:                    message=f"failed to fetch external Cortex payload {payload_ref!r}",
+novaic-cortex/novaic_cortex/workspace.py:703:        Normalization validates tool-step shape, externalizes any inline
+novaic-cortex/novaic_cortex/workspace.py:705:        ``payload_ref`` into the observation percept. The caller's input is not
+novaic-cortex/novaic_cortex/workspace.py:716:            raise ValueError("tool steps must use payload/payload_ref, not inline result")
+novaic-cortex/novaic_cortex/workspace.py:717:        if step_type == "tool" and not isinstance(normalized.get("observation"), dict):
+novaic-cortex/novaic_cortex/workspace.py:718:            raise ValueError("tool steps require an observation percept")
+novaic-cortex/novaic_cortex/workspace.py:721:            payload_ref = normalized.get("payload_ref")
+novaic-cortex/novaic_cortex/workspace.py:722:            if not payload_ref:
+novaic-cortex/novaic_cortex/workspace.py:723:                raise ValueError("payload_ref is required when writing payload")
+novaic-cortex/novaic_cortex/workspace.py:724:            stable_step_ref = str(normalized.get("step_ref") or payload_ref)
+novaic-cortex/novaic_cortex/workspace.py:725:            actual_payload_ref = await self.write_payload(
+novaic-cortex/novaic_cortex/workspace.py:727:                str(payload_ref),
+novaic-cortex/novaic_cortex/workspace.py:732:            normalized["payload_ref"] = actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:733:            if isinstance(normalized.get("observation"), dict):
+novaic-cortex/novaic_cortex/workspace.py:734:                normalized["observation"]["payload_ref"] = actual_payload_ref
+novaic-cortex/novaic_cortex/workspace.py:770:        if step.get("payload_ref"):
+novaic-cortex/novaic_cortex/workspace.py:771:            index_entry["payload_ref"] = step["payload_ref"]
+novaic-cortex/novaic_cortex/workspace.py:772:        observation = step.get("observation")
+novaic-cortex/novaic_cortex/workspace.py:773:        observation_artifacts = (
+novaic-cortex/novaic_cortex/workspace.py:774:            observation.get("artifacts")
+novaic-cortex/novaic_cortex/workspace.py:775:            if isinstance(observation, dict)
+novaic-cortex/novaic_cortex/workspace.py:778:        if step.get("artifacts") or observation_artifacts:
+novaic-cortex/novaic_cortex/context_event_writer.py:212:        observation: dict[str, Any],
+novaic-cortex/novaic_cortex/context_event_writer.py:214:        payload_ref: str | None = None,
+novaic-cortex/novaic_cortex/context_event_writer.py:222:            "observation": observation,
+novaic-cortex/novaic_cortex/context_event_writer.py:226:        if payload_ref is not None:
+novaic-cortex/novaic_cortex/context_event_writer.py:227:            payload["payload_ref"] = payload_ref
+novaic-cortex/novaic_cortex/context_event_writer.py:238:                    f"context-tool:step:{ctx.stream_id}:{scope_id or '_root'}:{step_ref or payload_ref or call_id}"
+novaic-cortex/novaic_cortex/api.py:23:from common.contracts.cortex_observation import payload_to_text
+novaic-cortex/novaic_cortex/api.py:1608:                observation=normalized_step.get("observation") or {},
+novaic-cortex/novaic_cortex/api.py:1610:                payload_ref=normalized_step.get("payload_ref"),
+novaic-cortex/novaic_cortex/api.py:1663:    payload_ref: str
+novaic-cortex/novaic_cortex/api.py:1671:    payload_ref: str
+novaic-cortex/novaic_cortex/api.py:1679:    payload_ref: str
+novaic-cortex/novaic_cortex/api.py:1690:    payload_ref: str
+novaic-cortex/novaic_cortex/api.py:1710:async def _find_step_by_payload_ref(ws, scope_id: str, payload_ref: str) -> Optional[dict]:
+novaic-cortex/novaic_cortex/api.py:1712:    return await _find_step_by_payload_ref_in_path(ws, scope_path, payload_ref)
+novaic-cortex/novaic_cortex/api.py:1715:async def _find_step_by_payload_ref_in_path(
+novaic-cortex/novaic_cortex/api.py:1718:    payload_ref: str,
+novaic-cortex/novaic_cortex/api.py:1728:            found = await _find_step_by_payload_ref_in_path(
+novaic-cortex/novaic_cortex/api.py:1731:                payload_ref,
+novaic-cortex/novaic_cortex/api.py:1737:        if entry.get("payload_ref") != payload_ref:
+novaic-cortex/novaic_cortex/api.py:1778:                or entry.get("payload_ref") == step_ref
+novaic-cortex/novaic_cortex/api.py:1796:    payload_ref = step.get("payload_ref")
+novaic-cortex/novaic_cortex/api.py:1798:    if not payload_ref or not scope_path:
+novaic-cortex/novaic_cortex/api.py:1801:        return await ws.read_payload(scope_path, payload_ref)
+novaic-cortex/novaic_cortex/api.py:1805:            "payload_ref_mismatch": 409,
+novaic-cortex/novaic_cortex/api.py:1815:                "payload_ref": exc.payload_ref,
+novaic-cortex/novaic_cortex/api.py:1841:    parsed = parse_tool_result(raw_result)
+novaic-cortex/novaic_cortex/api.py:1871:    observation = step.get("observation") if isinstance(step.get("observation"), dict) else {}
+novaic-cortex/novaic_cortex/api.py:1872:    if observation:
+novaic-cortex/novaic_cortex/api.py:1873:        preview = observation.get("preview") or observation.get("summary")
+novaic-cortex/novaic_cortex/api.py:1881:    parsed = parse_tool_result(raw_result)
+novaic-cortex/novaic_cortex/api.py:1919:async def _payload_text_by_ref(ws, scope_id: str, payload_ref: str) -> tuple[dict, str]:
+novaic-cortex/novaic_cortex/api.py:1920:    if not payload_ref or not payload_ref.strip():
+novaic-cortex/novaic_cortex/api.py:1921:        raise HTTPException(status_code=400, detail="payload_ref is required")
+novaic-cortex/novaic_cortex/api.py:1922:    step = await _find_step_by_payload_ref(ws, scope_id, payload_ref.strip())
+novaic-cortex/novaic_cortex/api.py:1924:        raise HTTPException(status_code=404, detail="payload_ref not found")
+novaic-cortex/novaic_cortex/api.py:1940:    step, text = await _payload_text_by_ref(ws, req.scope_id, req.payload_ref)
+novaic-cortex/novaic_cortex/api.py:1944:        "payload_ref": req.payload_ref,
+novaic-cortex/novaic_cortex/api.py:1967:    step, text = await _payload_text_by_ref(ws, req.scope_id, req.payload_ref)
+novaic-cortex/novaic_cortex/api.py:1995:        "payload_ref": req.payload_ref,
+novaic-cortex/novaic_cortex/api.py:2111:    step, raw_text = await _payload_text_by_ref(ws, req.scope_id, req.payload_ref)
+novaic-cortex/novaic_cortex/api.py:2122:            f"Payload ref: {req.payload_ref}\n"
+novaic-cortex/novaic_cortex/api.py:2134:            f"Payload ref: {req.payload_ref}\n"
+novaic-cortex/novaic_cortex/api.py:2155:        "payload_ref": req.payload_ref,

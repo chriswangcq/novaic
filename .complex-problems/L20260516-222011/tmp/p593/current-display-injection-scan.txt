@@ -1,0 +1,730 @@
+=== rg current display injection tests ===
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:243:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:246:def test_expand_messages_for_llm_resolves_current_display_image_ref(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:257:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:316:def test_expand_messages_for_llm_does_not_resolve_history_image_ref(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:326:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:358:    assert payload["_mcp_content"][1]["type"] == "image_ref"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:361:def test_expand_messages_for_llm_image_ref_fetch_failure_becomes_text(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:366:            assert kwargs["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:370:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:454:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:478:                    "id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:485:                "tool_call_id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:486:                "step_ref": "step-ref:wake-1:round3:display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:496:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:520:                    "id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:527:                "tool_call_id": "display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:528:                "step_ref": "step-ref:wake-1:round3:display:2",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:553:    assert calls[0][1] == "display:2"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:108:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:123:def test_display_durable_image_ref_does_not_depend_on_inline_image_data(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:150:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:48:def test_display_perception_can_create_user_image_message_and_strips_marker():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:50:        [_image_tool_message(_projection="display_perception")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:63:def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:76:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:102:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:127:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:148:        _image_tool_message(_projection="display_perception"),
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:152:    assert sanitized[1]["_projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:180:    wrapped = _ok("scope-1", "round-1", "display:2", "display", raw_display)
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:191:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:201:            "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:204:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:211:    assert tool_payload["_mcp_content"][1]["type"] == "image_ref"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:226:                        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:273:                        "id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:283:                    "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:284:                    "step_ref": "step-ref:wake-1:round1:display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:305:    assert calls[0]["projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:347:            if tool_call_id == "display:2" and projection == "display_perception":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:352:                            "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:359:            if tool_call_id == "display:2" and projection == "history":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:413:                "id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:423:            "tool_call_id": "display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:425:            "step_ref": "step-ref:wake-1:round2:display:2",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:455:    assert [call["projection"] for call in calls] == ["history", "display_perception"]
+
+=== test_no_historical slices ===
+     1	import json
+     2	
+     3	from task_queue.handlers.tool_handlers import _ok
+     4	from task_queue.contracts.llm_call import (
+     5	    LLMCallInput,
+     6	    LLMTransportConfig,
+     7	    prepare_llm_call,
+     8	)
+     9	from task_queue.utils.context import process_multimodal_messages, sanitize_context
+    10	from task_queue.utils.step_result_client import expand_messages_for_llm
+    11	
+    12	
+    13	def _image_tool_message(**extra):
+    14	    return {
+    15	        "role": "tool",
+    16	        "tool_call_id": "call-1",
+    17	        "name": "display",
+    18	        "content": json.dumps({
+    19	            "_mcp_content": [
+    20	                {"type": "text", "text": "screenshot"},
+    21	                {"type": "image", "data": "aabbcc", "mimeType": "image/png"},
+    22	            ]
+    23	        }),
+    24	        **extra,
+    25	    }
+    26	
+    27	
+    28	def test_generic_tool_image_content_does_not_create_user_image_message():
+    29	    processed = process_multimodal_messages([_image_tool_message()], provider="openai")
+    30	
+    31	    assert len(processed) == 1
+    32	    assert processed[0]["role"] == "tool"
+    33	    assert all(message["role"] != "user" for message in processed)
+    34	
+    35	
+    36	def test_history_projection_marker_is_stripped_without_image_injection():
+    37	    processed = process_multimodal_messages(
+    38	        [_image_tool_message(_projection="history")],
+    39	        provider="openai",
+    40	    )
+    41	
+    42	    assert len(processed) == 1
+    43	    assert processed[0]["role"] == "tool"
+    44	    assert "_projection" not in processed[0]
+    45	    assert all(message["role"] != "user" for message in processed)
+    46	
+    47	
+    48	def test_display_perception_can_create_user_image_message_and_strips_marker():
+    49	    processed = process_multimodal_messages(
+    50	        [_image_tool_message(_projection="display_perception")],
+    51	        provider="openai",
+    52	    )
+    53	
+    54	    assert len(processed) == 2
+    55	    assert processed[0]["role"] == "tool"
+    56	    assert "_projection" not in processed[0]
+    57	    tool_payload = json.loads(processed[0]["content"])
+    58	    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+    59	    assert processed[1]["role"] == "user"
+    60	    assert processed[1]["content"][0]["type"] == "image_url"
+    61	
+    62	
+    63	def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+    64	    large_text = "x" * 10_000
+    65	    processed = process_multimodal_messages(
+    66	        [{
+    67	            "role": "tool",
+    68	            "tool_call_id": "display:large-text",
+    69	            "name": "display",
+    70	            "content": json.dumps({
+    71	                "_mcp_content": [
+    72	                    {"type": "text", "text": large_text},
+    73	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+    74	                ]
+    75	            }),
+    76	            "_projection": "display_perception",
+    77	        }],
+    78	        provider="openai",
+    79	    )
+    80	
+    81	    tool_payload = json.loads(processed[0]["content"])
+    82	    text = tool_payload["_mcp_content"][0]["text"]
+    83	
+    84	    assert len(text) < len(large_text)
+    85	    assert "truncated display text" in text
+    86	    assert "YWJjMTIz" not in processed[0]["content"]
+    87	    assert processed[1]["content"][0]["type"] == "image_url"
+    88	
+    89	
+    90	def test_unsupported_content_array_does_not_create_image_projection():
+    91	    processed = process_multimodal_messages(
+    92	        [{
+    93	            "role": "tool",
+    94	            "tool_call_id": "display:unsupported-content",
+    95	            "name": "display",
+    96	            "content": json.dumps({
+    97	                "content": [
+    98	                    {"type": "text", "text": "unsupported shape"},
+    99	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+   100	                ]
+   101	            }),
+   102	            "_projection": "display_perception",
+   103	        }],
+   104	        provider="openai",
+   105	    )
+   106	
+   107	    assert len(processed) == 1
+   108	    assert processed[0]["role"] == "tool"
+   109	    assert all(message["role"] != "user" for message in processed)
+   110	
+   111	
+   112	def test_nested_result_wrapper_does_not_create_image_projection():
+   113	    processed = process_multimodal_messages(
+   114	        [{
+   115	            "role": "tool",
+   116	            "tool_call_id": "display:nested",
+   117	            "name": "display",
+   118	            "content": json.dumps({
+   119	                "success": True,
+   120	                "result": {
+   180	    wrapped = _ok("scope-1", "round-1", "display:2", "display", raw_display)
+   181	    public_content = json.loads(wrapped["content"])
+   182	
+   183	    assert public_content["_mcp_content"][1]["type"] == "image"
+   184	    assert public_content["_mcp_content"][1]["_placeholder"] is True
+   185	    assert "data" not in public_content["_mcp_content"][1]
+   186	    assert "YWJjMTIz" not in wrapped["content"]
+   187	    assert public_content.get("version") != "tool-output.v1"
+   188	    assert wrapped["durable_payload"]["version"] == "tool-step-payload.v1"
+   189	    llm_content = wrapped["durable_payload"]["llm_content"]
+   190	    assert llm_content["_mcp_content"][1] == {
+   191	        "type": "image_ref",
+   192	        "file_url": "blob://runtime-artifact/screenshot",
+   193	        "mimeType": "image/jpeg",
+   194	        "size": 6,
+   195	    }
+   196	    assert "YWJjMTIz" not in json.dumps(llm_content)
+   197	
+   198	    processed = process_multimodal_messages(
+   199	        [{
+   200	            "role": "tool",
+   201	            "tool_call_id": "display:2",
+   202	            "name": "display",
+   203	            "content": json.dumps(llm_content),
+   204	            "_projection": "display_perception",
+   205	        }],
+   206	        provider="openai",
+   207	    )
+   208	
+   209	    assert [message["role"] for message in processed] == ["tool"]
+   210	    tool_payload = json.loads(processed[0]["content"])
+   211	    assert tool_payload["_mcp_content"][1]["type"] == "image_ref"
+   212	    assert "YWJjMTIz" not in processed[0]["content"]
+   213	
+   214	
+   215	def test_prepare_llm_call_injects_display_step_image_before_following_system(monkeypatch):
+   216	    calls = []
+   217	    blob_calls = []
+   218	
+   219	    class Bridge:
+   220	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   221	            calls.append({"scope_id": scope_id, "tool_call_id": tool_call_id, **kwargs})
+   222	            return json.dumps({
+   223	                "_mcp_content": [
+   224	                    {"type": "text", "text": "desktop screenshot"},
+   225	                    {
+   226	                        "type": "image_ref",
+   227	                        "file_url": "blob://runtime-artifact/screen",
+   228	                        "mimeType": "image/jpeg",
+   229	                        "size": 6,
+   230	                    },
+   231	                ]
+   232	            })
+   233	
+   234	    class FakeResponse:
+   235	        status_code = 200
+   330	        "stdout:\n"
+   331	        '{"version":"tool-output.v1","ok":true,'
+   332	        '"text":"Captured host desktop screenshot.",'
+   333	        '"artifacts":[{"uri":"blob://runtime-artifact/screen-1",'
+   334	        '"modality":"image","mime_type":"image/jpeg",'
+   335	        '"access":{"display":{"args":{"file_url":"blob://runtime-artifact/screen-1"}}}}]}\n'
+   336	        '[Artifact: hd-screenshot.jpg (image, image/jpeg, 150.6KB)] '
+   337	        'Access: display(file_url="blob://runtime-artifact/screen-1")'
+   338	    )
+   339	
+   340	    class Bridge:
+   341	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   342	            calls.append({"scope_id": scope_id, "tool_call_id": tool_call_id, **kwargs})
+   343	            projection = kwargs["projection"]
+   344	            if tool_call_id == "shell:1":
+   345	                assert projection in {"history", "current_tool_result"}
+   346	                return json.dumps({"_mcp_content": [{"type": "text", "text": shell_manifest_text}]})
+   347	            if tool_call_id == "display:2" and projection == "display_perception":
+   348	                return json.dumps({
+   349	                    "_mcp_content": [
+   350	                        {"type": "text", "text": "desktop screenshot"},
+   351	                        {
+   352	                            "type": "image_ref",
+   353	                            "file_url": "blob://runtime-artifact/screen-1",
+   354	                            "mimeType": "image/jpeg",
+   355	                            "size": 6,
+   356	                        },
+   357	                    ]
+   358	                })
+   359	            if tool_call_id == "display:2" and projection == "history":
+   360	                return json.dumps({"_mcp_content": [{"type": "text", "text": "desktop screenshot"}]})
+   361	            raise AssertionError(f"unexpected read_step_formatted call: {tool_call_id=} {projection=}")
+   362	
+   363	    class FakeResponse:
+   364	        status_code = 200
+   365	        content = b"abc123"
+   440	            agent_id="agent-1",
+   441	            provider="openai",
+   442	            messages=messages,
+   443	        ),
+   444	        LLMTransportConfig(
+   445	            factory_url="http://factory.test",
+   446	            model_id="model-1",
+   447	            user_id="user-1",
+   448	            agent_id="agent-1",
+   449	        ),
+   450	        expand_messages_for_llm=expand_messages_for_llm,
+   451	        sanitize_context=sanitize_context,
+   452	        process_multimodal_messages=process_multimodal_messages,
+   453	    )
+   454	
+   455	    assert [call["projection"] for call in calls] == ["history", "display_perception"]
+   456	    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen-1")
+   457	    shell_tool = current.messages[1]
+   458	    shell_payload = json.loads(shell_tool["content"])
+   459	    assert shell_payload["_mcp_content"][0]["type"] == "text"
+   460	    assert (
+   461	        'display(file_url="blob://runtime-artifact/screen-1")'
+   462	        in shell_payload["_mcp_content"][0]["text"]
+
+=== pr71 selected slices ===
+     1	"""PR-71 — no-tool retry attempts are not canonical context."""
+     2	
+     3	from __future__ import annotations
+     4	
+     5	import json
+     6	
+     7	import pytest
+     8	
+     9	from task_queue.sagas.react_think import (
+    10	    _build_save_response_payload,
+    11	    _should_save_llm_response,
+    12	)
+    13	from task_queue.sagas.react_actions import _build_save_results_tasks
+    14	from task_queue.utils.context import sanitize_context
+    15	from task_queue.utils.step_result_client import expand_messages_for_llm
+    16	
+    17	
+    18	def _response_message(message: dict) -> dict:
+    19	    return {
+    20	        "success": True,
+    21	        "response": {"choices": [{"message": message}]},
+    22	        "step_results": {
+    23	            "prepare_context": {"tool_names": ["shell"]},
+    24	        },
+    25	        "scope_id": "scp-1",
+    26	        "agent_root_scope_id": "agent-root-main",
+    27	        "wake_scope_path": "/ro/active/agent-root-main/steps/0001_scope_scp-1",
+    28	        "agent_id": "agent-1",
+    29	        "user_id": "user-1",
+    30	        "round_num": 1,
+    31	    }
+    32	
+    33	
+    34	def _shell_reply_call() -> dict:
+    35	    return {
+    36	        "id": "call_1",
+    37	        "function": {
+    38	            "name": "shell",
+    39	            "arguments": json.dumps(
+    40	                {"command": "agentctl im reply --message-file /cortex/rw/reply.md"},
+    41	                ensure_ascii=False,
+    42	            ),
+    43	        },
+    44	    }
+    45	
+    46	
+    47	def test_plain_no_tool_assistant_response_is_not_saved():
+    48	    ctx = _response_message({
+    49	        "role": "assistant",
+    50	        "content": "用户看不到这条纯文本回复",
+    51	    })
+    52	
+    53	    assert _should_save_llm_response(ctx) is False
+    54	
+    55	
+    56	def test_known_tool_call_response_is_saved():
+    57	    ctx = _response_message({
+    58	        "role": "assistant",
+    59	        "content": "",
+    60	        "tool_calls": [_shell_reply_call()],
+    61	    })
+    62	
+    63	    assert _should_save_llm_response(ctx) is True
+    64	
+    65	
+    66	def test_unknown_tool_call_response_is_not_saved_when_tool_names_known():
+    67	    ctx = _response_message({
+    68	        "role": "assistant",
+    69	        "content": "",
+    70	        "tool_calls": [{
+    71	            "id": "call_bad",
+    72	            "function": {"name": "not_a_real_tool", "arguments": "{}"},
+    73	        }],
+    74	    })
+    75	
+    76	    assert _should_save_llm_response(ctx) is False
+    77	
+    78	
+    79	def test_saved_tool_call_response_preserves_reasoning_content():
+    80	    ctx = _response_message({
+    81	        "role": "assistant",
+    82	        "content": "",
+    83	        "reasoning_content": "provider reasoning state required for tool-call replay",
+    84	        "tool_calls": [_shell_reply_call()],
+    85	    })
+    86	
+    87	    payload = _build_save_response_payload(ctx, ctx)
+    88	
+    89	    assert payload["message"]["tool_calls"]
+    90	    assert payload["message"]["reasoning_content"] == (
+    91	        "provider reasoning state required for tool-call replay"
+    92	    )
+    93	
+    94	
+    95	def test_sanitize_context_preserves_reasoning_content_and_does_not_readd_empty():
+    96	    sanitized = sanitize_context([
+    97	        {"role": "user", "content": "hi"},
+    98	        {
+    99	            "role": "assistant",
+   100	            "content": "",
+   101	            "reasoning_content": "provider-state",
+   102	            "tool_calls": [_shell_reply_call()],
+   103	        },
+   104	    ])
+   105	
+   106	    assistant = next(m for m in sanitized if m["role"] == "assistant")
+   107	    assert assistant["reasoning_content"] == "provider-state"
+   108	
+   109	
+   110	def test_tool_result_steps_get_step_step_ref():
+   111	    tasks = _build_save_results_tasks(
+   112	        {"scope_id": "scp-1", "round_num": 2, "agent_id": "agent-1", "user_id": "user-1"},
+   113	        {"results": [{
+   114	            "tool_call_id": "call_1",
+   115	            "tool_name": "shell",
+   116	            "arguments": {"command": "agentctl im reply --message-file /cortex/rw/reply.md"},
+   117	            "content": '{"success": true}',
+   118	            "step_ref": "step-ref:scp-1:round2:call_1",
+   119	            "success": True,
+   120	        }]},
+   121	    )
+   122	
+   123	    step = tasks[0]["payload"]["step"]
+   124	    assert step["call_id"] == "call_1"
+   125	    assert step["step_ref"] == "step-ref:scp-1:round2:call_1"
+   126	    assert step["payload_ref"] == "step-ref:scp-1:round2:call_1"
+   127	    assert step["payload"] == '{"success": true}'
+   128	    assert "result" not in step
+   129	    assert step["observation"]["kind"] == "tool_result"
+   130	    assert step["observation"]["payload_ref"] == "step-ref:scp-1:round2:call_1"
+   131	
+   132	
+   133	def test_expand_messages_for_llm_requires_step_ref():
+   134	    with pytest.raises(ValueError, match="missing step_ref"):
+   135	        expand_messages_for_llm([{
+   136	            "role": "tool",
+   137	            "tool_call_id": "call_1",
+   138	            "content": "inline tool result",
+   139	        }])
+   140	
+   141	
+   142	def test_expand_messages_for_llm_resolves_through_cortex(monkeypatch):
+   143	    class Bridge:
+   144	        enabled = True
+   145	
+   146	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   147	            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+   148	
+   149	    monkeypatch.setattr(
+   150	        "task_queue.utils.step_result_client._get_bridge",
+   151	        lambda runtime_id, user_id, agent_id: Bridge(),
+   152	    )
+   153	
+   154	    expanded = expand_messages_for_llm([{
+   155	        "role": "tool",
+   156	        "tool_call_id": "call_1",
+   157	        "step_ref": "step-ref:call_1",
+   158	        "content": "inline tool result",
+   159	    }], runtime_id="wake-1", user_id="user-1", agent_id="agent-1")
+   160	
+   161	    assert expanded == [{
+   162	        "role": "tool",
+   163	        "tool_call_id": "call_1",
+   164	        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+   165	        "_projection": "current_tool_result",
+   166	    }]
+   167	
+   168	
+   169	def test_expand_messages_for_llm_passes_step_ref_to_cortex(monkeypatch):
+   170	    calls = []
+   171	
+   172	    class Bridge:
+   173	        enabled = True
+   174	
+   175	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   176	            calls.append((scope_id, tool_call_id, kwargs))
+   177	            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+   178	
+   179	    monkeypatch.setattr(
+   180	        "task_queue.utils.step_result_client._get_bridge",
+   300	        current_round_id="round-1",
+   301	        runtime_id="agent-root-main",
+   302	        user_id="user-1",
+   303	        agent_id="agent-1",
+   304	    )
+   305	
+   306	    payload = json.loads(expanded[0]["content"])
+   307	    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen-1")
+   308	    assert blob_calls[0]["headers"] == {"X-Tenant-ID": "user-1"}
+   309	    assert payload["_mcp_content"][1] == {
+   310	        "type": "image",
+   311	        "data": "YWJjMTIz",
+   312	        "mimeType": "image/jpeg",
+   313	    }
+   314	
+   315	
+   316	def test_expand_messages_for_llm_does_not_resolve_history_image_ref(monkeypatch):
+   317	    class Bridge:
+   318	        enabled = True
+   319	
+   320	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   321	            assert kwargs["projection"] == "history"
+   322	            return json.dumps({
+   323	                "_mcp_content": [
+   324	                    {"type": "text", "text": "old screenshot"},
+   325	                    {
+   326	                        "type": "image_ref",
+   327	                        "file_url": "blob://runtime-artifact/old-screen",
+   328	                        "mimeType": "image/jpeg",
+   329	                    },
+   330	                ]
+   331	            })
+   332	
+   333	    monkeypatch.setattr(
+   334	        "task_queue.utils.step_result_client._get_bridge",
+   335	        lambda runtime_id, user_id, agent_id: Bridge(),
+   336	    )
+   337	    monkeypatch.setattr(
+   338	        "task_queue.utils.step_result_client.internal_sync_client",
+   339	        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("history must not fetch blobs")),
+   340	    )
+   341	
+   342	    expanded = expand_messages_for_llm(
+   343	        [{
+   344	            "role": "tool",
+   345	            "tool_call_id": "display:0",
+   346	            "tool_name": "display",
+   347	            "_round_id": "round-old",
+   348	            "step_ref": "step-ref:wake-1:round1:display:0",
+   349	            "content": "inline content must not be used",
+   350	        }],
+   351	        current_round_id="round-current",
+   352	        runtime_id="agent-root-main",
+   353	        user_id="user-1",
+   354	        agent_id="agent-1",
+   355	    )
+   356	
+   357	    payload = json.loads(expanded[0]["content"])
+   358	    assert payload["_mcp_content"][1]["type"] == "image_ref"
+   359	
+   360	
+   361	def test_expand_messages_for_llm_image_ref_fetch_failure_becomes_text(monkeypatch):
+   362	    class Bridge:
+   363	        enabled = True
+   364	
+   365	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   366	            assert kwargs["projection"] == "display_perception"
+   367	            return json.dumps({
+   368	                "_mcp_content": [
+   369	                    {
+   370	                        "type": "image_ref",
+   371	                        "file_url": "blob://runtime-artifact/missing",
+   372	                        "mimeType": "image/jpeg",
+   373	                    },
+   374	                ]
+   375	            })
+   376	
+   377	    class FakeResponse:
+   378	        status_code = 404
+   379	        content = b"not found"
+   380	        text = "not found"
+=== pr71 current display image ref resolution full slice ===
+   232	            "tool_name": "display",
+   233	            "_round_id": "round-1",
+   234	            "step_ref": "step-ref:wake-1:round1:display:0",
+   235	            "content": "inline content must not be used",
+   236	        }],
+   237	        current_round_id="round-1",
+   238	        runtime_id="agent-root-main",
+   239	        user_id="user-1",
+   240	        agent_id="agent-1",
+   241	    )
+   242	
+   243	    assert calls[0][2]["projection"] == "display_perception"
+   244	
+   245	
+   246	def test_expand_messages_for_llm_resolves_current_display_image_ref(monkeypatch):
+   247	    blob_calls = []
+   248	
+   249	    class Bridge:
+   250	        enabled = True
+   251	
+   252	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   253	            return json.dumps({
+   254	                "_mcp_content": [
+   255	                    {"type": "text", "text": "resolved screenshot"},
+   256	                    {
+   257	                        "type": "image_ref",
+   258	                        "file_url": "blob://runtime-artifact/screen-1",
+   259	                        "mimeType": "image/jpeg",
+   260	                        "size": 6,
+   261	                    },
+   262	                ]
+   263	            })
+   264	
+   265	    class FakeResponse:
+   266	        status_code = 200
+   267	        content = b"abc123"
+   268	        text = "abc123"
+   269	        headers = {"content-type": "image/jpeg"}
+   270	
+   271	    class FakeClient:
+   272	        def __enter__(self):
+   273	            return self
+   274	
+   275	        def __exit__(self, *_exc):
+   276	            return False
+   277	
+   278	        def get(self, url, headers):
+   279	            blob_calls.append({"url": url, "headers": headers})
+   280	            return FakeResponse()
+   281	
+   282	    monkeypatch.setattr(
+   283	        "task_queue.utils.step_result_client._get_bridge",
+   284	        lambda runtime_id, user_id, agent_id: Bridge(),
+   285	    )
+   286	    monkeypatch.setattr(
+   287	        "task_queue.utils.step_result_client.internal_sync_client",
+   288	        lambda *a, **kw: FakeClient(),
+   289	    )
+   290	
+   291	    expanded = expand_messages_for_llm(
+   292	        [{
+   293	            "role": "tool",
+   294	            "tool_call_id": "display:0",
+   295	            "tool_name": "display",
+   296	            "_round_id": "round-1",
+   297	            "step_ref": "step-ref:wake-1:round1:display:0",
+   298	            "content": "inline content must not be used",
+   299	        }],
+   300	        current_round_id="round-1",
+   301	        runtime_id="agent-root-main",
+   302	        user_id="user-1",
+   303	        agent_id="agent-1",
+   304	    )
+   305	
+   306	    payload = json.loads(expanded[0]["content"])
+   307	    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen-1")
+   308	    assert blob_calls[0]["headers"] == {"X-Tenant-ID": "user-1"}
+   309	    assert payload["_mcp_content"][1] == {
+   310	        "type": "image",
+   311	        "data": "YWJjMTIz",
+   312	        "mimeType": "image/jpeg",
+   313	    }
+
+=== no_historical prepare_llm_call current display full slice ===
+   215	def test_prepare_llm_call_injects_display_step_image_before_following_system(monkeypatch):
+   216	    calls = []
+   217	    blob_calls = []
+   218	
+   219	    class Bridge:
+   220	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   221	            calls.append({"scope_id": scope_id, "tool_call_id": tool_call_id, **kwargs})
+   222	            return json.dumps({
+   223	                "_mcp_content": [
+   224	                    {"type": "text", "text": "desktop screenshot"},
+   225	                    {
+   226	                        "type": "image_ref",
+   227	                        "file_url": "blob://runtime-artifact/screen",
+   228	                        "mimeType": "image/jpeg",
+   229	                        "size": 6,
+   230	                    },
+   231	                ]
+   232	            })
+   233	
+   234	    class FakeResponse:
+   235	        status_code = 200
+   236	        content = b"abc123"
+   237	        text = "abc123"
+   238	        headers = {"content-type": "image/jpeg"}
+   239	
+   240	    class FakeClient:
+   241	        def __enter__(self):
+   242	            return self
+   243	
+   244	        def __exit__(self, *_exc):
+   245	            return False
+   246	
+   247	        def get(self, url, headers):
+   248	            blob_calls.append({"url": url, "headers": headers})
+   249	            return FakeResponse()
+   250	
+   251	    monkeypatch.setattr(
+   252	        "task_queue.utils.step_result_client._get_bridge",
+   253	        lambda runtime_id, user_id, agent_id: Bridge(),
+   254	    )
+   255	    monkeypatch.setattr(
+   256	        "task_queue.utils.step_result_client.internal_sync_client",
+   257	        lambda *a, **kw: FakeClient(),
+   258	    )
+   259	
+   260	    prepared = prepare_llm_call(
+   261	        LLMCallInput(
+   262	            scope_id="wake-1",
+   263	            agent_root_scope_id="agent-root-main",
+   264	            round_id="round-2",
+   265	            user_id="user-1",
+   266	            agent_id="agent-1",
+   267	            provider="openai",
+   268	            messages=[
+   269	                {
+   270	                    "role": "assistant",
+   271	                    "content": "Screenshot captured; loading it now.",
+   272	                    "tool_calls": [{
+   273	                        "id": "display:2",
+   274	                        "type": "function",
+   275	                        "function": {
+   276	                            "name": "display",
+   277	                            "arguments": '{"file_url":"blob://runtime-artifact/screen"}',
+   278	                        },
+   279	                    }],
+   280	                },
+   281	                {
+   282	                    "role": "tool",
+   283	                    "tool_call_id": "display:2",
+   284	                    "step_ref": "step-ref:wake-1:round1:display:2",
+   285	                    "content": "inline content must be ignored",
+   286	                },
+   287	                {
+   288	                    "role": "system",
+   289	                    "content": "[Active skill stack] this system message follows the display result",
+   290	                },
+   291	            ],
+   292	        ),
+   293	        LLMTransportConfig(
+   294	            factory_url="http://factory.test",
+   295	            model_id="model-1",
+   296	            user_id="user-1",
+   297	            agent_id="agent-1",
+   298	        ),
+   299	        expand_messages_for_llm=expand_messages_for_llm,
+   300	        sanitize_context=sanitize_context,
+   301	        process_multimodal_messages=process_multimodal_messages,
+   302	    )
+   303	
+   304	    assert calls[0]["scope_id"] == "agent-root-main"
+   305	    assert calls[0]["projection"] == "display_perception"
+   306	    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen")
+   307	    assert blob_calls[0]["headers"] == {"X-Tenant-ID": "user-1"}
+   308	    assert [message["role"] for message in prepared.messages] == [
+   309	        "assistant",
+   310	        "tool",
+   311	        "user",
+   312	        "system",

@@ -1,0 +1,1151 @@
+novaic-cortex/novaic_cortex/context_event_store.py:17:    from novaic_cortex.workspace import Workspace
+novaic-cortex/novaic_cortex/context_event_store.py:33:        workspace: "Workspace",
+novaic-cortex/novaic_cortex/context_event_store.py:38:        self._workspace = workspace
+novaic-cortex/novaic_cortex/context_event_store.py:52:            raw = await self._workspace.read(path)
+novaic-cortex/novaic_cortex/context_event_store.py:123:        await self._workspace._sys_append_line(
+novaic-cortex/tests/test_workspace_materialize.py:1:"""Tests for Workspace.materialize()."""
+novaic-cortex/tests/test_workspace_materialize.py:7:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_workspace_materialize.py:8:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_workspace_materialize.py:13:    workspace, store = make_workspace_with_store("agt-1")
+novaic-cortex/tests/test_workspace_materialize.py:14:    asyncio.run(workspace.initialize())
+novaic-cortex/tests/test_workspace_materialize.py:15:    asyncio.run(workspace.create_scope("scope-1", name="test"))
+novaic-cortex/tests/test_workspace_materialize.py:16:    return workspace
+novaic-cortex/tests/test_workspace_materialize.py:21:        path = asyncio.run(ws.materialize("scope-1", "image.png", b"\x89PNGfake"))
+novaic-cortex/tests/test_workspace_materialize.py:28:            asyncio.run(ws.materialize("scope-1", "data.csv", b"a,b\n1,2", subdir="inputs"))
+novaic-cortex/tests/test_workspace_materialize.py:32:            asyncio.run(ws.materialize("scope-1", "../etc/passwd", b"bad"))
+novaic-cortex/tests/test_workspace_materialize.py:36:            asyncio.run(ws.materialize("scope-1", "foo\x00bar", b"bad"))
+novaic-cortex/tests/test_workspace_materialize.py:40:            asyncio.run(ws.materialize("scope-1", "ok.txt", b"data", subdir=".."))
+novaic-cortex/tests/test_skill_install_limits.py:9:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_skill_install_limits.py:45:    """Second install updates blobs and index; `skills_installed` counts each call."""
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:26:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:27:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:34:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:38:async def _workspace(agent_id: str = "pr74-agent") -> Workspace:
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:39:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:48:    ws = await _workspace()
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:74:    ws = await _workspace()
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:91:    ws = await _workspace()
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:107:    ws = await _workspace("pr74-runtime")
+novaic-cortex/tests/test_pr56_root_scope_summary.py:23:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_pr56_root_scope_summary.py:24:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_pr56_root_scope_summary.py:31:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_pr56_root_scope_summary.py:35:async def _workspace(agent_id: str = "agt-1") -> Workspace:
+novaic-cortex/tests/test_pr56_root_scope_summary.py:36:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_pr56_root_scope_summary.py:48:    ws = await _workspace()
+novaic-cortex/tests/test_pr56_root_scope_summary.py:69:    ws = await _workspace()
+novaic-cortex/tests/test_pr56_root_scope_summary.py:88:    ws = await _workspace()
+novaic-cortex/tests/test_pr56_root_scope_summary.py:107:    ws = await _workspace()
+novaic-cortex/tests/test_pr56_root_scope_summary.py:132:    ws = await _workspace()
+novaic-cortex/tests/test_operational_store.py:82:                blob_ref TEXT NOT NULL,
+novaic-cortex/tests/test_operational_store.py:97:                payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/tests/test_operational_store.py:101:            VALUES('payload-1', 'root', 'scope-a', 'step-1', 'blob://cortex-payload/1',
+novaic-cortex/tests/test_operational_store.py:124:        blob_ref=None,
+novaic-cortex/tests/test_operational_store.py:133:    assert columns["blob_ref"][3] == 0
+novaic-cortex/tests/test_operational_store.py:135:    assert local["blob_ref"] is None
+novaic-cortex/tests/test_operational_store.py:347:        blob_ref="blob://cortex-payload/1",
+novaic-cortex/tests/test_operational_store.py:360:        blob_ref="blob://cortex-payload/1",
+novaic-cortex/tests/test_operational_store.py:374:    assert store.get_payload_manifest(payload_ref="payload-1")["blob_ref"] == "blob://cortex-payload/1"
+novaic-cortex/tests/test_operational_store.py:377:def test_payload_manifest_supports_local_payload_without_blob_ref(tmp_path):
+novaic-cortex/tests/test_operational_store.py:386:        blob_ref=None,
+novaic-cortex/tests/test_operational_store.py:394:    assert manifest["blob_ref"] is None
+novaic-cortex/tests/test_payload_inspection_api.py:20:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_payload_inspection_api.py:21:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_payload_inspection_api.py:28:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_payload_inspection_api.py:32:async def _workspace() -> Workspace:
+novaic-cortex/tests/test_payload_inspection_api.py:33:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_payload_inspection_api.py:60:    ws = await _workspace()
+novaic-cortex/tests/test_payload_inspection_api.py:84:    ws = await _workspace()
+novaic-cortex/tests/test_payload_inspection_api.py:107:    await _workspace()
+novaic-cortex/tests/test_payload_inspection_api.py:122:    ws = await _workspace()
+novaic-cortex/tests/test_payload_inspection_api.py:145:    ws = await _workspace()
+novaic-cortex/tests/test_payload_inspection_api.py:186:    ws = await _workspace()
+novaic-cortex/tests/test_engine_config_roundtrip.py:18:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_engine_config_roundtrip.py:19:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_engine_config_roundtrip.py:32:    return await load_engine_config(make_workspace_with_store(agent_id, store=store)[0])
+novaic-cortex/tests/test_engine_config_roundtrip.py:36:async def test_defaults_full_roundtrip_via_workspace() -> None:
+novaic-cortex/tests/test_engine_config_roundtrip.py:37:    """Serializing default EngineConfig and loading through workspace reproduces defaults."""
+novaic-cortex/tests/test_engine_config_roundtrip.py:49:    blob = json.dumps(engine_config_to_json(d))
+novaic-cortex/tests/test_engine_config_roundtrip.py:50:    restored = _merge_engine_dict(json.loads(blob))
+novaic-cortex/tests/test_engine_config_roundtrip.py:55:async def test_float_fields_survive_roundtrip_via_workspace() -> None:
+novaic-cortex/tests/test_engine_config_roundtrip.py:77:    round_blob = json.dumps(engine_config_to_json(d))
+novaic-cortex/tests/test_engine_config_roundtrip.py:78:    restored = _merge_engine_dict(json.loads(round_blob))
+novaic-cortex/tests/test_engine_config_roundtrip.py:85:    """Large Python ints (beyond typical UI ranges) round-trip through JSON and workspace."""
+novaic-cortex/tests/test_engine_config_roundtrip.py:94:        sandbox_timeout_default=1,
+novaic-cortex/tests/test_engine_config_roundtrip.py:95:        sandbox_timeout_max=sys.maxsize,
+novaic-cortex/tests/test_engine_config_roundtrip.py:108:        sandbox_timeout_max=9_223_372_036_854_775_807,
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:6:from novaic_cortex.sandbox import Sandbox
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:7:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:8:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:12:async def test_shell_has_no_local_fallback_without_sandboxd_executor() -> None:
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:13:    ws, store = make_workspace_with_store("no-local-fallback")
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:15:    sandbox = Sandbox(ws)
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:17:    caps = sandbox.logical_fs_capabilities
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:18:    assert caps.provider == "sandboxd-logicalfs"
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:19:    assert caps.true_stable_path_mount is True
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:22:    result = await sandbox.exec("echo must-not-run", timeout=5)
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:25:    assert "must go through sandboxd" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:31:    ws, store = make_workspace_with_store("ephemeral-path-guard")
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:33:    sandbox = Sandbox(ws)
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:35:    result = await sandbox.exec(
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:36:        "cat /tmp/novaic-cortex-sandbox-old/ro/active/scope/context.jsonl",
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:43:    assert "novaic-cortex-sandbox-*" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:44:    assert "/cortex/ro" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:45:    assert "/cortex/rw" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:46:    assert "must go through sandboxd" not in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:51:    ws, store = make_workspace_with_store("quoted-ephemeral-path-guard")
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:53:    sandbox = Sandbox(ws)
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:55:    result = await sandbox.exec(
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:56:        'printf %s "/tmp/novaic-cortex-sandbox-old/rw/reply.md"',
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:63:    assert "novaic-cortex-sandbox-*" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:64:    assert "/cortex/ro" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:65:    assert "/cortex/rw" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:66:    assert "must go through sandboxd" not in result.stderr
+novaic-cortex/novaic_cortex/active_stack_projection.py:3:The active control stack is a runtime authority, not a workspace-file
+novaic-cortex/tests/test_step_index_outcome.py:11:from novaic_cortex.blob_payload import BlobPayloadPolicy
+novaic-cortex/tests/test_step_index_outcome.py:12:from novaic_cortex.workspace import PayloadReadError
+novaic-cortex/tests/test_step_index_outcome.py:13:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_step_index_outcome.py:16:class _FakeBlobClient:
+novaic-cortex/tests/test_step_index_outcome.py:21:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:22:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_step_index_outcome.py:23:        return blob_ref
+novaic-cortex/tests/test_step_index_outcome.py:25:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_step_index_outcome.py:26:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_step_index_outcome.py:29:class _FailingBlobClient(_FakeBlobClient):
+novaic-cortex/tests/test_step_index_outcome.py:30:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_step_index_outcome.py:31:        raise KeyError(blob_ref)
+novaic-cortex/tests/test_step_index_outcome.py:35:    workspace, store = make_workspace_with_store("agent-idx")
+novaic-cortex/tests/test_step_index_outcome.py:36:    await workspace.initialize()
+novaic-cortex/tests/test_step_index_outcome.py:37:    return workspace
+novaic-cortex/tests/test_step_index_outcome.py:65:        "artifacts": [{"url": "blob://user-file/img.png", "filename": "img.png"}],
+novaic-cortex/tests/test_step_index_outcome.py:81:    assert entry["has_artifacts"] is True
+novaic-cortex/tests/test_step_index_outcome.py:110:    assert manifest["blob_ref"] is None
+novaic-cortex/tests/test_step_index_outcome.py:150:async def test_write_step_externalizes_large_payload_to_blob_ref():
+novaic-cortex/tests/test_step_index_outcome.py:151:    blob = _FakeBlobClient()
+novaic-cortex/tests/test_step_index_outcome.py:152:    ws, store = make_workspace_with_store(
+novaic-cortex/tests/test_step_index_outcome.py:154:        payload_blob_client=blob,
+novaic-cortex/tests/test_step_index_outcome.py:155:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_step_index_outcome.py:176:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:181:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:182:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:184:    assert await ws.read_payload(path, "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_step_index_outcome.py:185:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:187:    assert manifest["blob_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:192:    assert manifest["retention_class"] == "external_blob"
+novaic-cortex/tests/test_step_index_outcome.py:197:    ws, store = make_workspace_with_store("agent-idx")
+novaic-cortex/tests/test_step_index_outcome.py:225:    ws, _store = make_workspace_with_store("agent-idx")
+novaic-cortex/tests/test_step_index_outcome.py:253:    ws, _store = make_workspace_with_store("agent-idx")
+novaic-cortex/tests/test_step_index_outcome.py:280:async def test_read_payload_blob_failures_update_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:281:    blob = _FailingBlobClient()
+novaic-cortex/tests/test_step_index_outcome.py:282:    ws, _store = make_workspace_with_store(
+novaic-cortex/tests/test_step_index_outcome.py:284:        payload_blob_client=blob,
+novaic-cortex/tests/test_step_index_outcome.py:285:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_step_index_outcome.py:301:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:303:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:304:    assert exc.value.code == "payload_blob_fetch_failed"
+novaic-cortex/tests/test_step_index_outcome.py:306:    assert manifest["error"]["code"] == "payload_blob_fetch_failed"
+novaic-cortex/tests/test_step_index_outcome.py:310:async def test_read_payload_missing_blob_client_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:311:    blob = _FakeBlobClient()
+novaic-cortex/tests/test_step_index_outcome.py:312:    ws, _store = make_workspace_with_store(
+novaic-cortex/tests/test_step_index_outcome.py:314:        payload_blob_client=blob,
+novaic-cortex/tests/test_step_index_outcome.py:315:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_step_index_outcome.py:329:    ws._payload_blob_client = None
+novaic-cortex/tests/test_step_index_outcome.py:332:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:334:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:335:    assert exc.value.code == "payload_blob_client_missing"
+novaic-cortex/tests/test_step_index_outcome.py:337:    assert manifest["error"]["code"] == "payload_blob_client_missing"
+novaic-cortex/tests/test_step_index_outcome.py:341:async def test_large_payload_requires_blob_client():
+novaic-cortex/tests/test_step_index_outcome.py:342:    ws, store = make_workspace_with_store(
+novaic-cortex/tests/test_step_index_outcome.py:344:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_step_index_outcome.py:441:    assert "has_artifacts" not in entry
+novaic-cortex/tests/test_step_index_outcome.py:445:async def test_index_keeps_zero_duration_and_observation_artifacts():
+novaic-cortex/tests/test_step_index_outcome.py:452:        "tool": "display",
+novaic-cortex/tests/test_step_index_outcome.py:458:            "artifacts": [{"uri": "blob://runtime-artifact/img"}],
+novaic-cortex/tests/test_step_index_outcome.py:465:    assert index[0]["has_artifacts"] is True
+novaic-cortex/tests/test_engine_wiring.py:12:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_engine_wiring.py:13:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_engine_wiring.py:20:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_engine_wiring.py:53:    _install_api_registry(cortex.workspace)
+novaic-cortex/tests/test_engine_wiring.py:59:    await cortex.workspace.create_scope("ew-a", name="A", skill="")
+novaic-cortex/tests/test_engine_wiring.py:60:    await cortex.workspace.create_scope("ew-b", name="B", skill="")
+novaic-cortex/tests/test_context_event_read_model.py:12:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_read_model.py:47:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_read_model.py:49:    prepared = await ContextEventReadModel(workspace=ws, root_scope_path="").prepare()
+novaic-cortex/tests/test_context_event_read_model.py:62:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_read_model.py:65:        await ContextEventReadModel(workspace=ws, root_scope_path=ROOT_PATH).prepare()
+novaic-cortex/tests/test_context_event_read_model.py:81:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_read_model.py:153:        workspace=ws,
+novaic-cortex/tests/test_context_event_read_model.py:196:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_read_model.py:235:        workspace=ws,
+novaic-cortex/tests/test_blob_payload_client.py:3:from novaic_cortex import blob_payload
+novaic-cortex/tests/test_blob_payload_client.py:6:def test_blob_payload_client_uses_multipart_upload_contract():
+novaic-cortex/tests/test_blob_payload_client.py:7:    source = inspect.getsource(blob_payload.HttpBlobPayloadClient.put_payload)
+novaic-cortex/tests/test_blob_payload_client.py:9:    assert "/v1/blobs/uploads" in source
+novaic-cortex/tests/test_blob_payload_client.py:10:    assert "/v1/blobs\"" not in source
+novaic-cortex/tests/test_runtime_path_abuse.py:4:Traversal, NUL, and store ACL are enforced in ``workspace._key`` / ``Workspace`` — see
+novaic-cortex/tests/test_runtime_path_abuse.py:13:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_runtime_path_abuse.py:77:async def test_tool_read_traversal_after_prefix_still_blocked_by_workspace() -> None:
+novaic-cortex/tests/test_runtime_path_abuse.py:78:    """Regression: runtime gate alone is insufficient; workspace must reject."""
+novaic-cortex/novaic_cortex/context_events.py:3:This module is intentionally pure: no workspace IO, clocks, ids, env reads, or
+novaic-cortex/tests/test_tool_metrics.py:8:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_archive_invariants.py:12:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_archive_invariants.py:18:    from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_archive_invariants.py:31:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_archive_invariants.py:55:    _install_api_registry(cortex.workspace)
+novaic-cortex/tests/test_archive_invariants.py:58:    await cortex.workspace.create_scope(scope_id, name="Invariant", skill="skill-a")
+novaic-cortex/tests/test_archive_invariants.py:59:    await cortex.workspace.append_line(
+novaic-cortex/tests/test_archive_invariants.py:68:    assert await cortex.workspace.exists(f"{prefix}/meta.json")
+novaic-cortex/tests/test_archive_invariants.py:69:    assert await cortex.workspace.exists(f"{prefix}/summary.md")
+novaic-cortex/tests/test_archive_invariants.py:86:    _install_api_registry(cortex.workspace)
+novaic-cortex/tests/test_archive_invariants.py:88:    await cortex.workspace.create_scope(scope_id, name="D", skill="")
+novaic-cortex/tests/test_archive_invariants.py:96:    await cortex.workspace.append_line(f"/rw/active/{scope_id}/messages.jsonl", line_tool)
+novaic-cortex/tests/test_archive_invariants.py:97:    await cortex.workspace.append_line(f"/rw/active/{scope_id}/messages.jsonl", line_files)
+novaic-cortex/tests/test_archive_invariants.py:113:    _install_api_registry(cortex.workspace)
+novaic-cortex/tests/test_archive_invariants.py:116:    await cortex.workspace.create_scope(scope_id, name="C", skill="")
+novaic-cortex/tests/test_archive_invariants.py:129:    _install_api_registry(cortex.workspace)
+novaic-cortex/tests/test_archive_invariants.py:132:    await cortex.workspace.create_scope(scope_id, name="Unicode id", skill="")
+novaic-cortex/tests/test_archive_invariants.py:146:        await cortex.workspace.create_scope("../evil", name="bad", skill="")
+novaic-cortex/tests/test_archive_invariants.py:156:        await cortex.workspace.create_scope("bad\x00id", name="bad", skill="")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:49:def _server_for_device_and_blob(*, screenshot_bytes: bytes = b"", file_bytes: bytes = b""):
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:100:            if self.path == "/v1/blobs/uploads":
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:109:                blob_id = upload["blob_id"]
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:112:                        "blob": {
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:113:                            "blob_ref": f"blob://runtime-artifact/{blob_id}",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:114:                            "namespace": "runtime-artifact",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:115:                            "blob_id": blob_id,
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:137:def test_devicectl_hd_screenshot_uploads_image_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:139:    server, thread, state = _server_for_device_and_blob(screenshot_bytes=image)
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:151:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:152:    assert body["artifacts"][0]["modality"] == "image"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:153:    assert body["artifacts"][0]["mime_type"] == "image/jpeg"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:154:    assert body["artifacts"][0]["access"]["display"]["args"]["file_url"] == body["artifacts"][0]["uri"]
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:155:    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:162:def test_devicectl_hd_file_pull_uploads_file_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:164:    server, thread, state = _server_for_device_and_blob(file_bytes=file_payload)
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:180:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:181:    assert body["artifacts"][0]["modality"] == "binary"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:182:    assert body["artifacts"][0]["name"] == "note.txt"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:183:    assert body["artifacts"][0]["mime_type"] == "text/plain"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:184:    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:200:def test_devicectl_help_teaches_artifact_manifest_not_base64(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:204:    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:206:    assert "display access hints" in completed.stdout
+novaic-cortex/tests/test_sandboxd_wiring.py:9:from sandbox_sdk import SandboxExecResult, SandboxExecSpec
+novaic-cortex/tests/test_sandboxd_wiring.py:11:from novaic_cortex.api import app, set_registry, set_sandbox_process_runner_factory
+novaic-cortex/tests/test_sandboxd_wiring.py:12:from novaic_cortex.sandbox import Sandbox
+novaic-cortex/tests/test_sandboxd_wiring.py:13:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_sandboxd_wiring.py:14:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_sandboxd_wiring.py:30:        if spec.mount is not None:
+novaic-cortex/tests/test_sandboxd_wiring.py:31:            bin_dir = Path(spec.mount.source_root) / "bin"
+novaic-cortex/tests/test_sandboxd_wiring.py:44:async def test_sandbox_passes_raw_command_and_mount_plan_to_runner() -> None:
+novaic-cortex/tests/test_sandboxd_wiring.py:45:    ws, store = make_workspace_with_store("sandboxd-wiring")
+novaic-cortex/tests/test_sandboxd_wiring.py:57:    assert spec.mount is not None
+novaic-cortex/tests/test_sandboxd_wiring.py:58:    assert spec.mount.mount_point == "/cortex"
+novaic-cortex/tests/test_sandboxd_wiring.py:59:    assert spec.mount.stable_cwd == "/cortex/rw"
+novaic-cortex/tests/test_sandboxd_wiring.py:62:    assert spec.env["RO"] == "/cortex/ro"
+novaic-cortex/tests/test_sandboxd_wiring.py:63:    assert spec.env["RW"] == "/cortex/rw"
+novaic-cortex/tests/test_sandboxd_wiring.py:67:async def test_sandbox_runner_sees_logicalfs_view_and_rw_patch_is_persisted() -> None:
+novaic-cortex/tests/test_sandboxd_wiring.py:68:    ws, store = make_workspace_with_store("sandboxd-logicalfs-patch")
+novaic-cortex/tests/test_sandboxd_wiring.py:74:        assert spec.mount is not None
+novaic-cortex/tests/test_sandboxd_wiring.py:75:        root = Path(spec.mount.source_root)
+novaic-cortex/tests/test_sandboxd_wiring.py:98:async def test_sandbox_materializes_scoped_ro_working_set_only() -> None:
+novaic-cortex/tests/test_sandboxd_wiring.py:99:    ws, store = make_workspace_with_store("sandboxd-scoped-ro")
+novaic-cortex/tests/test_sandboxd_wiring.py:109:        assert spec.mount is not None
+novaic-cortex/tests/test_sandboxd_wiring.py:110:        root = Path(spec.mount.source_root)
+novaic-cortex/tests/test_sandboxd_wiring.py:134:async def test_sandbox_materializes_scoped_rw_working_set_only() -> None:
+novaic-cortex/tests/test_sandboxd_wiring.py:135:    ws, store = make_workspace_with_store("sandboxd-scoped-rw")
+novaic-cortex/tests/test_sandboxd_wiring.py:146:        assert spec.mount is not None
+novaic-cortex/tests/test_sandboxd_wiring.py:147:        root = Path(spec.mount.source_root)
+novaic-cortex/tests/test_sandboxd_wiring.py:170:    ws, store = make_workspace_with_store("api-sandboxd-wiring")
+novaic-cortex/tests/test_sandboxd_wiring.py:174:        def get_workspace(self, _user_id: str, _agent_id: str) -> Workspace:
+novaic-cortex/tests/test_sandboxd_wiring.py:178:    set_sandbox_process_runner_factory(lambda: runner)
+novaic-cortex/tests/test_sandboxd_wiring.py:185:                "agent_id": "api-sandboxd-wiring",
+novaic-cortex/tests/test_sandboxd_wiring.py:192:        set_sandbox_process_runner_factory(None)
+novaic-cortex/tests/test_sandboxd_wiring.py:198:    assert runner.seen[0].mount is not None
+novaic-cortex/tests/test_context_event_projection.py:634:                    "tool": "display",
+novaic-cortex/tests/test_context_event_projection.py:668:                    "call_id": "display:1",
+novaic-cortex/tests/test_context_event_projection.py:669:                    "tool": "display",
+novaic-cortex/tests/test_context_event_projection.py:672:                    "payload_ref": "payload:display-image",
+novaic-cortex/tests/test_context_event_projection.py:679:    assert "payload:display-image" in content
+novaic-cortex/tests/test_context_event_projection.py:708:                    "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_projection.py:717:    assert tool_message["_metadata"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/novaic_cortex/config.py:10:from novaic_cortex.workspace import Workspace
+novaic-cortex/novaic_cortex/config.py:24:    sandbox_timeout_default: int = 30
+novaic-cortex/novaic_cortex/config.py:25:    sandbox_timeout_max: int = 300
+novaic-cortex/novaic_cortex/config.py:58:async def load_engine_config(workspace: Workspace) -> EngineConfig:
+novaic-cortex/novaic_cortex/config.py:60:        raw = await workspace.read(ENGINE_JSON_PATH)
+novaic-cortex/tests/test_blob_boundary_guard.py:5:from cortex_tests.blob_boundary_policy import (
+novaic-cortex/tests/test_blob_boundary_guard.py:10:    is_allowed_blob_byte_path,
+novaic-cortex/tests/test_blob_boundary_guard.py:19:LOGICALFS_SRC = REPO_ROOT / "novaic-logicalfs" / "logicalfs"
+novaic-cortex/tests/test_blob_boundary_guard.py:20:SANDBOX_SERVICE_SRC = REPO_ROOT / "novaic-sandbox-service" / "sandbox_service"
+novaic-cortex/tests/test_blob_boundary_guard.py:51:def blob_byte_boundary_violations(policy_path: str, text: str) -> list[str]:
+novaic-cortex/tests/test_blob_boundary_guard.py:52:    if is_allowed_blob_byte_path(policy_path):
+novaic-cortex/tests/test_blob_boundary_guard.py:57:def test_direct_blob_object_authority_is_confined_to_boundary() -> None:
+novaic-cortex/tests/test_blob_boundary_guard.py:69:def test_blob_byte_access_is_confined_to_allowed_byte_flows() -> None:
+novaic-cortex/tests/test_blob_boundary_guard.py:74:        hits = blob_byte_boundary_violations(policy_path, source.read_text())
+novaic-cortex/tests/test_blob_boundary_guard.py:86:        blob_hits = blob_byte_boundary_violations(snippet.path, snippet.text)
+novaic-cortex/tests/test_blob_boundary_guard.py:87:        if direct_hits or blob_hits:
+novaic-cortex/tests/test_blob_boundary_guard.py:89:                f"{snippet.label}: direct={direct_hits or '-'} blob={blob_hits or '-'}"
+novaic-cortex/tests/test_wave4_metrics.py:8:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_workspace_paths.py:8:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_workspace_paths.py:9:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_workspace_paths.py:14:    ws, store = make_workspace_with_store("p1")
+novaic-cortex/tests/test_workspace_paths.py:22:    ws, store = make_workspace_with_store("p2")
+novaic-cortex/novaic_cortex/observability.py:52:    ``fusion.triggered`` and ``sandbox.exec`` (see design doc §12).
+novaic-cortex/tests/test_runtime.py:6:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/novaic_cortex/workspace.py:71:from novaic_cortex.blob_payload import (
+novaic-cortex/novaic_cortex/workspace.py:72:    BlobPayloadPolicy,
+novaic-cortex/novaic_cortex/workspace.py:73:    PayloadBlobClient,
+novaic-cortex/novaic_cortex/workspace.py:78:from novaic_cortex.workspace_authority import validate_agent_id
+novaic-cortex/novaic_cortex/workspace.py:87:        payload_blob_client: PayloadBlobClient | None = None,
+novaic-cortex/novaic_cortex/workspace.py:88:        payload_blob_policy: BlobPayloadPolicy | None = None,
+novaic-cortex/novaic_cortex/workspace.py:96:        self._payload_blob_client = payload_blob_client
+novaic-cortex/novaic_cortex/workspace.py:97:        self._payload_blob_policy = payload_blob_policy or BlobPayloadPolicy()
+novaic-cortex/novaic_cortex/workspace.py:158:            blob_ref=manifest.get("blob_ref"),
+novaic-cortex/novaic_cortex/workspace.py:218:        LogicalFS: callers work in logical workspace paths, while Workspace
+novaic-cortex/novaic_cortex/workspace.py:376:        Writes the ``summary.md`` projection artifact and routes the phase flip through
+novaic-cortex/novaic_cortex/workspace.py:389:            reason="scope_end_child", actor="cortex.workspace",
+novaic-cortex/novaic_cortex/workspace.py:409:        projections instead of walking workspace files.
+novaic-cortex/novaic_cortex/workspace.py:508:            reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/novaic_cortex/workspace.py:576:        externalize = self._payload_blob_policy.should_externalize(len(encoded))
+novaic-cortex/novaic_cortex/workspace.py:580:            if self._payload_blob_client is None:
+novaic-cortex/novaic_cortex/workspace.py:582:            actual_payload_ref = await self._payload_blob_client.put_payload(
+novaic-cortex/novaic_cortex/workspace.py:592:                "blob_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:593:                "content_type": "external_blob",
+novaic-cortex/novaic_cortex/workspace.py:614:            blob_ref=actual_payload_ref if externalize else None,
+novaic-cortex/novaic_cortex/workspace.py:619:            retention_class="external_blob" if externalize else "scope_local",
+novaic-cortex/novaic_cortex/workspace.py:651:        if record.get("blob_ref"):
+novaic-cortex/novaic_cortex/workspace.py:652:            if self._payload_blob_client is None:
+novaic-cortex/novaic_cortex/workspace.py:655:                    code="payload_blob_client_missing",
+novaic-cortex/novaic_cortex/workspace.py:660:                return await self._payload_blob_client.get_payload(
+novaic-cortex/novaic_cortex/workspace.py:662:                    blob_ref=str(record["blob_ref"]),
+novaic-cortex/novaic_cortex/workspace.py:667:                    code="payload_blob_fetch_failed",
+novaic-cortex/novaic_cortex/workspace.py:773:        observation_artifacts = (
+novaic-cortex/novaic_cortex/workspace.py:774:            observation.get("artifacts")
+novaic-cortex/novaic_cortex/workspace.py:778:        if step.get("artifacts") or observation_artifacts:
+novaic-cortex/novaic_cortex/workspace.py:779:            index_entry["has_artifacts"] = True
+novaic-cortex/novaic_cortex/workspace.py:836:    # ── File materialization (for external files) ──
+novaic-cortex/novaic_cortex/workspace.py:838:    async def materialize(
+novaic-cortex/novaic_cortex/workspace.py:846:        Returns the logical workspace path.
+novaic-cortex/novaic_cortex/workspace.py:849:            raise ValueError(f"invalid filename for materialize: {filename!r}")
+novaic-cortex/novaic_cortex/workspace.py:857:        """Read the materialized context projection for inspection/debug.
+novaic-cortex/novaic_cortex/workspace.py:880:        """Append a single message to the materialized context projection."""
+novaic-cortex/novaic_cortex/workspace.py:891:        """Append multiple messages to the materialized context projection."""
+novaic-cortex/novaic_cortex/workspace.py:937:        Why this lives on workspace instead of a generic update caller:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:17:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_context_event_api_lifecycle.py:18:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_api_lifecycle.py:25:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:29:async def _workspace(agent_id: str = "agent-1") -> Workspace:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:30:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_context_event_api_lifecycle.py:39:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_lifecycle.py:78:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_lifecycle.py:126:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_lifecycle.py:174:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_lifecycle.py:253:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_lifecycle.py:298:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_store.py:13:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_store.py:63:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:77:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:85:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:98:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:109:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:120:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:133:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:146:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:164:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:187:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:215:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:234:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:259:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:290:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:322:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_store.py:351:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_tool_output_projection.py:5:    format_for_display_perception_llm,
+novaic-cortex/tests/test_tool_output_projection.py:12:def _tool_output_with_image_artifact():
+novaic-cortex/tests/test_tool_output_projection.py:17:        "artifacts": [
+novaic-cortex/tests/test_tool_output_projection.py:19:                "uri": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_tool_output_projection.py:26:                    "display": {
+novaic-cortex/tests/test_tool_output_projection.py:27:                        "tool": "display",
+novaic-cortex/tests/test_tool_output_projection.py:28:                        "args": {"file_url": "blob://runtime-artifact/screen-1"},
+novaic-cortex/tests/test_tool_output_projection.py:40:                "summary": "Screenshot stored as artifact.",
+novaic-cortex/tests/test_tool_output_projection.py:47:def test_tool_output_v1_artifacts_render_as_manifest_text():
+novaic-cortex/tests/test_tool_output_projection.py:48:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:50:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:52:    assert parsed["artifacts"][0]["uri"] == "blob://runtime-artifact/screen-1"
+novaic-cortex/tests/test_tool_output_projection.py:55:    assert 'display(file_url="blob://runtime-artifact/screen-1")' in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:59:def test_tool_output_v1_display_perception_never_inlines_artifact_image():
+novaic-cortex/tests/test_tool_output_projection.py:60:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:61:    formatted = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:65:    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_tool_output_projection.py:68:def test_tool_output_v1_preview_mentions_artifact_count():
+novaic-cortex/tests/test_tool_output_projection.py:69:    parsed = parse_tool_result(_tool_output_with_image_artifact())
+novaic-cortex/tests/test_tool_output_projection.py:71:    assert "[1 artifacts]" in preview_for_text(parsed)
+novaic-cortex/tests/test_tool_output_projection.py:74:def test_mcp_image_content_parses_to_display_files_for_explicit_projection():
+novaic-cortex/tests/test_tool_output_projection.py:85:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+novaic-cortex/tests/test_tool_output_projection.py:88:def test_mcp_image_content_is_only_visual_in_display_perception_projection():
+novaic-cortex/tests/test_tool_output_projection.py:92:                {"type": "text", "text": "display image"},
+novaic-cortex/tests/test_tool_output_projection.py:100:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:104:    assert display["_mcp_content"][1] == {
+novaic-cortex/tests/test_tool_output_projection.py:124:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:126:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:127:    assert all(item["type"] == "text" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:137:            "artifacts": [],
+novaic-cortex/tests/test_tool_output_projection.py:150:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:155:def test_media_like_shell_step_payload_does_not_project_as_display_image():
+novaic-cortex/tests/test_tool_output_projection.py:163:            "artifacts": [],
+novaic-cortex/tests/test_tool_output_projection.py:182:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:184:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:187:    assert all(item["type"] == "text" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:188:    assert not any(item.get("type") == "image" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:191:def test_display_tool_step_payload_projects_llm_image_content():
+novaic-cortex/tests/test_tool_output_projection.py:197:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:206:            "type": "display_result",
+novaic-cortex/tests/test_tool_output_projection.py:207:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:214:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:218:    assert display["_mcp_content"][1] == {
+novaic-cortex/tests/test_tool_output_projection.py:225:def test_explicit_projection_modes_control_parsed_display_files():
+novaic-cortex/tests/test_tool_output_projection.py:229:        "display_files": [{"url": "data:image/png;base64,aabbcc"}],
+novaic-cortex/tests/test_tool_output_projection.py:234:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:238:    assert any(item["type"] == "image" for item in display["_mcp_content"])
+novaic-cortex/tests/test_hooks_metrics.py:9:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_hooks_metrics.py:25:    workspace, store = make_workspace_with_store(agent_id, store=store, hooks=hooks)
+novaic-cortex/tests/test_hooks_metrics.py:27:    await workspace.initialize()
+novaic-cortex/tests/test_hooks_metrics.py:28:    await workspace.create_scope_projection("s-hook", "Hook scope", "")
+novaic-cortex/tests/test_hooks_metrics.py:35:    await workspace.archive_root_scope_projection("s-hook", "")
+novaic-cortex/novaic_cortex/blob_payload.py:1:"""Blob raw-byte payload storage for Cortex.
+novaic-cortex/novaic_cortex/blob_payload.py:3:Cortex owns work trace semantics. Blob Service owns large raw bytes. This
+novaic-cortex/novaic_cortex/blob_payload.py:5:payloads in Blob Service and returns ``blob://cortex-payload/...`` refs.
+novaic-cortex/novaic_cortex/blob_payload.py:23:class PayloadBlobClient(Protocol):
+novaic-cortex/novaic_cortex/blob_payload.py:35:    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+novaic-cortex/novaic_cortex/blob_payload.py:40:class BlobPayloadPolicy:
+novaic-cortex/novaic_cortex/blob_payload.py:44:    def from_env(cls) -> "BlobPayloadPolicy":
+novaic-cortex/novaic_cortex/blob_payload.py:58:class HttpBlobPayloadClient:
+novaic-cortex/novaic_cortex/blob_payload.py:64:    def from_env(cls) -> "HttpBlobPayloadClient | None":
+novaic-cortex/novaic_cortex/blob_payload.py:79:        blob_id = _payload_blob_id(tenant_id, scope_path, source_payload_ref)
+novaic-cortex/novaic_cortex/blob_payload.py:85:            "blob_id": blob_id,
+novaic-cortex/novaic_cortex/blob_payload.py:92:            create_resp = await client.post(f"{self._base_url}/v1/blobs/uploads", json=create_body)
+novaic-cortex/novaic_cortex/blob_payload.py:96:                raise ValueError("Blob Service did not return an upload session_id")
+novaic-cortex/novaic_cortex/blob_payload.py:101:                    f"{self._base_url}/v1/blobs/uploads/{quote(session_id)}/parts/1",
+novaic-cortex/novaic_cortex/blob_payload.py:109:                f"{self._base_url}/v1/blobs/uploads/{quote(session_id)}/complete",
+novaic-cortex/novaic_cortex/blob_payload.py:114:            data = complete_resp.json().get("blob") or {}
+novaic-cortex/novaic_cortex/blob_payload.py:115:        blob_ref = data.get("blob_ref")
+novaic-cortex/novaic_cortex/blob_payload.py:116:        if not isinstance(blob_ref, str) or not blob_ref.startswith("blob://cortex-payload/"):
+novaic-cortex/novaic_cortex/blob_payload.py:117:            raise ValueError("Blob Service did not return a cortex-payload BlobRef")
+novaic-cortex/novaic_cortex/blob_payload.py:118:        return blob_ref
+novaic-cortex/novaic_cortex/blob_payload.py:120:    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+novaic-cortex/novaic_cortex/blob_payload.py:121:        namespace, blob_id = _parse_blob_ref(blob_ref)
+novaic-cortex/novaic_cortex/blob_payload.py:124:                f"{self._base_url}/v1/blobs/{quote(namespace)}/{quote(blob_id)}",
+novaic-cortex/novaic_cortex/blob_payload.py:136:def _payload_blob_id(tenant_id: str, scope_path: str, source_payload_ref: str) -> str:
+novaic-cortex/novaic_cortex/blob_payload.py:141:def _parse_blob_ref(blob_ref: str) -> tuple[str, str]:
+novaic-cortex/novaic_cortex/blob_payload.py:142:    prefix = "blob://"
+novaic-cortex/novaic_cortex/blob_payload.py:143:    if not isinstance(blob_ref, str) or not blob_ref.startswith(prefix):
+novaic-cortex/novaic_cortex/blob_payload.py:144:        raise ValueError("payload blob_ref must start with blob://")
+novaic-cortex/novaic_cortex/blob_payload.py:145:    rest = blob_ref[len(prefix):]
+novaic-cortex/novaic_cortex/blob_payload.py:148:        raise ValueError("payload blob_ref must be blob://{namespace}/{blob_id}")
+novaic-cortex/tests/test_pr76_boundary_guard.py:53:        "entity = 'agent-binding'\nmounted_tools = []\n",
+novaic-cortex/tests/test_scope_state.py:33:def _workspace_with(phase):
+novaic-cortex/tests/test_scope_state.py:34:    """A MagicMock workspace where ``read_session_meta`` / ``update_session_meta``
+novaic-cortex/tests/test_scope_state.py:77:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:79:                         to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:89:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:92:                         to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace")
+novaic-cortex/tests/test_scope_state.py:97:    ws = _workspace_with("archived")
+novaic-cortex/tests/test_scope_state.py:107:    ws = _workspace_with("failed")
+novaic-cortex/tests/test_scope_state.py:116:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:128:    ws = _workspace_with("archived")
+novaic-cortex/tests/test_scope_state.py:142:    ws = _workspace_with("archived")
+novaic-cortex/tests/test_scope_state.py:154:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:164:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:166:                     to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:179:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:185:            actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:193:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:198:        actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:213:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:215:                        reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:229:    ws = _workspace_with(phase=None)
+novaic-cortex/tests/test_scope_state.py:233:                         to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace")
+novaic-cortex/tests/test_scope_state.py:240:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:249:    ws1 = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:251:                     to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:253:    ws2 = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:255:                     to=ScopeState.ARCHIVED, reason="scope_end_child", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:264:    ws = _workspace_with("executing")
+novaic-cortex/tests/test_scope_state.py:271:        actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:284:        "actor": "cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:297:    ws = _workspace_with("archived")
+novaic-cortex/tests/test_scope_state.py:304:        actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:319:    from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_scope_state.py:359:    from novaic_cortex.workspace import Workspace
+novaic-cortex/novaic_cortex/cli.py:5:Config is read from $RW/.novaic_env.json (written by sandbox at startup).
+novaic-cortex/novaic_cortex/cli.py:19:    """Load api/token from $RW/.novaic_env.json, fall back to defaults."""
+novaic-cortex/tests/test_context_event_no_compat.py:14:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_context_event_no_compat.py:15:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_no_compat.py:22:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_context_event_no_compat.py:26:async def _file_tree_only_workspace(agent_id: str = "file-tree-only-agent") -> Workspace:
+novaic-cortex/tests/test_context_event_no_compat.py:27:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_context_event_no_compat.py:44:    await _file_tree_only_workspace()
+novaic-cortex/tests/test_context_event_no_compat.py:60:    await _file_tree_only_workspace("file-tree-status-agent")
+novaic-cortex/novaic_cortex/__init__.py:21:from novaic_cortex.sandbox import Sandbox
+novaic-cortex/novaic_cortex/__init__.py:32:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_workspace_limits.py:8:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_workspace_limits.py:9:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_workspace_limits.py:15:    ws, store = make_workspace_with_store("lim-1")
+novaic-cortex/tests/test_workspace_limits.py:30:    ws, store = make_workspace_with_store("lim-2")
+novaic-cortex/tests/test_workspace_limits.py:37:async def test_list_dir_ro_root_with_or_without_trailing_slash_same_entries() -> None:
+novaic-cortex/tests/test_workspace_limits.py:38:    ws, store = make_workspace_with_store("lim-3")
+novaic-cortex/tests/test_workspace_limits.py:48:    ws, store = make_workspace_with_store("lim-4")
+novaic-cortex/tests/test_workspace_limits.py:59:    ws, store = make_workspace_with_store("lim-5")
+novaic-cortex/tests/test_workspace_limits.py:69:    ws, store = make_workspace_with_store("lim-6")
+novaic-cortex/novaic_cortex/operational_store.py:4:workspace file and must survive Cortex process restarts: scope lifecycle
+novaic-cortex/novaic_cortex/operational_store.py:5:events, active-stack projections, and semantic manifests for Blob payloads.
+novaic-cortex/novaic_cortex/operational_store.py:147:                    blob_ref TEXT,
+novaic-cortex/novaic_cortex/operational_store.py:174:        blob_ref = columns.get("blob_ref")
+novaic-cortex/novaic_cortex/operational_store.py:177:            and blob_ref is not None
+novaic-cortex/novaic_cortex/operational_store.py:178:            and int(blob_ref["notnull"]) == 0
+novaic-cortex/novaic_cortex/operational_store.py:192:                blob_ref TEXT,
+novaic-cortex/novaic_cortex/operational_store.py:487:        blob_ref: str | None,
+novaic-cortex/novaic_cortex/operational_store.py:503:                    payload_ref, source_payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/novaic_cortex/operational_store.py:513:                    blob_ref=excluded.blob_ref,
+novaic-cortex/novaic_cortex/operational_store.py:528:                    blob_ref,
+novaic-cortex/novaic_cortex/workspace_authority.py:1:"""Cortex semantic factory for LogicalFS workspace authorities."""
+novaic-cortex/novaic_cortex/workspace_authority.py:5:from logicalfs import (
+novaic-cortex/novaic_cortex/workspace_authority.py:30:def build_workspace_file_authority(
+novaic-cortex/novaic_cortex/workspace_authority.py:42:    "build_workspace_file_authority",
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:26:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:27:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:34:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:38:async def _workspace(agent_id: str = "pr84-agent") -> Workspace:
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:39:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:48:    ws = await _workspace()
+novaic-cortex/tests/test_pr84_minimal_structure_invariants.py:169:    ws = await _workspace("pr84-contract-agent")
+novaic-cortex/tests/test_engine_config_limits.py:12:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_engine_config_limits.py:13:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_engine_config_limits.py:66:        ("sandbox_timeout_default", "sandbox_timeout_default"),
+novaic-cortex/tests/test_engine_config_limits.py:153:    ws = make_workspace_with_store(agent_id, store=store)[0]
+novaic-cortex/tests/test_engine_config_limits.py:165:        "sandbox_timeout_max": 120,
+novaic-cortex/tests/test_engine_config_limits.py:171:    ws = make_workspace_with_store(agent_id, store=store)[0]
+novaic-cortex/tests/test_engine_config_limits.py:174:    assert cfg.sandbox_timeout_max == 120
+novaic-cortex/tests/test_context_event_api_context_writes.py:16:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_context_event_api_context_writes.py:17:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_api_context_writes.py:24:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_context_event_api_context_writes.py:28:async def _workspace(agent_id: str = "agent-1") -> Workspace:
+novaic-cortex/tests/test_context_event_api_context_writes.py:29:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_context_event_api_context_writes.py:60:async def test_context_append_emits_event_and_materializes_projection() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:61:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_context_writes.py:86:async def test_context_batch_emits_ordered_events_and_materializes_projection() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:87:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_context_writes.py:121:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_context_writes.py:143:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_context_writes.py:163:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_writer.py:8:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_writer.py:29:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_writer.py:59:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_writer.py:103:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_writer.py:119:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_writer.py:156:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_writer.py:179:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_writer.py:211:    ws, _store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_workspace_registry_dependencies.py:10:from novaic_cortex.blob_payload import BlobPayloadPolicy
+novaic-cortex/tests/test_workspace_registry_dependencies.py:11:from novaic_cortex.registry import WorkspaceRegistry, build_workspace_registry
+novaic-cortex/tests/test_workspace_registry_dependencies.py:14:def test_workspace_registry_constructor_requires_explicit_policy_and_clock():
+novaic-cortex/tests/test_workspace_registry_dependencies.py:18:    assert signature.parameters["payload_blob_policy"].default is inspect._empty
+novaic-cortex/tests/test_workspace_registry_dependencies.py:22:def test_workspace_registry_constructor_does_not_read_env_or_clock(monkeypatch):
+novaic-cortex/tests/test_workspace_registry_dependencies.py:25:        registry_module.BlobPayloadPolicy,
+novaic-cortex/tests/test_workspace_registry_dependencies.py:36:        "http://blob",
+novaic-cortex/tests/test_workspace_registry_dependencies.py:38:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=123),
+novaic-cortex/tests/test_workspace_registry_dependencies.py:45:def test_workspace_registry_factory_is_the_runtime_boundary(monkeypatch, tmp_path):
+novaic-cortex/tests/test_workspace_registry_dependencies.py:49:        registry_module.BlobPayloadPolicy,
+novaic-cortex/tests/test_workspace_registry_dependencies.py:51:        classmethod(lambda cls: calls.append("policy") or BlobPayloadPolicy()),
+novaic-cortex/tests/test_workspace_registry_dependencies.py:59:    registry = build_workspace_registry(
+novaic-cortex/tests/test_workspace_registry_dependencies.py:60:        "http://blob",
+novaic-cortex/tests/test_workspace_registry_dependencies.py:64:    ws = registry.get_workspace("user-1", "agent-1")
+novaic-cortex/tests/test_paths_adversarial.py:1:"""Adversarial path handling: traversal, non-workspace absolutes, NUL, unicode, slashes.
+novaic-cortex/tests/test_paths_adversarial.py:12:from logicalfs import LogicalFileAuthorityLayout, logical_to_object_key
+novaic-cortex/tests/test_paths_adversarial.py:13:from cortex_tests.workspace_test_utils import make_cortex_with_store, make_workspace_with_store
+novaic-cortex/tests/test_paths_adversarial.py:51:def test_key_rejects_non_ro_rw_root() -> None:
+novaic-cortex/tests/test_paths_adversarial.py:56:# --- Workspace: extra traversal shapes not covered by test_workspace_paths ---
+novaic-cortex/tests/test_paths_adversarial.py:60:async def test_workspace_read_rejects_dotdot_at_end_of_rw_path() -> None:
+novaic-cortex/tests/test_paths_adversarial.py:61:    ws, store = make_workspace_with_store("w-dotdot-tail")
+novaic-cortex/tests/test_paths_adversarial.py:68:async def test_workspace_read_rejects_ro_with_embedded_dotdot() -> None:
+novaic-cortex/tests/test_paths_adversarial.py:69:    ws, store = make_workspace_with_store("w-ro-dotdot")
+novaic-cortex/tests/test_paths_adversarial.py:79:async def test_tool_read_rejects_os_absolute_outside_workspace() -> None:
+novaic-cortex/tests/test_paths_adversarial.py:111:async def test_tool_write_rejects_non_rw_root() -> None:
+novaic-cortex/tests/test_paths_adversarial.py:119:async def test_tool_write_to_ro_rejected_by_workspace_acl() -> None:
+novaic-cortex/tests/test_engine_compact_mapping.py:11:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_engine_compact_mapping.py:42:    ws = make_workspace_with_store(agent_id, store=store)[0]
+novaic-cortex/novaic_cortex/context_event_read_model.py:27:    from novaic_cortex.workspace import Workspace
+novaic-cortex/novaic_cortex/context_event_read_model.py:72:        workspace: "Workspace",
+novaic-cortex/novaic_cortex/context_event_read_model.py:78:        self._workspace = workspace
+novaic-cortex/novaic_cortex/context_event_read_model.py:82:        self._event_store = event_store or ContextEventStore(workspace)
+novaic-cortex/tests/test_context_budget_limits.py:11:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_store_limits.py:70:async def test_large_blob_roundtrip_memory() -> None:
+novaic-cortex/tests/test_store_limits.py:80:async def test_large_blob_roundtrip_localfilestore(tmp_path) -> None:
+novaic-cortex/tests/test_store_limits.py:182:    """A blob key exactly equal to ``prefix`` (no trailing content) is skipped in listing."""
+novaic-cortex/tests/test_tool_schemas_limits.py:20:        "display",
+novaic-cortex/tests/test_tool_schemas_limits.py:101:    assert "/cortex/ro" in desc
+novaic-cortex/tests/test_tool_schemas_limits.py:102:    assert "novaic-cortex-sandbox-*" in desc
+novaic-cortex/tests/test_cortex_chaos.py:8:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_cortex_chaos.py:67:        base = await cortex.workspace.create_scope_projection(sid, name=f"scope-{sid}", skill="")
+novaic-cortex/tests/test_cortex_chaos.py:70:    assert await cortex.workspace.get_scope_depth() == n_scopes
+novaic-cortex/novaic_cortex/sandbox.py:5:* ``MountNamespaceLogicalFS`` owns Cortex filesystem semantics and the stable
+novaic-cortex/novaic_cortex/sandbox.py:6:  private ``/cortex`` mount namespace.
+novaic-cortex/novaic_cortex/sandbox.py:7:* A sandboxd SDK client owns remote process execution.
+novaic-cortex/novaic_cortex/sandbox.py:10:the sandboxd service boundary, shell execution fails explicitly instead of
+novaic-cortex/novaic_cortex/sandbox.py:20:from sandbox_sdk import SandboxExecResult, SandboxExecSpec
+novaic-cortex/novaic_cortex/sandbox.py:22:from novaic_cortex.logical_fs import (
+novaic-cortex/novaic_cortex/sandbox.py:25:    LogicalFSCapabilities,
+novaic-cortex/novaic_cortex/sandbox.py:26:    MountNamespaceLogicalFS,
+novaic-cortex/novaic_cortex/sandbox.py:29:from novaic_cortex.workspace import Workspace
+novaic-cortex/novaic_cortex/sandbox.py:31:_EPHEMERAL_SANDBOX_MARKER = "novaic-cortex-sandbox-"
+novaic-cortex/novaic_cortex/sandbox.py:38:def _reject_ephemeral_sandbox_paths(command: str) -> ShellResult | None:
+novaic-cortex/novaic_cortex/sandbox.py:45:            "Cortex shell paths under novaic-cortex-sandbox-* are ephemeral. "
+novaic-cortex/novaic_cortex/sandbox.py:46:            f"Use {STABLE_CORTEX_RO}, {STABLE_CORTEX_RW}, $RO, or $RW instead."
+novaic-cortex/novaic_cortex/sandbox.py:54:    """Acquire LogicalFS view, run a process, release view, assemble ShellResult."""
+novaic-cortex/novaic_cortex/sandbox.py:58:        logical_fs: MountNamespaceLogicalFS,
+novaic-cortex/novaic_cortex/sandbox.py:59:        sandbox_executor: SandboxExecutor | None,
+novaic-cortex/novaic_cortex/sandbox.py:63:        self.logical_fs = logical_fs
+novaic-cortex/novaic_cortex/sandbox.py:64:        self.sandbox_executor = sandbox_executor
+novaic-cortex/novaic_cortex/sandbox.py:74:        rejected = _reject_ephemeral_sandbox_paths(command)
+novaic-cortex/novaic_cortex/sandbox.py:81:        if self.sandbox_executor is None:
+novaic-cortex/novaic_cortex/sandbox.py:86:                    "must go through sandboxd via sandbox_sdk."
+novaic-cortex/novaic_cortex/sandbox.py:92:        with tempfile.TemporaryDirectory(prefix="novaic-cortex-logicalfs-") as tmp:
+novaic-cortex/novaic_cortex/sandbox.py:95:                view = await self.logical_fs.acquire_view(root, cwd=cwd, extra_env=extra_env)
+novaic-cortex/novaic_cortex/sandbox.py:104:                stderr = self.logical_fs.sanitize_output(
+novaic-cortex/novaic_cortex/sandbox.py:111:                mount_plan = self.logical_fs.process_mount_plan(view)
+novaic-cortex/novaic_cortex/sandbox.py:114:            process_result = await self.sandbox_executor.execute(
+novaic-cortex/novaic_cortex/sandbox.py:117:                    cwd=str(self.logical_fs.process_cwd(view)),
+novaic-cortex/novaic_cortex/sandbox.py:120:                    display_command=command,
+novaic-cortex/novaic_cortex/sandbox.py:121:                    mount=mount_plan,
+novaic-cortex/novaic_cortex/sandbox.py:130:                    "sandbox.exec",
+novaic-cortex/novaic_cortex/sandbox.py:140:            files_changed = await self.logical_fs.release_view(view)
+novaic-cortex/novaic_cortex/sandbox.py:144:            stdout = self.logical_fs.sanitize_output(stdout, view)
+novaic-cortex/novaic_cortex/sandbox.py:145:            stderr = self.logical_fs.sanitize_output(stderr, view)
+novaic-cortex/novaic_cortex/sandbox.py:156:    """Public shell facade backed by explicit LogicalFS and sandboxd SDK client."""
+novaic-cortex/novaic_cortex/sandbox.py:160:        workspace: Workspace,
+novaic-cortex/novaic_cortex/sandbox.py:168:        self.logical_fs = MountNamespaceLogicalFS(
+novaic-cortex/novaic_cortex/sandbox.py:169:            workspace,
+novaic-cortex/novaic_cortex/sandbox.py:176:            self.logical_fs,
+novaic-cortex/novaic_cortex/sandbox.py:182:    def logical_fs_capabilities(self) -> LogicalFSCapabilities:
+novaic-cortex/novaic_cortex/sandbox.py:183:        return self.logical_fs.capabilities
+novaic-cortex/tests/test_no_cortex_s3_residue.py:22:        if path.name == "blob_store.py":
+novaic-cortex/tests/test_pr234_control_stack.py:20:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_pr234_control_stack.py:21:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_pr234_control_stack.py:28:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_pr234_control_stack.py:32:async def _workspace(agent_id: str = "pr234-agent") -> Workspace:
+novaic-cortex/tests/test_pr234_control_stack.py:33:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_pr234_control_stack.py:42:    ws = await _workspace()
+novaic-cortex/tests/test_pr234_control_stack.py:96:    await _workspace("pr234-mismatch-agent")
+novaic-cortex/novaic_cortex/shell_capabilities.py:4:LogicalFS view (agentctl, cortex, devicectl) and the explicit environment keys
+novaic-cortex/novaic_cortex/shell_capabilities.py:5:those tools may receive. It does not own filesystem materialization or process
+novaic-cortex/novaic_cortex/shell_capabilities.py:66:  agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT]
+novaic-cortex/novaic_cortex/shell_capabilities.py:67:  agentctl media audio-qa --file-url blob://namespace/id --prompt-file PATH
+novaic-cortex/novaic_cortex/shell_capabilities.py:70:  Reads NOVAIC_API/NOVAIC_TOKEN or $RW/.novaic_env.json.
+novaic-cortex/novaic_cortex/shell_capabilities.py:73:    "devicectl": \"\"\"devicectl - mounted device command surface inside the Cortex shell
+novaic-cortex/novaic_cortex/shell_capabilities.py:87:Media/file outputs are stored as blob:// artifacts in tool-output.v1
+novaic-cortex/novaic_cortex/shell_capabilities.py:88:manifests. Do not print or paste raw base64; use the artifact manifest and
+novaic-cortex/novaic_cortex/shell_capabilities.py:89:display access hints when visual perception is needed.
+novaic-cortex/novaic_cortex/shell_capabilities.py:92:  Calls the mounted Device Service proxy for the current agent.
+novaic-cortex/novaic_cortex/shell_capabilities.py:94:    "cortex": \"\"\"cortex - Cortex workspace command surface inside the Cortex shell
+novaic-cortex/novaic_cortex/shell_capabilities.py:105:  Reads NOVAIC_API/NOVAIC_TOKEN or $RW/.novaic_env.json.
+novaic-cortex/novaic_cortex/shell_capabilities.py:106:  Uses stable /cortex/ro and /cortex/rw paths; backing temp paths are not part of the contract.
+novaic-cortex/novaic_cortex/shell_capabilities.py:222:def _get_blob(file_url: str) -> tuple[bytes, str]:
+novaic-cortex/novaic_cortex/shell_capabilities.py:223:    if not file_url.startswith("blob://"):
+novaic-cortex/novaic_cortex/shell_capabilities.py:224:        print(f"{{COMMAND}}: audio-qa only supports blob:// file_url", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:226:    rest = file_url.removeprefix("blob://")
+novaic-cortex/novaic_cortex/shell_capabilities.py:228:        print(f"{{COMMAND}}: invalid blob URL {{file_url!r}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:230:    namespace, blob_id = rest.split("/", 1)
+novaic-cortex/novaic_cortex/shell_capabilities.py:236:        f"{{base}}/v1/blobs/"
+novaic-cortex/novaic_cortex/shell_capabilities.py:238:        f"{{urllib.parse.quote(blob_id, safe='')}}"
+novaic-cortex/novaic_cortex/shell_capabilities.py:251:        print(f"{{COMMAND}}: Blob Service HTTP {{exc.code}}: {{detail}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:254:        print(f"{{COMMAND}}: Blob Service connection failed: {{exc}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:259:def _put_blob(data: bytes, *, mime_type: str, filename: str = "", source_ref: str = "") -> dict:
+novaic-cortex/novaic_cortex/shell_capabilities.py:269:    blob_id = f"artifact-{{uuid.uuid4().hex}}"
+novaic-cortex/novaic_cortex/shell_capabilities.py:272:        "namespace": "runtime-artifact",
+novaic-cortex/novaic_cortex/shell_capabilities.py:274:        "blob_id": blob_id,
+novaic-cortex/novaic_cortex/shell_capabilities.py:282:    created = _post_json(base, "/v1/blobs/uploads", create_body, headers)
+novaic-cortex/novaic_cortex/shell_capabilities.py:285:        print(f"{{COMMAND}}: Blob Service did not return upload session_id", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:290:            f"{{base}}/v1/blobs/uploads/{{urllib.parse.quote(session_id, safe='')}}/parts/1",
+novaic-cortex/novaic_cortex/shell_capabilities.py:300:            print(f"{{COMMAND}}: Blob Service HTTP {{exc.code}} uploading part: {{detail}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:303:            print(f"{{COMMAND}}: Blob Service connection failed uploading part: {{exc}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:308:        f"/v1/blobs/uploads/{{urllib.parse.quote(session_id, safe='')}}/complete",
+novaic-cortex/novaic_cortex/shell_capabilities.py:312:    blob = completed.get("blob")
+novaic-cortex/novaic_cortex/shell_capabilities.py:313:    if not isinstance(blob, dict) or not blob.get("blob_ref"):
+novaic-cortex/novaic_cortex/shell_capabilities.py:314:        print(f"{{COMMAND}}: Blob Service complete did not return blob_ref", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:316:    return blob
+novaic-cortex/novaic_cortex/shell_capabilities.py:323:    artifacts: list[dict] | None = None,
+novaic-cortex/novaic_cortex/shell_capabilities.py:332:        "artifacts": artifacts or [],
+novaic-cortex/novaic_cortex/shell_capabilities.py:341:def _artifact_manifest(
+novaic-cortex/novaic_cortex/shell_capabilities.py:382:    blob = _put_blob(
+novaic-cortex/novaic_cortex/shell_capabilities.py:388:    blob_ref = str(blob["blob_ref"])
+novaic-cortex/novaic_cortex/shell_capabilities.py:389:    size = int(blob.get("size") or len(data))
+novaic-cortex/novaic_cortex/shell_capabilities.py:390:    sha = str(blob.get("sha256") or hashlib.sha256(data).hexdigest())
+novaic-cortex/novaic_cortex/shell_capabilities.py:393:    artifact = _artifact_manifest(
+novaic-cortex/novaic_cortex/shell_capabilities.py:394:        uri=blob_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:407:        access={{"display": {{"tool": "display", "args": {{"file_url": blob_ref}}}}}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:412:        text=f"Captured host desktop screenshot: {{width}}x{{height}}, stored as {{blob_ref}}.",
+novaic-cortex/novaic_cortex/shell_capabilities.py:413:        artifacts=[artifact],
+novaic-cortex/novaic_cortex/shell_capabilities.py:414:        events=[{{"type": "device.screenshot.captured", "summary": "Screenshot stored as runtime artifact."}}],
+novaic-cortex/novaic_cortex/shell_capabilities.py:428:    blob = _put_blob(
+novaic-cortex/novaic_cortex/shell_capabilities.py:434:    blob_ref = str(blob["blob_ref"])
+novaic-cortex/novaic_cortex/shell_capabilities.py:435:    size = int(blob.get("size") or len(data))
+novaic-cortex/novaic_cortex/shell_capabilities.py:436:    sha = str(blob.get("sha256") or hashlib.sha256(data).hexdigest())
+novaic-cortex/novaic_cortex/shell_capabilities.py:437:    artifact = _artifact_manifest(
+novaic-cortex/novaic_cortex/shell_capabilities.py:438:        uri=blob_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:450:        text=f"Pulled host desktop file {{path or name}} into runtime artifact {{blob_ref}}.",
+novaic-cortex/novaic_cortex/shell_capabilities.py:451:        artifacts=[artifact],
+novaic-cortex/novaic_cortex/shell_capabilities.py:452:        events=[{{"type": "device.file.pulled", "summary": "File stored as runtime artifact."}}],
+novaic-cortex/novaic_cortex/shell_capabilities.py:838:        print("Usage: agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT|--prompt-file PATH]")
+novaic-cortex/novaic_cortex/shell_capabilities.py:853:    audio_data, mime_type = _get_blob(file_url)
+novaic-cortex/novaic_cortex/shell_capabilities.py:1095:    """Install stable shell capability entry points into the disposable sandbox."""
+novaic-cortex/novaic_cortex/shell_capabilities.py:1104:    """Return only explicit capability-plane env vars accepted by sandbox."""
+novaic-cortex/tests/test_suggest_compact.py:10:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_hooks_limits.py:9:from cortex_tests.workspace_test_utils import make_cortex_with_store, make_workspace_with_store
+novaic-cortex/tests/test_hooks_limits.py:18:    workspace, store = make_workspace_with_store("hooks-limits-created", store=store, hooks=hooks)
+novaic-cortex/tests/test_hooks_limits.py:19:    await workspace.initialize()
+novaic-cortex/tests/test_hooks_limits.py:22:        await workspace.create_scope_projection("s-bad-hook", "Bad hook scope", "")
+novaic-cortex/tests/test_hooks_limits.py:25:    assert await workspace.exists(meta_path)
+novaic-cortex/tests/test_hooks_limits.py:37:    workspace, store = make_workspace_with_store("hooks-limits-async", store=store, hooks=hooks)
+novaic-cortex/tests/test_hooks_limits.py:38:    await workspace.initialize()
+novaic-cortex/tests/test_hooks_limits.py:41:        await workspace.create_scope_projection("s-async-bad", "Async bad", "")
+novaic-cortex/tests/test_hooks_limits.py:43:    assert await workspace.exists("/ro/active/s-async-bad/meta.json")
+novaic-cortex/tests/test_hooks_limits.py:54:    workspace, store = make_workspace_with_store("hooks-limits-archived", store=store, hooks=hooks)
+novaic-cortex/tests/test_hooks_limits.py:55:    await workspace.initialize()
+novaic-cortex/tests/test_hooks_limits.py:57:    await workspace.create_scope_projection("s-arch-hook", "Archive hook scope", "")
+novaic-cortex/tests/test_hooks_limits.py:60:        out = await workspace.archive_root_scope_projection("s-arch-hook", "")
+novaic-cortex/tests/test_hooks_limits.py:73:    workspace, store = make_workspace_with_store("hooks-limits-chain", store=store, hooks=hooks)
+novaic-cortex/tests/test_hooks_limits.py:74:    await workspace.initialize()
+novaic-cortex/tests/test_hooks_limits.py:77:        await workspace.create_scope_projection("s-chain", "Chain", "")
+novaic-cortex/tests/test_hooks_limits.py:92:    await cortex.workspace.create_scope_projection("s-empty", "Empty hooks", "")
+novaic-cortex/tests/test_hooks_limits.py:93:    assert await cortex.workspace.exists("/ro/active/s-empty/meta.json")
+novaic-cortex/tests/test_hooks_limits.py:98:    await cortex.workspace.archive_root_scope_projection("s-empty", "")
+novaic-cortex/tests/test_hooks_limits.py:99:    assert await cortex.workspace.exists("/ro/scopes/s-empty/meta.json")
+novaic-cortex/tests/test_hooks_limits.py:110:    await cortex.workspace.create_scope_projection("s-mono-a", "A", "")
+novaic-cortex/tests/test_hooks_limits.py:118:    await cortex.workspace.create_scope_projection("s-mono-b", "B", "")
+novaic-cortex/tests/test_workspace_authority.py:6:from novaic_cortex.workspace_authority import (
+novaic-cortex/tests/test_workspace_authority.py:8:    build_workspace_file_authority,
+novaic-cortex/tests/test_workspace_authority.py:12:def test_build_workspace_file_authority_uses_explicit_agent_owner_prefix() -> None:
+novaic-cortex/tests/test_workspace_authority.py:13:    authority = build_workspace_file_authority(MemoryStore(), "agent-1")
+novaic-cortex/tests/test_step_write_boundary_residue.py:15:    ("novaic-cortex/novaic_cortex/workspace.py", "async def write_step(self, scope_path: str, step: dict) -> str:"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:16:    ("novaic-cortex/novaic_cortex/workspace.py", "async def write_step_projection(self, scope_path: str, step: dict) -> str:"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:17:    ("novaic-cortex/novaic_cortex/workspace.py", "return await self.write_step(scope_path, step)"),
+novaic-cortex/tests/test_step_write_boundary_residue.py:47:def test_low_level_step_file_writes_stay_inside_workspace_boundary() -> None:
+novaic-cortex/tests/test_step_write_boundary_residue.py:52:        if rel == "novaic-cortex/novaic_cortex/workspace.py":
+novaic-cortex/novaic_cortex/registry.py:6:LogicalFS/Blob authority boundary. Multiple Cortex processes may each hold
+novaic-cortex/novaic_cortex/registry.py:18:from logicalfs import BlobObjectStore
+novaic-cortex/novaic_cortex/registry.py:20:from novaic_cortex.blob_payload import BlobPayloadPolicy, HttpBlobPayloadClient, PayloadBlobClient
+novaic-cortex/novaic_cortex/registry.py:22:from novaic_cortex.workspace import Workspace
+novaic-cortex/novaic_cortex/registry.py:23:from novaic_cortex.workspace_authority import build_workspace_file_authority
+novaic-cortex/novaic_cortex/registry.py:33:        blob_service_url: str,
+novaic-cortex/novaic_cortex/registry.py:36:        payload_blob_client: PayloadBlobClient | None = None,
+novaic-cortex/novaic_cortex/registry.py:37:        payload_blob_policy: BlobPayloadPolicy,
+novaic-cortex/novaic_cortex/registry.py:40:        if not blob_service_url or not blob_service_url.strip():
+novaic-cortex/novaic_cortex/registry.py:41:            raise ValueError("blob_service_url is required")
+novaic-cortex/novaic_cortex/registry.py:42:        self._blob_service_url = blob_service_url.rstrip("/")
+novaic-cortex/novaic_cortex/registry.py:43:        self._payload_blob_client = (
+novaic-cortex/novaic_cortex/registry.py:44:            payload_blob_client
+novaic-cortex/novaic_cortex/registry.py:45:            if payload_blob_client is not None
+novaic-cortex/novaic_cortex/registry.py:46:            else HttpBlobPayloadClient(self._blob_service_url)
+novaic-cortex/novaic_cortex/registry.py:48:        self._payload_blob_policy = payload_blob_policy
+novaic-cortex/novaic_cortex/registry.py:51:        self._stores: dict[str, BlobObjectStore] = {}  # user_id -> LogicalFS object adapter
+novaic-cortex/novaic_cortex/registry.py:52:        self._workspaces: dict[tuple[str, str], Workspace] = {}  # (user_id, agent_id)
+novaic-cortex/novaic_cortex/registry.py:58:    def _get_store(self, user_id: str) -> BlobObjectStore:
+novaic-cortex/novaic_cortex/registry.py:60:            self._stores[user_id] = BlobObjectStore(
+novaic-cortex/novaic_cortex/registry.py:61:                base_url=self._blob_service_url,
+novaic-cortex/novaic_cortex/registry.py:64:            logger.info("[Registry] LogicalFS object adapter created for user=%s", user_id)
+novaic-cortex/novaic_cortex/registry.py:67:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/novaic_cortex/registry.py:69:        if key not in self._workspaces:
+novaic-cortex/novaic_cortex/registry.py:71:            authority = build_workspace_file_authority(object_store, agent_id)
+novaic-cortex/novaic_cortex/registry.py:75:                payload_blob_client=self._payload_blob_client,
+novaic-cortex/novaic_cortex/registry.py:76:                payload_blob_policy=self._payload_blob_policy,
+novaic-cortex/novaic_cortex/registry.py:80:            self._workspaces[key] = ws
+novaic-cortex/novaic_cortex/registry.py:82:        return self._workspaces[key]
+novaic-cortex/novaic_cortex/registry.py:85:def build_workspace_registry(
+novaic-cortex/novaic_cortex/registry.py:86:    blob_service_url: str,
+novaic-cortex/novaic_cortex/registry.py:89:    payload_blob_client: PayloadBlobClient | None = None,
+novaic-cortex/novaic_cortex/registry.py:90:    payload_blob_policy: BlobPayloadPolicy | None = None,
+novaic-cortex/novaic_cortex/registry.py:109:        blob_service_url,
+novaic-cortex/novaic_cortex/registry.py:111:        payload_blob_client=payload_blob_client,
+novaic-cortex/novaic_cortex/registry.py:112:        payload_blob_policy=payload_blob_policy or BlobPayloadPolicy.from_env(),
+novaic-cortex/tests/test_scope_history_api.py:30:        actor="cortex.workspace",
+novaic-cortex/tests/test_scope_history_api.py:48:                "actor": "cortex.workspace",
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:12:from novaic_cortex import workspace as workspace_mod
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:21:def test_workspace_has_no_legacy_root_summary_read_helpers() -> None:
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:22:    assert not hasattr(workspace_mod.Workspace, "read_scope_" + "summary")
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:23:    assert not hasattr(workspace_mod.Workspace, "list_archived_root_" + "summaries")
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:29:        inspect.getsource(workspace_mod.Workspace),
+novaic-cortex/tests/test_context_event_write_authority.py:26:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_context_event_write_authority.py:27:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_write_authority.py:34:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_context_event_write_authority.py:38:async def _workspace(agent_id: str = "agent-1") -> Workspace:
+novaic-cortex/tests/test_context_event_write_authority.py:39:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_context_event_write_authority.py:48:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_steps_write.py:22:from novaic_cortex.blob_payload import BlobPayloadPolicy
+novaic-cortex/tests/test_context_event_api_steps_write.py:26:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_context_event_api_steps_write.py:27:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_api_steps_write.py:34:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_context_event_api_steps_write.py:38:class _FakeBlobClient:
+novaic-cortex/tests/test_context_event_api_steps_write.py:43:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:44:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_context_event_api_steps_write.py:45:        return blob_ref
+novaic-cortex/tests/test_context_event_api_steps_write.py:47:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_context_event_api_steps_write.py:48:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_context_event_api_steps_write.py:51:async def _workspace(agent_id: str = "agent-1", **kwargs) -> Workspace:
+novaic-cortex/tests/test_context_event_api_steps_write.py:52:    ws, _store = make_workspace_with_store(agent_id, **kwargs)
+novaic-cortex/tests/test_context_event_api_steps_write.py:82:async def _reopen_workspace(ws: Workspace, memory_store, **kwargs) -> Workspace:
+novaic-cortex/tests/test_context_event_api_steps_write.py:90:    reopened_ws, _ = make_workspace_with_store(
+novaic-cortex/tests/test_context_event_api_steps_write.py:103:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_steps_write.py:123:                    "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:139:            "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:147:    assert index[0]["has_artifacts"] is True
+novaic-cortex/tests/test_context_event_api_steps_write.py:152:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_steps_write.py:175:async def test_steps_write_records_deepest_scope_and_final_blob_payload_ref() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:176:    blob = _FakeBlobClient()
+novaic-cortex/tests/test_context_event_api_steps_write.py:177:    ws, memory_store = make_workspace_with_store(
+novaic-cortex/tests/test_context_event_api_steps_write.py:179:        payload_blob_client=blob,
+novaic-cortex/tests/test_context_event_api_steps_write.py:180:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_context_event_api_steps_write.py:197:    reopened_ws = await _reopen_workspace(
+novaic-cortex/tests/test_context_event_api_steps_write.py:200:        payload_blob_client=blob,
+novaic-cortex/tests/test_context_event_api_steps_write.py:201:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_context_event_api_steps_write.py:233:            "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:236:        "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:240:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:242:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:243:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:244:    assert await reopened_ws.read_payload(child["child_path"], "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_context_event_api_steps_write.py:245:    manifest = reopened_ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_context_event_api_steps_write.py:255:    blob = _FakeBlobClient()
+novaic-cortex/tests/test_context_event_api_steps_write.py:256:    ws, _memory_store = make_workspace_with_store(
+novaic-cortex/tests/test_context_event_api_steps_write.py:258:        payload_blob_client=blob,
+novaic-cortex/tests/test_context_event_api_steps_write.py:259:        payload_blob_policy=BlobPayloadPolicy(threshold_bytes=4),
+novaic-cortex/tests/test_context_event_api_steps_write.py:302:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_steps_write.py:338:    ws, memory_store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_api_steps_write.py:353:    reopened_ws = await _reopen_workspace(ws, memory_store)
+novaic-cortex/tests/test_pr67_wake_child_api.py:28:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_pr67_wake_child_api.py:29:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_pr67_wake_child_api.py:36:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_pr67_wake_child_api.py:40:async def _workspace(agent_id: str = "agent-1") -> Workspace:
+novaic-cortex/tests/test_pr67_wake_child_api.py:41:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_pr67_wake_child_api.py:50:    ws = await _workspace()
+novaic-cortex/tests/test_pr67_wake_child_api.py:97:    ws = await _workspace()
+novaic-cortex/tests/test_pr67_wake_child_api.py:138:    ws = await _workspace()
+novaic-cortex/tests/test_pr67_wake_child_api.py:175:    ws = await _workspace()
+novaic-cortex/tests/test_pr67_wake_child_api.py:200:    ws = await _workspace("status-sqlite-agent")
+novaic-cortex/tests/test_pr67_wake_child_api.py:232:    ws = await _workspace("status-usage-agent")
+novaic-cortex/tests/test_pr67_wake_child_api.py:276:    ws = await _workspace()
+novaic-cortex/tests/test_step_result_projection.py:3:    format_for_display_perception_llm,
+novaic-cortex/tests/test_step_result_projection.py:18:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:19:    assert parsed["display_files"][0]["url"] == "data:image/jpeg;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:33:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:34:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:44:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:45:    assert parsed["display_files"][0]["url"] == "https://example.com/img.png"
+novaic-cortex/tests/test_step_result_projection.py:55:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_step_result_projection.py:64:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_step_result_projection.py:73:        "display_files": []
+novaic-cortex/tests/test_step_result_projection.py:84:def test_display_perception_projection_data_url():
+novaic-cortex/tests/test_step_result_projection.py:87:        "display_files": [
+novaic-cortex/tests/test_step_result_projection.py:91:    formatted_str = format_for_display_perception_llm(result_data)
+novaic-cortex/tests/test_step_result_projection.py:100:def test_empty_display_perception_projection_is_diagnostic_not_ok():
+novaic-cortex/tests/test_step_result_projection.py:101:    formatted = json.loads(format_for_display_perception_llm({
+novaic-cortex/tests/test_step_result_projection.py:103:        "display_files": [],
+novaic-cortex/novaic_cortex/api.py:48:from novaic_cortex.workspace import PayloadReadError
+novaic-cortex/novaic_cortex/api.py:61:def _sandbox_executor_not_configured() -> Any:
+novaic-cortex/novaic_cortex/api.py:62:    raise RuntimeError("Sandbox executor factory is not configured; Cortex must use sandboxd")
+novaic-cortex/novaic_cortex/api.py:65:_sandbox_process_runner_factory: Callable[[], Any] = _sandbox_executor_not_configured
+novaic-cortex/novaic_cortex/api.py:119:def set_sandbox_process_runner_factory(factory: Callable[[], Any] | None) -> None:
+novaic-cortex/novaic_cortex/api.py:120:    global _sandbox_process_runner_factory
+novaic-cortex/novaic_cortex/api.py:121:    _sandbox_process_runner_factory = factory or _sandbox_executor_not_configured
+novaic-cortex/novaic_cortex/api.py:128:        workspace=ws,
+novaic-cortex/novaic_cortex/api.py:129:        sandbox_process_runner=_sandbox_process_runner_factory(),
+novaic-cortex/novaic_cortex/api.py:292:def _get_workspace(user_id: str, agent_id: str):
+novaic-cortex/novaic_cortex/api.py:295:    return _registry.get_workspace(user_id, agent_id)
+novaic-cortex/novaic_cortex/api.py:322:    ws = _get_workspace(claims.user_id, claims.agent_id)
+novaic-cortex/novaic_cortex/api.py:341:    ws = _get_workspace(claims.user_id, claims.agent_id)
+novaic-cortex/novaic_cortex/api.py:354:    ws = _get_workspace(claims.user_id, claims.agent_id)
+novaic-cortex/novaic_cortex/api.py:362:    ws = _get_workspace(claims.user_id, claims.agent_id)
+novaic-cortex/novaic_cortex/api.py:369:    ws = _get_workspace(claims.user_id, claims.agent_id)
+novaic-cortex/novaic_cortex/api.py:376:    ws = _get_workspace(claims.user_id, claims.agent_id)
+novaic-cortex/novaic_cortex/api.py:552:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:681:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:814:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:888:    """Read the materialized context.jsonl projection for diagnostics/idempotency.
+novaic-cortex/novaic_cortex/api.py:893:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:906:    """Append a ContextEvent and materialize its context.jsonl projection."""
+novaic-cortex/novaic_cortex/api.py:907:    # The materialized context projection uses append-line writes; serialize per
+novaic-cortex/novaic_cortex/api.py:910:        ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:930:    """Batch append ContextEvents and materialize their context.jsonl projection."""
+novaic-cortex/novaic_cortex/api.py:932:        ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:981:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:988:            workspace=ws,
+novaic-cortex/novaic_cortex/api.py:1080:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1217:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1322:    stack read from the materialized scope projection. Runtime calls it every
+novaic-cortex/novaic_cortex/api.py:1328:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1352:            workspace=ws,
+novaic-cortex/novaic_cortex/api.py:1396:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1409:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1429:      ``workspace.append_input_message_ids``). Idempotent in the strong
+novaic-cortex/novaic_cortex/api.py:1470:        ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1519:        ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1551:        ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1593:            ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1628:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1635:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1646:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1814:            "payload_blob_client_missing": 502,
+novaic-cortex/novaic_cortex/api.py:1815:            "payload_blob_fetch_failed": 502,
+novaic-cortex/novaic_cortex/api.py:1835:        format_for_display_perception_llm,
+novaic-cortex/novaic_cortex/api.py:1839:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1850:    if projection == "display_perception":
+novaic-cortex/novaic_cortex/api.py:1851:        content = format_for_display_perception_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1862:                "allowed": ["history", "current_tool_result", "display_perception"],
+novaic-cortex/novaic_cortex/api.py:1873:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1940:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:1973:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:2117:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:2217:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:2264:    # Best archive label: first user message from the materialized context projection.
+novaic-cortex/novaic_cortex/api.py:2316:    ws = _get_workspace(req.user_id, req.agent_id)
+novaic-cortex/novaic_cortex/api.py:2394:    - Blob Service reachable: cheap ``/api/health`` probe.
+novaic-cortex/novaic_cortex/api.py:2397:    whether the blame is Blob Service or config.
+novaic-cortex/novaic_cortex/api.py:2410:            blob_url = getattr(_registry, "_blob_service_url", "")
+novaic-cortex/novaic_cortex/api.py:2411:            if not blob_url:
+novaic-cortex/novaic_cortex/api.py:2412:                checks["blob_service"] = "missing-url"
+novaic-cortex/novaic_cortex/api.py:2417:                        resp = await client.get(f"{blob_url}/api/health")
+novaic-cortex/novaic_cortex/api.py:2419:                    checks["blob_service"] = "ok"
+novaic-cortex/novaic_cortex/api.py:2421:                    checks["blob_service"] = f"error: {type(exc).__name__}: {str(exc)[:120]}"
+novaic-cortex/novaic_cortex/api.py:2424:            checks["blob_service"] = f"probe-failed: {type(exc).__name__}"
+novaic-cortex/novaic_cortex/runtime.py:18:from novaic_cortex.sandbox import Sandbox
+novaic-cortex/novaic_cortex/runtime.py:21:from novaic_cortex.workspace import Workspace
+novaic-cortex/novaic_cortex/runtime.py:36:        workspace: Workspace,
+novaic-cortex/novaic_cortex/runtime.py:39:        sandbox_process_runner: object | None = None,
+novaic-cortex/novaic_cortex/runtime.py:44:        self._sandbox_process_runner = sandbox_process_runner
+novaic-cortex/novaic_cortex/runtime.py:45:        self.workspace = workspace
+novaic-cortex/novaic_cortex/runtime.py:47:        self.sandbox = Sandbox(
+novaic-cortex/novaic_cortex/runtime.py:48:            self.workspace,
+novaic-cortex/novaic_cortex/runtime.py:50:            max_wall_timeout=cfg0.sandbox_timeout_max,
+novaic-cortex/novaic_cortex/runtime.py:51:            process_runner=self._sandbox_process_runner,
+novaic-cortex/novaic_cortex/runtime.py:55:        await self.workspace.initialize()
+novaic-cortex/novaic_cortex/runtime.py:57:        cfg = await load_engine_config(self.workspace)
+novaic-cortex/novaic_cortex/runtime.py:59:        self.sandbox = Sandbox(
+novaic-cortex/novaic_cortex/runtime.py:60:            self.workspace,
+novaic-cortex/novaic_cortex/runtime.py:62:            max_wall_timeout=cfg.sandbox_timeout_max,
+novaic-cortex/novaic_cortex/runtime.py:63:            process_runner=self._sandbox_process_runner,
+novaic-cortex/novaic_cortex/runtime.py:75:            await self.workspace._sys_write_json(f"/ro/config/tools/{name}.json", schema)
+novaic-cortex/novaic_cortex/runtime.py:77:        await self.workspace._sys_write_json("/ro/config/tools/_index.json", names)
+novaic-cortex/novaic_cortex/runtime.py:88:            entries = await self.workspace.list_dir(tools_dir)
+novaic-cortex/novaic_cortex/runtime.py:94:                    raw = await self.workspace.read(entry.path)
+novaic-cortex/novaic_cortex/runtime.py:104:            skills = await self.workspace.list_dir("/ro/skills/")
+novaic-cortex/novaic_cortex/runtime.py:110:                if await self.workspace.exists(skill_tools):
+novaic-cortex/novaic_cortex/runtime.py:112:                        tool_entries = await self.workspace.list_dir(skill_tools)
+novaic-cortex/novaic_cortex/runtime.py:118:                                raw = await self.workspace.read(entry.path)
+novaic-cortex/novaic_cortex/runtime.py:165:        text = await self.workspace.read(path)
+novaic-cortex/novaic_cortex/runtime.py:174:        await self.workspace.write(path, content)
+novaic-cortex/novaic_cortex/runtime.py:186:            timeout = cfg.sandbox_timeout_default if cfg is not None else 30
+novaic-cortex/novaic_cortex/runtime.py:188:            timeout = min(timeout, cfg.sandbox_timeout_max)
+novaic-cortex/novaic_cortex/runtime.py:189:        result = await self.sandbox.exec(command, timeout, extra_env=env)
+novaic-cortex/novaic_cortex/runtime.py:208:        await self.workspace._sys_write(base + "SKILL.md", skill_md)
+novaic-cortex/novaic_cortex/runtime.py:209:        await self.workspace._sys_write_json(base + "meta.json", meta)
+novaic-cortex/novaic_cortex/runtime.py:228:        objects = await self.workspace.list_dir(prefix)
+novaic-cortex/novaic_cortex/runtime.py:236:                    meta_raw = await self.workspace.read(obj.path.rstrip("/") + "/meta.json")
+novaic-cortex/novaic_cortex/runtime.py:242:        await self.workspace._sys_write(prefix + "_index.md", "\n".join(lines))
+novaic-cortex/tests/test_workspace.py:10:from novaic_cortex import blob_payload
+novaic-cortex/tests/test_workspace.py:11:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_workspace.py:16:    ws, store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_workspace.py:25:    ws, store = make_workspace_with_store("a2")
+novaic-cortex/tests/test_workspace.py:41:async def test_workspace_uses_injected_dependencies_instead_of_env(monkeypatch) -> None:
+novaic-cortex/tests/test_workspace.py:43:        blob_payload.HttpBlobPayloadClient,
+novaic-cortex/tests/test_workspace.py:48:        blob_payload.BlobPayloadPolicy,
+novaic-cortex/tests/test_workspace.py:53:    ws, store = make_workspace_with_store("clocked", clock=lambda: next(times))
+novaic-cortex/tests/test_workspace.py:82:    ws, store = make_workspace_with_store("a3")
+novaic-cortex/tests/test_workspace.py:108:    ws, store = make_workspace_with_store("a5")
+novaic-cortex/tests/test_workspace.py:117:    ws, store = make_workspace_with_store("a6")
+novaic-cortex/tests/test_workspace.py:166:    ws, store = make_workspace_with_store("a7")
+novaic-cortex/tests/test_workspace.py:198:    ws, store = make_workspace_with_store("a8")
+novaic-cortex/tests/test_workspace.py:209:    ws, store = make_workspace_with_store("a4")
+novaic-cortex/novaic_cortex/main_cortex.py:10:from sandbox_sdk import SandboxdClient
+novaic-cortex/novaic_cortex/main_cortex.py:12:from novaic_cortex.api import app, set_registry, set_internal_key, set_sandbox_process_runner_factory
+novaic-cortex/novaic_cortex/main_cortex.py:25:        "--blob-service-url",
+novaic-cortex/novaic_cortex/main_cortex.py:27:        help="Blob Service base URL. Cortex never talks to a physical object store directly.",
+novaic-cortex/novaic_cortex/main_cortex.py:30:        "--sandboxd-url",
+novaic-cortex/novaic_cortex/main_cortex.py:32:        help="Sandboxd base URL. Cortex server shell execution must go through sandboxd.",
+novaic-cortex/novaic_cortex/main_cortex.py:74:    from novaic_cortex.registry import build_workspace_registry
+novaic-cortex/novaic_cortex/main_cortex.py:92:        build_workspace_registry(
+novaic-cortex/novaic_cortex/main_cortex.py:93:            cli_args.blob_service_url,
+novaic-cortex/novaic_cortex/main_cortex.py:97:    set_sandbox_process_runner_factory(
+novaic-cortex/novaic_cortex/main_cortex.py:98:        lambda: SandboxdClient(cli_args.sandboxd_url)
+novaic-cortex/novaic_cortex/main_cortex.py:100:    logger.info("[Cortex] Sandbox process runner installed (sandboxd=%s)", cli_args.sandboxd_url)
+novaic-cortex/tests/test_compaction_meta.py:12:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_compaction_meta.py:13:from cortex_tests.workspace_test_utils import make_cortex_with_store
+novaic-cortex/tests/test_compaction_meta.py:20:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_compaction_meta.py:44:    _install_api_registry(cortex.workspace)
+novaic-cortex/tests/test_compaction_meta.py:47:    await cortex.workspace.create_scope(scope_id, name="Compaction meta", skill="")
+novaic-cortex/tests/test_compaction_meta.py:48:    await cortex.workspace.append_line(
+novaic-cortex/novaic_cortex/store.py:5:files are owned by LogicalFS authority adapters; Blob object storage is a
+novaic-cortex/novaic_cortex/store.py:21:    """Pure KV object storage. Knows nothing about workspaces or scopes."""
+novaic-cortex/novaic_cortex/store.py:124:    enter through LogicalFS authority with an explicit object-store adapter.
+novaic-cortex/novaic_cortex/step_result_projection.py:29:def _tool_output_artifact_line(artifact: Dict[str, Any]) -> str:
+novaic-cortex/novaic_cortex/step_result_projection.py:30:    uri = str(artifact.get("uri") or "").strip()
+novaic-cortex/novaic_cortex/step_result_projection.py:31:    modality = str(artifact.get("modality") or "resource").strip() or "resource"
+novaic-cortex/novaic_cortex/step_result_projection.py:32:    name = str(artifact.get("name") or "").strip()
+novaic-cortex/novaic_cortex/step_result_projection.py:33:    mime_type = str(artifact.get("mime_type") or "").strip()
+novaic-cortex/novaic_cortex/step_result_projection.py:34:    summary = str(artifact.get("summary") or "").strip()
+novaic-cortex/novaic_cortex/step_result_projection.py:35:    size = _tool_output_size_label(artifact.get("size_bytes"))
+novaic-cortex/novaic_cortex/step_result_projection.py:36:    label = name or uri or "artifact"
+novaic-cortex/novaic_cortex/step_result_projection.py:43:    access = artifact.get("access") if isinstance(artifact.get("access"), dict) else {}
+novaic-cortex/novaic_cortex/step_result_projection.py:44:    display = access.get("display") if isinstance(access.get("display"), dict) else {}
+novaic-cortex/novaic_cortex/step_result_projection.py:45:    display_args = display.get("args") if isinstance(display.get("args"), dict) else {}
+novaic-cortex/novaic_cortex/step_result_projection.py:46:    display_url = display_args.get("file_url") or uri
+novaic-cortex/novaic_cortex/step_result_projection.py:51:    if display_url:
+novaic-cortex/novaic_cortex/step_result_projection.py:52:        parts.append(f'Access: display(file_url="{display_url}")')
+novaic-cortex/novaic_cortex/step_result_projection.py:62:    artifacts = raw.get("artifacts") if isinstance(raw.get("artifacts"), list) else []
+novaic-cortex/novaic_cortex/step_result_projection.py:63:    for artifact in artifacts:
+novaic-cortex/novaic_cortex/step_result_projection.py:64:        if isinstance(artifact, dict):
+novaic-cortex/novaic_cortex/step_result_projection.py:65:            text_parts.append(_tool_output_artifact_line(artifact))
+novaic-cortex/novaic_cortex/step_result_projection.py:84:        "display_files": [],
+novaic-cortex/novaic_cortex/step_result_projection.py:85:        "artifacts": artifacts,
+novaic-cortex/novaic_cortex/step_result_projection.py:95:    1. 统一格式: {text, files_created, display_files}
+novaic-cortex/novaic_cortex/step_result_projection.py:100:        {"text": "...", "files_created": [...], "display_files": [...]}
+novaic-cortex/novaic_cortex/step_result_projection.py:103:        return {"text": "", "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:114:        return {"text": raw, "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:117:        return {"text": str(raw), "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:126:    if "display_files" in raw or "files_created" in raw:
+novaic-cortex/novaic_cortex/step_result_projection.py:139:            "display_files": raw.get("display_files") or [],
+novaic-cortex/novaic_cortex/step_result_projection.py:146:        display_files = []
+novaic-cortex/novaic_cortex/step_result_projection.py:156:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:163:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:170:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:178:            "display_files": display_files,
+novaic-cortex/novaic_cortex/step_result_projection.py:183:        return {"text": str(raw["text"]), "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:199:    return {"text": serialized, "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:205:    include_display: bool,
+novaic-cortex/novaic_cortex/step_result_projection.py:218:    if include_display:
+novaic-cortex/novaic_cortex/step_result_projection.py:219:        display_files = result_data.get("display_files", [])
+novaic-cortex/novaic_cortex/step_result_projection.py:220:        for f in display_files:
+novaic-cortex/novaic_cortex/step_result_projection.py:238:                # Normal URL: represent unresolved display media as text.
+novaic-cortex/novaic_cortex/step_result_projection.py:254:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:262:    """Format current non-display tool output as manifest/text only."""
+novaic-cortex/novaic_cortex/step_result_projection.py:264:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:267:def format_for_display_perception_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:272:    """Format explicit display perception output with allowed visual content."""
+novaic-cortex/novaic_cortex/step_result_projection.py:276:        include_display=True,
+novaic-cortex/novaic_cortex/step_result_projection.py:294:    displays = result_data.get("display_files", [])
+novaic-cortex/novaic_cortex/step_result_projection.py:295:    artifacts = result_data.get("artifacts", [])
+novaic-cortex/novaic_cortex/step_result_projection.py:300:    if displays:
+novaic-cortex/novaic_cortex/step_result_projection.py:301:        parts.append(f"[{len(displays)} media items]")
+novaic-cortex/novaic_cortex/step_result_projection.py:302:    if artifacts:
+novaic-cortex/novaic_cortex/step_result_projection.py:303:        parts.append(f"[{len(artifacts)} artifacts]")
+novaic-cortex/novaic_cortex/logical_fs.py:1:"""Cortex adapter for the business-agnostic LogicalFS substrate.
+novaic-cortex/novaic_cortex/logical_fs.py:5:in ``novaic-logicalfs``.
+novaic-cortex/novaic_cortex/logical_fs.py:16:from logicalfs import (
+novaic-cortex/novaic_cortex/logical_fs.py:17:    LocalLogicalFSProvider,
+novaic-cortex/novaic_cortex/logical_fs.py:18:    LogicalFSEnv,
+novaic-cortex/novaic_cortex/logical_fs.py:19:    LogicalFSFile,
+novaic-cortex/novaic_cortex/logical_fs.py:20:    LogicalFSLayout,
+novaic-cortex/novaic_cortex/logical_fs.py:21:    LogicalFSPatch,
+novaic-cortex/novaic_cortex/logical_fs.py:22:    LogicalFSSnapshot,
+novaic-cortex/novaic_cortex/logical_fs.py:23:    LogicalFSView as SubstrateLogicalFSView,
+novaic-cortex/novaic_cortex/logical_fs.py:26:from sandbox_sdk import SandboxBindMount
+novaic-cortex/novaic_cortex/logical_fs.py:29:from novaic_cortex.workspace import Workspace
+novaic-cortex/novaic_cortex/logical_fs.py:44:def _is_workspace_keep_placeholder(path: str, data: bytes) -> bool:
+novaic-cortex/novaic_cortex/logical_fs.py:48:def _workspace_path_from_stable_rw(path: str) -> str:
+novaic-cortex/novaic_cortex/logical_fs.py:52:        raise ValueError(f"LogicalFS patch path must be under {STABLE_CORTEX_RW}: {path!r}")
+novaic-cortex/novaic_cortex/logical_fs.py:57:class LogicalFSCapabilities:
+novaic-cortex/novaic_cortex/logical_fs.py:59:    true_stable_path_mount: bool
+novaic-cortex/novaic_cortex/logical_fs.py:65:class LogicalFSView:
+novaic-cortex/novaic_cortex/logical_fs.py:66:    substrate: SubstrateLogicalFSView
+novaic-cortex/novaic_cortex/logical_fs.py:67:    capabilities: LogicalFSCapabilities
+novaic-cortex/novaic_cortex/logical_fs.py:98:def _detect_logicalfs_capabilities() -> LogicalFSCapabilities:
+novaic-cortex/novaic_cortex/logical_fs.py:99:    return LogicalFSCapabilities(
+novaic-cortex/novaic_cortex/logical_fs.py:100:        provider="sandboxd-logicalfs",
+novaic-cortex/novaic_cortex/logical_fs.py:101:        true_stable_path_mount=True,
+novaic-cortex/novaic_cortex/logical_fs.py:104:            "Cortex projects Workspace data into LogicalFS and asks sandboxd to "
+novaic-cortex/novaic_cortex/logical_fs.py:105:            "bind-mount the materialized view at /cortex. Cortex does not "
+novaic-cortex/novaic_cortex/logical_fs.py:111:class MountNamespaceLogicalFS:
+novaic-cortex/novaic_cortex/logical_fs.py:112:    """Cortex Workspace adapter over the generic LogicalFS substrate."""
+novaic-cortex/novaic_cortex/logical_fs.py:116:        workspace: Workspace,
+novaic-cortex/novaic_cortex/logical_fs.py:122:        provider: LocalLogicalFSProvider | None = None,
+novaic-cortex/novaic_cortex/logical_fs.py:124:        self._workspace = workspace
+novaic-cortex/novaic_cortex/logical_fs.py:128:        self._provider = provider or LocalLogicalFSProvider()
+novaic-cortex/novaic_cortex/logical_fs.py:129:        self.capabilities = _detect_logicalfs_capabilities()
+novaic-cortex/novaic_cortex/logical_fs.py:146:        files: dict[tuple[bool, str], LogicalFSFile],
+novaic-cortex/novaic_cortex/logical_fs.py:150:            data = await self._workspace.read_bytes(logical_path)
+novaic-cortex/novaic_cortex/logical_fs.py:154:        if relpath and not _is_workspace_keep_placeholder(relpath, data):
+novaic-cortex/novaic_cortex/logical_fs.py:155:            files[(writable, relpath)] = LogicalFSFile(path=relpath, data=data, writable=writable)
+novaic-cortex/novaic_cortex/logical_fs.py:159:        files: dict[tuple[bool, str], LogicalFSFile],
+novaic-cortex/novaic_cortex/logical_fs.py:164:        for relpath, data in await self._workspace.read_tree_bytes(
+novaic-cortex/novaic_cortex/logical_fs.py:171:            if target and not _is_workspace_keep_placeholder(target, data):
+novaic-cortex/novaic_cortex/logical_fs.py:172:                files[(writable, target)] = LogicalFSFile(path=target, data=data, writable=writable)
+novaic-cortex/novaic_cortex/logical_fs.py:176:        files: dict[tuple[bool, str], LogicalFSFile],
+novaic-cortex/novaic_cortex/logical_fs.py:183:            entries = await self._workspace.list_dir(prefix)
+novaic-cortex/novaic_cortex/logical_fs.py:193:        files: dict[tuple[bool, str], LogicalFSFile],
+novaic-cortex/novaic_cortex/logical_fs.py:199:        The writable tree can contain large generated artifacts. Shell startup
+novaic-cortex/novaic_cortex/logical_fs.py:202:        mounted by default. Any new file the command writes under /rw is still
+novaic-cortex/novaic_cortex/logical_fs.py:216:    async def _workspace_snapshot(
+novaic-cortex/novaic_cortex/logical_fs.py:221:    ) -> LogicalFSSnapshot:
+novaic-cortex/novaic_cortex/logical_fs.py:222:        files: dict[tuple[bool, str], LogicalFSFile] = {}
+novaic-cortex/novaic_cortex/logical_fs.py:225:        # materialized all of /ro, which made every shell call proportional to
+novaic-cortex/novaic_cortex/logical_fs.py:230:        # explicit API reads, not implicit full mounts.
+novaic-cortex/novaic_cortex/logical_fs.py:248:            files[(True, relpath.lstrip("/"))] = LogicalFSFile(
+novaic-cortex/novaic_cortex/logical_fs.py:253:        return LogicalFSSnapshot(files=tuple(files.values()))
+novaic-cortex/novaic_cortex/logical_fs.py:256:    def _snapshot_bytes(snapshot: LogicalFSSnapshot) -> int:
+novaic-cortex/novaic_cortex/logical_fs.py:259:    def _rw_layout(self, extra_env: Mapping[str, str] | None) -> LogicalFSLayout:
+novaic-cortex/novaic_cortex/logical_fs.py:265:            "RW_ARTIFACTS": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/artifacts",
+novaic-cortex/novaic_cortex/logical_fs.py:268:        return LogicalFSLayout(
+novaic-cortex/novaic_cortex/logical_fs.py:279:    def _execution_env(self, extra_env: Mapping[str, str] | None, token: str | None) -> LogicalFSEnv:
+novaic-cortex/novaic_cortex/logical_fs.py:283:            "CORTEX_TRUE_STABLE_PATH_MOUNT": "1" if self.capabilities.true_stable_path_mount else "0",
+novaic-cortex/novaic_cortex/logical_fs.py:288:        return LogicalFSEnv(values)
+novaic-cortex/novaic_cortex/logical_fs.py:305:    ) -> LogicalFSView:
+novaic-cortex/novaic_cortex/logical_fs.py:307:        snapshot = await self._workspace_snapshot(
+novaic-cortex/novaic_cortex/logical_fs.py:316:                    f"logicalfs sync would read {total} bytes from workspace files, "
+novaic-cortex/novaic_cortex/logical_fs.py:320:        substrate = self._provider.materialize(
+novaic-cortex/novaic_cortex/logical_fs.py:328:        return LogicalFSView(substrate=substrate, capabilities=self.capabilities)
+novaic-cortex/novaic_cortex/logical_fs.py:330:    def process_mount_plan(self, view: LogicalFSView) -> SandboxBindMount:
+novaic-cortex/novaic_cortex/logical_fs.py:331:        if not view.capabilities.true_stable_path_mount:
+novaic-cortex/novaic_cortex/logical_fs.py:335:            mount_point=STABLE_CORTEX_ROOT,
+novaic-cortex/novaic_cortex/logical_fs.py:339:    def process_cwd(self, view: LogicalFSView) -> Path:
+novaic-cortex/novaic_cortex/logical_fs.py:342:    def sanitize_output(self, text: str, view: LogicalFSView) -> str:
+novaic-cortex/novaic_cortex/logical_fs.py:345:    async def _apply_patch(self, patch: LogicalFSPatch) -> None:
+novaic-cortex/novaic_cortex/logical_fs.py:347:            await self._workspace.delete(_workspace_path_from_stable_rw(path))
+novaic-cortex/novaic_cortex/logical_fs.py:349:            await self._workspace.write_bytes(_workspace_path_from_stable_rw(item.path), item.data)
+novaic-cortex/novaic_cortex/logical_fs.py:351:    async def release_view(self, view: LogicalFSView) -> list[str]:
+novaic-cortex/novaic_cortex/logical_fs.py:354:        return [_workspace_path_from_stable_rw(path) for path in patch.changed_paths()]
+novaic-cortex/novaic_cortex/logical_fs.py:362:    "LogicalFSCapabilities",
+novaic-cortex/novaic_cortex/logical_fs.py:363:    "LogicalFSView",
+novaic-cortex/novaic_cortex/logical_fs.py:364:    "MountNamespaceLogicalFS",
+novaic-cortex/novaic_cortex/logical_fs.py:365:    "_detect_logicalfs_capabilities",
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:22:from novaic_cortex.workspace import Workspace
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:23:from cortex_tests.workspace_test_utils import make_workspace_with_store
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:30:    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:34:async def _workspace(agent_id: str = "agent-1") -> Workspace:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:35:    ws, _store = make_workspace_with_store(agent_id)
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:67:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:109:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:142:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:174:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:195:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:232:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:273:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:332:async def test_skill_begin_parent_selection_uses_sqlite_after_workspace_reopen() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:333:    ws, memory_store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:356:    reopened_ws, _ = make_workspace_with_store(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:384:async def test_skill_end_lifo_uses_sqlite_after_workspace_reopen() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:385:    ws, memory_store = make_workspace_with_store("agent-1")
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:408:    reopened_ws, _ = make_workspace_with_store(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:449:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:488:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:518:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:580:    ws = await _workspace()
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:620:    empty_ws = await _workspace()
+novaic-cortex/novaic_cortex/scope_state.py:4:a raw string written by three different workspace methods (``create_scope``,
+novaic-cortex/novaic_cortex/scope_state.py:15:        workspace, scope_path,
+novaic-cortex/novaic_cortex/scope_state.py:145:    workspace: Any,
+novaic-cortex/novaic_cortex/scope_state.py:158:        workspace:  ``novaic_cortex.workspace.Workspace`` (provides
+novaic-cortex/novaic_cortex/scope_state.py:165:        actor:      Who initiated (``"cortex.api"``, ``"cortex.workspace"``).
+novaic-cortex/novaic_cortex/scope_state.py:181:    meta = await workspace.read_session_meta(scope_path)
+novaic-cortex/novaic_cortex/scope_state.py:197:            await workspace.update_session_meta(scope_path, dict(extra))
+novaic-cortex/novaic_cortex/scope_state.py:198:            meta = await workspace.read_session_meta(scope_path)
+novaic-cortex/novaic_cortex/scope_state.py:210:    new_meta = await workspace.update_session_meta(scope_path, updates)
+novaic-cortex/novaic_cortex/scope_state.py:252:async def mark_archived(workspace, scope_path: str, *, reason: str, actor: str,
+novaic-cortex/novaic_cortex/scope_state.py:263:        workspace, scope_path,
+novaic-cortex/novaic_cortex/scope_state.py:276:    Used by ``workspace.create_scope`` instead of the bare string literal

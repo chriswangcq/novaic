@@ -1,0 +1,562 @@
+## Blob files
+novaic-blob-service/novaic-blob-service.spec
+novaic-blob-service/scripts/blob_service_restore.sh
+novaic-blob-service/scripts/blob_service_backup.sh
+novaic-blob-service/scripts/smoke_blob_service.sh
+novaic-blob-service/scripts/verify_contract_version_blob.sh
+novaic-blob-service/blob_service/routes.py
+novaic-blob-service/blob_service/main.py
+novaic-blob-service/blob_service/contracts.py
+novaic-blob-service/blob_service/storage.py
+novaic-blob-service/blob_service/backends.py
+novaic-blob-service/blob_service/multipart_storage.py
+novaic-blob-service/blob_service/__init__.py
+novaic-blob-service/blob_service/blob_storage.py
+novaic-blob-service/blob_service/limits.py
+novaic-blob-service/blob_service/object_storage.py
+novaic-blob-service/README.md
+novaic-blob-service/tests/test_backends.py
+novaic-blob-service/tests/test_blob_service.py
+novaic-blob-service/tests/conftest.py
+novaic-blob-service/main_blob_service.py
+novaic-blob-service/requirements.txt
+novaic-blob-service/pytest.ini
+
+## Blob suspicious hits
+novaic-blob-service/novaic-blob-service.spec:2:# novaic-blob-service - Blob Service
+novaic-blob-service/novaic-blob-service.spec:3:# Usage: ./novaic-blob-service --port 19995 --data-dir ~/.novaic
+novaic-blob-service/novaic-blob-service.spec:6:    ['main_blob_service.py'],
+novaic-blob-service/novaic-blob-service.spec:10:        ('blob_service', 'blob_service'),
+novaic-blob-service/novaic-blob-service.spec:21:        'blob_service',
+novaic-blob-service/novaic-blob-service.spec:22:        'blob_service.main',
+novaic-blob-service/novaic-blob-service.spec:23:        'blob_service.storage',
+novaic-blob-service/novaic-blob-service.spec:24:        'blob_service.routes',
+novaic-blob-service/novaic-blob-service.spec:40:    name='novaic-blob-service',
+novaic-blob-service/scripts/blob_service_restore.sh:5:BACKUP_ROOT="${DATA_DIR}/backups/blob-service"
+novaic-blob-service/scripts/blob_service_restore.sh:64:echo "BLOB_SERVICE_RESTORE_OK=true"
+novaic-blob-service/scripts/blob_service_backup.sh:34:  BACKUP_ROOT="$DATA_DIR/backups/blob-service"
+novaic-blob-service/scripts/blob_service_backup.sh:64:    "domain": "blob-service",
+novaic-blob-service/scripts/blob_service_backup.sh:72:echo "BLOB_SERVICE_BACKUP_OK=true"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:2:# verify_contract_version_blob.sh
+novaic-blob-service/scripts/verify_contract_version_blob.sh:3:# Starts Blob Service, checks /api/health returns contract_version=blob/v1
+novaic-blob-service/scripts/verify_contract_version_blob.sh:5:#   BLOB_SERVICE_CONTRACT_VERSION_FIELD=PASS
+novaic-blob-service/scripts/verify_contract_version_blob.sh:6:#   BLOB_SERVICE_CONTRACT_VERSION=PASS
+novaic-blob-service/scripts/verify_contract_version_blob.sh:9:ROOT_BLOB="$(cd "$(dirname "$0")/.." && pwd)"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:10:TMP_ROOT="${TMPDIR:-/tmp}/novaic-blob-service-contract-$$"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:11:DATA_BLOB="$TMP_ROOT/data"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:12:PORT_BLOB="${BLOB_SERVICE_PORT:-$((32000 + (RANDOM % 300)))}"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:13:export PYTHONPATH="$ROOT_BLOB/../novaic-common:${PYTHONPATH:-}"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:15:mkdir -p "$DATA_BLOB"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:16:cleanup() { if [[ -n "${BLOB_PID:-}" ]]; then kill "$BLOB_PID" >/dev/null 2>&1 || true; fi; }
+novaic-blob-service/scripts/verify_contract_version_blob.sh:19:pushd "$ROOT_BLOB" >/dev/null
+novaic-blob-service/scripts/verify_contract_version_blob.sh:20:NOVAIC_DATA_DIR="$DATA_BLOB" BLOB_SERVICE_PORT="$PORT_BLOB" \
+novaic-blob-service/scripts/verify_contract_version_blob.sh:21:  python -m blob_service.main --host 127.0.0.1 --port "$PORT_BLOB" --data-dir "$DATA_BLOB" \
+novaic-blob-service/scripts/verify_contract_version_blob.sh:23:BLOB_PID=$!
+novaic-blob-service/scripts/verify_contract_version_blob.sh:27:  if curl -fsS "http://127.0.0.1:${PORT_BLOB}/api/health" >/dev/null 2>&1; then break; fi
+novaic-blob-service/scripts/verify_contract_version_blob.sh:28:  [[ "$i" -eq 30 ]] && { echo "Blob Service startup failed" >&2; exit 1; }
+novaic-blob-service/scripts/verify_contract_version_blob.sh:32:HEALTH_JSON="$(curl -fsS "http://127.0.0.1:${PORT_BLOB}/api/health")"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:38:version_correct = body.get("contract_version") == "blob/v1"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:39:retired_facade_key = "legacy" + "_facade"
+novaic-blob-service/scripts/verify_contract_version_blob.sh:40:print("BLOB_SERVICE_CONTRACT_VERSION_FIELD=PASS" if field_present else "BLOB_SERVICE_CONTRACT_VERSION_FIELD=FAIL")
+novaic-blob-service/scripts/verify_contract_version_blob.sh:41:print("BLOB_SERVICE_CONTRACT_VERSION=PASS" if version_correct else f"BLOB_SERVICE_CONTRACT_VERSION=FAIL  # got {body.get('contract_version')!r}")
+novaic-blob-service/scripts/verify_contract_version_blob.sh:42:print("BLOB_SERVICE_NO_LEGACY_FACADE=PASS" if retired_facade_key not in body else f"BLOB_SERVICE_NO_LEGACY_FACADE=FAIL  # got {body.get(retired_facade_key)!r}")
+novaic-blob-service/README.md:1:# novaic-blob-service
+novaic-blob-service/README.md:3:Blob Service（默认 `:19995`）：大对象字节基础设施。
+novaic-blob-service/README.md:4:HTTP API 是 `/v1/blobs/*` 和 `/v1/objects/*`，业务层保存
+novaic-blob-service/README.md:5:`blob://{namespace}/{blob_id}`，不保存存储后端私有 URL。
+novaic-blob-service/README.md:6:服务内部边界统一使用 `blob_service.contracts` 中的显式 input
+novaic-blob-service/README.md:12:- `POST /v1/blobs/uploads`：创建 multipart upload session。
+novaic-blob-service/README.md:13:- `PUT /v1/blobs/uploads/{session_id}/parts/{part_number}`：上传 raw bytes part。
+novaic-blob-service/README.md:14:- `POST /v1/blobs/uploads/{session_id}/complete`：完成 session 并生成稳定 BlobRef。
+novaic-blob-service/README.md:15:- `POST /v1/blobs/uploads/{session_id}/abort`：中止 session。
+novaic-blob-service/README.md:16:- `GET /v1/blobs/uploads`：列出当前租户 upload sessions。
+novaic-blob-service/README.md:17:- `POST /v1/blobs/uploads/_expire`：回收过期未完成 sessions。
+novaic-blob-service/README.md:19:- `POST /v1/blobs/{namespace}/{blob_id}/presign`：返回显式
+novaic-blob-service/README.md:27:- `NOVAIC_BLOB_MAX_OBJECT_PUT_BYTES=67108864`
+novaic-blob-service/README.md:28:- `NOVAIC_BLOB_MAX_MULTIPART_PART_BYTES=16777216`
+novaic-blob-service/README.md:29:- `NOVAIC_BLOB_MAX_MULTIPART_COMPLETED_BYTES=2147483648`
+novaic-blob-service/README.md:32:生命周期日志只记录 tenant、namespace、session/blob id、size 和结果，不记录 raw bytes。
+novaic-blob-service/README.md:34:父仓库文档：`docs/reference/blob-service.md`。
+novaic-blob-service/scripts/smoke_blob_service.sh:5:TMP_ROOT="${TMPDIR:-/tmp}/novaic-blob-service-smoke-$$"
+novaic-blob-service/scripts/smoke_blob_service.sh:8:PORT="${BLOB_SERVICE_PORT:-19995}"
+novaic-blob-service/scripts/smoke_blob_service.sh:9:HOST="${BLOB_SERVICE_HOST:-127.0.0.1}"
+novaic-blob-service/scripts/smoke_blob_service.sh:10:REPORT_PATH="$ROOT_DIR/artifacts/blob-service-smoke-latest.md"
+novaic-blob-service/scripts/smoke_blob_service.sh:11:TENANT_ID="${BLOB_TENANT_ID:-smoke-tenant}"
+novaic-blob-service/scripts/smoke_blob_service.sh:12:BLOB_ID="${BLOB_ID:-smoke-blob}"
+novaic-blob-service/scripts/smoke_blob_service.sh:13:PAYLOAD="blob-service-smoke"
+novaic-blob-service/scripts/smoke_blob_service.sh:18:LOG_FILE="$LOG_DIR/blob-service.log"
+novaic-blob-service/scripts/smoke_blob_service.sh:27:  NOVAIC_DATA_DIR="$DATA_DIR" python -m blob_service.main --host "$HOST" --port "$PORT" --data-dir "$DATA_DIR" >"$LOG_FILE" 2>&1
+novaic-blob-service/scripts/smoke_blob_service.sh:36:    echo "Blob Service did not become healthy in time" >&2
+novaic-blob-service/scripts/smoke_blob_service.sh:42:CREATE_RESP="$(curl -fsS -X POST "http://${HOST}:${PORT}/v1/blobs/uploads" \
+novaic-blob-service/scripts/smoke_blob_service.sh:45:  -d "{\"namespace\":\"user-file\",\"mime_type\":\"text/plain\",\"blob_id\":\"${BLOB_ID}\",\"expected_size\":${#PAYLOAD}}")"
+novaic-blob-service/scripts/smoke_blob_service.sh:54:curl -fsS -X PUT "http://${HOST}:${PORT}/v1/blobs/uploads/${SESSION_ID}/parts/1" \
+novaic-blob-service/scripts/smoke_blob_service.sh:59:COMPLETE_RESP="$(curl -fsS -X POST "http://${HOST}:${PORT}/v1/blobs/uploads/${SESSION_ID}/complete" \
+novaic-blob-service/scripts/smoke_blob_service.sh:64:BLOB_REF="$(python - "$COMPLETE_RESP" <<'PY'
+novaic-blob-service/scripts/smoke_blob_service.sh:67:print(json.loads(sys.argv[1])["blob"]["blob_ref"])
+novaic-blob-service/scripts/smoke_blob_service.sh:71:curl -fsS "http://${HOST}:${PORT}/v1/blobs/user-file/${BLOB_ID}/info" \
+novaic-blob-service/scripts/smoke_blob_service.sh:73:curl -fsS "http://${HOST}:${PORT}/v1/blobs/user-file/${BLOB_ID}" \
+novaic-blob-service/scripts/smoke_blob_service.sh:74:  -H "X-Tenant-ID: ${TENANT_ID}" | grep -q "blob-service-smoke"
+novaic-blob-service/scripts/smoke_blob_service.sh:75:curl -fsS -X POST "http://${HOST}:${PORT}/v1/blobs/user-file/${BLOB_ID}/presign" \
+novaic-blob-service/scripts/smoke_blob_service.sh:79:  echo "# Blob Service Smoke Evidence"
+novaic-blob-service/scripts/smoke_blob_service.sh:81:  echo "- command: \`bash scripts/smoke_blob_service.sh\`"
+novaic-blob-service/scripts/smoke_blob_service.sh:82:  echo "- expected_marker: \`BLOB_SERVICE_SMOKE_OK=true\`"
+novaic-blob-service/scripts/smoke_blob_service.sh:83:  echo "- BLOB_SERVICE_HEALTH=PASS"
+novaic-blob-service/scripts/smoke_blob_service.sh:84:  echo "- BLOB_SERVICE_WRITE_READ=PASS"
+novaic-blob-service/scripts/smoke_blob_service.sh:85:  echo "- blob_ref: \`$BLOB_REF\`"
+novaic-blob-service/scripts/smoke_blob_service.sh:89:echo "BLOB_SERVICE_SMOKE_OK=true"
+novaic-blob-service/scripts/smoke_blob_service.sh:90:echo "BLOB_SERVICE_EVIDENCE_REPORT=$REPORT_PATH"
+novaic-blob-service/tests/test_backends.py:2:from blob_service.backends import DiskBackend, OssS3Backend, OssS3Config
+novaic-blob-service/tests/test_backends.py:69:def test_oss_s3_backend_uses_aliyun_compatible_client_config():
+novaic-blob-service/main_blob_service.py:2:"""Blob Service entry point."""
+novaic-blob-service/main_blob_service.py:6:# Add current directory to path for imports
+novaic-blob-service/main_blob_service.py:19:from blob_service.main import main
+novaic-blob-service/blob_service/limits.py:1:"""Blob Service payload limits and public failure semantics."""
+novaic-blob-service/blob_service/limits.py:11:class BlobSizeLimitError(ValueError):
+novaic-blob-service/blob_service/limits.py:12:    """Payload exceeds the configured Blob Service limit."""
+novaic-blob-service/blob_service/limits.py:22:class BlobLimits:
+novaic-blob-service/blob_service/limits.py:29:    raw = environ.get(name)
+novaic-blob-service/blob_service/limits.py:30:    if raw is None or raw == "":
+novaic-blob-service/blob_service/limits.py:33:        value = int(raw)
+novaic-blob-service/blob_service/limits.py:41:def load_blob_limits_from_env(environ: Mapping[str, str]) -> BlobLimits:
+novaic-blob-service/blob_service/limits.py:42:    """Resolve Blob limits once at the service entrypoint."""
+novaic-blob-service/blob_service/limits.py:43:    return BlobLimits(
+novaic-blob-service/blob_service/limits.py:44:        max_object_put_bytes=_env_int(environ, "NOVAIC_BLOB_MAX_OBJECT_PUT_BYTES", 64 * MiB),
+novaic-blob-service/blob_service/limits.py:45:        max_multipart_part_bytes=_env_int(environ, "NOVAIC_BLOB_MAX_MULTIPART_PART_BYTES", 16 * MiB),
+novaic-blob-service/blob_service/limits.py:46:        max_multipart_completed_bytes=_env_int(environ, "NOVAIC_BLOB_MAX_MULTIPART_COMPLETED_BYTES", 2 * 1024 * MiB),
+novaic-blob-service/blob_service/limits.py:52:        raise BlobSizeLimitError(field=field, size=size, limit=limit)
+novaic-blob-service/blob_service/storage.py:1:"""Blob Service byte backend selection.
+novaic-blob-service/blob_service/storage.py:4:``BlobStorage``. It does not parse product file URLs or produce compatibility
+novaic-blob-service/blob_service/storage.py:15:from .backends import DiskBackend, OssS3Backend, OssS3Config, StorageBackend
+novaic-blob-service/blob_service/storage.py:21:class BlobBackendConfig:
+novaic-blob-service/blob_service/storage.py:26:def load_blob_backend_config_from_env(
+novaic-blob-service/blob_service/storage.py:28:) -> BlobBackendConfig:
+novaic-blob-service/blob_service/storage.py:31:    backend_type = (environ.get("NOVAIC_BLOB_BACKEND") or "disk").lower()
+novaic-blob-service/blob_service/storage.py:33:    return BlobBackendConfig(backend_type=backend_type, oss_config=oss_config)
+novaic-blob-service/blob_service/storage.py:36:class BlobByteStore:
+novaic-blob-service/blob_service/storage.py:37:    """Small container for the configured raw-byte backend."""
+novaic-blob-service/blob_service/storage.py:43:        backend_config: BlobBackendConfig,
+novaic-blob-service/blob_service/storage.py:44:        backend: StorageBackend | None = None,
+novaic-blob-service/blob_service/storage.py:50:            logger.info("[BlobByteStore] Using explicit backend: %s", type(backend).__name__)
+novaic-blob-service/blob_service/storage.py:57:            logger.info("[BlobByteStore] Using backend: OssS3Backend")
+novaic-blob-service/blob_service/storage.py:60:            logger.info("[BlobByteStore] Using backend: DiskBackend(base_dir=%s)", self.base_dir)
+novaic-blob-service/blob_service/storage.py:62:            raise ValueError(f"unsupported blob backend: {backend_config.backend_type!r}")
+novaic-blob-service/blob_service/__init__.py:1:"""NovaIC Blob Service."""
+novaic-blob-service/blob_service/__init__.py:3:from .blob_storage import BlobStorage
+novaic-blob-service/blob_service/__init__.py:4:from .object_storage import ObjectStorage
+novaic-blob-service/blob_service/__init__.py:5:from .routes import create_blob_router
+novaic-blob-service/blob_service/__init__.py:6:from .storage import BlobByteStore
+novaic-blob-service/blob_service/__init__.py:9:    "BlobByteStore",
+novaic-blob-service/blob_service/__init__.py:10:    "BlobStorage",
+novaic-blob-service/blob_service/__init__.py:11:    "ObjectStorage",
+novaic-blob-service/blob_service/__init__.py:12:    "create_blob_router",
+novaic-blob-service/blob_service/blob_storage.py:1:"""Blob Service storage facade over the existing byte backend.
+novaic-blob-service/blob_service/blob_storage.py:3:This module is the new infrastructure boundary. It stores raw bytes plus
+novaic-blob-service/blob_service/blob_storage.py:4:metadata and returns shared ``blob://`` references. It deliberately does not
+novaic-blob-service/blob_service/blob_storage.py:16:from common.contracts.blob import (
+novaic-blob-service/blob_service/blob_storage.py:17:    make_blob_ref,
+novaic-blob-service/blob_service/blob_storage.py:18:    parse_blob_ref,
+novaic-blob-service/blob_service/blob_storage.py:19:    validate_blob_metadata,
+novaic-blob-service/blob_service/blob_storage.py:22:from .contracts import BlobIdentity, BlobPresignInput, BlobPutInput
+novaic-blob-service/blob_service/blob_storage.py:23:from .storage import BlobByteStore
+novaic-blob-service/blob_service/blob_storage.py:36:def _blob_rel_path(namespace: str, blob_id: str) -> str:
+novaic-blob-service/blob_service/blob_storage.py:37:    return f"blobs/{namespace}/{blob_id}"
+novaic-blob-service/blob_service/blob_storage.py:40:def _blob_meta_rel_path(namespace: str, blob_id: str) -> str:
+novaic-blob-service/blob_service/blob_storage.py:41:    return f"blobs/{namespace}/{blob_id}.meta.json"
+novaic-blob-service/blob_service/blob_storage.py:44:BlobIdProvider = Callable[[bytes, float], str]
+novaic-blob-service/blob_service/blob_storage.py:48:def generate_blob_id(data: bytes, now: float) -> str:
+novaic-blob-service/blob_service/blob_storage.py:53:class BlobStorage:
+novaic-blob-service/blob_service/blob_storage.py:54:    """Infrastructure blob storage backed by the configured byte backend."""
+novaic-blob-service/blob_service/blob_storage.py:58:        file_storage: BlobByteStore,
+novaic-blob-service/blob_service/blob_storage.py:61:        blob_id_provider: BlobIdProvider,
+novaic-blob-service/blob_service/blob_storage.py:63:        self._file_storage = file_storage
+novaic-blob-service/blob_service/blob_storage.py:65:        self._blob_id_provider = blob_id_provider
+novaic-blob-service/blob_service/blob_storage.py:68:    def file_storage(self) -> BlobByteStore:
+novaic-blob-service/blob_service/blob_storage.py:69:        return self._file_storage
+novaic-blob-service/blob_service/blob_storage.py:71:    def put_blob(self, request: BlobPutInput) -> dict[str, Any]:
+novaic-blob-service/blob_service/blob_storage.py:74:            raise ValueError("blob data is required")
+novaic-blob-service/blob_service/blob_storage.py:77:        blob_id = request.blob_id or self._blob_id_provider(request.data, now)
+novaic-blob-service/blob_service/blob_storage.py:78:        blob_ref = make_blob_ref(request.namespace, blob_id)
+novaic-blob-service/blob_service/blob_storage.py:83:            "blob_id": blob_id,
+novaic-blob-service/blob_service/blob_storage.py:84:            "blob_ref": blob_ref,
+novaic-blob-service/blob_service/blob_storage.py:96:        validate_blob_metadata(metadata)
+novaic-blob-service/blob_service/blob_storage.py:98:        rel_path = _blob_rel_path(request.namespace, blob_id)
+novaic-blob-service/blob_service/blob_storage.py:99:        meta_path = _blob_meta_rel_path(request.namespace, blob_id)
+novaic-blob-service/blob_service/blob_storage.py:100:        self._file_storage.backend.save_bytes(request.data, tenant_id, rel_path)
+novaic-blob-service/blob_service/blob_storage.py:101:        self._file_storage.backend.save_bytes(
+novaic-blob-service/blob_service/blob_storage.py:108:    def stat_blob(self, request: BlobIdentity) -> Optional[dict[str, Any]]:
+novaic-blob-service/blob_service/blob_storage.py:110:        blob_ref = make_blob_ref(request.namespace, request.blob_id)
+novaic-blob-service/blob_service/blob_storage.py:111:        parsed = parse_blob_ref(blob_ref)
+novaic-blob-service/blob_service/blob_storage.py:112:        meta = self._load_metadata(parsed.namespace, parsed.blob_id, tenant_id)
+novaic-blob-service/blob_service/blob_storage.py:115:        validate_blob_metadata(meta)
+novaic-blob-service/blob_service/blob_storage.py:118:    def get_blob(self, request: BlobIdentity) -> Optional[bytes]:
+novaic-blob-service/blob_service/blob_storage.py:120:        blob_ref = make_blob_ref(request.namespace, request.blob_id)
+novaic-blob-service/blob_service/blob_storage.py:121:        parsed = parse_blob_ref(blob_ref)
+novaic-blob-service/blob_service/blob_storage.py:122:        return self._file_storage.backend.load_bytes(
+novaic-blob-service/blob_service/blob_storage.py:124:            _blob_rel_path(parsed.namespace, parsed.blob_id),
+novaic-blob-service/blob_service/blob_storage.py:127:    def delete_blob(self, request: BlobIdentity) -> bool:
+novaic-blob-service/blob_service/blob_storage.py:129:        blob_ref = make_blob_ref(request.namespace, request.blob_id)
+novaic-blob-service/blob_service/blob_storage.py:130:        parsed = parse_blob_ref(blob_ref)
+novaic-blob-service/blob_service/blob_storage.py:131:        deleted_data = self._file_storage.backend.delete(
+novaic-blob-service/blob_service/blob_storage.py:133:            _blob_rel_path(parsed.namespace, parsed.blob_id),
+novaic-blob-service/blob_service/blob_storage.py:135:        self._file_storage.backend.delete(
+novaic-blob-service/blob_service/blob_storage.py:137:            _blob_meta_rel_path(parsed.namespace, parsed.blob_id),
+novaic-blob-service/blob_service/blob_storage.py:141:    def presign_blob(self, request: BlobPresignInput) -> Optional[str]:
+novaic-blob-service/blob_service/blob_storage.py:143:        blob_ref = make_blob_ref(request.namespace, request.blob_id)
+novaic-blob-service/blob_service/blob_storage.py:144:        parsed = parse_blob_ref(blob_ref)
+novaic-blob-service/blob_service/blob_storage.py:145:        if not hasattr(self._file_storage.backend, "presign"):
+novaic-blob-service/blob_service/blob_storage.py:147:        return self._file_storage.backend.presign(
+novaic-blob-service/blob_service/blob_storage.py:149:            _blob_rel_path(parsed.namespace, parsed.blob_id),
+novaic-blob-service/blob_service/blob_storage.py:153:    def _load_metadata(self, namespace: str, blob_id: str, tenant_id: str) -> Optional[dict[str, Any]]:
+novaic-blob-service/blob_service/blob_storage.py:154:        raw = self._file_storage.backend.load_bytes(
+novaic-blob-service/blob_service/blob_storage.py:156:            _blob_meta_rel_path(namespace, blob_id),
+novaic-blob-service/blob_service/blob_storage.py:158:        if raw is None:
+novaic-blob-service/blob_service/blob_storage.py:160:        return json.loads(raw.decode("utf-8"))
+novaic-blob-service/blob_service/main.py:2:Blob Service - 独立运行入口
+novaic-blob-service/blob_service/main.py:6:  python -m blob_service.main
+novaic-blob-service/blob_service/main.py:7:  python -m blob_service.main --port 9100 --base-dir /path/to/data
+novaic-blob-service/blob_service/main.py:14:from .limits import load_blob_limits_from_env
+novaic-blob-service/blob_service/main.py:15:from .routes import BlobRuntimeDependencies, create_blob_router
+novaic-blob-service/blob_service/main.py:16:from .storage import BlobByteStore, load_blob_backend_config_from_env
+novaic-blob-service/blob_service/main.py:30:    """Create the Blob Service app."""
+novaic-blob-service/blob_service/main.py:38:    storage = BlobByteStore(
+novaic-blob-service/blob_service/main.py:40:        backend_config=load_blob_backend_config_from_env(os.environ),
+novaic-blob-service/blob_service/main.py:42:    deps = BlobRuntimeDependencies.system(limits=load_blob_limits_from_env(os.environ))
+novaic-blob-service/blob_service/main.py:44:    app = FastAPI(title="NovaIC Blob Service", version="2.0.0")
+novaic-blob-service/blob_service/main.py:50:            "service": "blob-service",
+novaic-blob-service/blob_service/main.py:51:            "contract_version": "blob/v1",
+novaic-blob-service/blob_service/main.py:54:    app.include_router(create_blob_router(storage, deps=deps))
+novaic-blob-service/blob_service/main.py:55:    app.state.storage = storage
+novaic-blob-service/blob_service/main.py:57:    logger.info(f"[BlobService] Started, base_dir={files_dir}")
+novaic-blob-service/blob_service/main.py:63:    parser = argparse.ArgumentParser(description="NovaIC Blob Service")
+novaic-blob-service/blob_service/main.py:66:    parser.add_argument("--data-dir", type=str, required=True, help="Data directory (required)")
+novaic-blob-service/blob_service/main.py:69:    logger.info(f"[BlobService] Starting on {args.host}:{args.port}")
+novaic-blob-service/blob_service/backends.py:10:class StorageBackend(Protocol):
+novaic-blob-service/blob_service/backends.py:33:    """Local byte backend used by tests and local development."""
+novaic-blob-service/blob_service/backends.py:201:        """Generate a presigned GET URL for direct client download."""
+novaic-blob-service/blob_service/routes.py:1:"""Blob Service HTTP routes."""
+novaic-blob-service/blob_service/routes.py:13:from common.contracts.blob import make_blob_ref
+novaic-blob-service/blob_service/routes.py:15:from .blob_storage import BlobIdProvider, BlobStorage, Clock, generate_blob_id
+novaic-blob-service/blob_service/routes.py:17:    BlobIdentity,
+novaic-blob-service/blob_service/routes.py:18:    BlobPresignInput,
+novaic-blob-service/blob_service/routes.py:32:from .limits import BlobLimits, BlobSizeLimitError, check_size
+novaic-blob-service/blob_service/routes.py:33:from .multipart_storage import (
+novaic-blob-service/blob_service/routes.py:38:    MultipartStorage,
+novaic-blob-service/blob_service/routes.py:40:from .object_storage import ObjectStorage
+novaic-blob-service/blob_service/routes.py:41:from .storage import BlobByteStore
+novaic-blob-service/blob_service/routes.py:47:class BlobRuntimeDependencies:
+novaic-blob-service/blob_service/routes.py:49:    blob_id_provider: BlobIdProvider
+novaic-blob-service/blob_service/routes.py:51:    limits: BlobLimits
+novaic-blob-service/blob_service/routes.py:54:    def system(cls, *, limits: BlobLimits) -> "BlobRuntimeDependencies":
+novaic-blob-service/blob_service/routes.py:57:            blob_id_provider=generate_blob_id,
+novaic-blob-service/blob_service/routes.py:74:    blob_id: Optional[str] = None
+novaic-blob-service/blob_service/routes.py:98:    if isinstance(exc, BlobSizeLimitError):
+novaic-blob-service/blob_service/routes.py:107:def create_blob_router(storage: BlobByteStore, *, deps: BlobRuntimeDependencies) -> APIRouter:
+novaic-blob-service/blob_service/routes.py:108:    """Create the new Blob Service API router."""
+novaic-blob-service/blob_service/routes.py:111:    blob_storage = BlobStorage(
+novaic-blob-service/blob_service/routes.py:112:        storage,
+novaic-blob-service/blob_service/routes.py:114:        blob_id_provider=deps.blob_id_provider,
+novaic-blob-service/blob_service/routes.py:116:    multipart_storage = MultipartStorage(
+novaic-blob-service/blob_service/routes.py:117:        storage,
+novaic-blob-service/blob_service/routes.py:121:        blob_storage=blob_storage,
+novaic-blob-service/blob_service/routes.py:123:    object_storage = ObjectStorage(storage)
+novaic-blob-service/blob_service/routes.py:124:    router = APIRouter(prefix="/v1/blobs", tags=["blobs"])
+novaic-blob-service/blob_service/routes.py:134:            return multipart_storage.create_upload(MultipartCreateInput(
+novaic-blob-service/blob_service/routes.py:138:                blob_id=req.blob_id,
+novaic-blob-service/blob_service/routes.py:148:        except (MultipartError, BlobSizeLimitError, ValueError) as exc:
+novaic-blob-service/blob_service/routes.py:159:            return {"uploads": multipart_storage.list_uploads(MultipartListInput(tenant_id=tid, status=status))}
+novaic-blob-service/blob_service/routes.py:160:        except (MultipartError, BlobSizeLimitError, ValueError) as exc:
+novaic-blob-service/blob_service/routes.py:170:            return multipart_storage.expire_uploads(TenantScope(tenant_id=tid))
+novaic-blob-service/blob_service/routes.py:171:        except (MultipartError, BlobSizeLimitError, ValueError) as exc:
+novaic-blob-service/blob_service/routes.py:182:            return multipart_storage.get_upload_status(MultipartSessionInput(tenant_id=tid, session_id=session_id))
+novaic-blob-service/blob_service/routes.py:183:        except (MultipartError, BlobSizeLimitError, ValueError) as exc:
+novaic-blob-service/blob_service/routes.py:199:            return multipart_storage.upload_part(MultipartPartInput(
+novaic-blob-service/blob_service/routes.py:206:        except (MultipartError, BlobSizeLimitError, ValueError) as exc:
+novaic-blob-service/blob_service/routes.py:218:            return multipart_storage.complete_upload(MultipartCompleteInput(
+novaic-blob-service/blob_service/routes.py:224:        except (MultipartError, BlobSizeLimitError, ValueError) as exc:
+novaic-blob-service/blob_service/routes.py:235:            return multipart_storage.abort_upload(MultipartSessionInput(tenant_id=tid, session_id=session_id))
+novaic-blob-service/blob_service/routes.py:236:        except (MultipartError, BlobSizeLimitError, ValueError) as exc:
+novaic-blob-service/blob_service/routes.py:239:    @router.get("/{namespace}/{blob_id}/info")
+novaic-blob-service/blob_service/routes.py:240:    async def blob_info(
+novaic-blob-service/blob_service/routes.py:242:        blob_id: str,
+novaic-blob-service/blob_service/routes.py:248:            blob_ref = make_blob_ref(namespace, blob_id)
+novaic-blob-service/blob_service/routes.py:249:            metadata = blob_storage.stat_blob(BlobIdentity(tenant_id=tid, namespace=namespace, blob_id=blob_id))
+novaic-blob-service/blob_service/routes.py:253:            raise HTTPException(status_code=404, detail="Blob not found")
+novaic-blob-service/blob_service/routes.py:256:    @router.get("/{namespace}/{blob_id}")
+novaic-blob-service/blob_service/routes.py:257:    async def get_blob(
+novaic-blob-service/blob_service/routes.py:259:        blob_id: str,
+novaic-blob-service/blob_service/routes.py:265:            blob_ref = make_blob_ref(namespace, blob_id)
+novaic-blob-service/blob_service/routes.py:266:            identity = BlobIdentity(tenant_id=tid, namespace=namespace, blob_id=blob_id)
+novaic-blob-service/blob_service/routes.py:267:            metadata = blob_storage.stat_blob(identity)
+novaic-blob-service/blob_service/routes.py:268:            data = blob_storage.get_blob(identity)
+novaic-blob-service/blob_service/routes.py:272:            raise HTTPException(status_code=404, detail="Blob not found")
+novaic-blob-service/blob_service/routes.py:274:        return Response(content=data, media_type=metadata.get("mime_type") or "application/octet-stream")
+novaic-blob-service/blob_service/routes.py:276:    @router.post("/{namespace}/{blob_id}/presign")
+novaic-blob-service/blob_service/routes.py:277:    async def presign_blob(
+novaic-blob-service/blob_service/routes.py:279:        blob_id: str,
+novaic-blob-service/blob_service/routes.py:286:            blob_ref = make_blob_ref(namespace, blob_id)
+novaic-blob-service/blob_service/routes.py:287:            url = blob_storage.presign_blob(BlobPresignInput(
+novaic-blob-service/blob_service/routes.py:290:                blob_id=blob_id,
+novaic-blob-service/blob_service/routes.py:296:            blob_ref=blob_ref,
+novaic-blob-service/blob_service/routes.py:298:            blob_id=blob_id,
+novaic-blob-service/blob_service/routes.py:303:    @router.delete("/{namespace}/{blob_id}")
+novaic-blob-service/blob_service/routes.py:304:    async def delete_blob(
+novaic-blob-service/blob_service/routes.py:306:        blob_id: str,
+novaic-blob-service/blob_service/routes.py:312:            blob_ref = make_blob_ref(namespace, blob_id)
+novaic-blob-service/blob_service/routes.py:313:            deleted = blob_storage.delete_blob(BlobIdentity(tenant_id=tid, namespace=namespace, blob_id=blob_id))
+novaic-blob-service/blob_service/routes.py:317:            raise HTTPException(status_code=404, detail="Blob not found")
+novaic-blob-service/blob_service/routes.py:318:        return {"deleted": True, "blob_ref": blob_ref}
+novaic-blob-service/blob_service/routes.py:333:        except BlobSizeLimitError as exc:
+novaic-blob-service/blob_service/routes.py:335:                "blob_object_put_rejected tenant=%s namespace=%s key=%s reason=size_limit size=%s limit=%s",
+novaic-blob-service/blob_service/routes.py:344:            result = object_storage.put_object(ObjectPutInput(
+novaic-blob-service/blob_service/routes.py:352:                "blob_object_put tenant=%s namespace=%s key=%s size=%s",
+novaic-blob-service/blob_service/routes.py:374:                keys = object_storage.list_recursive(ObjectRecursiveListInput(
+novaic-blob-service/blob_service/routes.py:380:            entries = object_storage.list_objects(ObjectListInput(
+novaic-blob-service/blob_service/routes.py:398:            count = object_storage.move_prefix(ObjectMovePrefixInput(
+novaic-blob-service/blob_service/routes.py:417:            info = object_storage.stat_object(ObjectIdentity(
+novaic-blob-service/blob_service/routes.py:437:            data = object_storage.get_object(ObjectIdentity(
+novaic-blob-service/blob_service/routes.py:447:        return Response(content=data, media_type="application/octet-stream")
+novaic-blob-service/blob_service/routes.py:458:            deleted = object_storage.delete_object(ObjectIdentity(
+novaic-blob-service/tests/test_blob_service.py:1:"""Tests for novaic-blob-service Blob Service."""
+novaic-blob-service/tests/test_blob_service.py:12:def _upload_blob(client: TestClient, *, tenant_id: str, blob_id: str, payload: bytes) -> dict:
+novaic-blob-service/tests/test_blob_service.py:14:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:19:            "blob_id": blob_id,
+novaic-blob-service/tests/test_blob_service.py:27:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:34:        f"/v1/blobs/uploads/{session_id}/complete",
+novaic-blob-service/tests/test_blob_service.py:39:    return completed.json()["blob"]
+novaic-blob-service/tests/test_blob_service.py:43:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:45:    app = create_app(base_dir="/tmp/test-blob-service-health")
+novaic-blob-service/tests/test_blob_service.py:51:    assert body["service"] == "blob-service"
+novaic-blob-service/tests/test_blob_service.py:52:    assert body.get("contract_version") == "blob/v1"
+novaic-blob-service/tests/test_blob_service.py:53:    assert "legacy_facade" not in body
+novaic-blob-service/tests/test_blob_service.py:56:def test_blob_roundtrip_v1_api(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:57:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:62:    body = _upload_blob(client, tenant_id=_UID, blob_id="unit-blob-1", payload=b"blob-round-trip")
+novaic-blob-service/tests/test_blob_service.py:63:    assert body["blob_ref"] == "blob://user-file/unit-blob-1"
+novaic-blob-service/tests/test_blob_service.py:64:    assert body["size"] == len(b"blob-round-trip")
+novaic-blob-service/tests/test_blob_service.py:70:        "/v1/blobs/user-file/unit-blob-1/info",
+novaic-blob-service/tests/test_blob_service.py:74:    assert info.json()["blob_ref"] == "blob://user-file/unit-blob-1"
+novaic-blob-service/tests/test_blob_service.py:77:        "/v1/blobs/user-file/unit-blob-1",
+novaic-blob-service/tests/test_blob_service.py:81:    assert downloaded.content == b"blob-round-trip"
+novaic-blob-service/tests/test_blob_service.py:84:        "/v1/blobs/user-file/unit-blob-1/presign",
+novaic-blob-service/tests/test_blob_service.py:91:def test_blob_download_access_contract_makes_proxy_explicit():
+novaic-blob-service/tests/test_blob_service.py:92:    from blob_service.contracts import BlobDownloadMode, build_download_access
+novaic-blob-service/tests/test_blob_service.py:95:        blob_ref="blob://user-file/a",
+novaic-blob-service/tests/test_blob_service.py:97:        blob_id="a",
+novaic-blob-service/tests/test_blob_service.py:99:        presigned_url="https://storage.example/a",
+novaic-blob-service/tests/test_blob_service.py:101:    assert presign.mode == BlobDownloadMode.PRESIGN
+novaic-blob-service/tests/test_blob_service.py:103:        "blob_ref": "blob://user-file/a",
+novaic-blob-service/tests/test_blob_service.py:104:        "url": "https://storage.example/a",
+novaic-blob-service/tests/test_blob_service.py:110:        blob_ref="blob://user-file/a",
+novaic-blob-service/tests/test_blob_service.py:112:        blob_id="a",
+novaic-blob-service/tests/test_blob_service.py:116:    assert proxy.mode == BlobDownloadMode.PROXY
+novaic-blob-service/tests/test_blob_service.py:118:        "blob_ref": "blob://user-file/a",
+novaic-blob-service/tests/test_blob_service.py:119:        "url": "/v1/blobs/user-file/a",
+novaic-blob-service/tests/test_blob_service.py:124:def test_blob_api_rejects_invalid_namespace_and_requires_tenant(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:125:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:131:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:140:    info = client.get("/v1/blobs/user-file/missing/info")
+novaic-blob-service/tests/test_blob_service.py:144:def test_blob_api_rejects_path_unsafe_tenant_and_has_no_base64_upload_route(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:145:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:151:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:160:    removed_upload_route = client.post("/v1/blobs", json={})
+novaic-blob-service/tests/test_blob_service.py:164:def test_blob_storage_is_tenant_isolated_on_disk_backend(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:165:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:169:    _upload_blob(client, tenant_id="tenant-a", blob_id="shared-blob-id", payload=b"tenant-isolated")
+novaic-blob-service/tests/test_blob_service.py:172:        "/v1/blobs/user-file/shared-blob-id",
+novaic-blob-service/tests/test_blob_service.py:179:        "/v1/blobs/user-file/shared-blob-id",
+novaic-blob-service/tests/test_blob_service.py:183:    assert (tmp_path / "files" / "tenants" / "tenant-a" / "blobs" / "user-file" / "shared-blob-id").is_file()
+novaic-blob-service/tests/test_blob_service.py:184:    assert not (tmp_path / "files" / "blobs" / "tenant-a" / "user-file" / "shared-blob-id").exists()
+novaic-blob-service/tests/test_blob_service.py:187:def test_legacy_api_files_facade_is_removed(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:188:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:193:    assert client.post("/api/files/from-base64", json={}).status_code == 404
+novaic-blob-service/tests/test_blob_service.py:198:def test_base64_upload_path_is_removed_from_active_source():
+novaic-blob-service/tests/test_blob_service.py:203:            "blob_service/routes.py",
+novaic-blob-service/tests/test_blob_service.py:204:            "blob_service/blob_storage.py",
+novaic-blob-service/tests/test_blob_service.py:205:            "blob_service/limits.py",
+novaic-blob-service/tests/test_blob_service.py:209:    assert "BlobPutRequest" not in active
+novaic-blob-service/tests/test_blob_service.py:210:    assert "put_blob_base64" not in active
+novaic-blob-service/tests/test_blob_service.py:211:    assert "base64.b64decode" not in active
+novaic-blob-service/tests/test_blob_service.py:212:    assert "NOVAIC_BLOB_MAX_BASE64_BYTES" not in active
+novaic-blob-service/tests/test_blob_service.py:213:    assert "max_base64_decoded_bytes" not in active
+novaic-blob-service/tests/test_blob_service.py:216:def test_blob_active_source_uses_explicit_contracts_for_storage_boundaries():
+novaic-blob-service/tests/test_blob_service.py:221:            "blob_service/routes.py",
+novaic-blob-service/tests/test_blob_service.py:222:            "blob_service/blob_storage.py",
+novaic-blob-service/tests/test_blob_service.py:223:            "blob_service/multipart_storage.py",
+novaic-blob-service/tests/test_blob_service.py:224:            "blob_service/object_storage.py",
+novaic-blob-service/tests/test_blob_service.py:229:        "BlobIdentity",
+novaic-blob-service/tests/test_blob_service.py:230:        "BlobPutInput",
+novaic-blob-service/tests/test_blob_service.py:231:        "BlobPresignInput",
+novaic-blob-service/tests/test_blob_service.py:244:def test_blob_storage_uses_explicit_clock_and_blob_id_provider(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:245:    from blob_service.blob_storage import BlobStorage
+novaic-blob-service/tests/test_blob_service.py:246:    from blob_service.contracts import BlobPutInput
+novaic-blob-service/tests/test_blob_service.py:247:    from blob_service.storage import BlobBackendConfig, BlobByteStore
+novaic-blob-service/tests/test_blob_service.py:249:    byte_store = BlobByteStore(
+novaic-blob-service/tests/test_blob_service.py:251:        backend_config=BlobBackendConfig(backend_type="disk"),
+novaic-blob-service/tests/test_blob_service.py:253:    storage = BlobStorage(
+novaic-blob-service/tests/test_blob_service.py:256:        blob_id_provider=lambda data, now: f"explicit-{int(now)}-{len(data)}",
+novaic-blob-service/tests/test_blob_service.py:259:    created = storage.put_blob(BlobPutInput(
+novaic-blob-service/tests/test_blob_service.py:266:    assert created["blob_id"] == "explicit-1234-13"
+novaic-blob-service/tests/test_blob_service.py:270:def test_multipart_storage_uses_explicit_clock_and_session_provider(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:271:    from blob_service.blob_storage import BlobStorage
+novaic-blob-service/tests/test_blob_service.py:272:    from blob_service.contracts import MultipartCompleteInput, MultipartCreateInput, MultipartPartInput
+novaic-blob-service/tests/test_blob_service.py:273:    from blob_service.limits import BlobLimits
+novaic-blob-service/tests/test_blob_service.py:274:    from blob_service.multipart_storage import MultipartStorage
+novaic-blob-service/tests/test_blob_service.py:275:    from blob_service.storage import BlobBackendConfig, BlobByteStore
+novaic-blob-service/tests/test_blob_service.py:278:    byte_store = BlobByteStore(
+novaic-blob-service/tests/test_blob_service.py:280:        backend_config=BlobBackendConfig(backend_type="disk"),
+novaic-blob-service/tests/test_blob_service.py:282:    blob_storage = BlobStorage(
+novaic-blob-service/tests/test_blob_service.py:285:        blob_id_provider=lambda data, now: f"blob-{int(now)}",
+novaic-blob-service/tests/test_blob_service.py:287:    multipart = MultipartStorage(
+novaic-blob-service/tests/test_blob_service.py:289:        limits=BlobLimits(),
+novaic-blob-service/tests/test_blob_service.py:292:        blob_storage=blob_storage,
+novaic-blob-service/tests/test_blob_service.py:317:    assert completed["blob"]["blob_id"] == "blob-15"
+novaic-blob-service/tests/test_blob_service.py:322:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:400:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:422:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:431:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:447:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:456:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:464:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:471:        f"/v1/blobs/uploads/{session_id}/parts/2",
+novaic-blob-service/tests/test_blob_service.py:478:        f"/v1/blobs/uploads/{session_id}",
+novaic-blob-service/tests/test_blob_service.py:485:        f"/v1/blobs/uploads/{session_id}/complete",
+novaic-blob-service/tests/test_blob_service.py:490:    blob = completed.json()["blob"]
+novaic-blob-service/tests/test_blob_service.py:491:    assert blob["blob_ref"].startswith("blob://user-file/")
+novaic-blob-service/tests/test_blob_service.py:492:    assert blob["size"] == len(payload)
+novaic-blob-service/tests/test_blob_service.py:493:    assert blob["sha256"] == expected_sha
+novaic-blob-service/tests/test_blob_service.py:496:        f"/v1/blobs/user-file/{blob['blob_id']}",
+novaic-blob-service/tests/test_blob_service.py:503:        f"/v1/blobs/uploads/{session_id}/complete",
+novaic-blob-service/tests/test_blob_service.py:508:    assert completed_again.json()["blob"]["blob_ref"] == blob["blob_ref"]
+novaic-blob-service/tests/test_blob_service.py:512:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:518:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:530:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:537:        f"/v1/blobs/uploads/{session_id}/complete",
+novaic-blob-service/tests/test_blob_service.py:542:    assert completed.json()["blob"]["size"] == 4
+novaic-blob-service/tests/test_blob_service.py:545:def test_multipart_upload_supports_empty_blob_without_base64_fallback(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:546:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:552:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:557:            "blob_id": "empty-blob",
+novaic-blob-service/tests/test_blob_service.py:565:        f"/v1/blobs/uploads/{session_id}/complete",
+novaic-blob-service/tests/test_blob_service.py:570:    assert completed.json()["blob"]["size"] == 0
+novaic-blob-service/tests/test_blob_service.py:573:        "/v1/blobs/user-file/empty-blob",
+novaic-blob-service/tests/test_blob_service.py:581:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:587:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:598:        f"/v1/blobs/uploads/{session_id}",
+novaic-blob-service/tests/test_blob_service.py:604:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:611:        f"/v1/blobs/uploads/{session_id}/abort",
+novaic-blob-service/tests/test_blob_service.py:618:        f"/v1/blobs/uploads/{session_id}/parts/2",
+novaic-blob-service/tests/test_blob_service.py:626:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:627:    import blob_service.routes as blob_routes
+novaic-blob-service/tests/test_blob_service.py:630:    monkeypatch.setattr(blob_routes.time, "time", lambda: now["value"])
+novaic-blob-service/tests/test_blob_service.py:636:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:647:    listed = client.get("/v1/blobs/uploads", headers={"X-Tenant-ID": _UID})
+novaic-blob-service/tests/test_blob_service.py:652:    expired = client.post("/v1/blobs/uploads/_expire", headers={"X-Tenant-ID": _UID})
+novaic-blob-service/tests/test_blob_service.py:656:    status = client.get(f"/v1/blobs/uploads/{session_id}", headers={"X-Tenant-ID": _UID})
+novaic-blob-service/tests/test_blob_service.py:661:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:669:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:675:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:687:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:694:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:701:        f"/v1/blobs/uploads/{session_id}/complete",
+novaic-blob-service/tests/test_blob_service.py:708:        f"/v1/blobs/uploads/{session_id}/complete",
+novaic-blob-service/tests/test_blob_service.py:715:def test_blob_base64_upload_api_is_removed(tmp_path):
+novaic-blob-service/tests/test_blob_service.py:716:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:721:    resp = client.post("/v1/blobs", json={"data": "abcd"})
+novaic-blob-service/tests/test_blob_service.py:727:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:729:    monkeypatch.setenv("NOVAIC_BLOB_MAX_OBJECT_PUT_BYTES", "3")
+novaic-blob-service/tests/test_blob_service.py:744:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:746:    monkeypatch.setenv("NOVAIC_BLOB_MAX_MULTIPART_PART_BYTES", "3")
+novaic-blob-service/tests/test_blob_service.py:747:    monkeypatch.setenv("NOVAIC_BLOB_MAX_MULTIPART_COMPLETED_BYTES", "6")
+novaic-blob-service/tests/test_blob_service.py:752:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:764:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:775:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:783:def test_blob_lifecycle_logs_do_not_include_raw_payload(tmp_path, caplog):
+novaic-blob-service/tests/test_blob_service.py:784:    from blob_service.main import create_app
+novaic-blob-service/tests/test_blob_service.py:792:        "/v1/blobs/uploads",
+novaic-blob-service/tests/test_blob_service.py:799:        f"/v1/blobs/uploads/{session_id}/parts/1",
+novaic-blob-service/tests/test_blob_service.py:801:        content=b"secret-raw-payload",
+novaic-blob-service/tests/test_blob_service.py:804:        f"/v1/blobs/uploads/{session_id}/complete",
+novaic-blob-service/tests/test_blob_service.py:810:    assert "blob_multipart_created" in logs
+novaic-blob-service/tests/test_blob_service.py:811:    assert "blob_multipart_part" in logs
+novaic-blob-service/tests/test_blob_service.py:812:    assert "blob_multipart_completed" in logs
+novaic-blob-service/tests/test_blob_service.py:813:    assert "secret-raw-payload" not in logs
+novaic-blob-service/blob_service/object_storage.py:1:"""Generic object storage facade owned by Blob Service.
+novaic-blob-service/blob_service/object_storage.py:4:semantics. Product services provide tenant, namespace, and object keys; Blob
+novaic-blob-service/blob_service/object_storage.py:21:from .storage import BlobByteStore
+novaic-blob-service/blob_service/object_storage.py:77:class ObjectStorage:
+novaic-blob-service/blob_service/object_storage.py:78:    """Object-tree storage backed by BlobByteStore."""
+novaic-blob-service/blob_service/object_storage.py:80:    def __init__(self, byte_store: BlobByteStore) -> None:
+novaic-blob-service/blob_service/multipart_storage.py:1:"""Multipart upload lifecycle for Blob Service.
+novaic-blob-service/blob_service/multipart_storage.py:3:The multipart session is a Blob Service control-plane concept. Parts are stored
+novaic-blob-service/blob_service/multipart_storage.py:4:as temporary backend objects and only become a stable ``blob://`` reference when
+novaic-blob-service/blob_service/multipart_storage.py:17:from common.contracts.blob import blob_namespaces
+novaic-blob-service/blob_service/multipart_storage.py:19:from .blob_storage import BlobStorage, _validate_tenant_id
+novaic-blob-service/blob_service/multipart_storage.py:21:    BlobPutInput,
+novaic-blob-service/blob_service/multipart_storage.py:29:from .limits import BlobLimits, check_size
+novaic-blob-service/blob_service/multipart_storage.py:30:from .storage import BlobByteStore
+novaic-blob-service/blob_service/multipart_storage.py:102:class MultipartStorage:
+novaic-blob-service/blob_service/multipart_storage.py:103:    """Persistent multipart upload sessions backed by BlobByteStore."""
+novaic-blob-service/blob_service/multipart_storage.py:107:        file_storage: BlobByteStore,
+novaic-blob-service/blob_service/multipart_storage.py:109:        limits: BlobLimits,
+novaic-blob-service/blob_service/multipart_storage.py:112:        blob_storage: BlobStorage,
+novaic-blob-service/blob_service/multipart_storage.py:114:        self._file_storage = file_storage
+novaic-blob-service/blob_service/multipart_storage.py:115:        self._blob_storage = blob_storage
+novaic-blob-service/blob_service/multipart_storage.py:122:        if request.namespace not in blob_namespaces():
+novaic-blob-service/blob_service/multipart_storage.py:123:            raise MultipartError(f"unknown blob namespace: {request.namespace!r}")
+novaic-blob-service/blob_service/multipart_storage.py:124:        if request.blob_id:
+novaic-blob-service/blob_service/multipart_storage.py:125:            from common.contracts.blob import make_blob_ref
+novaic-blob-service/blob_service/multipart_storage.py:127:            make_blob_ref(request.namespace, request.blob_id)
+novaic-blob-service/blob_service/multipart_storage.py:143:            "blob_id": request.blob_id,
+novaic-blob-service/blob_service/multipart_storage.py:161:            "blob_multipart_created tenant=%s namespace=%s session=%s expected_size=%s part_size=%s ttl=%s",
+novaic-blob-service/blob_service/multipart_storage.py:205:        self._file_storage.backend.save_bytes(request.data, tenant_id, _part_rel_path(session_id, part_number))
+novaic-blob-service/blob_service/multipart_storage.py:217:            "blob_multipart_part tenant=%s namespace=%s session=%s part=%s size=%s status=%s",
+novaic-blob-service/blob_service/multipart_storage.py:241:        if session["status"] == "completed" and session.get("blob"):
+novaic-blob-service/blob_service/multipart_storage.py:242:            return {"status": "completed", "session": self._public_session(session), "blob": session["blob"]}
+novaic-blob-service/blob_service/multipart_storage.py:260:                data = self._file_storage.backend.load_bytes(tenant_id, _part_rel_path(session_id, part_number))
+novaic-blob-service/blob_service/multipart_storage.py:276:        blob = self._blob_storage.put_blob(BlobPutInput(
+novaic-blob-service/blob_service/multipart_storage.py:281:            blob_id=session.get("blob_id"),
+novaic-blob-service/blob_service/multipart_storage.py:286:        session["blob_id"] = blob["blob_id"]
+novaic-blob-service/blob_service/multipart_storage.py:287:        session["blob"] = blob
+novaic-blob-service/blob_service/multipart_storage.py:294:            "blob_multipart_completed tenant=%s namespace=%s session=%s blob_ref=%s size=%s parts=%s",
+novaic-blob-service/blob_service/multipart_storage.py:298:            blob["blob_ref"],
+novaic-blob-service/blob_service/multipart_storage.py:299:            blob["size"],
+novaic-blob-service/blob_service/multipart_storage.py:302:        return {"status": "completed", "session": self._public_session(session), "blob": blob}
+novaic-blob-service/blob_service/multipart_storage.py:317:                "blob_multipart_aborted tenant=%s namespace=%s session=%s",
+novaic-blob-service/blob_service/multipart_storage.py:333:        for item in self._file_storage.backend.list(tenant_id, "multipart/"):
+novaic-blob-service/blob_service/multipart_storage.py:337:            raw = self._file_storage.backend.load_bytes(tenant_id, path)
+novaic-blob-service/blob_service/multipart_storage.py:338:            if raw is None:
+novaic-blob-service/blob_service/multipart_storage.py:340:            session = json.loads(raw.decode("utf-8"))
+novaic-blob-service/blob_service/multipart_storage.py:358:        raw = self._file_storage.backend.load_bytes(tenant_id, _session_rel_path(session_id))
+novaic-blob-service/blob_service/multipart_storage.py:359:        if raw is None:
+novaic-blob-service/blob_service/multipart_storage.py:361:        session = json.loads(raw.decode("utf-8"))
+novaic-blob-service/blob_service/multipart_storage.py:367:        self._file_storage.backend.save_bytes(
+novaic-blob-service/blob_service/multipart_storage.py:375:            self._file_storage.backend.delete(
+novaic-blob-service/blob_service/multipart_storage.py:393:            "blob_multipart_expired tenant=%s namespace=%s session=%s",
+novaic-blob-service/blob_service/multipart_storage.py:416:            "blob_id": session.get("blob_id"),
+novaic-blob-service/blob_service/multipart_storage.py:429:        if session.get("blob"):
+novaic-blob-service/blob_service/multipart_storage.py:430:            public["blob_ref"] = session["blob"].get("blob_ref")
+novaic-blob-service/blob_service/contracts.py:1:"""Explicit Blob Service boundary contracts.
+novaic-blob-service/blob_service/contracts.py:3:Routes and storage facades pass these request objects instead of loose
+novaic-blob-service/blob_service/contracts.py:4:keyword bags. Blob Service owns bytes and object-tree primitives only; product
+novaic-blob-service/blob_service/contracts.py:21:class BlobIdentity:
+novaic-blob-service/blob_service/contracts.py:24:    blob_id: str
+novaic-blob-service/blob_service/contracts.py:28:class BlobPutInput:
+novaic-blob-service/blob_service/contracts.py:33:    blob_id: Optional[str] = None
+novaic-blob-service/blob_service/contracts.py:40:class BlobPresignInput:
+novaic-blob-service/blob_service/contracts.py:43:    blob_id: str
+novaic-blob-service/blob_service/contracts.py:47:class BlobDownloadMode(str, Enum):
+novaic-blob-service/blob_service/contracts.py:53:class BlobDownloadAccess:
+novaic-blob-service/blob_service/contracts.py:54:    blob_ref: str
+novaic-blob-service/blob_service/contracts.py:56:    mode: BlobDownloadMode
+novaic-blob-service/blob_service/contracts.py:61:            "blob_ref": self.blob_ref,
+novaic-blob-service/blob_service/contracts.py:72:    blob_ref: str,
+novaic-blob-service/blob_service/contracts.py:74:    blob_id: str,
+novaic-blob-service/blob_service/contracts.py:77:) -> BlobDownloadAccess:
+novaic-blob-service/blob_service/contracts.py:79:        return BlobDownloadAccess(
+novaic-blob-service/blob_service/contracts.py:80:            blob_ref=blob_ref,
+novaic-blob-service/blob_service/contracts.py:82:            mode=BlobDownloadMode.PRESIGN,
+novaic-blob-service/blob_service/contracts.py:85:    return BlobDownloadAccess(
+novaic-blob-service/blob_service/contracts.py:86:        blob_ref=blob_ref,
+novaic-blob-service/blob_service/contracts.py:87:        url=f"/v1/blobs/{namespace}/{blob_id}",
+novaic-blob-service/blob_service/contracts.py:88:        mode=BlobDownloadMode.PROXY,
+novaic-blob-service/blob_service/contracts.py:97:    blob_id: Optional[str] = None

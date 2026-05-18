@@ -1,0 +1,22 @@
+novaic-cortex/requirements.txt:2:# Cortex HTTP service with LogicalFS-owned RO/RW semantics and explicit storage adapters
+novaic-logicalfs/logicalfs/blob_store.py:3:Blob Service is a cheap byte/object server. LogicalFS owns realtime /ro and /rw
+novaic-cortex/novaic_cortex/logical_fs.py:3:Cortex owns Workspace semantics, shell capability injection, and applying RW
+docs/reference/blob-service.md:51:first; LogicalFS does not expose display/download handles directly.
+novaic-cortex/novaic_cortex/sandbox.py:7:* A sandboxd SDK client owns remote process execution.
+novaic-cortex/novaic_cortex/sandbox.py:9:There is deliberately no alternate local path adapter. If a host cannot provide
+novaic-cortex/novaic_cortex/blob_payload.py:3:Cortex owns work trace semantics. Blob Service owns large raw bytes. This
+scripts/ci/lint_blob_workspace_boundary.py:5:keeps direct Blob object authority and BlobRef production confined to the
+docs/runtime/tool-chain-dispatch.md:18:Cortex owns scope/context/sandbox; Runtime performs the dispatch decision.
+docs/architecture/logicalfs-realtime-file-authority.md:25:- Cortex owns Workspace semantics and uses a LogicalFS authority for file-like
+docs/architecture/logicalfs-realtime-file-authority.md:135:1. Cortex-related shell/workspace files must not bypass LogicalFS for live
+docs/architecture/logicalfs-realtime-file-authority.md:144:   download. LogicalFS does not provide display/download handles.
+docs/architecture/logicalfs-realtime-file-authority.md:145:6. Tests and CI should reject new direct Blob-object live RO/RW file paths
+docs/architecture/logicalfs-realtime-file-authority.md:183:- LogicalFS remains a live RO/RW layer; it does not become a display/download
+docs/architecture/logicalfs-realtime-file-authority.md:191:- Add residue scans for accidental direct Blob object calls in live RO/RW paths.
+docs/architecture/logicalfs-realtime-file-authority.md:198:- Sandboxd no longer owns workspace or subagent file semantics.
+docs/architecture/logicalfs-realtime-file-authority.md:204:- New tests prove Cortex/shell live RO/RW paths cannot bypass LogicalFS.
+docs/cortex/object-keys.md:9:- **Blob Service** 是 LogicalFS 下方的便宜 byte/object 持久化层，也服务 artifact、display、download 等普通字节流。
+docs/cortex/state-authority-implementation-plan.md:24:- Do not introduce local fallback authority if SQLite, LogicalFS, Redis, or Blob
+docs/cortex/state-authority-implementation-plan.md:34:| RO/RW files | LogicalFS/Workspace | Blob below LogicalFS | File operations should not bypass LogicalFS. |
+docs/cortex/state-authority-implementation-plan.md:185:- Any process-local fallback state.
+docs/cortex/state-authority-implementation-plan.md:190:- Startup readiness reports SQLite/Redis/LogicalFS/Blob backend health.

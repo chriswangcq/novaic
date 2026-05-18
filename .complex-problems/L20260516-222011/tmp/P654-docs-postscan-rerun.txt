@@ -1,0 +1,132 @@
+=== high-risk docs postscan after PR-202 banner ===
+docs/architecture/data-ownership.md:28:| Workspace / 上下文 | **Cortex + LogicalFS file authority**（服务端点通常为 `:19996`，由启动配置显式注入） | scope、steps、payload manifest/status 等语义归 Cortex；实时 `/ro`/`/rw` 文件语义走 LogicalFS/Cortex file authority；Blob 只承担下层字节/对象持久化；shell capability 不允许隐式 localhost fallback |
+docs/architecture/logicalfs-realtime-file-authority.md:33:Blob object APIs, Cortex-local file authority wrappers, or sandbox scratch state.
+docs/architecture/logicalfs-realtime-file-authority.md:191:- Add residue scans for accidental direct Blob object calls in live RO/RW paths.
+docs/cortex-architecture.md:76:| `registry.py` | `WorkspaceRegistry`：按 user 缓存 LogicalFS Blob object adapter，按 `(user, agent)` 缓存 `Workspace(LogicalFS authority)` |
+docs/cortex/state-authority-implementation-plan.md:34:| RO/RW files | LogicalFS/Workspace | Blob below LogicalFS | File operations should not bypass LogicalFS. |
+docs/cortex/state-authority-implementation-plan.md:36:| Large payload bytes | Blob | SQLite/Workspace manifest | Blob stores bytes; manifest stores meaning. |
+docs/roadmap/backend-architecture-optimization-recommendations.md:34:| Gateway | Auth, App WS push/signaling, Entangled endpoint discovery, TURN, Blob edge | Agent wake, entity schema authority, tool registry, business orchestration |
+docs/roadmap/tickets/PR-171D-retired-path-guardrails.md:10:## Current-State Analysis
+docs/roadmap/tickets/PR-187-main-path-guard-ci-and-stale-ticket-archival.md:9:## Current-State Analysis
+docs/roadmap/tickets/PR-170C-payload-interpretation-runtime-executors.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-194D-schema-push-fail-fast.md:5:## Current-State Analysis
+docs/roadmap/tickets/PR-167-environment-dedicated-domain-store.md:20:## Current-State Analysis
+docs/roadmap/tickets/PR-194B-entangled-atomic-schema-registration.md:5:## Current-State Analysis
+docs/roadmap/tickets/PR-174-remove-execution-logs-diagnostic-entity-tail.md:18:## Current-State Analysis
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-167A-environment-entity-schema-contracts.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-176-step-ref-payload-ref-naming-cleanup.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-165C-notification-lifecycle-close-failure.md:30:## Current-State Analysis
+docs/roadmap/tickets/PR-170A-payload-interpretation-common-contracts.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-163-runtime-environment-tool-integration.md:35:## Current-State Analysis
+docs/roadmap/tickets/PR-169A-business-activity-timeline-action.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-159A-business-product-context-boundary-guardrail.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-162B-environment-persistence-repository.md:28:## Current-State Analysis
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:54:## Current-State Analysis
+docs/roadmap/tickets/PR-188A-business-activity-timeline-participants.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-194E-entangled-runtime-sql-guards.md:5:## Current-State Analysis
+docs/roadmap/tickets/PR-167D-environment-backfill-remove-message-backed-repo.md:19:## Current-State Analysis
+docs/roadmap/tickets/PR-155-runtime-tool-executor-coverage-review.md:44:## Current-State Analysis
+docs/roadmap/tickets/PR-164-cortex-observation-payload-integration.md:34:## Current-State Analysis
+docs/roadmap/tickets/PR-169D-agent-monitor-debug-guardrails.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-166B-app-monitor-activity-phase-rendering.md:18:## Current-State Analysis
+docs/roadmap/tickets/PR-164C-reasoning-action-trace-projection.md:20:## Current-State Analysis
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-194C-entangled-readiness-contract.md:5:## Current-State Analysis
+docs/roadmap/tickets/PR-165-notification-wake-prompt-cutover.md:32:## Current-State Analysis
+docs/roadmap/tickets/PR-188A-business-activity-timeline-main-subagent-resolution.md:11:## Current-State Analysis
+docs/roadmap/tickets/PR-188-agent-monitor-main-scope-resolution.md:11:## Current-State Analysis
+docs/roadmap/tickets/PR-184-runtime-queue-client-compat-cleanup.md:9:## Current-State Analysis
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-170D-payload-interpretation-end-to-end-guards.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-171-final-old-path-physical-deletion.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-167B-environment-dedicated-repository.md:20:## Current-State Analysis
+docs/roadmap/tickets/PR-233C-dead-active-session-recovery.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-158-runtime-tool-product-semantics-matrix.md:57:## Current-State Analysis
+docs/roadmap/tickets/PR-161C-delete-gateway-legacy-data-replayer-scripts.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-169B-app-activity-timeline-hook-component.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-161A-delete-one-shot-lifecycle-cleanup-migrations.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-163C-environment-tool-cutover-cleanup.md:18:## Current-State Analysis
+docs/roadmap/tickets/PR-187B-archive-stale-ticket-checklist-residue.md:9:## Current-State Analysis
+docs/roadmap/tickets/PR-170B-payload-interpretation-cortex-endpoints.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-171B-remove-app-execution-log-monitor-fallback.md:10:## Current-State Analysis
+docs/roadmap/tickets/PR-171A-remove-message-backed-environment-compat.md:10:## Current-State Analysis
+docs/roadmap/tickets/PR-161B-delete-root-submodule-script-mirrors.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-175-agent-perception-doc-decision-cleanup.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-173-environment-im-history-observation-tools.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-191C-guard-floating-layer-product-boundary.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-160B-retired-entangled-tables-columns-cleanup.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-164A-tool-result-observation-payload-write-path.md:18:## Current-State Analysis
+docs/roadmap/tickets/PR-188B-app-activity-timeline-participants.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-191-agent-monitor-participant-floating-layer.md:18:## Current-State Analysis
+docs/roadmap/tickets/PR-187A-wire-main-path-guards-into-ci.md:9:## Current-State Analysis
+docs/roadmap/tickets/PR-154-agent-monitor-user-facing-review.md:40:## Current-State Analysis
+docs/roadmap/tickets/PR-169-app-cortex-activity-timeline-cutover.md:18:## Current-State Analysis
+docs/roadmap/tickets/PR-168-environment-notification-queue-cutover.md:19:## Current-State Analysis
+docs/roadmap/tickets/PR-185-app-device-vm-historical-naming-cleanup.md:9:## Current-State Analysis
+docs/roadmap/tickets/PR-186-agent-main-path-end-to-end-invariants.md:25:## Current-State Analysis
+docs/roadmap/tickets/PR-166C-remove-backend-log-payloads-diagnostic-path.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:16:## Current-State Analysis
+docs/roadmap/tickets/README.md:337:| PR-207 | `[closed]` | [Cortex Blob-backed Store Cutover](PR-207-cortex-blob-store-cutover.md) | PR-206 | Storage boundary cleanup | multi-step | Cortex direct S3/OSS store removed; Blob Service owns object storage |
+docs/roadmap/tickets/PR-191B-wire-participant-pills-to-floating-layer.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-160A-entangled-now-alter-schema-repair.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-172-roadmap-status-index-reconciliation.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-167C-environment-domain-service-state-machine.md:20:## Current-State Analysis
+docs/roadmap/tickets/PR-170-payload-interpretation-tools.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-171C-remove-retired-tool-aliases.md:12:## Current-State Analysis
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:3:> Closed ticket. The "Current-State Analysis" section below records the
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:22:## Current-State Analysis
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:24:Cortex currently writes payload records into its own scope-local payload store through `Workspace.write_payload`. This means Cortex owns large payload storage directly unless it externalizes large bytes to Blob Service.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:30:- [x] PR-202C — Update payload read/search/summarize/qa resolver to support BlobRef through `Workspace.read_payload`.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:51:- `Workspace.write_payload` now serializes payloads to JSON bytes, keeps small payloads in the existing scope-local store, and externalizes payloads larger than `CORTEX_PAYLOAD_BLOB_THRESHOLD_BYTES` to Blob Service.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:54:- `Workspace.read_payload` resolves external BlobRefs explicitly through Blob Service, so payload read/search/summarize/qa continue to use the same Cortex payload API.
+docs/roadmap/tickets/PR-233-active-im-delivery-vs-wake-creation.md:19:## Current-State Analysis
+docs/roadmap/tickets/PR-161D-delete-obsolete-local-db-recovery-scripts.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-153-queue-session-subscriber-lifecycle-review.md:43:## Current-State Analysis
+docs/roadmap/tickets/PR-168D-runtime-environment-notification-finalization.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-164B-explicit-payload-inspection-tools.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-233D-context-attached-input-observation-guards.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-233B-runtime-session-attach-input.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-188C-guard-raw-subagents-app-hot-path.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-194A-entangled-schema-validator.md:5:## Current-State Analysis
+docs/roadmap/tickets/PR-188B-agent-monitor-default-scope-guard.md:11:## Current-State Analysis
+docs/roadmap/tickets/PR-162-environment-domain-storage-foundation.md:35:## Current-State Analysis
+docs/roadmap/tickets/PR-183-gateway-auth-file-proxy-boundary-cleanup.md:9:## Current-State Analysis
+docs/roadmap/tickets/PR-188-agent-monitor-participants-product-projection.md:18:## Current-State Analysis
+docs/roadmap/tickets/PR-189-entangled-schema-registration-broadcast.md:9:## Current-State Analysis
+docs/roadmap/tickets/PR-168B-environment-notification-dispatch-lease.md:19:## Current-State Analysis
+docs/roadmap/tickets/PR-169C-agent-monitor-default-cutover.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-168A-environment-notification-internal-api.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-168E-remove-message-lifecycle-outbox-compat.md:19:## Current-State Analysis
+docs/roadmap/tickets/PR-166-activity-timeline-old-path-cleanup.md:34:## Current-State Analysis
+docs/roadmap/tickets/PR-160C-message-content-json-shape-normalization.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-233A-session-dispatch-active-inbox.md:17:## Current-State Analysis
+docs/roadmap/tickets/PR-191A-activity-timeline-floating-layer.md:15:## Current-State Analysis
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:1:# PR-207 — Cortex Blob-backed Store Cutover
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:18:workspace/scope objects only through Blob Service.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:29:### 2. Cortex Blob-backed Store
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:31:- Add `BlobCortexStore` implementing `CortexStore` over Blob Service object APIs.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:32:- Switch `WorkspaceRegistry` to create `BlobCortexStore` per user.
+docs/roadmap/tickets/PR-168C-environment-notification-subscriber-cutover.md:16:## Current-State Analysis
+docs/roadmap/tickets/PR-156-deploy-config-overlay-residue-review.md:42:## Current-State Analysis
+docs/roadmap/tickets/PR-166A-activity-timeline-projection-contract.md:17:## Current-State Analysis
+=== PR-202 header ===
+# PR-202 — Cortex Payload Blob Externalization
+
+> Closed ticket. The "Current-State Analysis" section below records the
+> pre-implementation baseline for this ticket. Current runtime behavior is:
+> Cortex owns payload manifests and work-trace meaning; large raw payload bytes
+> may be externalized to Blob Service behind explicit `blob://cortex-payload/...`
+> refs.
+
+| Field | Value |
+| --- | --- |
+| Status | `[done]` |
+| Owner | Codex |
+| Created | 2026-05-04 |
+| Repos | `novaic-cortex`, `novaic-agent-runtime`, `novaic-common`, docs |
+| Depends on | PR-201 |
+| Theme | Cortex trace stays semantic |

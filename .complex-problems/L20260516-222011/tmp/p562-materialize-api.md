@@ -1,0 +1,13 @@
+# Cortex Materialize API Residue Classification
+
+## Problem
+
+Classify Cortex occurrences of materialization APIs, especially `Workspace.materialize()`, direct `_files` access, and `/rw/scratch` writes, to determine whether they are intended compatibility surfaces or risky residue. This belongs under P562 because `Workspace.materialize()` was flagged by P552.
+
+## Success Criteria
+
+- Records exact Cortex scan commands and outputs for materialize/direct file terms.
+- Reads relevant code slices with line references.
+- Classifies each hit bucket as intended, risky, removable, or follow-up.
+- Identifies any remediation candidate for P554.
+

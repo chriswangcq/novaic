@@ -1,0 +1,572 @@
+## Factory/log relevant files
+novaic-app/src/assets/logo.png
+novaic-app/src/data/entities/agentActivity.ts
+novaic-app/src/data/entities/agentToolsConfig.ts
+novaic-app/src/components/Console/ConsoleToolbar.tsx
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts
+novaic-app/src/components/Visual/ActivityTimeline.tsx
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx
+novaic-app/src/components/Visual/AgentMonitorCapsule.test.tsx
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx
+novaic-app/src/components/hooks/useActivityTimeline.ts
+novaic-app/src/components/hooks/useActivityTimeline.test.ts
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx
+novaic-app/src/components/Agent/AgentToolsPanel.tsx
+novaic-app/src/components/Agent/ToolCategorySection.tsx
+novaic-app/src/components/Agent/MountedToolsSection.tsx
+novaic-app/src/components/Layout/AgentDrawer.tsx
+novaic-app/src/components/Auth/LoginForm.tsx
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts
+novaic-app/src/types/activityTimeline.ts
+novaic-app/src/locales/en/translation.json
+novaic-app/src/locales/zh-TW/translation.json
+novaic-app/src/locales/es/translation.json
+novaic-app/src/locales/fr/translation.json
+novaic-app/src/locales/zh/translation.json
+novaic-app/src/locales/ko/translation.json
+novaic-app/src/locales/pt/translation.json
+novaic-app/src/locales/de/translation.json
+novaic-app/src/locales/ru/translation.json
+novaic-app/src/locales/it/translation.json
+novaic-app/src/locales/ar/translation.json
+novaic-app/src/locales/ja/translation.json
+
+## High-signal factory/log hits
+novaic-app/src/services/auth.ts:15: *   getCurrentUser()          – basic user info from stored token payload
+novaic-app/src/services/auth.ts:48:      if (parsed?.detail) return new Error(String(parsed.detail));
+novaic-app/src/services/auth.ts:51:      // Ignore malformed payloads and fall through to generic handling.
+novaic-app/src/services/fileUpload.ts:7: * Returns BlobRef metadata ready for messages.send payload.
+novaic-app/src/services/fileUpload.ts:48:function uploadCategoryForFile(file: File): 'chat_attachments' | 'voice_messages' {
+novaic-app/src/services/fileUpload.ts:49:  return file.type.startsWith('audio/') ? 'voice_messages' : 'chat_attachments';
+novaic-app/src/services/fileUpload.ts:63:      body = { detail: text };
+novaic-app/src/services/fileUpload.ts:67:    throw new Error(body?.detail || body?.error || `Blob upload failed: ${response.status}`);
+novaic-app/src/services/fileUpload.ts:99:  if (!blobRef?.startsWith('blob://')) {
+novaic-app/src/services/fileUpload.ts:206:    if (!blobRef?.startsWith('blob://')) {
+novaic-app/src/main.tsx:11:const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+novaic-app/src/main.tsx:14:    document.documentElement.style.setProperty('--visual-viewport-height', `${vv.height}px`);
+novaic-app/src/hooks/useDeviceStatusPolling.test.ts:26:  it('does not turn malformed probe payloads into device errors', () => {
+novaic-app/src/types/index.ts:180:export type MessageStatus = 'sending' | 'delivered' | 'error';
+novaic-app/src/types/index.ts:189:  // Message status (for user messages)
+novaic-app/src/types/index.ts:190:  status?: MessageStatus;
+novaic-app/src/types/index.ts:204:  // Agent ID for filtering messages
+novaic-app/src/types/index.ts:211:  status?: MessageStatus;
+novaic-app/src/types/index.ts:223:  /** Stable BlobRef locator (`blob://...`) resolved through Gateway. */
+novaic-app/src/types/index.ts:225:  /** Display locator. New attachments use the same `blob://...` value. */
+novaic-app/src/App.tsx:78:            <details className="mt-4 text-[11px] text-white/40 max-w-lg overflow-auto">
+novaic-app/src/App.tsx:79:              <summary className="cursor-pointer">Error Details</summary>
+novaic-app/src/App.tsx:83:            </details>
+novaic-app/src/hooks/useAgentBinding.ts:2: * useAgentBinding – fetch agent's device binding + device details.
+novaic-app/src/config/index.ts:168:  TEXT_TRUNCATE_LENGTH: 50,
+novaic-app/src/components/Console/CursorMagnifier.tsx:191:          style={{ display: 'none' }}
+novaic-app/src/data/entities/entangledEntityContracts.ts:13:  messages: {
+novaic-app/src/data/entities/entangledEntityContracts.ts:14:    name: 'messages',
+novaic-app/src/data/entities/entangledEntityContracts.ts:15:    table: 'chat_messages',
+novaic-app/src/data/entities/entangledEntityContracts.ts:52:      truncated: 'BOOL',
+novaic-app/src/data/entities/entangledEntityContracts.ts:55:      has_payload: 'BOOL',
+novaic-app/src/data/entities/entangledEntityContracts.ts:86:export const MESSAGES_ENTITY_CONTRACT = APP_ENTANGLED_ENTITY_CONTRACTS.messages;
+novaic-app/src/data/entities/messages.ts:2: * data/entities/messages.ts — Messages stream store (Entangled).
+novaic-app/src/data/entities/messages.ts:4: * Append-only stream of chat messages, scoped by agent_id.
+novaic-app/src/data/entities/messages.ts:7: *   1. Mount → subscribe("messages", {agent_id}, version, depth=50)
+novaic-app/src/data/entities/messages.ts:9: *   3. loadMore → cachePrependPage → older messages prepended into cache
+novaic-app/src/data/entities/messages.ts:14:import { MESSAGES_ENTITY_CONTRACT } from './entangledEntityContracts';
+novaic-app/src/data/entities/messages.ts:29:export const messagesStore = createStreamStore<MessageEntity>({
+novaic-app/src/data/entities/messages.ts:30:  name: MESSAGES_ENTITY_CONTRACT.name,
+novaic-app/src/data/entities/messages.ts:33:  keyParams: [...MESSAGES_ENTITY_CONTRACT.keyParams],
+novaic-app/src/data/entities/messages.ts:39:  depth: 50,           // initial sync: last 50 messages (head_n)
+novaic-app/src/data/entities/messages.ts:74:    transformPayload: (data, params) => ({
+novaic-app/src/types/activityTimeline.ts:9:  truncated?: boolean;
+novaic-app/src/types/activityTimeline.ts:12:  has_payload?: boolean;
+novaic-app/src/types/api.ts:2: * Product API entity and action payload types.
+novaic-app/src/types/api.ts:63:  tools_count: number;
+novaic-app/src/types/api.ts:112:export type MountedToolsByCategory = Record<string, string[]>;
+novaic-app/src/types/api.ts:119:  mounted_tools: MountedToolsByCategory;
+novaic-app/src/types/api.ts:126:  supported_tools?: MountedToolsByCategory;
+novaic-app/src/types/api.ts:133:  mounted_tools?: MountedToolsByCategory;
+novaic-app/src/types/api.ts:143:  supported_tools: MountedToolsByCategory;
+novaic-app/src/types/api.ts:159:  capabilities: MountedToolsByCategory;
+novaic-app/src/hooks/useRemoteInput.ts:95:  /** DataChannel for sending control messages */
+novaic-app/src/hooks/useRemoteInput.ts:327:  // ── Listen for peer_info and pong messages ───────────────────────────
+novaic-app/src/data/entangled/contracts.test.ts:18:      entity: 'messages',
+novaic-app/src/data/entangled/contracts.test.ts:20:      payload: { text: 'hi' },
+novaic-app/src/data/entangled/contracts.test.ts:25:        entity: 'messages',
+novaic-app/src/data/entangled/contracts.test.ts:29:        payload: { text: 'hi' },
+novaic-app/src/data/entangled/contracts.test.ts:37:    expect(buildCacheListRequest({ entity: 'messages', params: { agent_id: 'a1' } })).toEqual({
+novaic-app/src/data/entangled/contracts.test.ts:39:      args: { entity: 'messages', params: { agent_id: 'a1' } },
+novaic-app/src/data/entangled/contracts.test.ts:46:      entity: 'messages',
+novaic-app/src/data/entangled/contracts.test.ts:54:        entity: 'messages',
+novaic-app/src/data/entities/agentToolsConfig.ts:2: * data/entities/agentToolsConfig.ts — Per-agent tools & prompt configuration (Form).
+novaic-app/src/data/entities/agentToolsConfig.ts:4: * Includes: disabled_tools, custom_instructions, categories,
+novaic-app/src/data/entities/agentToolsConfig.ts:11:interface AgentToolsData {
+novaic-app/src/data/entities/agentToolsConfig.ts:12:  disabled_tools: string[];
+novaic-app/src/data/entities/agentToolsConfig.ts:22:export const agentToolsStore = createFormStore<AgentToolsData>({
+novaic-app/src/data/entities/agentToolsConfig.ts:23:  name: 'agent-tools',
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:42:  it('does not expose retired diagnostic payload entities', () => {
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:45:    expect(backend).not.toHaveProperty('log-payloads');
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:48:    expect(APP_ENTANGLED_ENTITY_CONTRACTS).not.toHaveProperty('log-payloads');
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:72:    const messages = APP_ENTANGLED_ENTITY_CONTRACTS.messages;
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:74:    expect(messages.actions).toEqual(['send']);
+novaic-app/src/data/entities/entangledEntityContracts.test.ts:75:    expect(messages.fields).not.toHaveProperty('read');
+novaic-app/src/hooks/useWebRtc.ts:152:        payload: {
+novaic-app/src/hooks/useWebRtc.ts:187:          payload: {
+novaic-app/src/hooks/useWebRtc.ts:273:                const rgba = Uint8Array.from(atob(msg.rgba_base64), c => c.charCodeAt(0));
+novaic-app/src/hooks/useWebRtc.ts:356:        const { event: evtType, data } = event.payload;
+novaic-app/src/hooks/useWebRtc.ts:467:          payload: {
+novaic-app/src/data/entities/agentActivity.ts:25:  truncated?: boolean;
+novaic-app/src/data/entities/agentActivity.ts:28:  has_payload?: boolean;
+novaic-app/src/data/index.ts:30:export { agentToolsStore } from './entities/agentToolsConfig';
+novaic-app/src/data/index.ts:47:export { messagesStore } from './entities/messages';
+novaic-app/src/data/index.ts:48:export type { MessageEntity } from './entities/messages';
+novaic-app/src/data/entangled/EntangledHost.tsx:10:  enqueueNav?: (payload: unknown) => void;
+novaic-app/src/data/entangled/hooks.tsx:46:          for (const c of event.payload.changes) {
+novaic-app/src/data/entangled/hooks.tsx:282:    transformPayload?: (d: any, p: P) => any;
+novaic-app/src/data/entangled/hooks.tsx:339:        const pl = (act !== 'create' && def.optimisticSend?.transformPayload)
+novaic-app/src/data/entangled/hooks.tsx:340:          ? def.optimisticSend.transformPayload(data, params) : data;
+novaic-app/src/data/entangled/hooks.tsx:341:        return dispatch<void>({ type: 'action', entity: def.name, method: act, payload: pl, params: bpArg ?? undefined });
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:10:  detail?: ReactNode;
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:25:  detail,
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:94:            {detail && (
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:96:                {detail}
+novaic-app/src/data/entangled/contracts.ts:9:export type EntityPayload = Record<string, unknown>;
+novaic-app/src/data/entangled/contracts.ts:15:  data?: EntityPayload | null;
+novaic-app/src/data/entangled/contracts.ts:16:  payload?: EntityPayload | null;
+novaic-app/src/data/entangled/contracts.ts:75:      payload: input.payload ?? null,
+novaic-app/src/components/Layout/Resizer.tsx:136:      {/* Visual indicator on hover / drag */}
+novaic-app/src/data/entangled/dispatch.ts:50:  payload?: Record<string, unknown>;
+novaic-app/src/data/entangled/dispatch.ts:83:        { payload: intent.payload },
+novaic-app/src/components/Layout/ColumnHeader.tsx:66:    if (e.detail === 2) {
+novaic-app/src/data/entangled/client.ts:25:  payload?: Record<string, unknown>;
+novaic-app/src/data/entangled/client.ts:176:    payload: args.payload ?? null,
+novaic-app/src/components/Layout/Header.tsx:39:    if (e.detail === 2) {
+novaic-app/src/components/Layout/Header.tsx:84:        <span className="text-base-sm font-medium text-nb-text truncate shrink-0 max-w-[12.5rem]">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:22:import { WebRtcView } from '../Visual/WebRtcScrcpyView';
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:423:          <span className="flex-1 min-w-0 text-xs font-medium text-nb-text truncate">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:455:        <span className="flex-1 min-w-0 text-tiny text-nb-text-muted truncate leading-tight">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:486:          <span className="flex-1 min-w-0 text-xs font-medium text-nb-text truncate">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:756:        <span className="flex-1 min-w-0 text-xs font-medium text-nb-text-muted truncate">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:800:      <span className="flex-1 min-w-0 text-tiny text-nb-text-muted truncate leading-tight">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:909:        mounted_tools: {},
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:1076:          <span className="text-xs text-white/80 truncate max-w-[12.5rem]">
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:28:import { WebRtcView } from '../Visual/WebRtcScrcpyView';
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:37:  detail?: string;
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:115:      detail: `${deviceName} (${device.id.slice(0, 8)}…)`,
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:125:      detail: `${deviceName} / ${username}`,
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:171:            <span className="text-sm font-medium text-nb-text truncate">
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:305:                      <span className="truncate max-w-[60px]">{u.username}</span>
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:414:        detail={deleteConfirm?.detail}
+novaic-app/src/components/Layout/LayoutContainer.tsx:88:    const vv = window.visualViewport;
+novaic-app/src/components/Layout/LayoutContainer.tsx:193:  const handleSelectAgentForTools = (agentId: string) => {
+novaic-app/src/components/Layout/LayoutContainer.tsx:226:            onSelectAgentForTools={handleSelectAgentForTools}
+novaic-app/src/components/Layout/LayoutContainer.tsx:319:                embeddedTab="agent-tools"
+novaic-app/src/components/Layout/LayoutContainer.tsx:394:        onSelectAgentForTools={handleSelectAgentForTools}
+novaic-app/src/components/Layout/LayoutContainer.tsx:465:              embeddedTab="agent-tools"
+novaic-app/src/components/Settings/ModelsTab.tsx:357:        <span className="text-sm text-nb-text truncate" title={model.model_id}>
+novaic-app/src/components/Settings/ModelsTab.tsx:655:              <span className={`text-[10px] font-medium truncate w-full text-center ${provider === key ? 'text-nb-text' : 'text-nb-text-muted'}`}>{info.name}</span>
+novaic-app/src/components/Layout/DeviceSidebar.tsx:8:import { WebRtcView } from '../Visual/WebRtcScrcpyView';
+novaic-app/src/components/Layout/DeviceSidebar.tsx:39:  detail?: string;
+novaic-app/src/components/Layout/DeviceSidebar.tsx:169:        <div className="text-[10px] font-medium text-nb-text truncate text-center">
+novaic-app/src/components/Layout/DeviceSidebar.tsx:440:      detail: `${device.name} (${device.id.slice(0, 8)}…)`,
+novaic-app/src/components/Layout/DeviceSidebar.tsx:475:                <span className="text-[10px] font-medium text-nb-text-muted truncate flex-1">{t("device.devices")}</span>
+novaic-app/src/components/Layout/DeviceSidebar.tsx:574:              <span className="text-[10px] font-medium text-nb-text-muted truncate flex-1 min-w-0">
+novaic-app/src/components/Layout/DeviceSidebar.tsx:596:              <span className="text-[9px] font-medium text-nb-text-muted truncate w-full text-center">
+novaic-app/src/components/Layout/DeviceSidebar.tsx:702:        detail={deleteConfirm?.detail}
+novaic-app/src/application/deviceService.test.ts:38:      payload: { os_type: 'ubuntu', os_version: '24.04', pc_client_id: 'pc-1' },
+novaic-app/src/application/deviceService.test.ts:54:      payload: { os_type: 'debian', os_version: '12', pc_client_id: 'pc-2' },
+novaic-app/src/application/deviceService.test.ts:57:      payload: {
+novaic-app/src/components/Layout/AgentDrawer.tsx:21:import { useMessages } from '../hooks/useMessages';
+novaic-app/src/components/Layout/AgentDrawer.tsx:35:  /** Agents tab 选中 agent → 进入 agent tools 配置 */
+novaic-app/src/components/Layout/AgentDrawer.tsx:36:  onSelectAgentForTools?: (agentId: string) => void;
+novaic-app/src/components/Layout/AgentDrawer.tsx:37:  /** 兼容：若未传 onSelectChat/onSelectAgentForTools，则用 onSelectAgent */
+novaic-app/src/components/Layout/AgentDrawer.tsx:96:  const { messages: currentAgentMessages } = useMessages();
+novaic-app/src/components/Layout/AgentDrawer.tsx:99:  const [lastMessages, setLastMessages] = useState<Record<string, string>>({});
+novaic-app/src/components/Layout/AgentDrawer.tsx:183:  // Load last messages for all agents from local DB (no gateway calls).
+novaic-app/src/components/Layout/AgentDrawer.tsx:184:  // Data is populated by messageService whenever an agent is selected.
+novaic-app/src/components/Layout/AgentDrawer.tsx:185:  // For current agent, prefer store.messages (real-time) over DB.
+novaic-app/src/components/Layout/AgentDrawer.tsx:190:    const loadLastMessages = async () => {
+novaic-app/src/components/Layout/AgentDrawer.tsx:195:            const items = await cacheGetList<{ id: string; content: unknown }>('messages', {
+novaic-app/src/components/Layout/AgentDrawer.tsx:209:      setLastMessages(msgs);
+novaic-app/src/components/Layout/AgentDrawer.tsx:212:    loadLastMessages();
+novaic-app/src/components/Layout/AgentDrawer.tsx:215:  // 当前 agent 的 messages 更新时，实时更新 lastMessages（DB 订阅）
+novaic-app/src/components/Layout/AgentDrawer.tsx:217:    if (!currentAgentId || currentAgentMessages.length === 0) return;
+novaic-app/src/components/Layout/AgentDrawer.tsx:218:    const last = currentAgentMessages[currentAgentMessages.length - 1];
+novaic-app/src/components/Layout/AgentDrawer.tsx:221:      setLastMessages(prev => ({ ...prev, [currentAgentId]: text.slice(0, 60) }));
+novaic-app/src/components/Layout/AgentDrawer.tsx:223:  }, [currentAgentId, currentAgentMessages]);
+novaic-app/src/components/Layout/AgentDrawer.tsx:279:                const lastMsg = lastMessages[agent.id];
+novaic-app/src/components/Layout/AgentDrawer.tsx:299:                      <span className="text-sm font-medium truncate block leading-tight">{agent.name}</span>
+novaic-app/src/components/Layout/AgentDrawer.tsx:300:                      <span className="text-xs text-nb-text-muted truncate block mt-0.5 leading-tight">
+novaic-app/src/components/Layout/AgentDrawer.tsx:301:                        {lastMsg || t('agent.no_messages')}
+novaic-app/src/components/Layout/AgentDrawer.tsx:381:                        <span className={`text-sm font-medium truncate ${
+novaic-app/src/components/Layout/AgentDrawer.tsx:643:            <span className="text-base-sm font-semibold text-nb-text truncate">{skill.name}</span>
+novaic-app/src/components/Settings/SettingsModal.tsx:5:import { AgentToolsPanel } from '../Agent/AgentToolsPanel';
+novaic-app/src/components/Settings/SettingsModal.tsx:23:export type SettingsTab = 'models' | 'audio' | 'agent-tools' | 'cache' | 'user';
+novaic-app/src/components/Settings/SettingsModal.tsx:28:  detail?: string;
+novaic-app/src/components/Settings/SettingsModal.tsx:40:// MountedToolsSection is imported from ../Agent/MountedToolsSection
+novaic-app/src/components/Settings/SettingsModal.tsx:42:// ==================== Agent Tools Tab (thin wrapper) ====================
+novaic-app/src/components/Settings/SettingsModal.tsx:44:function AgentToolsTab({ hideAgentSelector = false, overrideAgentId }: { hideAgentSelector?: boolean; overrideAgentId?: string | null }) {
+novaic-app/src/components/Settings/SettingsModal.tsx:45:  return <AgentToolsPanel hideAgentSelector={hideAgentSelector} overrideAgentId={overrideAgentId} />;
+novaic-app/src/components/Settings/SettingsModal.tsx:121:                    <span className="text-sm font-semibold truncate text-nb-text">
+novaic-app/src/components/Settings/SettingsModal.tsx:124:                    <span className="text-xs text-nb-text-muted truncate">
+novaic-app/src/components/Settings/SettingsModal.tsx:165:  /** embedded 时覆盖标题（如 agent-tools 显示 "Agent名 · 配置"） */
+novaic-app/src/components/Settings/SettingsModal.tsx:167:  /** 覆盖 AgentToolsTab 使用的 agentId（从 Agents tab 传入，不依赖全局 currentAgentId） */
+novaic-app/src/components/Settings/SettingsModal.tsx:292:      detail: `${entry.name} · ${modelCount} model${modelCount === 1 ? '' : 's'} connected`,
+novaic-app/src/components/Settings/SettingsModal.tsx:358:      detail: modelName,
+novaic-app/src/components/Settings/SettingsModal.tsx:414:      detail: user.email ?? user.user_id,
+novaic-app/src/components/Settings/SettingsModal.tsx:426:      const result = await settings.cleanupGarbage({ deep, clean_vm_cache: cleanVmCache }) as { details: any; message: string };
+novaic-app/src/components/Settings/SettingsModal.tsx:427:      setCleanupResult(result.details);
+novaic-app/src/components/Settings/SettingsModal.tsx:440:      detail: cleanVmCache ? t('settings.clear_vm_cache') : undefined,
+novaic-app/src/components/Settings/SettingsModal.tsx:656:                  {/* Messages */}
+novaic-app/src/components/Settings/SettingsModal.tsx:696:            {/* Agent Tools Tab */}
+novaic-app/src/components/Settings/SettingsModal.tsx:697:            {effectiveTab === 'agent-tools' && (
+novaic-app/src/components/Settings/SettingsModal.tsx:698:              <M.div key="tab-agent-tools" initial={variants.fadeInUp.initial} animate={variants.fadeInUp.animate} exit={variants.fadeInUp.exit} transition={transitions.fast} className="flex flex-col flex-1 overflow-hidden">
+novaic-app/src/components/Settings/SettingsModal.tsx:699:                <AgentToolsTab hideAgentSelector={embedded && embeddedMode === 'content' && embeddedTab === 'agent-tools'} overrideAgentId={overrideAgentId} />
+novaic-app/src/components/Settings/SettingsModal.tsx:825:                  {/* Error/Info Messages */}
+novaic-app/src/components/Settings/SettingsModal.tsx:969:        detail={deleteConfirm?.detail}
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:50:  const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+novaic-app/src/components/Console/VirtualKeyboard.tsx:219:        display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:256:            display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:440:          display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:462:          display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:473:              display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:491:              display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:513:              display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:529:        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+novaic-app/src/components/Console/VirtualKeyboard.tsx:541:        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+novaic-app/src/components/Console/VirtualKeyboard.tsx:553:        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+novaic-app/src/components/Console/VirtualKeyboard.tsx:566:        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+novaic-app/src/components/Console/VirtualKeyboard.tsx:579:        <div style={{ display: 'flex', gap: 3 }}>
+novaic-app/src/components/Agent/MountedToolsSection.tsx:4:import type { MountedToolsByCategory } from '../../types/api';
+novaic-app/src/components/Agent/MountedToolsSection.tsx:6:// Category labels for mounted tools (Linux + Android)
+novaic-app/src/components/Agent/MountedToolsSection.tsx:19:export function MountedToolsSection({
+novaic-app/src/components/Agent/MountedToolsSection.tsx:20:  supportedTools,
+novaic-app/src/components/Agent/MountedToolsSection.tsx:21:  mountedTools,
+novaic-app/src/components/Agent/MountedToolsSection.tsx:25:  supportedTools: MountedToolsByCategory;
+novaic-app/src/components/Agent/MountedToolsSection.tsx:26:  mountedTools: MountedToolsByCategory;
+novaic-app/src/components/Agent/MountedToolsSection.tsx:30:  const categories = Object.keys(supportedTools || {}).filter(c => (supportedTools[c]?.length ?? 0) > 0);
+novaic-app/src/components/Agent/MountedToolsSection.tsx:38:          tools={supportedTools[catName] || []}
+novaic-app/src/components/Agent/MountedToolsSection.tsx:39:          mounted={mountedTools[catName] || []}
+novaic-app/src/components/Agent/MountedToolsSection.tsx:41:            const cur = (mountedTools[catName] || []).includes(tool);
+novaic-app/src/components/Agent/MountedToolsSection.tsx:53:  tools,
+novaic-app/src/components/Agent/MountedToolsSection.tsx:59:  tools: string[];
+novaic-app/src/components/Agent/MountedToolsSection.tsx:65:  const enabledCount = tools.filter(t => mounted.includes(t)).length;
+novaic-app/src/components/Agent/MountedToolsSection.tsx:66:  const allEnabled = enabledCount === tools.length;
+novaic-app/src/components/Agent/MountedToolsSection.tsx:83:            {enabledCount}/{tools.length}
+novaic-app/src/components/Agent/MountedToolsSection.tsx:90:            tools.forEach(t => onToggle(t, shouldEnable));
+novaic-app/src/components/Agent/MountedToolsSection.tsx:99:          {tools.map(tool => {
+novaic-app/src/components/Agent/MountedToolsSection.tsx:113:                    <div className="text-[10px] text-nb-text-muted truncate">{toolDescriptions[tool]}</div>
+novaic-app/src/components/Agent/ToolCategorySection.tsx:7:  tools,
+novaic-app/src/components/Agent/ToolCategorySection.tsx:8:  disabledTools,
+novaic-app/src/components/Agent/ToolCategorySection.tsx:12:  tools: { name: string; description: string }[];
+novaic-app/src/components/Agent/ToolCategorySection.tsx:13:  disabledTools: string[];
+novaic-app/src/components/Agent/ToolCategorySection.tsx:18:  const enabledCount = tools.filter(t => !disabledTools.includes(t.name)).length;
+novaic-app/src/components/Agent/ToolCategorySection.tsx:19:  const allEnabled = enabledCount === tools.length;
+novaic-app/src/components/Agent/ToolCategorySection.tsx:39:            {enabledCount}/{tools.length}
+novaic-app/src/components/Agent/ToolCategorySection.tsx:48:              tools.forEach(t => onToggleTool(t.name, shouldEnable));
+novaic-app/src/components/Agent/ToolCategorySection.tsx:57:      {/* Tools List */}
+novaic-app/src/components/Agent/ToolCategorySection.tsx:60:          {tools.map(tool => {
+novaic-app/src/components/Agent/ToolCategorySection.tsx:61:            const isEnabled = !disabledTools.includes(tool.name);
+novaic-app/src/components/Agent/ToolCategorySection.tsx:74:                    <div className="text-[10px] text-nb-text-muted truncate">{tool.description}</div>
+novaic-app/src/components/Settings/SkillsPage.tsx:40:  const [formTools, setFormTools] = useState<string[]>([]);
+novaic-app/src/components/Settings/SkillsPage.tsx:59:      setFormTools(skill.tools || []);
+novaic-app/src/components/Settings/SkillsPage.tsx:65:      setFormWorkflow(''); setFormTools([]); setFormIcon('zap');
+novaic-app/src/components/Settings/SkillsPage.tsx:75:        tools: formTools, workflow: formWorkflow, icon: formIcon, auto_match_keywords: formKeywords };
+novaic-app/src/components/Settings/SkillsPage.tsx:106:  // ── Viewing builtin skill detail ──
+novaic-app/src/components/Settings/SkillsPage.tsx:241:          {/* Tools */}
+novaic-app/src/components/Settings/SkillsPage.tsx:245:              {t('settings.associated_tools')}
+novaic-app/src/components/Settings/SkillsPage.tsx:248:              value={formTools.join(', ')}
+novaic-app/src/components/Settings/SkillsPage.tsx:249:              onChange={e => setFormTools(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+novaic-app/src/components/Settings/SkillsPage.tsx:251:              placeholder={t('settings.placeholder_tools')}
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:7:    const source = readFileSync(resolve(process.cwd(), 'src/components/Visual/ActivityTimeline.tsx'), 'utf8');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:10:    expect(source).not.toContain('_mcp_content');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:25:    expect(source).toContain('has_payload');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:32:    expect(source).not.toContain('_mcp_content');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:38:    const source = readFileSync(resolve(process.cwd(), 'src/components/Visual/ActivityTimeline.tsx'), 'utf8');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:3:import { agentToolsStore, agentBindingStore } from '../../data';
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:12:import type { AgentDeviceBinding, DeviceSubject, DeviceSubjectType, MountedToolsByCategory } from '../../types/api';
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:18:import { MountedToolsSection } from './MountedToolsSection';
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:85:export function AgentToolsPanel({ hideAgentSelector = false, overrideAgentId }: { hideAgentSelector?: boolean; overrideAgentId?: string | null }) {
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:103:  const [categories, setCategories] = useState<Record<string, { name: string; count: number; tools: { name: string; description: string }[] }>>({});
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:104:  const [disabledTools, setDisabledTools] = useState<string[]>([]);
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:115:  const [mountedTools, setMountedTools] = useState<MountedToolsByCategory>({});
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:158:        mountedTools?: MountedToolsByCategory;
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:165:        setMountedTools({});
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:185:          setMountedTools({});
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:192:        const supported = (matchedSubject.supported_tools ?? {}) as MountedToolsByCategory;
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:193:        const preferredMounted = preferred?.mountedTools ?? {};
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:194:        const merged: MountedToolsByCategory = {};
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:200:        setMountedTools(merged);
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:207:        setMountedTools({});
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:216:  // ── Entity-first read: agent-tools config from WS entity store ───────────
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:217:  const toolsForm = agentToolsStore.useForm({ agentId: effectiveAgentId || '' });
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:218:  const toolsData = toolsForm.data as Record<string, any> | null;
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:225:  // Phase 1: When toolsData arrives from entity store, populate state
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:227:    if (!toolsData) return;
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:228:    setDisabledTools(toolsData.disabled_tools || []);
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:229:    setCustomInstructions(toolsData.custom_instructions || '');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:230:    setSoulMd(toolsData.soul_md || '');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:231:    setHeartbeatMd(toolsData.heartbeat_md || '');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:232:    setUserMd(toolsData.user_md || '');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:233:    setActiveHoursStart(toolsData.active_hours_start || '09:00');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:234:    setActiveHoursEnd(toolsData.active_hours_end || '22:00');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:235:    setActiveHoursTimezone(toolsData.active_hours_timezone || 'Asia/Shanghai');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:236:  }, [toolsData]);
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:246:      setMountedTools({});
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:255:        mountedTools: bindingData.mounted_tools,
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:288:        // Core config (disabled_tools, soul_md, etc.) comes from agentToolsStore (WS entity).
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:300:      if (!catRes) errors.push('tools categories');
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:331:      console.error('Failed to revalidate agent tools data:', e);
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:357:        toolsForm.submit({
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:358:          disabled_tools: disabledTools,
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:377:            mounted_tools: mountedTools,
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:422:    setDisabledTools(prev => {
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:444:      setMountedTools({});
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:459:    const supported = (nextSubject.supported_tools ?? {}) as MountedToolsByCategory;
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:460:    setMountedTools(prev => {
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:461:      const merged: MountedToolsByCategory = {};
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:472:    const supported = (selectedSubject?.supported_tools ?? {}) as MountedToolsByCategory;
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:474:    setMountedTools(prev => {
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:482:  const totalTools = Object.values(categories).reduce((sum, cat) => sum + cat.tools.length, 0);
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:483:  const enabledToolsCount = totalTools - disabledTools.length;
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:488:      for (const t of cat.tools) {
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:499:          <h3 className="text-sm font-medium text-nb-text">{t('settings.agent_tools')}</h3>
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:739:                  <label className="block text-[10px] font-medium text-nb-text-muted mb-2">{t('settings.mounted_tools')}</label>
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:740:                  {selectedSubject && Object.values(selectedSubject.supported_tools ?? {}).some(arr => (arr?.length ?? 0) > 0) ? (
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:741:                    <MountedToolsSection
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:742:                      supportedTools={(selectedSubject.supported_tools ?? {}) as MountedToolsByCategory}
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:743:                      mountedTools={mountedTools}
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:747:                  ) : selectedSubject && !Object.values(selectedSubject.supported_tools ?? {}).some(arr => (arr?.length ?? 0) > 0) ? (
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:748:                    <span className="text-[10px] text-nb-text-muted/70">{t('settings.no_supported_tools')}</span>
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:756:            {/* ── Tools by Category ────────────────────────── */}
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:761:                  <h4 className="text-xs font-semibold text-nb-text tracking-wide">{t('settings.tools_by_category')}</h4>
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:764:                  {t('settings.tools_enabled', { enabled: enabledToolsCount, total: totalTools })}
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:772:                    tools={catInfo.tools}
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:773:                    disabledTools={disabledTools}
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:997:        detail={selectedAgent?.name}
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx:108:              <span className="truncate max-w-[130px] font-medium">{label}</span>
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx:109:              <span className={`text-[11px] tabular-nums truncate ${selectedActivityTitle && selected ? 'max-w-[170px]' : ''} ${
+novaic-app/src/application/blobAttachmentPath.test.ts:21:    expect(source).not.toContain('/api/blobs/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:22:    expect(source).not.toContain('/api/files/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:25:    expect(source).not.toContain('fileToBase64');
+novaic-app/src/application/blobAttachmentPath.test.ts:30:  it('records voice audio as compressed multipart blobs instead of WAV/base64 uploads', () => {
+novaic-app/src/application/blobAttachmentPath.test.ts:38:    expect(recorder).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:40:    expect(input).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:43:    expect(upload).toContain("'voice_messages'");
+novaic-app/src/application/blobAttachmentPath.test.ts:50:    expect(source).toContain('Only blob:// file references are supported');
+novaic-app/src/components/Chat/FileAttachment.tsx:178:        <div className="text-sm text-nb-text font-medium truncate" title={filename}>
+novaic-app/src/components/Onboarding/SetupProgress.tsx:7: * - Progress messages
+novaic-app/src/components/hooks/useSettings.ts:15:let _toolsCache: any = null;
+novaic-app/src/components/hooks/useSettings.ts:16:let _toolsFetchTime = 0;
+novaic-app/src/components/hooks/useSettings.ts:29:    addApiKey:            (data: any) => entangledMethod('api-keys', 'add', { payload: data }),
+novaic-app/src/components/hooks/useSettings.ts:30:    updateApiKey:         (id: string, data: any) => entangledMethod('api-keys', 'save', { payload: { key_id: id, ...data } }),
+novaic-app/src/components/hooks/useSettings.ts:31:    deleteApiKey:         (id: string) => entangledMethod('api-keys', 'remove', { payload: { key_id: id } }),
+novaic-app/src/components/hooks/useSettings.ts:33:    testApiKey:           (id: string) => entangledMethod('api-keys', 'test', { payload: { key_id: id } }),
+novaic-app/src/components/hooks/useSettings.ts:34:    initAgent:            (agentId?: string) => entangledMethod('agents', 'init', { payload: { agent_id: agentId } }),
+novaic-app/src/components/hooks/useSettings.ts:38:      entangledMethod('user-preferences', 'cleanup', { payload: options || {} }),
+novaic-app/src/components/hooks/useSettings.ts:58:    // ── Agent tools & skills assignment ──────────────────────────────────────
+novaic-app/src/components/hooks/useSettings.ts:60:      if (_toolsCache && Date.now() - _toolsFetchTime < CACHE_TTL) {
+novaic-app/src/components/hooks/useSettings.ts:61:        return _toolsCache;
+novaic-app/src/components/hooks/useSettings.ts:64:      _toolsCache = res;
+novaic-app/src/components/hooks/useSettings.ts:65:      _toolsFetchTime = Date.now();
+novaic-app/src/components/hooks/useSettings.ts:68:    getAgentToolsConfig:  (agentId: string) => skillsSvc.getAgentToolsConfig(agentId),
+novaic-app/src/components/hooks/useSettings.ts:69:    saveAgentToolsConfig: (agentId: string, data: any) => skillsSvc.saveAgentToolsConfig(agentId, data),
+novaic-app/src/components/Visual/ActivityTimeline.tsx:25:const DEBUG_DETAIL_PATTERN = new RegExp([
+novaic-app/src/components/Visual/ActivityTimeline.tsx:34:const DETAIL_PREVIEW_LIMIT = 84;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:35:const BOOKKEEPING_TOOLS = new Set(['skill_end']);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:38:const DATA_IMAGE_BASE64_PATTERN = /\bdata:image\/[a-z0-9.+-]+;base64,/i;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:39:const BINARY_BASE64_PREFIX_PATTERN = /^(\/9j\/|iVBORw0KGgo|R0lGODlh|UklGR)/;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:40:const RAW_PAYLOAD_DETAIL = '输出包含较大的原始文件数据，已在监控中隐藏。';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:98:function publicFullDetail(record: ActivityTimelineRecord): string | undefined {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:100:  if (!text) return record.has_payload ? '结果已保存，需要时可以继续查看细节' : undefined;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:101:  if (looksLikeRawPayloadText(text)) return RAW_PAYLOAD_DETAIL;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:103:  if (DEBUG_DETAIL_PATTERN.test(text)) return undefined;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:108:function looksLikeRawPayloadText(text: string): boolean {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:109:  if (DATA_IMAGE_BASE64_PATTERN.test(text)) return true;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:112:  if (BINARY_BASE64_PREFIX_PATTERN.test(compact)) return true;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:116:function publicPreviewDetail(record: ActivityTimelineRecord): string | undefined {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:117:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:118:  if (!fullDetail) return undefined;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:119:  const oneLine = fullDetail.replace(/\s+/g, ' ');
+novaic-app/src/components/Visual/ActivityTimeline.tsx:120:  return oneLine.length > DETAIL_PREVIEW_LIMIT ? `${oneLine.slice(0, DETAIL_PREVIEW_LIMIT)}…` : oneLine;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:123:function isExpandableDetail(record: ActivityTimelineRecord): boolean {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:124:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:125:  if (!fullDetail) return false;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:126:  const oneLine = fullDetail.replace(/\s+/g, ' ');
+novaic-app/src/components/Visual/ActivityTimeline.tsx:127:  return Boolean(record.truncated || fullDetail.includes('\n') || oneLine.length > DETAIL_PREVIEW_LIMIT);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:136:  if (record.phase === 'action' && BOOKKEEPING_TOOLS.has(tool)) return true;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:145:  const previousDetail = publicPreviewDetail(previous) ?? '';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:146:  const currentDetail = publicPreviewDetail(current) ?? '';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:148:  if (previousTitle === '已回复你') return previousDetail === currentDetail;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:149:  if (previousTitle === '读取了你的消息') return previousDetail === currentDetail;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:169:  const previewDetail = publicPreviewDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:170:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:171:  const expandable = isExpandableDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:172:  const detail = expanded && fullDetail ? fullDetail : previewDetail;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:196:          <span className="text-[13px] font-medium text-nb-text truncate">{title}</span>
+novaic-app/src/components/Visual/ActivityTimeline.tsx:203:        {detail && expandable && (
+novaic-app/src/components/Visual/ActivityTimeline.tsx:210:            {detail}{record.truncated && !expanded ? '…' : ''}
+novaic-app/src/components/Visual/ActivityTimeline.tsx:216:        {detail && !expandable && (
+novaic-app/src/components/Visual/ActivityTimeline.tsx:218:            {detail}{record.truncated ? '…' : ''}
+novaic-app/src/components/Visual/ActivityTimeline.tsx:336:            <div className="text-sm font-medium text-nb-text truncate">{participantLabel}</div>
+novaic-app/src/components/Visual/ActivityTimeline.tsx:337:            <div className="text-tiny text-nb-text-secondary truncate">{statusLabel}</div>
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:76:            text: '{"success":true,"messages":[{"text":"你好"}]}',
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:176:  it('expands safe public details inline', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:202:  it('hides raw image data urls from timeline details', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:212:            text: `data:image/jpeg;base64,${'A'.repeat(400)}SECRET_IMAGE_PAYLOAD`,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:219:    expect(screen.queryByText(/SECRET_IMAGE_PAYLOAD/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:220:    expect(screen.queryByText(/data:image/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:224:  it('hides long jpeg-like base64 text from expanded timeline details', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:225:    const jpegLikePayload = `/9j/${'A'.repeat(220)}+/${'B'.repeat(220)}=SECRET_RAW`;
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:236:            text: jpegLikePayload,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:237:            has_payload: true,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:261:            _mcp_content: [{ type: 'text', text: 'raw' }],
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:270:    expect(screen.queryByText(/_mcp_content/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:279:        error={'Gateway error 500: {"detail":"stack trace"}'}
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:334:            result_id: 'debug-payload-ref',
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:335:            _mcp_content: [{ type: 'text', text: 'raw mcp' }],
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:342:    expect(screen.queryByText(/debug-payload-ref/)).toBeNull();
+novaic-app/src/components/Chat/ChatInput.tsx:213:              <span className="truncate max-w-[120px]">{f.name}</span>
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx:62:    expect(screen.queryByText(/_mcp_content/i)).toBeNull();
+novaic-app/src/application/agentService.ts:70:    const payload: Record<string, unknown> = { name: data.name };
+novaic-app/src/application/agentService.ts:71:    if (selectedModelId) payload.model_id = selectedModelId;
+novaic-app/src/application/agentService.ts:74:      payload,
+novaic-app/src/application/agentService.ts:85:    await entangledMethod('agents', 'delete_cascade', { payload: { agent_id: agentId } });
+novaic-app/src/components/hooks/useMessages.ts:2: * components/hooks/useMessages.ts — View ↔ Business bridge for messages.
+novaic-app/src/components/hooks/useMessages.ts:6: * + messageSubscription + useMessagesFromDB pipeline.
+novaic-app/src/components/hooks/useMessages.ts:13:import { messagesStore } from '../../data';
+novaic-app/src/components/hooks/useMessages.ts:16:import type { ChatMessageType, Message, MessageStatus } from '../../types';
+novaic-app/src/components/hooks/useMessages.ts:30:  let messageStatus: MessageStatus | undefined;
+novaic-app/src/components/hooks/useMessages.ts:33:      messageStatus = 'sending';
+novaic-app/src/components/hooks/useMessages.ts:35:      messageStatus = 'delivered';
+novaic-app/src/components/hooks/useMessages.ts:45:    status:      messageStatus,
+novaic-app/src/components/hooks/useMessages.ts:49:export function useMessages() {
+novaic-app/src/components/hooks/useMessages.ts:59:  } = messagesStore.useStream({ agent_id: currentAgentId ?? '' });
+novaic-app/src/components/hooks/useMessages.ts:63:  const messages = useMemo(() => {
+novaic-app/src/components/hooks/useMessages.ts:87:          console.warn('[useMessages] Some attachments failed to upload:', errors);
+novaic-app/src/components/hooks/useMessages.ts:104:    messages,
+novaic-app/src/components/Chat/MessageList.tsx:12:  messages: Message[];
+novaic-app/src/components/Chat/MessageList.tsx:14:  hasMoreMessages: boolean;
+novaic-app/src/components/Chat/MessageList.tsx:15:  messagesInitialLoading: boolean;
+novaic-app/src/components/Chat/MessageList.tsx:17:  loadMoreMessages: () => void | Promise<void>;
+novaic-app/src/components/Chat/MessageList.tsx:22:  messages,
+novaic-app/src/components/Chat/MessageList.tsx:24:  hasMoreMessages,
+novaic-app/src/components/Chat/MessageList.tsx:25:  messagesInitialLoading,
+novaic-app/src/components/Chat/MessageList.tsx:27:  loadMoreMessages,
+novaic-app/src/components/Chat/MessageList.tsx:36:  const messageShowHeader = useMemo(() => {
+novaic-app/src/components/Chat/MessageList.tsx:38:    for (let i = 0; i < messages.length; i++) {
+novaic-app/src/components/Chat/MessageList.tsx:40:      const prevMsg = messages[i - 1];
+novaic-app/src/components/Chat/MessageList.tsx:41:      const currentMsg = messages[i];
+novaic-app/src/components/Chat/MessageList.tsx:52:  }, [messages]);
+novaic-app/src/components/Chat/MessageList.tsx:54:  const messageShowStatus = useMemo(() => {
+novaic-app/src/components/Chat/MessageList.tsx:55:    const result: boolean[] = new Array(messages.length).fill(false);
+novaic-app/src/components/Chat/MessageList.tsx:56:    for (let i = 0; i < messages.length; i++) {
+novaic-app/src/components/Chat/MessageList.tsx:57:      const msg = messages[i];
+novaic-app/src/components/Chat/MessageList.tsx:60:      const nextMsg = messages[i + 1];
+novaic-app/src/components/Chat/MessageList.tsx:67:  }, [messages]);
+novaic-app/src/components/Chat/MessageList.tsx:72:    if (!hasMoreMessages || isLoadingMore || loadMoreInFlightRef.current) return;
+novaic-app/src/components/Chat/MessageList.tsx:74:    Promise.resolve(loadMoreMessages()).finally(() => {
+novaic-app/src/components/Chat/MessageList.tsx:77:  }, [hasMoreMessages, isLoadingMore, loadMoreMessages]);
+novaic-app/src/components/Chat/MessageList.tsx:94:  if (messages.length === 0 && messagesInitialLoading) {
+novaic-app/src/components/Chat/MessageList.tsx:98:        <span className="text-xs">{t('chat.loading_messages', { defaultValue: 'Loading messages…' })}</span>
+novaic-app/src/components/Chat/MessageList.tsx:103:  if (messages.length === 0) return <WelcomeScreen />;
+novaic-app/src/components/Chat/MessageList.tsx:113:        ) : !hasMoreMessages ? (
+novaic-app/src/components/Chat/MessageList.tsx:115:            — All messages loaded —
+novaic-app/src/components/Chat/MessageList.tsx:128:                {t('chat.load_more', { defaultValue: 'Load earlier messages' })}
+novaic-app/src/components/Chat/MessageList.tsx:143:      data={messages}
+novaic-app/src/components/Chat/MessageList.tsx:152:        const latestMessage = messages[messages.length - 1];
+novaic-app/src/components/Chat/MessageList.tsx:157:        const showHeader = messageShowHeader[index];
+novaic-app/src/components/Chat/MessageList.tsx:158:        const showStatus = messageShowStatus[index];
+novaic-app/src/components/Visual/SmartValue.tsx:15:  if (value.startsWith('blob://')) return true;
+novaic-app/src/components/Chat/ChatPanel.tsx:9:} from '../Visual/ActivityTimeline';
+novaic-app/src/components/Chat/ChatPanel.tsx:10:import { AgentMonitorCapsule } from '../Visual/AgentMonitorCapsule';
+novaic-app/src/components/Chat/ChatPanel.tsx:13:import { useMessages } from '../hooks/useMessages';
+novaic-app/src/components/Chat/ChatPanel.tsx:20:    messages,
+novaic-app/src/components/Chat/ChatPanel.tsx:22:    hasMore: hasMoreMessages,
+novaic-app/src/components/Chat/ChatPanel.tsx:23:    isLoading: messagesInitialLoading,
+novaic-app/src/components/Chat/ChatPanel.tsx:25:    loadMore: loadMoreMessages,
+novaic-app/src/components/Chat/ChatPanel.tsx:26:  } = useMessages();
+novaic-app/src/components/Chat/ChatPanel.tsx:59:    const vv = window.visualViewport;
+novaic-app/src/components/Chat/ChatPanel.tsx:134:            messages={messages}
+novaic-app/src/components/Chat/ChatPanel.tsx:136:            hasMoreMessages={hasMoreMessages}
+novaic-app/src/components/Chat/ChatPanel.tsx:137:            messagesInitialLoading={messagesInitialLoading}
+novaic-app/src/components/Chat/ChatPanel.tsx:139:            loadMoreMessages={loadMoreMessages}
+novaic-app/src/application/converters.ts:5: * This module only parses the message content envelope used by useMessages.
+novaic-app/src/application/modelConfigService.ts:31:      payload: { api_key_id: apiKeyId },
+novaic-app/src/application/modelConfigService.ts:46:      payload: { model_id: modelId, api_key_id: apiKeyId, available },
+novaic-app/src/application/modelConfigService.ts:56:      payload: { api_key_id: apiKeyId, model_id: modelId, name },
+novaic-app/src/application/modelConfigService.ts:68:      payload: { id: apiKeyModelId },
+novaic-app/src/application/converters.test.ts:15:      attachments: [{ blob_ref: 'blob://user-file/blob-1', filename: 'a.png', mime_type: 'image/png' }],
+novaic-app/src/application/converters.test.ts:21:        path: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:24:        blob_ref: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:25:        url: 'blob://user-file/blob-1',
+novaic-app/src/application/deviceService.ts:37:        return (parsed as Record<string, unknown>).detail
+novaic-app/src/application/deviceService.ts:54:    if (typeof obj.detail === 'string') return obj.detail;
+novaic-app/src/application/deviceService.ts:101:      { payload: { device_id: deviceId, pc_client_id: pcClientId, ...(data || {}) } },
+novaic-app/src/application/deviceService.ts:108:      { payload: { device_id: deviceId, pc_client_id: pcClientId } },
+novaic-app/src/application/deviceService.ts:115:      { payload: { device_id: deviceId, pc_client_id: pcClientId } },
+novaic-app/src/application/deviceService.ts:122:      { payload: { device_id: deviceId, pc_client_id: pcClientId } },
+novaic-app/src/application/deviceService.ts:199:      payload: { device_id: deviceId },
+novaic-app/src/application/deviceService.ts:208:      payload: { device_id: deviceId, ...params },
+novaic-app/src/application/deviceService.ts:238:    const payload: Record<string, unknown> = {
+novaic-app/src/application/deviceService.ts:243:    if (pcClientId) payload.pc_client_id = pcClientId;
+novaic-app/src/application/deviceService.ts:247:      { payload },
+novaic-app/src/application/deviceService.ts:253:    const payload: Record<string, unknown> = {
+novaic-app/src/application/deviceService.ts:257:    if (pcClientId) payload.pc_client_id = pcClientId;
+novaic-app/src/application/deviceService.ts:261:      { payload },
+novaic-app/src/application/deviceService.ts:280:      payload: { pc_client_id: pcClientId },
+novaic-app/src/application/deviceService.ts:286:      payload: { os_type: osType, os_version: osVersion, pc_client_id: pcClientId },
+novaic-app/src/application/deviceService.ts:297:      payload: {
+novaic-app/src/application/deviceService.ts:357:      payload: { agent_id: agentId },
+novaic-app/src/components/Chat/UserMessage.tsx:2:import { Message, MessageStatus } from '../../types';
+novaic-app/src/components/Chat/UserMessage.tsx:14:const statusConfig: Record<MessageStatus, { icon: typeof Check; text: string; className: string }> = {
+novaic-app/src/application/skillsService.ts:52:      payload: { skill_id: skillId, ...(newName ? { name: newName } : {}) },
+novaic-app/src/application/skillsService.ts:62:      { payload: { task, max_skills: maxSkills ?? 3 } },
+novaic-app/src/application/skillsService.ts:68:    return entangledMethod<{ categories: Record<string, { name: string; count: number; tools: { name: string; description: string }[] }> }>(
+novaic-app/src/application/skillsService.ts:73:  /** Get agent tools config — via Entangled skills.get_agent_tools_config action */
+novaic-app/src/application/skillsService.ts:74:  async getAgentToolsConfig(agentId: string) {
+novaic-app/src/application/skillsService.ts:75:    return entangledMethod('skills', 'get_agent_tools_config', {
+novaic-app/src/application/skillsService.ts:76:      payload: { agent_id: agentId },
+novaic-app/src/application/skillsService.ts:80:  /** Save agent tools config — via Entangled skills.save_agent_tools_config action */
+novaic-app/src/application/skillsService.ts:81:  async saveAgentToolsConfig(agentId: string, data: any) {
+novaic-app/src/application/skillsService.ts:82:    return entangledMethod('skills', 'save_agent_tools_config', {
+novaic-app/src/application/skillsService.ts:83:      payload: { agent_id: agentId, ...data },
+novaic-app/src/application/skillsService.ts:90:      payload: { agent_id: agentId },
+novaic-app/src/application/skillsService.ts:97:      payload: { agent_id: agentId, skill_ids: skillIds },
+novaic-app/src/application/skillsService.ts:104:      payload: { agent_id: agentId },
+novaic-app/src/application/skillsService.ts:108:  /** Get bootstrap files — via Entangled agent-tools.get_bootstrap action */
+novaic-app/src/application/skillsService.ts:110:    return entangledMethod('agent-tools', 'get_bootstrap', {
+novaic-app/src/application/skillsService.ts:111:      payload: { agent_id: agentId },
+novaic-app/src/application/skillsService.ts:115:  /** Save bootstrap files — via Entangled agent-tools.save_bootstrap action */
+novaic-app/src/application/skillsService.ts:117:    return entangledMethod('agent-tools', 'save_bootstrap', {
+novaic-app/src/application/skillsService.ts:118:      payload: { agent_id: agentId, ...data },
+novaic-app/src/components/hooks/useSkills.ts:32:    getAgentToolsConfig: svc.getAgentToolsConfig.bind(svc),
+novaic-app/src/components/hooks/useSkills.ts:33:    saveAgentToolsConfig:svc.saveAgentToolsConfig.bind(svc),
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:59:      _mcp_content: [{ type: 'text', text: 'raw' }],
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:68:      truncated: undefined,
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:71:      has_payload: undefined,
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:74:    expect(JSON.stringify(normalized)).not.toContain('_mcp_content');
+novaic-app/src/components/hooks/useActivityTimeline.ts:36:    truncated: typeof record.truncated === 'boolean' ? record.truncated : undefined,
+novaic-app/src/components/hooks/useActivityTimeline.ts:39:    has_payload: typeof record.has_payload === 'boolean' ? record.has_payload : undefined,
+novaic-app/src/application/agentDeleteProjection.test.ts:14:    expect(createMethod).toContain('payload');
+novaic-app/src/application/agentDeleteProjection.test.ts:27:    expect(deleteMethod).not.toContain("entangledMethod('messages', 'clear'");
+novaic-app/src/application/vmUserService.ts:42:      payload: { device_id: deviceId, username },
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts:12:    expect(source).toContain("from '../Visual/AgentMonitorCapsule'");
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts:35:    expect(source).not.toContain("from '../Visual/ExecutionLog'");
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts:36:    expect(source).not.toContain("from '../Visual/MainAgentLogPreview'");
+novaic-app/src/components/VM/DeviceManagerPage.tsx:28:import { DeviceVNCView } from '../Visual/DeviceVNCView';
+novaic-app/src/components/VM/DeviceManagerPage.tsx:29:import { WebRtcView } from '../Visual/WebRtcScrcpyView';
+novaic-app/src/components/VM/DeviceManagerPage.tsx:37:  detail?: string;
+novaic-app/src/components/VM/DeviceManagerPage.tsx:111:          <span className="text-sm font-medium text-nb-text truncate">
+novaic-app/src/components/VM/DeviceManagerPage.tsx:268:      detail: `${name} (${id.slice(0, 8)}…)`,
+novaic-app/src/components/VM/DeviceManagerPage.tsx:423:      detail={deleteConfirm?.detail}
+novaic-app/src/components/VM/DeviceManagerPage.tsx:559:      detail: `${deviceName} / ${username}`,
+novaic-app/src/components/VM/DeviceManagerPage.tsx:597:              <span className="truncate">{u.username}</span>
+novaic-app/src/components/VM/DeviceManagerPage.tsx:632:      detail={deleteConfirm?.detail}
+novaic-app/src/components/VM/DeviceManagerPage.tsx:688:      detail: `${deviceName} / ${username}`,
+novaic-app/src/components/VM/DeviceManagerPage.tsx:742:          <span className="text-[11px] flex-1 truncate">{u.username}</span>
+novaic-app/src/components/VM/DeviceManagerPage.tsx:788:      detail={deleteConfirm?.detail}
+novaic-app/src/components/VM/DeviceManagerModal.tsx:22:  detail?: string;
+novaic-app/src/components/VM/DeviceManagerModal.tsx:76:          <span className="text-sm font-medium text-nb-text truncate">
+novaic-app/src/components/VM/DeviceManagerModal.tsx:82:          <span className="text-[11px] text-nb-text-secondary/60 font-mono truncate">
+novaic-app/src/components/VM/DeviceManagerModal.tsx:259:      detail: `${name} (${id.slice(0, 8)}…)`,
+novaic-app/src/components/VM/DeviceManagerModal.tsx:411:        detail={deleteConfirm?.detail}
+
+## Focused files containing factory/log/raw-json terms

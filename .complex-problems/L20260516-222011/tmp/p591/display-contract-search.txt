@@ -1,0 +1,147 @@
+=== durable/base64 suspicious ===
+
+=== display image_ref contract ===
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:142:def _display_durable_payload(result: dict[str, Any]) -> dict[str, Any] | None:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:170:        "type": "image_ref",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:176:    display_files = [{
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:193:            "display_files": display_files,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:297:        durable_payload = _display_durable_payload(result)
+novaic-cortex/novaic_cortex/api.py:1835:        format_for_display_perception_llm,
+novaic-cortex/novaic_cortex/api.py:1850:    if projection == "display_perception":
+novaic-cortex/novaic_cortex/api.py:1851:        content = format_for_display_perception_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1862:                "allowed": ["history", "current_tool_result", "display_perception"],
+novaic-cortex/tests/test_step_result_projection.py:3:    format_for_display_perception_llm,
+novaic-cortex/tests/test_step_result_projection.py:18:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:19:    assert parsed["display_files"][0]["url"] == "data:image/jpeg;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:33:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:34:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:44:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:45:    assert parsed["display_files"][0]["url"] == "https://example.com/img.png"
+novaic-cortex/tests/test_step_result_projection.py:48:def test_parse_tool_result_mcp_image_ref():
+novaic-cortex/tests/test_step_result_projection.py:53:                "type": "image_ref",
+novaic-cortex/tests/test_step_result_projection.py:64:    assert parsed["display_files"] == [{
+novaic-cortex/tests/test_step_result_projection.py:81:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_step_result_projection.py:90:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_step_result_projection.py:99:        "display_files": []
+novaic-cortex/tests/test_step_result_projection.py:110:def test_display_perception_projection_data_url():
+novaic-cortex/tests/test_step_result_projection.py:113:        "display_files": [
+novaic-cortex/tests/test_step_result_projection.py:117:    formatted_str = format_for_display_perception_llm(result_data)
+novaic-cortex/tests/test_step_result_projection.py:126:def test_display_perception_projection_blob_ref_image_ref():
+novaic-cortex/tests/test_step_result_projection.py:129:        "display_files": [
+novaic-cortex/tests/test_step_result_projection.py:140:    display = json.loads(format_for_display_perception_llm(result_data))
+novaic-cortex/tests/test_step_result_projection.py:144:        "type": "image_ref",
+novaic-cortex/tests/test_step_result_projection.py:151:def test_empty_display_perception_projection_is_diagnostic_not_ok():
+novaic-cortex/tests/test_step_result_projection.py:152:    formatted = json.loads(format_for_display_perception_llm({
+novaic-cortex/tests/test_step_result_projection.py:154:        "display_files": [],
+novaic-cortex/novaic_cortex/step_result_projection.py:84:        "display_files": [],
+novaic-cortex/novaic_cortex/step_result_projection.py:95:    1. 统一格式: {text, files_created, display_files}
+novaic-cortex/novaic_cortex/step_result_projection.py:100:        {"text": "...", "files_created": [...], "display_files": [...]}
+novaic-cortex/novaic_cortex/step_result_projection.py:103:        return {"text": "", "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:114:        return {"text": raw, "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:117:        return {"text": str(raw), "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:126:    if "display_files" in raw or "files_created" in raw:
+novaic-cortex/novaic_cortex/step_result_projection.py:139:            "display_files": raw.get("display_files") or [],
+novaic-cortex/novaic_cortex/step_result_projection.py:146:        display_files = []
+novaic-cortex/novaic_cortex/step_result_projection.py:156:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:163:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:168:            elif t == "image_ref":
+novaic-cortex/novaic_cortex/step_result_projection.py:171:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:180:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:188:            "display_files": display_files,
+novaic-cortex/novaic_cortex/step_result_projection.py:193:        return {"text": str(raw["text"]), "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:209:    return {"text": serialized, "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:229:        display_files = result_data.get("display_files", [])
+novaic-cortex/novaic_cortex/step_result_projection.py:230:        for f in display_files:
+novaic-cortex/novaic_cortex/step_result_projection.py:252:                        "type": "image_ref",
+novaic-cortex/novaic_cortex/step_result_projection.py:287:def format_for_display_perception_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:314:    displays = result_data.get("display_files", [])
+novaic-cortex/tests/test_tool_output_projection.py:5:    format_for_display_perception_llm,
+novaic-cortex/tests/test_tool_output_projection.py:50:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:59:def test_tool_output_v1_display_perception_never_inlines_artifact_image():
+novaic-cortex/tests/test_tool_output_projection.py:61:    formatted = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:74:def test_mcp_image_content_parses_to_display_files_for_explicit_projection():
+novaic-cortex/tests/test_tool_output_projection.py:85:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+novaic-cortex/tests/test_tool_output_projection.py:88:def test_mcp_image_content_is_only_visual_in_display_perception_projection():
+novaic-cortex/tests/test_tool_output_projection.py:100:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:124:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:126:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:150:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:182:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:184:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:214:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:225:def test_display_tool_step_payload_projects_blobref_image_ref_content():
+novaic-cortex/tests/test_tool_output_projection.py:237:                    "type": "image_ref",
+novaic-cortex/tests/test_tool_output_projection.py:253:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:256:    assert parsed["display_files"] == [{
+novaic-cortex/tests/test_tool_output_projection.py:265:        "type": "image_ref",
+novaic-cortex/tests/test_tool_output_projection.py:272:def test_explicit_projection_modes_control_parsed_display_files():
+novaic-cortex/tests/test_tool_output_projection.py:276:        "display_files": [{"url": "data:image/png;base64,aabbcc"}],
+novaic-cortex/tests/test_tool_output_projection.py:281:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:243:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:246:def test_expand_messages_for_llm_resolves_current_display_image_ref(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:257:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:316:def test_expand_messages_for_llm_does_not_resolve_history_image_ref(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:326:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:358:    assert payload["_mcp_content"][1]["type"] == "image_ref"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:361:def test_expand_messages_for_llm_image_ref_fetch_failure_becomes_text(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:366:            assert kwargs["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:370:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:454:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:496:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:48:def test_display_perception_can_create_user_image_message_and_strips_marker():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:50:        [_image_tool_message(_projection="display_perception")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:63:def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:76:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:102:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:127:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:148:        _image_tool_message(_projection="display_perception"),
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:152:    assert sanitized[1]["_projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:191:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:204:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:211:    assert tool_payload["_mcp_content"][1]["type"] == "image_ref"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:226:                        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:305:    assert calls[0]["projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:347:            if tool_call_id == "display:2" and projection == "display_perception":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:352:                            "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:455:    assert [call["projection"] for call in calls] == ["history", "display_perception"]
+novaic-agent-runtime/task_queue/utils/context.py:203:    Only current-turn ``display_perception`` tool messages may be converted to
+novaic-agent-runtime/task_queue/utils/context.py:220:            if projection != "display_perception":
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:108:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:113:    assert durable["display_files"] == [{
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:123:def test_display_durable_image_ref_does_not_depend_on_inline_image_data(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:150:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:155:    assert durable["display_files"][0]["url"] == "blob://runtime-artifact/screen-1"
+novaic-agent-runtime/task_queue/utils/__init__.py:6:- multimodal: display_perception 专用的当前轮图片投影
+novaic-agent-runtime/task_queue/utils/multimodal.py:4:``display_perception`` tool messages may carry ``_mcp_content`` media into this
+novaic-agent-runtime/task_queue/utils/step_result_client.py:22:def _image_ref_resolution_note(file_url: str, reason: str) -> Dict[str, str]:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:42:def _resolve_display_image_refs(content: str, *, user_id: Optional[str]) -> str:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:57:        if not isinstance(item, dict) or item.get("type") != "image_ref":
+novaic-agent-runtime/task_queue/utils/step_result_client.py:64:            resolved.append(_image_ref_resolution_note("", "missing file_url"))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:69:            resolved.append(_image_ref_resolution_note(file_url, str(exc)))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:72:            resolved.append(_image_ref_resolution_note(
+novaic-agent-runtime/task_queue/utils/step_result_client.py:79:            resolved.append(_image_ref_resolution_note(file_url, f"not an image MIME type: {mime_type}"))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:124:    if projection == "display_perception":
+novaic-agent-runtime/task_queue/utils/step_result_client.py:125:        content = _resolve_display_image_refs(content, user_id=user_id)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:222:        return "display_perception"
+novaic-agent-runtime/task_queue/utils/user_content.py:6:这样统一走 Cortex step result 的 display_files 机制。
+
+=== fixture base64 YWJjMTIz context ===
+novaic-cortex/tests/test_tool_output_projection.py:202:                {"type": "image", "data": "YWJjMTIz", "mimeType": "image/jpeg"},
+novaic-cortex/tests/test_tool_output_projection.py:220:        "data": "YWJjMTIz",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:311:        "data": "YWJjMTIz",
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:49:    image_url = "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:78:    assert all("YWJjMTIz" not in text for text in _text_values(captured["json"]))
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:73:                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:86:    assert "YWJjMTIz" not in processed[0]["content"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:99:                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:123:                        {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:176:            {"type": "image", "data": "YWJjMTIz", "mimeType": "image/jpeg"},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:186:    assert "YWJjMTIz" not in wrapped["content"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:196:    assert "YWJjMTIz" not in json.dumps(llm_content)
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:212:    assert "YWJjMTIz" not in processed[0]["content"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:320:    assert image_message["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:464:    assert "YWJjMTIz" not in shell_tool["content"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:482:        "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:513:    assert "YWJjMTIz" not in json.dumps(replay.messages)
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:527:        {"_mcp_content": [{"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"}]},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:534:    assert "YWJjMTIz" not in wrapped["content"]

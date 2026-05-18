@@ -1,0 +1,257 @@
+scripts/start.sh:17:#   - Sandboxd       :19994  Generic sandbox process execution
+scripts/start.sh:161:# owns env/sibling/prod overlay precedence, unknown-key validation, and
+scripts/start.sh:233:    >> "$LOG_DIR/sandboxd.log" 2>&1 &
+scripts/start.sh:234:wait_port "$PORT_SANDBOXD" "Sandboxd"
+scripts/start.sh:253:	    --sandboxd-url "$SANDBOXD_URL" \
+novaic-cortex/novaic_cortex/sandbox.py:1:"""Cortex shell execution boundary.
+novaic-cortex/novaic_cortex/sandbox.py:3:The public ``Sandbox`` facade composes two explicit substrates:
+novaic-cortex/novaic_cortex/sandbox.py:5:* ``MountNamespaceLogicalFS`` owns Cortex filesystem semantics and the stable
+novaic-cortex/novaic_cortex/sandbox.py:6:  private ``/cortex`` mount namespace.
+novaic-cortex/novaic_cortex/sandbox.py:7:* A sandboxd SDK client owns remote process execution.
+novaic-cortex/novaic_cortex/sandbox.py:10:the sandboxd service boundary, shell execution fails explicitly instead of
+novaic-cortex/novaic_cortex/sandbox.py:20:from sandbox_sdk import SandboxExecResult, SandboxExecSpec
+novaic-cortex/novaic_cortex/sandbox.py:25:    LogicalFSCapabilities,
+novaic-cortex/novaic_cortex/sandbox.py:26:    MountNamespaceLogicalFS,
+novaic-cortex/novaic_cortex/sandbox.py:35:    async def execute(self, spec: SandboxExecSpec) -> SandboxExecResult:
+novaic-cortex/novaic_cortex/sandbox.py:45:            "Cortex shell paths under novaic-cortex-sandbox-* are ephemeral. "
+novaic-cortex/novaic_cortex/sandbox.py:54:    """Acquire LogicalFS view, run a process, release view, assemble ShellResult."""
+novaic-cortex/novaic_cortex/sandbox.py:58:        logical_fs: MountNamespaceLogicalFS,
+novaic-cortex/novaic_cortex/sandbox.py:85:                    "Sandbox executor is not configured. Cortex shell execution "
+novaic-cortex/novaic_cortex/sandbox.py:86:                    "must go through sandboxd via sandbox_sdk."
+novaic-cortex/novaic_cortex/sandbox.py:111:                mount_plan = self.logical_fs.process_mount_plan(view)
+novaic-cortex/novaic_cortex/sandbox.py:115:                SandboxExecSpec(
+novaic-cortex/novaic_cortex/sandbox.py:121:                    mount=mount_plan,
+novaic-cortex/novaic_cortex/sandbox.py:156:    """Public shell facade backed by explicit LogicalFS and sandboxd SDK client."""
+novaic-cortex/novaic_cortex/sandbox.py:168:        self.logical_fs = MountNamespaceLogicalFS(
+novaic-cortex/novaic_cortex/sandbox.py:182:    def logical_fs_capabilities(self) -> LogicalFSCapabilities:
+docs/architecture/logicalfs-realtime-file-authority.md:1:# LogicalFS RO/RW Realtime File Authority
+docs/architecture/logicalfs-realtime-file-authority.md:5:LogicalFS is the semantic authority for Cortex/shell realtime `RO` / `RW`
+docs/architecture/logicalfs-realtime-file-authority.md:9:Blob Service owns durable bytes, object storage primitives, multipart upload,
+docs/architecture/logicalfs-realtime-file-authority.md:13:LogicalFS. Other ordinary files can stay Blob-backed without pretending to be a
+docs/architecture/logicalfs-realtime-file-authority.md:23:- LogicalFS owns the live file authority and may use a Blob object adapter below
+docs/architecture/logicalfs-realtime-file-authority.md:25:- Cortex owns Workspace semantics and uses a LogicalFS authority for file-like
+docs/architecture/logicalfs-realtime-file-authority.md:28:  snapshot into a sandbox mount, then writes RW patches back to Workspace.
+docs/architecture/logicalfs-realtime-file-authority.md:29:- Sandboxd only executes a process over the materialized view.
+docs/architecture/logicalfs-realtime-file-authority.md:31:This is improved, but LogicalFS is not yet a standalone service boundary. The
+docs/architecture/logicalfs-realtime-file-authority.md:39:  scope/workspace semantics and shell execution
+docs/architecture/logicalfs-realtime-file-authority.md:43:LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:59:Sandboxd is not a file authority. It receives an executable filesystem view
+docs/architecture/logicalfs-realtime-file-authority.md:60:from LogicalFS, runs a process, and reports process output. It may host the
+docs/architecture/logicalfs-realtime-file-authority.md:61:local mount implementation, but it should not own workspace semantics,
+docs/architecture/logicalfs-realtime-file-authority.md:85:### LogicalFS Service
+docs/architecture/logicalfs-realtime-file-authority.md:93:- snapshot and patch semantics for shell execution
+docs/architecture/logicalfs-realtime-file-authority.md:103:- process execution
+docs/architecture/logicalfs-realtime-file-authority.md:113:Uses LogicalFS for:
+docs/architecture/logicalfs-realtime-file-authority.md:119:### Sandboxd
+docs/architecture/logicalfs-realtime-file-authority.md:123:- process execution
+docs/architecture/logicalfs-realtime-file-authority.md:125:- bind/mount namespace mechanics when needed
+docs/architecture/logicalfs-realtime-file-authority.md:127:Uses LogicalFS for:
+docs/architecture/logicalfs-realtime-file-authority.md:130:- stable path mount inputs
+docs/architecture/logicalfs-realtime-file-authority.md:135:1. Cortex-related shell/workspace files must not bypass LogicalFS for live
+docs/architecture/logicalfs-realtime-file-authority.md:138:   functions, attachments, display bytes, artifact bytes, and LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:140:3. Cortex may own semantic names, but LogicalFS must own file operations.
+docs/architecture/logicalfs-realtime-file-authority.md:141:4. Sandboxd may execute over a view, but LogicalFS must own the view contract.
+docs/architecture/logicalfs-realtime-file-authority.md:144:   download. LogicalFS does not provide display/download handles.
+docs/architecture/logicalfs-realtime-file-authority.md:146:   outside LogicalFS internals.
+docs/architecture/logicalfs-realtime-file-authority.md:153:- Document LogicalFS as the Cortex/shell RO/RW authority.
+docs/architecture/logicalfs-realtime-file-authority.md:156:### Phase 2: Promote LogicalFS From Library To Service Boundary
+docs/architecture/logicalfs-realtime-file-authority.md:158:- Define LogicalFS HTTP or RPC contracts focused on RO/RW:
+docs/architecture/logicalfs-realtime-file-authority.md:165:### Phase 3: Move Cortex Workspace Persistence Behind LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:167:- Replace Cortex-local persistence adapters with a LogicalFS-backed workspace
+docs/architecture/logicalfs-realtime-file-authority.md:170:- LogicalFS maps those semantics to durable Blob object keys.
+docs/architecture/logicalfs-realtime-file-authority.md:172:### Phase 4: Move Shell/Sandbox Mounts Behind LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:174:- Sandbox execution requests reference a LogicalFS view id or snapshot id.
+docs/architecture/logicalfs-realtime-file-authority.md:175:- Sandboxd no longer receives Cortex Workspace details.
+docs/architecture/logicalfs-realtime-file-authority.md:176:- Patch application becomes LogicalFS responsibility, not Cortex glue code.
+docs/architecture/logicalfs-realtime-file-authority.md:183:- LogicalFS remains a live RO/RW layer; it does not become a display/download
+docs/architecture/logicalfs-realtime-file-authority.md:188:- Remove direct live RO/RW file use of Blob object APIs outside LogicalFS.
+docs/architecture/logicalfs-realtime-file-authority.md:195:- There is exactly one Cortex/shell live `RO` / `RW` authority: LogicalFS.
+docs/architecture/logicalfs-realtime-file-authority.md:198:- Sandboxd no longer owns workspace or subagent file semantics.
+docs/architecture/logicalfs-realtime-file-authority.md:202:  - RO/RW file semantics: LogicalFS only
+docs/architecture/logicalfs-realtime-file-authority.md:204:- New tests prove Cortex/shell live RO/RW paths cannot bypass LogicalFS.
+docs/cortex/sandbox-shell.md:3:> 源码：`novaic_cortex/sandbox.py`（`Sandbox`）、`novaic_cortex/logical_fs.py`（`MountNamespaceLogicalFS`）、`api.py`（`POST /v1/shell`、`/v1/internal/shell`）。
+docs/cortex/sandbox-shell.md:5:## 1. 模型：一次 `exec` = 一次 LogicalFS 视图 + 一次 sandboxd 执行
+docs/cortex/sandbox-shell.md:9:1. `MountNamespaceLogicalFS` 从 Cortex `Workspace` 构造本次执行需要的 RO/RW snapshot。
+docs/cortex/sandbox-shell.md:10:2. LogicalFS 生成 `/cortex/bin` 能力脚本：`agentctl`、`cortex`、`devicectl`。
+docs/cortex/sandbox-shell.md:11:3. LogicalFS 设置稳定环境变量：`RO=/cortex/ro`、`RW=/cortex/rw`、`CORTEX_RO=/cortex/ro`、`CORTEX_RW=/cortex/rw`，以及 `NOVAIC_API` / `NOVAIC_TOKEN` 等能力上下文。
+docs/cortex/sandbox-shell.md:12:4. `Sandbox` 组装 `SandboxExecSpec`，把本次 LogicalFS view 作为 mount plan 交给 sandboxd；mount point 是 `/cortex`，默认 cwd 是 `/cortex/rw`。
+docs/cortex/sandbox-shell.md:13:5. sandboxd 只负责在 mount view 中执行进程，返回 stdout、stderr、exit code 和耗时。
+docs/cortex/sandbox-shell.md:14:6. LogicalFS 观察 `/cortex/rw` 变化，把 RW patch 写回 Cortex `Workspace`，并返回逻辑路径形式的 `files_changed`。
+docs/cortex/sandbox-shell.md:21:Agent 可见的 Cortex 文件路径是稳定 mount namespace：
+docs/cortex/sandbox-shell.md:31:为了避免每次 shell 启动都拉取全部历史 RW，LogicalFS 默认只挂载有明确实时语义的 RW 工作集：
+docs/cortex/sandbox-shell.md:45:- 若设置 `max_sync_bytes`，LogicalFS snapshot 超过阈值会拒绝执行，避免一次 shell 启动读取过多 workspace 文件。
+docs/cortex/sandbox-shell.md:49:- **Cortex Sandbox**：在 sandboxd 管理的进程环境中执行，看到的是 LogicalFS 投影出的 `/cortex/ro`、`/cortex/rw` 和 `/cortex/bin`。
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:1:"""Thin sandboxd service-boundary SDK."""
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:3:from sandbox_sdk.client import SandboxdClient, SandboxdClientError
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:4:from sandbox_sdk.contracts import SandboxdExecuteRequest, SandboxdExecuteResponse
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:5:from sandbox_sdk.types import SandboxBindMount, SandboxExecResult, SandboxExecSpec
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:8:    "SandboxBindMount",
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:10:    "SandboxExecSpec",
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:11:    "SandboxdClient",
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:12:    "SandboxdClientError",
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:13:    "SandboxdExecuteRequest",
+novaic-sandbox-sdk/sandbox_sdk/__init__.py:14:    "SandboxdExecuteResponse",
+novaic-sandbox-sdk/sandbox_sdk/types.py:1:"""Sandboxd service-boundary DTOs.
+novaic-sandbox-sdk/sandbox_sdk/types.py:3:These types describe a remote sandbox execution request/result. They are not
+novaic-sandbox-sdk/sandbox_sdk/types.py:14:class SandboxBindMount:
+novaic-sandbox-sdk/sandbox_sdk/types.py:16:    mount_point: str
+novaic-sandbox-sdk/sandbox_sdk/types.py:21:class SandboxExecSpec:
+novaic-sandbox-sdk/sandbox_sdk/types.py:27:    mount: SandboxBindMount | None = None
+novaic-sandbox-sdk/sandbox_sdk/client.py:1:"""HTTP client for sandboxd."""
+novaic-sandbox-sdk/sandbox_sdk/client.py:11:from sandbox_sdk.contracts import SandboxdExecuteRequest, SandboxdExecuteResponse
+novaic-sandbox-sdk/sandbox_sdk/client.py:12:from sandbox_sdk.types import SandboxExecResult, SandboxExecSpec
+novaic-sandbox-sdk/sandbox_sdk/client.py:15:class SandboxdClientError(RuntimeError):
+novaic-sandbox-sdk/sandbox_sdk/client.py:20:class SandboxdClient:
+novaic-sandbox-sdk/sandbox_sdk/client.py:24:    async def execute(self, spec: SandboxExecSpec) -> SandboxExecResult:
+novaic-sandbox-sdk/sandbox_sdk/client.py:27:    def _execute_sync(self, spec: SandboxExecSpec) -> SandboxExecResult:
+novaic-sandbox-sdk/sandbox_sdk/client.py:30:            SandboxdExecuteRequest.from_spec(spec).to_dict(),
+novaic-sandbox-sdk/sandbox_sdk/client.py:44:            raise SandboxdClientError(f"sandboxd returned HTTP {exc.code}: {body}") from exc
+novaic-sandbox-sdk/sandbox_sdk/client.py:46:            raise SandboxdClientError(f"sandboxd request failed: {exc.reason}") from exc
+novaic-sandbox-sdk/sandbox_sdk/client.py:48:            raise SandboxdClientError("sandboxd request timed out") from exc
+novaic-sandbox-sdk/sandbox_sdk/client.py:52:            return SandboxdExecuteResponse.from_dict(data).to_result()
+novaic-sandbox-sdk/sandbox_sdk/client.py:54:            raise SandboxdClientError("sandboxd returned an invalid response") from exc
+novaic-sandbox-sdk/README.md:1:# NovaIC Sandbox SDK
+novaic-sandbox-sdk/README.md:3:Thin service-boundary SDK for sandboxd.
+novaic-sandbox-sdk/README.md:5:This package owns only cross-process API types and the HTTP client:
+novaic-sandbox-sdk/README.md:7:- sandbox execution spec/result DTOs
+novaic-sandbox-sdk/README.md:8:- sandboxd request/response JSON wire contracts
+novaic-sandbox-sdk/README.md:9:- sandboxd HTTP client
+novaic-sandbox-sdk/README.md:11:It must not execute processes, create mount namespaces, inspect local host
+novaic-sandbox-sdk/pyproject.toml:4:description = "Thin sandboxd service boundary SDK for NovaIC"
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:9:    SandboxBindMount,
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:11:    SandboxExecSpec,
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:12:    SandboxdClient,
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:13:    SandboxdExecuteRequest,
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:14:    SandboxdExecuteResponse,
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:19:    spec = SandboxExecSpec(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:25:        mount=SandboxBindMount(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:27:            mount_point="/cortex",
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:32:    request = SandboxdExecuteRequest.from_dict(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:33:        SandboxdExecuteRequest.from_spec(spec).to_dict()
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:47:    response = SandboxdExecuteResponse.from_dict(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:48:        SandboxdExecuteResponse.from_result(result).to_dict()
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:55:async def test_sandboxd_client_maps_spec_and_response(monkeypatch: pytest.MonkeyPatch) -> None:
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:57:    expected = SandboxdExecuteResponse(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:82:    result = await SandboxdClient(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:83:        "http://sandboxd.local",
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:86:        SandboxExecSpec(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:95:    assert seen["url"] == "http://sandboxd.local/v1/execute"
+novaic-sandbox-service/main_sandbox_service.py:2:"""Sandboxd service entry point."""
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:1:"""JSON wire contracts for sandboxd."""
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:9:from sandbox_sdk.types import SandboxBindMount, SandboxExecResult, SandboxExecSpec
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:36:class SandboxdExecuteRequest:
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:42:    mount: SandboxBindMount | None = None
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:45:    def from_spec(cls, spec: SandboxExecSpec) -> "SandboxdExecuteRequest":
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:52:            mount=spec.mount,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:56:    def from_dict(cls, data: Mapping[str, Any]) -> "SandboxdExecuteRequest":
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:66:        mount_raw = data.get("mount")
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:67:        mount: SandboxBindMount | None = None
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:68:        if mount_raw is not None:
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:69:            if not isinstance(mount_raw, Mapping):
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:70:                raise ValueError("mount must be an object or null")
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:71:            mount = SandboxBindMount(
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:72:                source_root=_require_str(mount_raw, "source_root"),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:73:                mount_point=_require_str(mount_raw, "mount_point"),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:74:                stable_cwd=_require_str(mount_raw, "stable_cwd"),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:83:            mount=mount,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:86:    def to_spec(self) -> SandboxExecSpec:
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:87:        return SandboxExecSpec(
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:93:            mount=self.mount,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:97:        mount: JsonObject | None = None
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:98:        if self.mount is not None:
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:99:            mount = {
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:100:                "source_root": self.mount.source_root,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:101:                "mount_point": self.mount.mount_point,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:102:                "stable_cwd": self.mount.stable_cwd,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:110:            "mount": mount,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:115:class SandboxdExecuteResponse:
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:122:    def from_result(cls, result: SandboxExecResult) -> "SandboxdExecuteResponse":
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:131:    def from_dict(cls, data: Mapping[str, Any]) -> "SandboxdExecuteResponse":
+novaic-sandbox-service/sandbox_service/main.py:1:"""Independent sandbox execution service."""
+novaic-sandbox-service/sandbox_service/main.py:14:    SandboxdExecuteRequest,
+novaic-sandbox-service/sandbox_service/main.py:15:    SandboxdExecuteResponse,
+novaic-sandbox-service/sandbox_service/main.py:19:logger = logging.getLogger("sandboxd")
+novaic-sandbox-service/sandbox_service/main.py:25:    if spec.mount is not None:
+novaic-sandbox-service/sandbox_service/main.py:26:        if not spec.mount.source_root.is_dir():
+novaic-sandbox-service/sandbox_service/main.py:27:            raise ValueError("mount.source_root must be an existing directory")
+novaic-sandbox-service/sandbox_service/main.py:28:        if not spec.mount.mount_point.startswith("/"):
+novaic-sandbox-service/sandbox_service/main.py:29:            raise ValueError("mount.mount_point must be absolute")
+novaic-sandbox-service/sandbox_service/main.py:30:        if not spec.mount.stable_cwd.startswith("/"):
+novaic-sandbox-service/sandbox_service/main.py:31:            raise ValueError("mount.stable_cwd must be absolute")
+novaic-sandbox-service/sandbox_service/main.py:37:def _sdk_request_to_core_spec(request: SandboxdExecuteRequest) -> ProcessSpec:
+novaic-sandbox-service/sandbox_service/main.py:39:    mount: BindMountPlan | None = None
+novaic-sandbox-service/sandbox_service/main.py:40:    if spec.mount is not None:
+novaic-sandbox-service/sandbox_service/main.py:41:        mount = BindMountPlan(
+novaic-sandbox-service/sandbox_service/main.py:42:            source_root=Path(spec.mount.source_root),
+novaic-sandbox-service/sandbox_service/main.py:43:            mount_point=spec.mount.mount_point,
+novaic-sandbox-service/sandbox_service/main.py:44:            stable_cwd=spec.mount.stable_cwd,
+novaic-sandbox-service/sandbox_service/main.py:52:        mount=mount,
+novaic-sandbox-service/sandbox_service/main.py:56:def _to_response(result: ProcessRunResult) -> SandboxdExecuteResponse:
+novaic-sandbox-service/sandbox_service/main.py:57:    return SandboxdExecuteResponse.from_result(
+novaic-sandbox-service/sandbox_service/main.py:68:    app = FastAPI(title="NovaIC Sandboxd", version="1.0.0")
+novaic-sandbox-service/sandbox_service/main.py:76:            "service": "sandboxd",
+novaic-sandbox-service/sandbox_service/main.py:77:            "contract_version": "sandboxd/v1",
+novaic-sandbox-service/sandbox_service/main.py:86:            execute_request = SandboxdExecuteRequest.from_dict(payload)
+novaic-sandbox-service/sandbox_service/main.py:99:    parser = argparse.ArgumentParser(description="NovaIC sandboxd service")
+novaic-sandbox-service/sandbox_service/main.py:109:    logger.info("Starting sandboxd on %s:%s", args.host, args.port)
+novaic-sandbox-service/tests/test_sandbox_core.py:15:from sandbox_service.core.mount_namespace import build_bind_mount_command
+novaic-sandbox-service/tests/test_sandbox_core.py:50:def test_build_bind_mount_command_quotes_inputs(tmp_path: Path) -> None:
+novaic-sandbox-service/tests/test_sandbox_core.py:51:    cmd = build_bind_mount_command(
+novaic-sandbox-service/tests/test_sandbox_core.py:54:        mount_point="/cortex",
+novaic-sandbox-service/tests/test_sandbox_core.py:58:    assert "unshare --mount --propagation private" in cmd
+novaic-sandbox-service/tests/test_sandbox_core.py:59:    assert "mount --bind" in cmd
+novaic-sandbox-service/sandbox_service/__init__.py:1:"""NovaIC sandboxd service."""
+novaic-sandbox-service/tests/test_sandbox_service.py:13:    SandboxBindMount,
+novaic-sandbox-service/tests/test_sandbox_service.py:14:    SandboxExecSpec,
+novaic-sandbox-service/tests/test_sandbox_service.py:15:    SandboxdExecuteRequest,
+novaic-sandbox-service/tests/test_sandbox_service.py:16:    SandboxdExecuteResponse,
+novaic-sandbox-service/tests/test_sandbox_service.py:36:def _execute_payload(spec: SandboxExecSpec) -> dict:
+novaic-sandbox-service/tests/test_sandbox_service.py:37:    return SandboxdExecuteRequest.from_spec(spec).to_dict()
+novaic-sandbox-service/tests/test_sandbox_service.py:48:            "service": "sandboxd",
+novaic-sandbox-service/tests/test_sandbox_service.py:49:            "contract_version": "sandboxd/v1",
+novaic-sandbox-service/tests/test_sandbox_service.py:59:            SandboxExecSpec(
+novaic-sandbox-service/tests/test_sandbox_service.py:60:                command="printf sandboxd",
+novaic-sandbox-service/tests/test_sandbox_service.py:69:    result = SandboxdExecuteResponse.from_dict(response.json()).to_result()
+novaic-sandbox-service/tests/test_sandbox_service.py:71:    assert result.stdout == b"sandboxd"
+novaic-sandbox-service/tests/test_sandbox_service.py:80:            SandboxExecSpec(
+novaic-sandbox-service/tests/test_sandbox_service.py:90:    result = SandboxdExecuteResponse.from_dict(response.json()).to_result()
+novaic-sandbox-service/tests/test_sandbox_service.py:95:def test_execute_rejects_missing_mount_source(tmp_path: Path) -> None:
+novaic-sandbox-service/tests/test_sandbox_service.py:101:            SandboxExecSpec(
+novaic-sandbox-service/tests/test_sandbox_service.py:106:                mount=SandboxBindMount(
+novaic-sandbox-service/tests/test_sandbox_service.py:108:                    mount_point="/cortex",
+novaic-sandbox-service/tests/test_sandbox_service.py:116:    assert "mount.source_root" in response.json()["detail"]
+novaic-sandbox-service/tests/test_sandbox_service.py:119:def test_execute_passes_mount_plan_to_runner(tmp_path: Path) -> None:
+novaic-sandbox-service/tests/test_sandbox_service.py:128:            SandboxExecSpec(
+novaic-sandbox-service/tests/test_sandbox_service.py:133:                mount=SandboxBindMount(
+novaic-sandbox-service/tests/test_sandbox_service.py:135:                    mount_point="/cortex",
+novaic-sandbox-service/tests/test_sandbox_service.py:144:    assert runner.seen.mount == BindMountPlan(
+novaic-sandbox-service/tests/test_sandbox_service.py:146:        mount_point="/cortex",
+novaic-sandbox-service/sandbox_service/core/process.py:1:"""Async process execution substrate used inside sandboxd."""
+novaic-sandbox-service/sandbox_service/core/process.py:11:from sandbox_service.core.mount_namespace import build_bind_mount_command
+novaic-sandbox-service/sandbox_service/core/process.py:17:    mount_point: str
+novaic-sandbox-service/sandbox_service/core/process.py:28:    mount: BindMountPlan | None = None
+novaic-sandbox-service/sandbox_service/core/process.py:45:        if spec.mount is not None:
+novaic-sandbox-service/sandbox_service/core/process.py:46:            command = build_bind_mount_command(
+novaic-sandbox-service/sandbox_service/core/process.py:48:                source_root=spec.mount.source_root,
+novaic-sandbox-service/sandbox_service/core/process.py:49:                mount_point=spec.mount.mount_point,
+novaic-sandbox-service/sandbox_service/core/process.py:50:                stable_cwd=spec.mount.stable_cwd,
+novaic-sandbox-service/sandbox_service/core/process.py:52:            cwd = spec.mount.source_root
+novaic-sandbox-service/sandbox_service/core/__init__.py:1:"""Sandboxd-internal execution substrate."""
+novaic-sandbox-service/sandbox_service/core/__init__.py:11:from sandbox_service.core.mount_namespace import (
+novaic-sandbox-service/sandbox_service/core/__init__.py:12:    build_bind_mount_command,
+novaic-sandbox-service/sandbox_service/core/__init__.py:13:    mount_namespace_available,
+novaic-sandbox-service/sandbox_service/core/__init__.py:27:    "build_bind_mount_command",
+novaic-sandbox-service/sandbox_service/core/__init__.py:31:    "mount_namespace_available",
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:1:"""Linux mount namespace helpers for sandboxd internals."""
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:11:def mount_namespace_available() -> bool:
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:12:    """Return whether the current process can create private bind mounts."""
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:18:        and shutil.which("mount") is not None
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:22:def build_bind_mount_command(
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:26:    mount_point: str,
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:29:    """Build a shell command that bind-mounts source_root at mount_point.
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:31:    The caller owns all policy: what root to mount, where to mount it, and which
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:35:    mount = shlex.quote(mount_point)
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:40:        f"mkdir -p {mount}; "
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:41:        f"mount --bind {source} {mount}; "
+novaic-sandbox-service/sandbox_service/core/mount_namespace.py:45:    return f"unshare --mount --propagation private /bin/bash -lc {shlex.quote(inner)}"
+novaic-sandbox-service/sandbox_service/core/filesystem.py:1:"""Small filesystem helpers for sandboxd internals."""

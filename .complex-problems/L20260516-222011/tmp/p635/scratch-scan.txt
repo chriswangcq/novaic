@@ -1,0 +1,70 @@
+=== command: rg -n "/rw/scratch|RW_SCRATCH|/rw/subagents|initialize_layout|scratch" novaic-cortex novaic-logicalfs || true ===
+novaic-logicalfs/tests/test_logicalfs.py:21:                LogicalFSFile(path="scratch/existing.txt", data=b"rw", writable=True),
+novaic-logicalfs/tests/test_logicalfs.py:28:                "RW_SELF": "/cortex/rw/subagents/sub-1",
+novaic-logicalfs/tests/test_logicalfs.py:34:        cwd="scratch",
+novaic-logicalfs/tests/test_logicalfs.py:38:    assert (view.rw / "scratch/existing.txt").read_bytes() == b"rw"
+novaic-logicalfs/tests/test_logicalfs.py:42:    assert view.stable_cwd == "/cortex/rw/scratch"
+novaic-logicalfs/tests/test_logicalfs.py:43:    assert view.env["RW_SELF"] == "/cortex/rw/subagents/sub-1"
+novaic-logicalfs/tests/test_authority.py:72:    assert logical_to_object_key(layout, "rw/scratch/a.txt") == "owners/o1/writeable/scratch/a.txt"
+novaic-logicalfs/tests/test_authority.py:79:    await fs.write_text("/rw/scratch/a.txt", "one")
+novaic-logicalfs/tests/test_authority.py:80:    await fs.append_line("/rw/scratch/a.txt", "two")
+novaic-logicalfs/tests/test_authority.py:82:    assert await fs.exists("/rw/scratch/a.txt")
+novaic-logicalfs/tests/test_authority.py:83:    assert await fs.read_text("/rw/scratch/a.txt") == "onetwo\n"
+novaic-logicalfs/tests/test_authority.py:85:    await fs.delete("/rw/scratch/a.txt")
+novaic-logicalfs/tests/test_authority.py:87:    assert not await fs.exists("/rw/scratch/a.txt")
+novaic-logicalfs/tests/test_authority.py:112:    await fs.initialize_layout(("/ro/config/tools", "/rw/scratch"))
+novaic-logicalfs/tests/test_authority.py:119:    assert await fs.exists("/rw/scratch/.keep")
+novaic-logicalfs/logicalfs/authority.py:191:    async def initialize_layout(self, logical_dirs: Iterable[str]) -> None:
+novaic-cortex/novaic_cortex/logical_fs.py:214:        await self._add_tree(files, f"/rw/subagents/{subagent_id}/")
+novaic-cortex/novaic_cortex/logical_fs.py:266:            "RW_SCRATCH": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/scratch",
+novaic-cortex/novaic_cortex/workspace.py:7:  - /rw/ = Agent's free space (scratch files, agent-managed data).
+novaic-cortex/novaic_cortex/workspace.py:977:        await self._files.initialize_layout(
+novaic-cortex/novaic_cortex/workspace.py:985:                "/rw/scratch",
+novaic-cortex/tests/test_cortex_chaos.py:76:            scratch_path = f"/rw/scratch/{sid}/chunk.txt"
+novaic-cortex/tests/test_cortex_chaos.py:78:            await cortex.tool_write(scratch_path, payload)
+novaic-cortex/tests/test_cortex_chaos.py:79:            assert await cortex.tool_read(scratch_path) == payload
+novaic-cortex/tests/test_hooks_limits.py:115:    await cortex.tool_write("/rw/scratch/mono_probe.txt", "x")
+novaic-cortex/tests/test_tool_metrics.py:29:    await cortex.tool_write("/rw/scratch/metrics_probe.txt", "ok")
+novaic-cortex/tests/test_runtime_path_abuse.py:32:        "../rw/scratch/x",
+novaic-cortex/tests/test_runtime_path_abuse.py:33:        "./rw/scratch/x",
+novaic-cortex/tests/test_runtime_path_abuse.py:56:        "/rw/scratch/n.txt",
+novaic-cortex/tests/test_workspace_paths.py:25:        await ws.write("/rw/active/../scratch/nope.txt", "x")
+novaic-cortex/tests/test_workspace.py:19:    for sub in ("ro/active", "ro/config", "ro/skills", "ro/scopes", "ro/knowledge", "rw/scratch"):
+novaic-cortex/tests/test_workspace.py:32:    log_path = "/rw/scratch/run.log"
+novaic-cortex/tests/test_runtime.py:43:        f"agents/{agent_id}/rw/scratch/big.txt",
+novaic-cortex/tests/test_runtime.py:49:    out = await cortex.tool_read("/rw/scratch/big.txt")
+novaic-cortex/tests/test_paths_adversarial.py:33:    assert _key("agent-z", "/rw//scratch//a.txt") == _key("agent-z", "/rw/scratch/a.txt")
+novaic-cortex/tests/test_paths_adversarial.py:48:        _key("a1", "/rw/scratch/../other.txt")
+novaic-cortex/tests/test_paths_adversarial.py:64:        await ws.read("/rw/scratch/..")
+novaic-cortex/tests/test_paths_adversarial.py:91:        await cortex.tool_read("../rw/scratch/x.txt")
+novaic-cortex/tests/test_paths_adversarial.py:130:    await cortex.tool_write("/rw//scratch//dslash.txt", "one")
+novaic-cortex/tests/test_paths_adversarial.py:131:    same = await cortex.tool_read("/rw/scratch/dslash.txt")
+novaic-cortex/tests/test_paths_adversarial.py:148:    path = f"/rw/scratch/{name}"
+novaic-cortex/tests/test_wave4_metrics.py:29:    await cortex.tool_write("/rw/scratch/wave4.txt", "wave4")
+novaic-cortex/tests/test_wave4_metrics.py:30:    assert await cortex.tool_read("/rw/scratch/wave4.txt") == "wave4"
+novaic-cortex/tests/test_sandboxd_wiring.py:141:    await ws.write_bytes("/rw/subagents/main/scratch/current.txt", b"current")
+novaic-cortex/tests/test_sandboxd_wiring.py:142:    await ws.write_bytes("/rw/subagents/sub-other/scratch/other.txt", b"other")
+novaic-cortex/tests/test_sandboxd_wiring.py:152:        assert (root / "rw/subagents/main/scratch/current.txt").read_bytes() == b"current"
+novaic-cortex/tests/test_sandboxd_wiring.py:153:        assert not (root / "rw/subagents/sub-other/scratch/other.txt").exists()
+novaic-cortex/tests/test_workspace_limits.py:17:    missing = "/rw/scratch/no-such-file.txt"
+novaic-cortex/tests/test_workspace_limits.py:62:    path = "/rw/scratch/payload.bin"
+novaic-cortex/tests/test_workspace_limits.py:71:    await ws.write_bytes("/rw/scratch/a.txt", b"a")
+novaic-cortex/tests/test_workspace_limits.py:72:    await ws.write_bytes("/rw/scratch/nested/b.txt", b"b")
+novaic-cortex/tests/test_workspace_limits.py:74:    rows = await ws.read_tree_bytes("/rw/scratch/")
+novaic-cortex/tests/test_workspace_authority.py:16:    assert authority.key("/rw/scratch/a.txt") == "agents/agent-1/rw/scratch/a.txt"
+
+=== command: rg -n "writable_env|RW_PUBLIC|RW_SELF|RW_TMP|RW_ARTIFACTS|RW_SCRATCH" novaic-cortex novaic-logicalfs || true ===
+novaic-logicalfs/tests/test_logicalfs.py:27:            writable_env={
+novaic-logicalfs/tests/test_logicalfs.py:28:                "RW_SELF": "/cortex/rw/subagents/sub-1",
+novaic-logicalfs/tests/test_logicalfs.py:29:                "RW_TMP": "/cortex/rw/tmp",
+novaic-logicalfs/tests/test_logicalfs.py:43:    assert view.env["RW_SELF"] == "/cortex/rw/subagents/sub-1"
+novaic-logicalfs/logicalfs/contracts.py:33:    writable_env: Mapping[str, str] = field(default_factory=dict)
+novaic-logicalfs/logicalfs/local.py:114:        for stable_path in [*layout.writable_env.values(), *layout.writable_dirs]:
+novaic-logicalfs/logicalfs/local.py:131:        base_env.update(dict(layout.writable_env))
+novaic-cortex/novaic_cortex/logical_fs.py:261:        writable_env = {
+novaic-cortex/novaic_cortex/logical_fs.py:262:            "RW_PUBLIC": f"{STABLE_CORTEX_RW}/public",
+novaic-cortex/novaic_cortex/logical_fs.py:263:            "RW_SELF": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}",
+novaic-cortex/novaic_cortex/logical_fs.py:264:            "RW_TMP": f"{STABLE_CORTEX_RW}/tmp",
+novaic-cortex/novaic_cortex/logical_fs.py:265:            "RW_ARTIFACTS": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/artifacts",
+novaic-cortex/novaic_cortex/logical_fs.py:266:            "RW_SCRATCH": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/scratch",
+novaic-cortex/novaic_cortex/logical_fs.py:275:            writable_env=writable_env,

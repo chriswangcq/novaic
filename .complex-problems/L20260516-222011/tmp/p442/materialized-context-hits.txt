@@ -1,0 +1,34 @@
+=== materialized context projection hits ===
+novaic-cortex/novaic_cortex/workspace.py:856:    async def read_context(self, scope_path: str) -> List[Dict[str, Any]]:
+novaic-cortex/novaic_cortex/workspace.py:879:    async def append_context(self, scope_path: str, message: Dict[str, Any]) -> int:
+novaic-cortex/novaic_cortex/workspace.py:886:    async def append_context_projection(self, scope_path: str, message: Dict[str, Any]) -> int:
+novaic-cortex/novaic_cortex/workspace.py:888:        return await self.append_context(scope_path, message)
+novaic-cortex/novaic_cortex/workspace.py:890:    async def append_context_batch(self, scope_path: str, messages: List[Dict[str, Any]]) -> None:
+novaic-cortex/novaic_cortex/workspace.py:906:        await self.append_context_batch(scope_path, messages)
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:157:        bridge.append_context_batch(
+novaic-cortex/tests/test_pr67_wake_child_api.py:108:    assert [m["content"] for m in await ws.read_context(wake)] == ["current wake input"]
+novaic-cortex/tests/test_pr67_wake_child_api.py:109:    assert await ws.read_context(root) == []
+novaic-cortex/tests/test_context_event_api_context_writes.py:82:    assert await ws.read_context(wake["scope_path"]) == [{"role": "user", "content": "hi"}]
+novaic-cortex/tests/test_context_event_api_context_writes.py:138:    assert [m["content"] for m in await ws.read_context(wake["scope_path"])] == ["same", "same"]
+novaic-cortex/tests/test_context_event_api_context_writes.py:171:        await ws.read_context(wake["scope_path"])
+novaic-cortex/novaic_cortex/api.py:70:# Every mutating endpoint (skill_begin/end, steps/write, context/append,
+novaic-cortex/novaic_cortex/api.py:71:# context/batch, meta/counter_inc, meta/advance_round) holds a distributed
+novaic-cortex/novaic_cortex/api.py:886:@app.post("/v1/context/read")
+novaic-cortex/novaic_cortex/api.py:895:    messages = await ws.read_context(scope_path)
+novaic-cortex/novaic_cortex/api.py:899:@app.post("/v1/context/append")
+novaic-cortex/novaic_cortex/api.py:918:        await ws.append_context_projection(scope_path, req.message)
+novaic-cortex/novaic_cortex/api.py:922:@app.post("/v1/context/batch")
+novaic-cortex/novaic_cortex/api.py:2330:# ``/v1/context/append`` use, so stack pushes/pops, step writes, and
+novaic-cortex/novaic_cortex/scope_locks.py:4:(``skill_begin`` / ``skill_end`` / ``steps/write`` / ``context/append`` /
+novaic-cortex/novaic_cortex/scope_locks.py:5:``context/batch`` / ``meta/advance_round`` / ``meta/counter_inc``) under a
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:104:    context = bridge.read_context(cortex_scope_id, scope_path=scope_path)
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:154:            bridge.append_context(cortex_scope_id, ctx_msg, scope_path=scope_path)
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:219:    bridge.append_context(cortex_scope_id, message, scope_path=scope_path)
+novaic-business/tests/test_pr118_subagent_context_removed.py:16:    assert "/subagents/{agent_id}/{subagent_id}/context/append" not in route_paths
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:159:    def read_context(self, scope_id: str, *, scope_path: str | None = None) -> list[dict]:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:164:        result = self._post("/v1/context/read", payload)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:167:    def append_context(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:178:        self._post("/v1/context/append", payload)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:180:    def append_context_batch(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:193:        self._post("/v1/context/batch", payload)
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:347:        bridge.read_context("scope-1")

@@ -1,0 +1,12 @@
+p531_test_files=56
+p541_files=7
+p542_files=11
+p543_files=38
+union_files=56
+missing_files=0
+extra_files=0
+overlap_pairs=0
+p541_hits=108
+p542_hits=73
+p543_hits=64
+combined_hits=245

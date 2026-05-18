@@ -1,0 +1,1106 @@
+=== P608 artifact/image rendering scan ===
+novaic-cortex/novaic_cortex/blob_payload.py:5:payloads in Blob Service and returns ``blob://cortex-payload/...`` refs.
+novaic-cortex/novaic_cortex/blob_payload.py:116:        if not isinstance(blob_ref, str) or not blob_ref.startswith("blob://cortex-payload/"):
+novaic-cortex/novaic_cortex/blob_payload.py:117:            raise ValueError("Blob Service did not return a cortex-payload BlobRef")
+novaic-cortex/novaic_cortex/blob_payload.py:142:    prefix = "blob://"
+novaic-cortex/novaic_cortex/blob_payload.py:144:        raise ValueError("payload blob_ref must start with blob://")
+novaic-cortex/novaic_cortex/blob_payload.py:148:        raise ValueError("payload blob_ref must be blob://{namespace}/{blob_id}")
+novaic-cortex/novaic_cortex/auth.py:12:import base64
+novaic-cortex/novaic_cortex/auth.py:32:    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+novaic-cortex/novaic_cortex/auth.py:39:    return base64.urlsafe_b64decode(s)
+novaic-llm-factory/factory/contracts.py:81:    if not url.startswith("data:") or ";base64," not in url:
+novaic-llm-factory/factory/contracts.py:85:    return f"{header},[redacted {media_type} base64 chars={len(data)}]"
+novaic-llm-factory/factory/contracts.py:96:    if item_type == "image_url" and isinstance(value.get("image_url"), dict):
+novaic-llm-factory/factory/contracts.py:97:        image_url = {
+novaic-llm-factory/factory/contracts.py:99:            for key, item in value["image_url"].items()
+novaic-llm-factory/factory/contracts.py:101:        url = image_url.get("url")
+novaic-llm-factory/factory/contracts.py:103:            image_url["url"] = _redact_data_url_for_log(url)
+novaic-llm-factory/factory/contracts.py:108:                if key != "image_url"
+novaic-llm-factory/factory/contracts.py:110:            "image_url": image_url,
+novaic-llm-factory/factory/contracts.py:118:        if source.get("type") == "base64" and isinstance(source.get("data"), str):
+novaic-llm-factory/factory/contracts.py:120:            source["data"] = f"[redacted {media_type} base64 chars={len(source['data'])}]"
+novaic-llm-factory/factory/crypto.py:17:import base64
+novaic-llm-factory/factory/crypto.py:36:        # 支持直接提供 hex 或 base64
+novaic-llm-factory/factory/crypto.py:42:            decoded = base64.b64decode(raw)
+novaic-llm-factory/factory/crypto.py:83:        - encrypted_private_key_b64: base64 编码的加密私钥（存 DB）
+novaic-llm-factory/factory/crypto.py:109:    encrypted_private_b64 = base64.b64encode(encrypted_private).decode("utf-8")
+novaic-llm-factory/factory/crypto.py:122:    encrypted_data = base64.b64decode(encrypted_private_key_b64)
+novaic-llm-factory/factory/crypto.py:140:    Returns: base64 编码的密文
+novaic-llm-factory/factory/crypto.py:151:    return base64.b64encode(ciphertext).decode("utf-8")
+novaic-llm-factory/factory/crypto.py:169:    ciphertext = base64.b64decode(encrypted_api_key_b64)
+novaic-cortex/novaic_cortex/shell_capabilities.py:40:import base64
+novaic-cortex/novaic_cortex/shell_capabilities.py:66:  agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT]
+novaic-cortex/novaic_cortex/shell_capabilities.py:67:  agentctl media audio-qa --file-url blob://namespace/id --prompt-file PATH
+novaic-cortex/novaic_cortex/shell_capabilities.py:87:Media/file outputs are stored as blob:// artifacts in tool-output.v1
+novaic-cortex/novaic_cortex/shell_capabilities.py:88:manifests. Do not print or paste raw base64; use the artifact manifest and
+novaic-cortex/novaic_cortex/shell_capabilities.py:124:  base64 into normal shell output, replies, or context.
+novaic-cortex/novaic_cortex/shell_capabilities.py:223:    if not file_url.startswith("blob://"):
+novaic-cortex/novaic_cortex/shell_capabilities.py:224:        print(f"{{COMMAND}}: audio-qa only supports blob:// file_url", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:226:    rest = file_url.removeprefix("blob://")
+novaic-cortex/novaic_cortex/shell_capabilities.py:269:    blob_id = f"artifact-{{uuid.uuid4().hex}}"
+novaic-cortex/novaic_cortex/shell_capabilities.py:272:        "namespace": "runtime-artifact",
+novaic-cortex/novaic_cortex/shell_capabilities.py:323:    artifacts: list[dict] | None = None,
+novaic-cortex/novaic_cortex/shell_capabilities.py:332:        "artifacts": artifacts or [],
+novaic-cortex/novaic_cortex/shell_capabilities.py:341:def _artifact_manifest(
+novaic-cortex/novaic_cortex/shell_capabilities.py:344:    modality: str,
+novaic-cortex/novaic_cortex/shell_capabilities.py:356:        "modality": modality,
+novaic-cortex/novaic_cortex/shell_capabilities.py:370:        return base64.b64decode(value.encode("ascii"), validate=True)
+novaic-cortex/novaic_cortex/shell_capabilities.py:372:        print(f"{{COMMAND}}: invalid base64 {{field}} in device response: {{exc}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:393:    artifact = _artifact_manifest(
+novaic-cortex/novaic_cortex/shell_capabilities.py:395:        modality="image",
+novaic-cortex/novaic_cortex/shell_capabilities.py:408:        projection={{"history": "manifest_only", "monitor": "thumbnail_allowed"}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:413:        artifacts=[artifact],
+novaic-cortex/novaic_cortex/shell_capabilities.py:414:        events=[{{"type": "device.screenshot.captured", "summary": "Screenshot stored as runtime artifact."}}],
+novaic-cortex/novaic_cortex/shell_capabilities.py:422:    if result.get("success") is False or not result.get("data") or result.get("is_base64") is not True:
+novaic-cortex/novaic_cortex/shell_capabilities.py:437:    artifact = _artifact_manifest(
+novaic-cortex/novaic_cortex/shell_capabilities.py:439:        modality="binary",
+novaic-cortex/novaic_cortex/shell_capabilities.py:450:        text=f"Pulled host desktop file {{path or name}} into runtime artifact {{blob_ref}}.",
+novaic-cortex/novaic_cortex/shell_capabilities.py:451:        artifacts=[artifact],
+novaic-cortex/novaic_cortex/shell_capabilities.py:452:        events=[{{"type": "device.file.pulled", "summary": "File stored as runtime artifact."}}],
+novaic-cortex/novaic_cortex/shell_capabilities.py:838:        print("Usage: agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT|--prompt-file PATH]")
+novaic-cortex/novaic_cortex/shell_capabilities.py:879:                            "data": base64.b64encode(audio_data).decode("ascii"),
+novaic-llm-factory/factory/providers.py:216:                elif item_type == "image_url":
+novaic-llm-factory/factory/providers.py:217:                    image_url = item.get("image_url", {})
+novaic-llm-factory/factory/providers.py:219:                        image_url.get("url", "")
+novaic-llm-factory/factory/providers.py:220:                        if isinstance(image_url, dict)
+novaic-llm-factory/factory/providers.py:221:                        else str(image_url)
+novaic-llm-factory/factory/providers.py:231:                                        "type": "base64",
+novaic-llm-factory/factory/providers.py:381:            if item_type == "image_url":
+novaic-llm-factory/factory/providers.py:382:                image_url = item.get("image_url", {})
+novaic-llm-factory/factory/providers.py:384:                    image_url.get("url", "")
+novaic-llm-factory/factory/providers.py:385:                    if isinstance(image_url, dict)
+novaic-llm-factory/factory/providers.py:386:                    else str(image_url)
+novaic-llm-factory/factory/providers.py:399:                if source.get("type") == "base64" and source.get("data"):
+novaic-llm-factory/factory/providers.py:419:        if ";base64" not in header or not data:
+novaic-app/src/services/fileUpload.ts:7: * Returns BlobRef metadata ready for messages.send payload.
+novaic-app/src/services/fileUpload.ts:15:export interface UploadedAttachment {
+novaic-app/src/services/fileUpload.ts:97:): Promise<UploadedAttachment> {
+novaic-app/src/services/fileUpload.ts:99:  if (!blobRef?.startsWith('blob://')) {
+novaic-app/src/services/fileUpload.ts:100:    throw new Error('Upload failed: no BlobRef returned');
+novaic-app/src/services/fileUpload.ts:131:): Promise<UploadedAttachment> {
+novaic-app/src/services/fileUpload.ts:206:    if (!blobRef?.startsWith('blob://')) {
+novaic-app/src/services/fileUpload.ts:207:      throw new Error('Upload failed: no BlobRef returned');
+novaic-app/src/services/fileUpload.ts:229:): Promise<UploadedAttachment> {
+novaic-app/src/services/fileUpload.ts:240:): Promise<{ uploaded: UploadedAttachment[]; errors: string[] }> {
+novaic-app/src/services/fileUpload.ts:245:  const uploaded: UploadedAttachment[] = [];
+novaic-cortex/novaic_cortex/workspace.py:376:        Writes the ``summary.md`` projection artifact and routes the phase flip through
+novaic-cortex/novaic_cortex/workspace.py:773:        observation_artifacts = (
+novaic-cortex/novaic_cortex/workspace.py:774:            observation.get("artifacts")
+novaic-cortex/novaic_cortex/workspace.py:778:        if step.get("artifacts") or observation_artifacts:
+novaic-cortex/novaic_cortex/workspace.py:779:            index_entry["has_artifacts"] = True
+novaic-agent-runtime/task_queue/tool_output.py:5:for shell capability outputs, artifact manifests, Cortex history, and monitor
+novaic-agent-runtime/task_queue/tool_output.py:51:    modality: str
+novaic-agent-runtime/task_queue/tool_output.py:65:        modality = self.modality.strip().lower()
+novaic-agent-runtime/task_queue/tool_output.py:67:            raise ValueError("artifact uri is required")
+novaic-agent-runtime/task_queue/tool_output.py:68:        if modality not in _ALLOWED_MODALITIES:
+novaic-agent-runtime/task_queue/tool_output.py:69:            raise ValueError(f"invalid artifact modality: {self.modality!r}")
+novaic-agent-runtime/task_queue/tool_output.py:71:            raise ValueError("artifact size_bytes must be >= 0")
+novaic-agent-runtime/task_queue/tool_output.py:75:            "modality": modality,
+novaic-agent-runtime/task_queue/tool_output.py:121:    artifacts: tuple[ArtifactManifest, ...] = ()
+novaic-agent-runtime/task_queue/tool_output.py:131:            "artifacts": [item.to_dict() for item in self.artifacts],
+novaic-agent-runtime/task_queue/tool_output.py:140:def artifact_manifest(
+novaic-agent-runtime/task_queue/tool_output.py:143:    modality: str,
+novaic-agent-runtime/task_queue/tool_output.py:157:        modality=modality,
+novaic-agent-runtime/task_queue/tool_output.py:185:    artifacts: tuple[ArtifactManifest, ...] | list[ArtifactManifest] = (),
+novaic-agent-runtime/task_queue/tool_output.py:195:        artifacts=tuple(artifacts),
+novaic-app/src/locales/en/translation.json:428:    "attachments": "Attachments: ",
+novaic-app/src/types/index.ts:188:  attachments?: Attachment[];
+novaic-app/src/types/index.ts:214:// File Attachment
+novaic-app/src/types/index.ts:215:export interface Attachment {
+novaic-app/src/types/index.ts:223:  /** Stable BlobRef locator (`blob://...`) resolved through Gateway. */
+novaic-app/src/types/index.ts:225:  /** Display locator. New attachments use the same `blob://...` value. */
+novaic-app/src/types/index.ts:230:  modality?: 'image' | 'resource';
+novaic-cortex/novaic_cortex/step_result_projection.py:29:def _tool_output_artifact_line(artifact: Dict[str, Any]) -> str:
+novaic-cortex/novaic_cortex/step_result_projection.py:30:    uri = str(artifact.get("uri") or "").strip()
+novaic-cortex/novaic_cortex/step_result_projection.py:31:    modality = str(artifact.get("modality") or "resource").strip() or "resource"
+novaic-cortex/novaic_cortex/step_result_projection.py:32:    name = str(artifact.get("name") or "").strip()
+novaic-cortex/novaic_cortex/step_result_projection.py:33:    mime_type = str(artifact.get("mime_type") or "").strip()
+novaic-cortex/novaic_cortex/step_result_projection.py:34:    summary = str(artifact.get("summary") or "").strip()
+novaic-cortex/novaic_cortex/step_result_projection.py:35:    size = _tool_output_size_label(artifact.get("size_bytes"))
+novaic-cortex/novaic_cortex/step_result_projection.py:36:    label = name or uri or "artifact"
+novaic-cortex/novaic_cortex/step_result_projection.py:37:    details = ", ".join(part for part in (modality, mime_type, size) if part)
+novaic-cortex/novaic_cortex/step_result_projection.py:43:    access = artifact.get("access") if isinstance(artifact.get("access"), dict) else {}
+novaic-cortex/novaic_cortex/step_result_projection.py:62:    artifacts = raw.get("artifacts") if isinstance(raw.get("artifacts"), list) else []
+novaic-cortex/novaic_cortex/step_result_projection.py:63:    for artifact in artifacts:
+novaic-cortex/novaic_cortex/step_result_projection.py:64:        if isinstance(artifact, dict):
+novaic-cortex/novaic_cortex/step_result_projection.py:65:            text_parts.append(_tool_output_artifact_line(artifact))
+novaic-cortex/novaic_cortex/step_result_projection.py:84:        "display_files": [],
+novaic-cortex/novaic_cortex/step_result_projection.py:85:        "artifacts": artifacts,
+novaic-cortex/novaic_cortex/step_result_projection.py:95:    1. 统一格式: {text, files_created, display_files}
+novaic-cortex/novaic_cortex/step_result_projection.py:100:        {"text": "...", "files_created": [...], "display_files": [...]}
+novaic-cortex/novaic_cortex/step_result_projection.py:103:        return {"text": "", "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:114:        return {"text": raw, "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:117:        return {"text": str(raw), "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:126:    if "display_files" in raw or "files_created" in raw:
+novaic-cortex/novaic_cortex/step_result_projection.py:139:            "display_files": raw.get("display_files") or [],
+novaic-cortex/novaic_cortex/step_result_projection.py:146:        display_files = []
+novaic-cortex/novaic_cortex/step_result_projection.py:154:                # 支持 URL 形式或直接的 data(base64) 形式
+novaic-cortex/novaic_cortex/step_result_projection.py:156:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:159:                        "modality": "image",
+novaic-cortex/novaic_cortex/step_result_projection.py:163:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:164:                        "url": f"data:{mime};base64,{item['data']}",
+novaic-cortex/novaic_cortex/step_result_projection.py:166:                        "modality": "image",
+novaic-cortex/novaic_cortex/step_result_projection.py:168:            elif t == "image_ref":
+novaic-cortex/novaic_cortex/step_result_projection.py:171:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:174:                        "modality": "image",
+novaic-cortex/novaic_cortex/step_result_projection.py:180:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:183:                        "modality": "resource",
+novaic-cortex/novaic_cortex/step_result_projection.py:188:            "display_files": display_files,
+novaic-cortex/novaic_cortex/step_result_projection.py:193:        return {"text": str(raw["text"]), "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:209:    return {"text": serialized, "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:229:        display_files = result_data.get("display_files", [])
+novaic-cortex/novaic_cortex/step_result_projection.py:230:        for f in display_files:
+novaic-cortex/novaic_cortex/step_result_projection.py:249:                modality = str(f.get("modality") or "")
+novaic-cortex/novaic_cortex/step_result_projection.py:250:                if url.startswith("blob://") and (modality == "image" or mime.startswith("image/")):
+novaic-cortex/novaic_cortex/step_result_projection.py:252:                        "type": "image_ref",
+novaic-cortex/novaic_cortex/step_result_projection.py:314:    displays = result_data.get("display_files", [])
+novaic-cortex/novaic_cortex/step_result_projection.py:315:    artifacts = result_data.get("artifacts", [])
+novaic-cortex/novaic_cortex/step_result_projection.py:322:    if artifacts:
+novaic-cortex/novaic_cortex/step_result_projection.py:323:        parts.append(f"[{len(artifacts)} artifacts]")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:14:import base64
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:170:        "type": "image_ref",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:176:    display_files = [{
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:179:        "modality": "image",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:193:            "display_files": display_files,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:386:        raise ValueError("display only supports Blob refs: blob://{namespace}/{blob_id}") from exc
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:408:                "data": base64.b64encode(data).decode("ascii"),
+novaic-cortex/novaic_cortex/logical_fs.py:199:        The writable tree can contain large generated artifacts. Shell startup
+novaic-cortex/novaic_cortex/logical_fs.py:265:            "RW_ARTIFACTS": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/artifacts",
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:377:        artifacts: Optional[List[Dict[str, Any]]] = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:401:        if artifacts:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:402:            step["artifacts"] = artifacts
+novaic-agent-runtime/task_queue/utils/multimodal.py:67:        OpenAI content 数组 [{"type": "image_url", ...}, {"type": "text", ...}]
+novaic-agent-runtime/task_queue/utils/multimodal.py:72:        data_url = f"data:{img['mime_type']};base64,{img['data']}"
+novaic-agent-runtime/task_queue/utils/multimodal.py:74:            "type": "image_url",
+novaic-agent-runtime/task_queue/utils/multimodal.py:75:            "image_url": {"url": data_url}
+novaic-agent-runtime/task_queue/utils/multimodal.py:101:                "type": "base64",
+novaic-agent-runtime/task_queue/utils/step_result_client.py:9:import base64
+novaic-agent-runtime/task_queue/utils/step_result_client.py:22:def _image_ref_resolution_note(file_url: str, reason: str) -> Dict[str, str]:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:42:def _resolve_display_image_refs(content: str, *, user_id: Optional[str]) -> str:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:57:        if not isinstance(item, dict) or item.get("type") != "image_ref":
+novaic-agent-runtime/task_queue/utils/step_result_client.py:64:            resolved.append(_image_ref_resolution_note("", "missing file_url"))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:69:            resolved.append(_image_ref_resolution_note(file_url, str(exc)))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:72:            resolved.append(_image_ref_resolution_note(
+novaic-agent-runtime/task_queue/utils/step_result_client.py:79:            resolved.append(_image_ref_resolution_note(file_url, f"not an image MIME type: {mime_type}"))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:83:            "data": base64.b64encode(data).decode("ascii"),
+novaic-agent-runtime/task_queue/utils/step_result_client.py:125:        content = _resolve_display_image_refs(content, user_id=user_id)
+novaic-agent-runtime/task_queue/utils/user_content.py:5:附件不直接塞 base64，而是告知 Agent 有哪些文件可用，Agent 需要时调用对应工具查看。
+novaic-agent-runtime/task_queue/utils/user_content.py:6:这样统一走 Cortex step result 的 display_files 机制。
+novaic-agent-runtime/task_queue/utils/user_content.py:30:    不再拉取附件 base64，只返回文本 + 附件描述。
+novaic-app/src/hooks/useWebRtc.ts:273:                const rgba = Uint8Array.from(atob(msg.rgba_base64), c => c.charCodeAt(0));
+novaic-app/src/components/Visual/ActivityTimeline.tsx:38:const DATA_IMAGE_BASE64_PATTERN = /\bdata:image\/[a-z0-9.+-]+;base64,/i;
+novaic-app/src/components/Visual/SmartValue.tsx:15:  if (value.startsWith('blob://')) return true;
+novaic-app/src/components/Visual/SmartValue.tsx:37:interface ImagePreviewProps {
+novaic-app/src/components/Visual/SmartValue.tsx:42:function ImagePreview({ src, alt = 'Image' }: ImagePreviewProps) {
+novaic-app/src/components/Visual/SmartValue.tsx:148:    if (isImageUrl(data)) return <ImagePreview src={data} />;
+novaic-app/src/components/Visual/SmartValue.tsx:272:export { ImagePreview, CollapsibleText, JsonTree };
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:16:import type { Attachment } from '../../types';
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:19:  attachment: Attachment;
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:50:  const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:254:export function isAudioAttachment(attachment: Attachment): boolean {
+novaic-app/src/application/converters.ts:8:import type { Attachment } from '../types';
+novaic-app/src/application/converters.ts:12:interface MessageAttachmentContent {
+novaic-app/src/application/converters.ts:22:  attachments?: Attachment[];
+novaic-app/src/application/converters.ts:26:  content: string | { text?: string; attachments?: MessageAttachmentContent[] } | null | undefined,
+novaic-app/src/application/converters.ts:33:    const attachments = content.attachments?.map((a, i) => buildAttachment(a, messageId, i));
+novaic-app/src/application/converters.ts:42:        const attachments = parsed.attachments?.map((a: MessageAttachmentContent, i: number) =>
+novaic-app/src/application/converters.ts:43:          buildAttachment(a, messageId, i)
+novaic-app/src/application/converters.ts:54:function buildAttachment(
+novaic-app/src/application/converters.ts:55:  a: MessageAttachmentContent,
+novaic-app/src/application/converters.ts:58:): Attachment {
+novaic-app/src/application/converters.ts:70:    modality:  a.mime_type?.startsWith('image/') ? 'image' : 'resource',
+novaic-app/src/components/Chat/FileAttachment.tsx:18:import type { Attachment } from '../../types';
+novaic-app/src/components/Chat/FileAttachment.tsx:19:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/FileAttachment.tsx:22:interface FileAttachmentProps {
+novaic-app/src/components/Chat/FileAttachment.tsx:23:  attachment: Attachment;
+novaic-app/src/components/Chat/FileAttachment.tsx:53:export function FileAttachment({ attachment }: FileAttachmentProps) {
+novaic-app/src/components/Chat/FileAttachment.tsx:148:  const thumbnail = isImage ? (
+novaic-app/src/components/Chat/FileAttachment.tsx:200:      <ImagePreviewOverlay
+novaic-app/src/components/Chat/FileAttachment.tsx:309:      {thumbnail}
+novaic-app/src/components/Chat/FileAttachment.tsx:315:import { VoiceMessageBubble, isAudioAttachment } from './VoiceMessageBubble';
+novaic-app/src/components/Chat/FileAttachment.tsx:317:interface FileAttachmentListProps {
+novaic-app/src/components/Chat/FileAttachment.tsx:318:  attachments: Attachment[];
+novaic-app/src/components/Chat/FileAttachment.tsx:321:export function FileAttachmentList({ attachments }: FileAttachmentListProps) {
+novaic-app/src/components/Chat/FileAttachment.tsx:325:  const audios = attachments.filter(a => isAudioAttachment(a));
+novaic-app/src/components/Chat/FileAttachment.tsx:336:            <FileAttachment key={attachment.id} attachment={attachment} />
+novaic-app/src/components/Chat/FileAttachment.tsx:350:            <FileAttachment key={attachment.id} attachment={attachment} />
+novaic-app/src/application/blobAttachmentPath.test.ts:21:    expect(source).not.toContain('/api/blobs/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:22:    expect(source).not.toContain('/api/files/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:30:  it('records voice audio as compressed multipart blobs instead of WAV/base64 uploads', () => {
+novaic-app/src/application/blobAttachmentPath.test.ts:38:    expect(recorder).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:40:    expect(input).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:50:    expect(source).toContain('Only blob:// file references are supported');
+novaic-app/src/application/converters.test.ts:15:      attachments: [{ blob_ref: 'blob://user-file/blob-1', filename: 'a.png', mime_type: 'image/png' }],
+novaic-app/src/application/converters.test.ts:21:        path: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:24:        blob_ref: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:25:        url: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:27:        modality: 'image',
+novaic-app/src/components/Chat/Markdown.tsx:16:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/Markdown.tsx:90:        <ImagePreviewOverlay
+novaic-app/src/components/Chat/ChatInput.tsx:47:  const [attachments, setAttachments] = useState<File[]>([]);
+novaic-app/src/components/Chat/ChatInput.tsx:85:    setAttachments((prev) => [...prev, ...toAdd]);
+novaic-app/src/components/Chat/ChatInput.tsx:88:  const removeAttachment = useCallback((index: number) => {
+novaic-app/src/components/Chat/ChatInput.tsx:89:    setAttachments((prev) => prev.filter((_, i) => i !== index));
+novaic-app/src/components/Chat/ChatInput.tsx:158:    setAttachments([]);
+novaic-app/src/components/Chat/ChatInput.tsx:205:      {/* Attachment preview */}
+novaic-app/src/components/Chat/ChatInput.tsx:216:                onClick={() => removeAttachment(i)}
+novaic-app/src/components/Chat/AssistantMessage.tsx:7:import { FileAttachmentList } from './FileAttachment';
+novaic-app/src/components/Chat/AssistantMessage.tsx:8:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/AssistantMessage.tsx:38:        <ImagePreviewOverlay
+novaic-app/src/components/Chat/AssistantMessage.tsx:181:                const imageUrl = String(data?.image_url || data?.image_path || '');
+novaic-app/src/components/Chat/AssistantMessage.tsx:222:        {/* Attachments (Phase 2: Agent → User) - 微信风格文件卡片 */}
+novaic-app/src/components/Chat/AssistantMessage.tsx:224:          <FileAttachmentList attachments={message.attachments} />
+novaic-app/src/components/Chat/UserMessage.tsx:5:import { FileAttachmentList } from './FileAttachment';
+novaic-app/src/components/Chat/UserMessage.tsx:54:      {/* Attachments - 微信风格文件卡片 */}
+novaic-app/src/components/Chat/UserMessage.tsx:57:          <FileAttachmentList attachments={message.attachments} />
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:212:            text: `data:image/jpeg;base64,${'A'.repeat(400)}SECRET_IMAGE_PAYLOAD`,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:220:    expect(screen.queryByText(/data:image/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:224:  it('hides long jpeg-like base64 text from expanded timeline details', () => {
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:12:interface ImagePreviewOverlayProps {
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:21:export function ImagePreviewOverlay({ src, alt, onClose, saveUrl, saveFilename }: ImagePreviewOverlayProps) {
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:108:      console.error('[ImagePreview] Save failed:', err);
+novaic-app/src/components/Layout/LayoutToggle.tsx:8:  { id: 'mini', icon: PictureInPicture2, title: 'Mini (Chat + VM thumbnail)' },
+=== Chat attachment BlobRef/image rendering ===
+    53	export function FileAttachment({ attachment }: FileAttachmentProps) {
+    54	  const [downloadState, setDownloadState] = useState<DownloadState>('idle');
+    55	  const [localPath, setLocalPath] = useState<string | null>(null);
+    56	  const [error, setError] = useState<string | null>(null);
+    57	  const [previewOpen, setPreviewOpen] = useState(false);
+    58	
+    59	  const url = attachment.url ?? attachment.path ?? '';
+    60	  const isImage = (attachment.mime_type ?? attachment.type ?? '').startsWith('image/');
+    61	  const filename = attachment.name || url?.split('/').pop() || 'file';
+    62	  const fileSize = attachment.size || 0;
+    63	  const mimeType = attachment.mime_type ?? attachment.type ?? 'image/*';
+    64	
+    65	  // 图片：Rust cache-first
+    66	  const authUrl = useAuthenticatedImage(
+    67	    isImage ? url : '',
+    68	    undefined,
+    69	    mimeType,
+    70	  );
+    71	
+    72	  // 非图片文件：启动时检查缓存
+    73	  useEffect(() => {
+    74	    if (isImage || !url) return;
+    75	    invoke<{ success: boolean; path?: string; cached?: boolean }>('get_cached_file', {
+    76	      url,
+    77	      filename,
+    78	    }).then(result => {
+    79	      if (result.success && result.path && result.cached) {
+    80	        setLocalPath(result.path);
+    81	        setDownloadState('downloaded');
+    82	      }
+    83	    }).catch(() => {});
+    84	  }, [isImage, url]);
+    85	
+    86	  // 下载文件
+    87	  const handleDownload = useCallback(async () => {
+    88	    if (!url) return;
+    89	    setDownloadState('downloading');
+    90	    setError(null);
+    91	    try {
+    92	      const result = await invoke<{ success: boolean; path?: string }>('get_cached_file', {
+    93	        url,
+    94	        filename,
+    95	      });
+    96	      if (result.success && result.path) {
+    97	        setLocalPath(result.path);
+    98	        setDownloadState('downloaded');
+    99	      } else {
+   100	        throw new Error('Download failed');
+   101	      }
+   102	    } catch (err) {
+   103	      console.error('Download failed:', err);
+   104	      setError(err instanceof Error ? err.message : 'Download failed');
+   105	      setDownloadState('error');
+   106	    }
+   107	  }, [url, filename]);
+   108	
+   109	  // 系统应用打开
+   110	  const handleOpen = useCallback(async () => {
+   111	    if (!localPath) return;
+   112	    try {
+   113	      await invoke('open_file', { path: localPath });
+   114	    } catch (err) {
+   115	      console.error('Open file failed:', err);
+   116	      try {
+   117	        await invoke('show_in_folder', { path: localPath });
+   118	      } catch {
+   119	        setError('Failed to open file');
+   120	      }
+   121	    }
+   122	  }, [localPath]);
+   123	
+   124	  // 在 Finder/资源管理器 中显示
+   125	  const handleShowInFolder = useCallback(async () => {
+   126	    if (!localPath) return;
+   127	    try {
+   128	      await invoke('show_in_folder', { path: localPath });
+   129	    } catch {
+   130	      setError('Failed to locate file');
+   131	    }
+   132	  }, [localPath]);
+   133	
+   134	  // 打开浮层 — 文件自动开始下载
+   135	  const openPreview = useCallback(() => {
+   136	    setPreviewOpen(true);
+   137	    if (!isImage && downloadState === 'idle') {
+   138	      handleDownload();
+   139	    }
+   140	  }, [isImage, downloadState, handleDownload]);
+   141	
+   142	  const closePreview = useCallback(() => {
+   143	    setPreviewOpen(false);
+   144	  }, []);
+   145	
+   146	  // ── 缩略图 / 卡片 ──────────────────────────────────────────────────────
+   147	
+   148	  const thumbnail = isImage ? (
+   149	    <div 
+   150	      onClick={openPreview}
+   151	      className="block max-w-[200px] rounded-lg overflow-hidden border-transparent hover:border-transparent transition-colors cursor-pointer relative group"
+   152	    >
+   153	      {authUrl ? (
+   154	        <img
+   155	          src={authUrl}
+   156	          alt={filename}
+   157	          className="max-h-[150px] w-auto object-contain bg-nb-surface"
+   158	          loading="lazy"
+   159	        />
+   160	      ) : (
+   161	        <div className="h-[100px] w-[150px] bg-nb-surface flex items-center justify-center">
+   162	          <Loader2 className="w-6 h-6 text-nb-text-muted animate-spin" />
+   163	        </div>
+   164	      )}
+   165	      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+   166	        <ZoomIn size={20} className="text-white/90" />
+   167	      </div>
+   168	    </div>
+   169	  ) : (
+   170	    <div 
+   171	      className="flex items-center gap-3 p-3 rounded-lg bg-nb-surface border-transparent hover:border-transparent transition-colors cursor-pointer min-w-[240px] max-w-[300px]"
+   172	      onClick={openPreview}
+   173	    >
+   174	      <div className={`flex-shrink-0 w-10 h-10 rounded-lg bg-nb-bg flex items-center justify-center ${getFileIconColor(filename)}`}>
+   175	        <FileText className="w-5 h-5" />
+   176	      </div>
+   177	      <div className="flex-1 min-w-0">
+   178	        <div className="text-sm text-nb-text font-medium truncate" title={filename}>
+   179	          {filename}
+   180	        </div>
+   181	        <div className="flex items-center gap-2 mt-0.5">
+   182	          {fileSize > 0 && (
+   183	            <span className="text-xs text-nb-text-muted">{formatFileSize(fileSize)}</span>
+   184	          )}
+   185	          {downloadState === 'downloaded' && !error && (
+   186	            <span className="text-xs text-green-500">Cached</span>
+   187	          )}
+   188	        </div>
+   189	      </div>
+   190	      <div className="flex-shrink-0">
+   191	        <ExternalLink className="w-4 h-4 text-nb-text-muted" />
+   192	      </div>
+   193	    </div>
+   194	  );
+   195	
+   196	  // ── 全屏浮层 ──────────────────────────────────────────────────────────
+   197	
+   198	  const overlay = previewOpen ? (
+   199	    isImage && authUrl ? (
+   200	      <ImagePreviewOverlay
+   201	        src={authUrl}
+   202	        alt={filename}
+   203	        onClose={closePreview}
+   204	        saveUrl={url}
+   205	        saveFilename={filename}
+   206	      />
+   207	    ) : createPortal(
+   208	      <div 
+    99	  const handleSave = async () => {
+   100	    if (!saveUrl) return;
+   101	    try {
+   102	      const filename = saveFilename || saveUrl.split('/').pop() || 'image.png';
+   103	      const result = await invoke<{ success: boolean; path?: string }>('get_cached_file', { url: saveUrl, filename });
+   104	      if (result.success && result.path) {
+   105	        await invoke('open_file', { path: result.path });
+   106	      }
+   107	    } catch (err) {
+   108	      console.error('[ImagePreview] Save failed:', err);
+   109	    }
+   110	  };
+   111	
+   112	  return createPortal(
+   113	    <M.div
+   114	      className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
+   115	      initial={{ opacity: 0 }}
+   116	      animate={{ opacity: 1 }}
+   117	      transition={{ duration: 0.2 }}
+   118	      onClick={onClose}
+   119	      onWheel={handleWheel}
+   120	      style={{ touchAction: 'none' }}
+   121	    >
+   122	      {/* 工具栏 */}
+   123	      <M.div
+   124	        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10 bg-black/60 backdrop-blur-md rounded-full px-3 py-2"
+   125	        initial={{ opacity: 0, y: 20 }}
+   126	        animate={{ opacity: 1, y: 0 }}
+   127	        transition={{ delay: 0.15, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+   128	        onClick={e => e.stopPropagation()}
+   129	      >
+   130	        <button onClick={() => setScale(s => clampScale(s - 0.5))} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors" title="Zoom out">
+   131	          <ZoomOut size={18} className="text-white" />
+   132	        </button>
+   133	        <span className="text-white/60 text-xs min-w-[40px] text-center">{Math.round(scale * 100)}%</span>
+   134	        <button onClick={() => setScale(s => clampScale(s + 0.5))} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors" title="Zoom in">
+   135	          <ZoomIn size={18} className="text-white" />
+   136	        </button>
+   137	        <div className="w-px h-5 bg-white/20 mx-1" />
+   138	        <button onClick={() => setRotation(r => (r + 90) % 360)} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors" title="Rotate">
+   139	          <RotateCw size={18} className="text-white" />
+   140	        </button>
+   141	        <div className="w-px h-5 bg-white/20 mx-1" />
+   142	        <button onClick={onClose} className="p-2 rounded-full bg-white/10 hover:bg-red-500/50 transition-colors" title="Close">
+   143	          <X size={18} className="text-white" />
+   144	        </button>
+   145	        {saveUrl && (
+   146	          <>
+   147	            <div className="w-px h-5 bg-white/20 mx-1" />
+   148	            <button onClick={handleSave} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors" title="Save">
+   149	              <Save size={18} className="text-white" />
+   150	            </button>
+   151	          </>
+   152	        )}
+   153	      </M.div>
+   154	
+   155	      {/* 图片 */}
+   156	      <M.img
+   157	        ref={imgRef}
+   158	        src={src}
+   159	        alt={alt || ''}
+   160	        onClick={e => e.stopPropagation()}
+   161	        onDoubleClick={handleDoubleClick}
+   162	        onTouchStart={handleTouchStart}
+   163	        onTouchMove={handleTouchMove}
+   164	        onTouchEnd={handleTouchEnd}
+   165	        style={{
+   166	          transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale}) rotate(${rotation}deg)`,
+   167	          transition: isDragging.current ? 'none' : 'transform 0.2s ease-out',
+   168	          maxWidth: '90%',
+   169	          maxHeight: '90%',
+   170	          objectFit: 'contain',
+   171	          userSelect: 'none',
+   172	          WebkitUserSelect: 'none',
+   173	        }}
+   174	        draggable={false}
+   175	        initial={{ scale: 0.9, opacity: 0 }}
+   176	        animate={{ scale: 1, opacity: 1 }}
+   177	        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+   178	      />
+   179	    </M.div>,
+   180	    document.body
+=== Attachment conversion and BlobRef path tests ===
+    25	export function parseMessageContent(
+    26	  content: string | { text?: string; attachments?: MessageAttachmentContent[] } | null | undefined,
+    27	  messageId: string,
+    28	): ParsedContent {
+    29	  if (!content) return { text: '' };
+    30	
+    31	  if (typeof content === 'object') {
+    32	    const text = content.text ?? '';
+    33	    const attachments = content.attachments?.map((a, i) => buildAttachment(a, messageId, i));
+    34	    return { text, attachments: attachments?.length ? attachments : undefined };
+    35	  }
+    36	
+    37	  if (typeof content === 'string') {
+    38	    try {
+    39	      const parsed = JSON.parse(content);
+    40	      if (typeof parsed === 'object' && parsed !== null && ('text' in parsed || 'attachments' in parsed)) {
+    41	        const text = parsed.text ?? '';
+    42	        const attachments = parsed.attachments?.map((a: MessageAttachmentContent, i: number) =>
+    43	          buildAttachment(a, messageId, i)
+    44	        );
+    45	        return { text, attachments: attachments?.length ? attachments : undefined };
+    46	      }
+    47	    } catch { /* invalid message content shape */ }
+    48	    return { text: '' };
+    49	  }
+    50	
+    51	  return { text: '' };
+    52	}
+    53	
+    54	function buildAttachment(
+    55	  a: MessageAttachmentContent,
+    56	  messageId: string,
+    57	  i: number,
+    58	): Attachment {
+    59	  const locator = a.blob_ref || a.url || '';
+    60	  return {
+    61	    id:        `att-${messageId}-${i}`,
+    62	    name:      a.filename,
+    63	    path:      locator,
+    64	    size:      0,
+    65	    type:      a.mime_type ?? 'application/octet-stream',
+    66	    blob_ref:  a.blob_ref,
+    67	    url:       locator,
+    68	    file_id:   a.file_id,
+    69	    mime_type: a.mime_type,
+    70	    modality:  a.mime_type?.startsWith('image/') ? 'image' : 'resource',
+    71	  };
+    72	}
+    11	describe('blob attachment path', () => {
+    12	  it('uploads all chat attachments through direct multipart Blob upload', () => {
+    13	    const source = read('src/services/fileUpload.ts');
+    14	
+    15	    expect(source).toContain('/api/blobs/upload-config');
+    16	    expect(source).toContain('/api/blobs/register');
+    17	    expect(source).toContain('/v1/blobs/uploads');
+    18	    expect(source).toContain('X-Part-Sha256');
+    19	    expect(source).toContain('blob_ref');
+    20	    expect(source).toContain('uploadChatFileMultipart(file, agentId)');
+    21	    expect(source).not.toContain('/api/blobs/from-base64');
+    22	    expect(source).not.toContain('/api/files/from-base64');
+    23	    expect(source).not.toContain('FileReader');
+    24	    expect(source).not.toContain('readAsDataURL');
+    25	    expect(source).not.toContain('fileToBase64');
+    26	    expect(source).not.toContain('LARGE_UPLOAD_THRESHOLD');
+    27	    expect(source).not.toContain('large_upload_threshold');
+    28	  });
+    29	
+    30	  it('records voice audio as compressed multipart blobs instead of WAV/base64 uploads', () => {
+    31	    const recorder = read('src-tauri/src/audio_recorder.rs');
+    32	    const input = read('src/components/Chat/ChatInput.tsx');
+    33	    const upload = read('src/services/fileUpload.ts');
+    34	
+    35	    expect(recorder).toContain('audio/mp4');
+    36	    expect(recorder).toContain('codec: "aac"');
+    37	    expect(recorder).toContain('WAV fallback 已禁用');
+    38	    expect(recorder).not.toContain('base64_data');
+    39	    expect(input).not.toContain('atob(');
+    40	    expect(input).not.toContain('base64_data');
+    41	    expect(upload).toContain("file.type.startsWith('audio/')");
+    42	    expect(upload).toContain("'audio-input'");
+    43	    expect(upload).toContain("'voice_messages'");
+    44	  });
+    45	
+    46	  it('fetches cached attachment bytes through the direct Blob edge', () => {
+    47	    const source = read('src-tauri/src/commands/file.rs');
+    48	
+    49	    expect(source).toContain('/blob/v1/blobs/');
+    50	    expect(source).toContain('Only blob:// file references are supported');
+    51	    expect(source).toContain('Gateway app 不承载附件下载数据面');
+    52	    expect(source).not.toContain('/api/blobs/fetch');
+    53	    expect(source).not.toContain('/api/files/fetch');
+    54	    expect(source).not.toContain('fs://');
+    55	  });
+    56	});
+=== ActivityTimeline payload redaction / text-only monitor ===
+    38	const DATA_IMAGE_BASE64_PATTERN = /\bdata:image\/[a-z0-9.+-]+;base64,/i;
+    39	const BINARY_BASE64_PREFIX_PATTERN = /^(\/9j\/|iVBORw0KGgo|R0lGODlh|UklGR)/;
+    40	const RAW_PAYLOAD_DETAIL = '输出包含较大的原始文件数据，已在监控中隐藏。';
+    41	
+    42	function isNearBottom(element: HTMLElement): boolean {
+    43	  return element.scrollHeight - element.scrollTop - element.clientHeight <= BOTTOM_FOLLOW_THRESHOLD_PX;
+    44	}
+    45	
+    46	export function isActivityTimelineRecordRunning(record: ActivityTimelineRecord): boolean {
+    47	  return record.status === 'running';
+    48	}
+    49	
+    50	function isFailed(record: ActivityTimelineRecord): boolean {
+    51	  return record.status === 'failed' || record.status === 'error';
+    52	}
+    53	
+    54	function recordSearchText(record: ActivityTimelineRecord): string {
+    55	  return `${record.kind} ${record.tool ?? ''} ${record.title} ${record.text ?? ''}`.toLowerCase();
+    56	}
+    57	
+    58	function isAgentctlImReadRecord(record: ActivityTimelineRecord): boolean {
+    59	  return normalizedTool(record) === 'shell' && AGENTCTL_IM_READ_PATTERN.test(recordSearchText(record));
+    60	}
+    61	
+    62	function isAgentctlImReplyRecord(record: ActivityTimelineRecord): boolean {
+    63	  return normalizedTool(record) === 'shell' && AGENTCTL_IM_REPLY_PATTERN.test(recordSearchText(record));
+    64	}
+    65	
+    66	export function activityTimelinePublicTitle(record: ActivityTimelineRecord): string {
+    67	  const fingerprint = `${record.kind} ${record.tool ?? ''} ${record.title}`.toLowerCase();
+    68	  if (fingerprint.includes('skill_end')) return '已保存本轮上下文';
+    69	  if (isAgentctlImReadRecord(record)) return '读取了你的消息';
+    70	  if (isAgentctlImReplyRecord(record)) return '已回复你';
+    71	  if (fingerprint.includes('message') || fingerprint.includes('消息')) return '读取了你的消息';
+    72	  if (record.phase === 'reasoning') {
+    73	    const reasoningText = record.text?.toLowerCase() ?? '';
+    74	    if (
+    75	      AGENTCTL_IM_READ_PATTERN.test(reasoningText) ||
+    76	      reasoningText.includes('读取消息') ||
+    77	      reasoningText.includes('新消息')
+    78	    ) {
+    79	      return '正在查看你的消息';
+    80	    }
+    81	    if (AGENTCTL_IM_REPLY_PATTERN.test(reasoningText) || reasoningText.includes('回复')) {
+    82	      return '正在组织回复';
+    83	    }
+    84	    if (
+    85	      reasoningText.includes('skill_end') ||
+    86	      reasoningText.includes('summary') ||
+    87	      reasoningText.includes('上下文') ||
+    88	      reasoningText.includes('结束本轮')
+    89	    ) {
+    90	      return '正在整理上下文';
+    91	    }
+    92	    return isActivityTimelineRecordRunning(record) ? '正在思考' : '完成思考';
+    93	  }
+    94	  if (record.phase === 'summary') return '已保存本轮上下文';
+    95	  return record.title || PHASE_FALLBACK_LABELS[record.phase];
+    96	}
+    97	
+    98	function publicFullDetail(record: ActivityTimelineRecord): string | undefined {
+    99	  const text = record.text?.trim();
+   100	  if (!text) return record.has_payload ? '结果已保存，需要时可以继续查看细节' : undefined;
+   101	  if (looksLikeRawPayloadText(text)) return RAW_PAYLOAD_DETAIL;
+   102	  if (/[{}]/.test(text)) return undefined;
+   103	  if (DEBUG_DETAIL_PATTERN.test(text)) return undefined;
+   104	  if (record.phase === 'action' && record.tool) return undefined;
+   105	  return text.replace(/\r\n/g, '\n');
+   106	}
+   107	
+   108	function looksLikeRawPayloadText(text: string): boolean {
+   109	  if (DATA_IMAGE_BASE64_PATTERN.test(text)) return true;
+   110	  const compact = text.replace(/\s+/g, '');
+   111	  if (compact.length < 120) return false;
+   112	  if (BINARY_BASE64_PREFIX_PATTERN.test(compact)) return true;
+   113	  return compact.length > 800 && /^[A-Za-z0-9+/=]+$/.test(compact) && /[+/=]/.test(compact);
+   114	}
+   115	
+   116	function publicPreviewDetail(record: ActivityTimelineRecord): string | undefined {
+   117	  const fullDetail = publicFullDetail(record);
+   118	  if (!fullDetail) return undefined;
+   119	  const oneLine = fullDetail.replace(/\s+/g, ' ');
+   120	  return oneLine.length > DETAIL_PREVIEW_LIMIT ? `${oneLine.slice(0, DETAIL_PREVIEW_LIMIT)}…` : oneLine;
+   121	}
+   122	
+   123	function isExpandableDetail(record: ActivityTimelineRecord): boolean {
+   124	  const fullDetail = publicFullDetail(record);
+   125	  if (!fullDetail) return false;
+   202	  it('hides raw image data urls from timeline details', () => {
+   203	    render(
+   204	      <ActivityTimeline
+   205	        currentAgentId="agent-1"
+   206	        records={[
+   207	          {
+   208	            order: 1,
+   209	            phase: 'observation',
+   210	            kind: 'tool_observation',
+   211	            title: 'display 完成',
+   212	            text: `data:image/jpeg;base64,${'A'.repeat(400)}SECRET_IMAGE_PAYLOAD`,
+   213	          },
+   214	        ]}
+   215	      />,
+   216	    );
+   217	
+   218	    expect(screen.getByText('输出包含较大的原始文件数据，已在监控中隐藏。')).toBeTruthy();
+   219	    expect(screen.queryByText(/SECRET_IMAGE_PAYLOAD/)).toBeNull();
+   220	    expect(screen.queryByText(/data:image/)).toBeNull();
+   221	    expect(screen.queryByText('展开')).toBeNull();
+   222	  });
+   223	
+   224	  it('hides long jpeg-like base64 text from expanded timeline details', () => {
+   225	    const jpegLikePayload = `/9j/${'A'.repeat(220)}+/${'B'.repeat(220)}=SECRET_RAW`;
+   226	
+   227	    render(
+   228	      <ActivityTimeline
+   229	        currentAgentId="agent-1"
+   230	        records={[
+   231	          {
+   232	            order: 1,
+   233	            phase: 'observation',
+   234	            kind: 'tool_observation',
+   235	            title: 'display 完成',
+   236	            text: jpegLikePayload,
+   237	            has_payload: true,
+   238	          },
+   239	        ]}
+   240	      />,
+   241	    );
+   242	
+   243	    expect(screen.getByText('输出包含较大的原始文件数据，已在监控中隐藏。')).toBeTruthy();
+   244	    expect(screen.queryByText(/SECRET_RAW/)).toBeNull();
+   245	    expect(screen.queryByText(/\/9j\//)).toBeNull();
+   246	    expect(screen.queryByText('展开')).toBeNull();
+   247	  });
+=== Cortex shell artifact manifest and projection ===
+   341	def _artifact_manifest(
+   342	    *,
+   343	    uri: str,
+   344	    modality: str,
+   345	    name: str,
+   346	    mime_type: str,
+   347	    size_bytes: int,
+   348	    sha256: str,
+   349	    summary: str,
+   350	    source: dict | None = None,
+   351	    access: dict | None = None,
+   352	    projection: dict | None = None,
+   353	) -> dict:
+   354	    return {{
+   355	        "uri": uri,
+   356	        "modality": modality,
+   357	        "name": name,
+   358	        "mime_type": mime_type,
+   359	        "size_bytes": size_bytes,
+   360	        "sha256": sha256,
+   361	        "summary": summary,
+   362	        "source": source or {{}},
+   363	        "access": access or {{}},
+   364	        "projection": projection or {{}},
+   365	    }}
+   366	
+   367	
+   368	def _decode_b64_field(value: str, *, field: str) -> bytes:
+   369	    try:
+   370	        return base64.b64decode(value.encode("ascii"), validate=True)
+   371	    except Exception as exc:
+   372	        print(f"{{COMMAND}}: invalid base64 {{field}} in device response: {{exc}}", file=sys.stderr)
+   373	        raise SystemExit(1)
+   374	
+   375	
+   376	def _wrap_hd_screenshot(result: dict) -> dict:
+   377	    if result.get("success") is False or not result.get("screenshot"):
+   378	        return result
+   379	    fmt = str(result.get("format") or "jpeg").lower().strip(".") or "jpeg"
+   380	    mime_type = "image/jpeg" if fmt in ("jpg", "jpeg") else f"image/{{fmt}}"
+   381	    data = _decode_b64_field(str(result.get("screenshot") or ""), field="screenshot")
+   382	    blob = _put_blob(
+   383	        data,
+   384	        mime_type=mime_type,
+   385	        filename=f"hd-screenshot.{{'jpg' if fmt == 'jpeg' else fmt}}",
+   386	        source_ref="devicectl hd screenshot",
+   387	    )
+   388	    blob_ref = str(blob["blob_ref"])
+   389	    size = int(blob.get("size") or len(data))
+   390	    sha = str(blob.get("sha256") or hashlib.sha256(data).hexdigest())
+   391	    width = result.get("width")
+   392	    height = result.get("height")
+   393	    artifact = _artifact_manifest(
+   394	        uri=blob_ref,
+   395	        modality="image",
+   396	        name="hd-screenshot.jpg" if fmt == "jpeg" else f"hd-screenshot.{{fmt}}",
+   397	        mime_type=mime_type,
+   398	        size_bytes=size,
+   399	        sha256=sha,
+   400	        summary="Host desktop screenshot",
+   401	        source={{
+   402	            "tool": "devicectl hd screenshot",
+   403	            "width": width,
+   404	            "height": height,
+   405	            "format": fmt,
+   406	        }},
+   407	        access={{"display": {{"tool": "display", "args": {{"file_url": blob_ref}}}}}},
+   408	        projection={{"history": "manifest_only", "monitor": "thumbnail_allowed"}},
+   409	    )
+   410	    return _tool_output(
+   411	        ok=True,
+   412	        text=f"Captured host desktop screenshot: {{width}}x{{height}}, stored as {{blob_ref}}.",
+   413	        artifacts=[artifact],
+   414	        events=[{{"type": "device.screenshot.captured", "summary": "Screenshot stored as runtime artifact."}}],
+   415	        diagnostics={{
+   416	            "device_result": {{k: v for k, v in result.items() if k != "screenshot"}},
+   422	    if result.get("success") is False or not result.get("data") or result.get("is_base64") is not True:
+   423	        return result
+   424	    path = str(request_body.get("path") or result.get("path") or "")
+   425	    data = _decode_b64_field(str(result.get("data") or ""), field="data")
+   426	    name = Path(path).name or "pulled-file"
+   427	    mime_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
+   428	    blob = _put_blob(
+   429	        data,
+   430	        mime_type=mime_type,
+   431	        filename=name,
+   432	        source_ref=f"devicectl hd file-pull {{path}}".strip(),
+   433	    )
+   434	    blob_ref = str(blob["blob_ref"])
+   435	    size = int(blob.get("size") or len(data))
+   436	    sha = str(blob.get("sha256") or hashlib.sha256(data).hexdigest())
+   437	    artifact = _artifact_manifest(
+   438	        uri=blob_ref,
+   439	        modality="binary",
+   440	        name=name,
+   441	        mime_type=mime_type,
+   442	        size_bytes=size,
+   443	        sha256=sha,
+   444	        summary=f"Host desktop file pulled from {{path}}" if path else "Host desktop file pulled",
+   445	        source={{"tool": "devicectl hd file-pull", "path": path}},
+   446	        projection={{"history": "manifest_only"}},
+   447	    )
+   448	    return _tool_output(
+   449	        ok=True,
+   450	        text=f"Pulled host desktop file {{path or name}} into runtime artifact {{blob_ref}}.",
+   451	        artifacts=[artifact],
+   452	        events=[{{"type": "device.file.pulled", "summary": "File stored as runtime artifact."}}],
+    29	def _tool_output_artifact_line(artifact: Dict[str, Any]) -> str:
+    30	    uri = str(artifact.get("uri") or "").strip()
+    31	    modality = str(artifact.get("modality") or "resource").strip() or "resource"
+    32	    name = str(artifact.get("name") or "").strip()
+    33	    mime_type = str(artifact.get("mime_type") or "").strip()
+    34	    summary = str(artifact.get("summary") or "").strip()
+    35	    size = _tool_output_size_label(artifact.get("size_bytes"))
+    36	    label = name or uri or "artifact"
+    37	    details = ", ".join(part for part in (modality, mime_type, size) if part)
+    38	    prefix = f"[Artifact: {label}"
+    39	    if details:
+    40	        prefix += f" ({details})"
+    41	    prefix += "]"
+    42	
+    43	    access = artifact.get("access") if isinstance(artifact.get("access"), dict) else {}
+    44	    display = access.get("display") if isinstance(access.get("display"), dict) else {}
+    45	    display_args = display.get("args") if isinstance(display.get("args"), dict) else {}
+    46	    display_url = display_args.get("file_url") or uri
+    47	
+    48	    parts = [prefix]
+    49	    if summary:
+    50	        parts.append(summary)
+    51	    if display_url:
+    52	        parts.append(f'Access: display(file_url="{display_url}")')
+    53	    return " — ".join(parts)
+    54	
+    55	
+    56	def _parse_tool_output_v1(raw: Dict[str, Any]) -> Dict[str, Any]:
+    57	    text_parts: list[str] = []
+    58	    text = raw.get("text")
+    59	    if text:
+    60	        text_parts.append(str(text))
+    61	
+    62	    artifacts = raw.get("artifacts") if isinstance(raw.get("artifacts"), list) else []
+    63	    for artifact in artifacts:
+    64	        if isinstance(artifact, dict):
+    65	            text_parts.append(_tool_output_artifact_line(artifact))
+    66	
+    67	    events = raw.get("events") if isinstance(raw.get("events"), list) else []
+    68	    for event in events:
+    69	        if not isinstance(event, dict):
+    70	            continue
+    71	        event_type = str(event.get("type") or "").strip()
+    72	        summary = str(event.get("summary") or "").strip()
+    73	        if event_type or summary:
+    74	            label = f"[Event: {event_type or 'event'}]"
+    75	            text_parts.append(f"{label} {summary}".strip())
+    76	
+    77	    error = raw.get("error")
+    78	    if error and not raw.get("ok", True):
+    79	        text_parts.append(f"[Error] {error}")
+    80	
+    81	    return {
+    82	        "text": "\n".join(text_parts),
+    83	        "files_created": [],
+    84	        "display_files": [],
+    85	        "artifacts": artifacts,
+    86	        "events": events,
+    87	    }
+    88	
+   229	        display_files = result_data.get("display_files", [])
+   230	        for f in display_files:
+   231	            url = f.get("url", "")
+   232	            if not url:
+   233	                continue
+   234	            if url.startswith("data:"):
+   235	                # Data URL
+   236	                parts = url.split(",", 1)
+   237	                mime = "image/png"
+   238	                if len(parts) >= 1 and ";" in parts[0]:
+   239	                    mime = parts[0].split(";")[0].replace("data:", "")
+   240	                data_b64 = parts[1] if len(parts) > 1 else ""
+   241	
+   242	                converted.append({
+   243	                    "type": "image",
+   244	                    "data": data_b64,
+   245	                    "mimeType": mime,
+   246	                })
+   247	            else:
+   248	                mime = str(f.get("mime_type") or f.get("mimeType") or "")
+   249	                modality = str(f.get("modality") or "")
+   250	                if url.startswith("blob://") and (modality == "image" or mime.startswith("image/")):
+   251	                    converted.append({
+   252	                        "type": "image_ref",
+   253	                        "file_url": url,
+   254	                        "mimeType": mime or "image/png",
+   255	                        "size": f.get("size") or f.get("size_bytes") or 0,
+   256	                    })
+   257	                else:
+   258	                    # Normal URL: represent unresolved display media as text.
+   314	    displays = result_data.get("display_files", [])
+   315	    artifacts = result_data.get("artifacts", [])
+   316	    
+   317	    parts = [text] if text else []
+   318	    if files:
+   319	        parts.append(f"[{len(files)} files created]")
+   320	    if displays:
+   321	        parts.append(f"[{len(displays)} media items]")
+   322	    if artifacts:
+   323	        parts.append(f"[{len(artifacts)} artifacts]")
+   324	        
+   325	    if not parts:
+   326	        return "(empty)"
+=== Runtime display perception resolution boundary ===
+    42	def _resolve_display_image_refs(content: str, *, user_id: Optional[str]) -> str:
+    43	    if not user_id:
+    44	        return content
+    45	
+    46	    try:
+    47	        payload = json.loads(content)
+    48	    except Exception:
+    49	        return content
+    50	    mcp_content = payload.get("_mcp_content") if isinstance(payload, dict) else None
+    51	    if not isinstance(mcp_content, list):
+    52	        return content
+    53	
+    54	    resolved: list[dict[str, Any]] = []
+    55	    changed = False
+    56	    for item in mcp_content:
+    57	        if not isinstance(item, dict) or item.get("type") != "image_ref":
+    58	            resolved.append(item)
+    59	            continue
+    60	
+    61	        changed = True
+    62	        file_url = str(item.get("file_url") or item.get("url") or "").strip()
+    63	        if not file_url:
+    64	            resolved.append(_image_ref_resolution_note("", "missing file_url"))
+    65	            continue
+    66	        try:
+    67	            data, fetched_mime = _blob_get(file_url, user_id=user_id)
+    68	        except Exception as exc:
+    69	            resolved.append(_image_ref_resolution_note(file_url, str(exc)))
+    70	            continue
+    71	        if len(data) > _DISPLAY_IMAGE_REF_MAX_BYTES:
+    72	            resolved.append(_image_ref_resolution_note(
+    73	                file_url,
+    74	                f"image too large for inline perception ({len(data)} bytes)",
+    75	            ))
+    76	            continue
+    77	        mime_type = fetched_mime or str(item.get("mimeType") or item.get("mime_type") or "image/png")
+    78	        if not mime_type.startswith("image/"):
+    79	            resolved.append(_image_ref_resolution_note(file_url, f"not an image MIME type: {mime_type}"))
+    80	            continue
+    81	        resolved.append({
+    82	            "type": "image",
+    83	            "data": base64.b64encode(data).decode("ascii"),
+    84	            "mimeType": mime_type,
+    85	        })
+    86	
+    87	    if not changed:
+   216	    )
+   217	    if not is_current:
+   218	        return "history"
+   219	
+   220	    tool_name = _tool_message_name(msg, tool_names_by_id)
+   221	    if tool_name == "display":
+   222	        return "display_perception"
+   223	    return "current_tool_result"
+   224	
+   225	
+   226	def fetch_step_preview(
+   227	    step_ref: str,
+   228	    max_text_len: int = 500,
+   229	    runtime_id: Optional[str] = None,
+   230	    user_id: Optional[str] = None,
+   231	    agent_id: Optional[str] = None,
+   232	    tool_call_id: Optional[str] = None,
+   233	    **_kwargs,
+   234	) -> str:
+   235	    """Text preview for step-ref summaries."""
+   236	    bridge = _get_bridge(runtime_id, user_id, agent_id)
+   237	    if not tool_call_id:
+   238	        raise ValueError(f"Tool result preview requires tool_call_id for {step_ref}")
+   239	    preview = bridge.read_step_preview(
+   240	        runtime_id,
+   241	        tool_call_id,
+   242	        max_text_len=max_text_len,
+   243	        step_ref=step_ref,
+   244	    )
+   245	    if preview is None:
+   246	        raise RuntimeError(f"Tool result preview not found: {step_ref}")
+   247	    return preview
+   248	
+   249	
+   250	def expand_messages_for_llm(
+   251	    messages: List[Dict[str, Any]],
+   252	    provider: str = "openai",
+   253	    current_round_id: Optional[str] = None,
+   254	    runtime_id: Optional[str] = None,
+   255	    user_id: Optional[str] = None,
+   256	    agent_id: Optional[str] = None,
+   257	    **_kwargs,
+   258	) -> List[Dict[str, Any]]:
+   259	    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+   260	    out = []
+   261	    tool_names_by_id = _tool_names_by_call_id(messages)
+   262	    latest_tool_call_ids = _latest_tool_call_ids(messages)
+   263	    for msg in messages:
+   264	        role = msg.get("role")
+   265	        step_ref = msg.get("step_ref")
+   266	        tool_call_id = msg.get("tool_call_id")
+   267	        if role in ("tool", "tool_result"):
+   268	            if not step_ref:
+   269	                raise ValueError(f"Tool message missing step_ref: {msg}")
+   270	
+   271	            projection = _projection_for_tool_message(
+   272	                msg,
+   273	                current_round_id,
+   274	                tool_names_by_id=tool_names_by_id,
+   275	                latest_tool_call_ids=latest_tool_call_ids,
+   276	            )
+   277	            content = fetch_step_for_llm(
+   278	                step_ref,
+   279	                provider,
+   280	                projection=projection,
+   281	                runtime_id=runtime_id,
+   282	                user_id=user_id,
+   283	                agent_id=agent_id,
+   284	                tool_call_id=tool_call_id,
+   285	            )
+   286	
+   287	            new_msg = {
+   288	                k: v for k, v in msg.items()
+   289	                if k not in ("step_ref", "_round_id", "_message_type", "_idempotency_key")
+   290	            }
+   291	            new_msg["content"] = content
+   292	            new_msg["_projection"] = projection
+   293	            out.append(new_msg)
+   294	        else:
+   295	            out.append(msg)
+   296	    return out
+   297	
+   298	
+   299	def expand_messages_for_summary(
+   300	    messages: List[Dict[str, Any]],
+   301	    runtime_id: Optional[str] = None,
+   302	    user_id: Optional[str] = None,
+   303	    agent_id: Optional[str] = None,
+   304	    **_kwargs,
+   305	) -> List[Dict[str, Any]]:
+   306	    """Expand tool messages: step_ref -> text preview for summarization."""
+   307	    out = []
+   308	    for msg in messages:
+   309	        role = msg.get("role")
+   310	        step_ref = msg.get("step_ref")
+   311	        tool_call_id = msg.get("tool_call_id")
+   312	        if role in ("tool", "tool_result"):
+   313	            if not step_ref:
+   314	                raise ValueError(f"Tool message missing step_ref: {msg}")
+   315	
+   316	            content = fetch_step_preview(
+   317	                step_ref,
+   318	                runtime_id=runtime_id,
+   319	                user_id=user_id,
+   320	                agent_id=agent_id,
+   321	                tool_call_id=tool_call_id,
+   322	            )
+   323	
+   324	            new_msg = {
+   325	                k: v for k, v in msg.items()
+   326	                if k not in ("step_ref", "_round_id", "_message_type", "_idempotency_key")
+   327	            }
+   328	            new_msg["content"] = content
+   329	            out.append(new_msg)
+   330	        else:
+   331	            out.append(msg)
+   332	    return out

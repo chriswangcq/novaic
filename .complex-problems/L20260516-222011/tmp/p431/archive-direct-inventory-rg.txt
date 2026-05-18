@@ -1,0 +1,593 @@
+=== source archive/scope diagnostics ===
+novaic-cortex/novaic_cortex/scope_transition_events.py:1:"""SQLite-backed scope transition history helpers."""
+novaic-cortex/novaic_cortex/scope_transition_events.py:16:        raise ValueError(f"unsupported scope path for transition history: {scope_path!r}")
+novaic-cortex/novaic_cortex/active_stack_projection.py:204:            "remaining_stack": normalized,
+novaic-cortex/novaic_cortex/context_event_read_model.py:41:    def status(self) -> StackStatus:
+novaic-cortex/novaic_cortex/context_event_projection.py:114:        remaining = event.payload.get("remaining_stack")
+novaic-cortex/novaic_cortex/context_event_projection.py:363:        "status": event.payload.get("status"),
+novaic-cortex/novaic_cortex/context_stack/types.py:55:    """Read-only status snapshot (§4.1 status())."""
+novaic-cortex/novaic_cortex/workspace.py:6:           archive) are Cortex system operations and use _sys_* methods.
+novaic-cortex/novaic_cortex/workspace.py:14:  - LIFO: children close before parents → root archive moves tree atomically
+novaic-cortex/novaic_cortex/workspace.py:144:        status: str,
+novaic-cortex/novaic_cortex/workspace.py:162:            status=status,
+novaic-cortex/novaic_cortex/workspace.py:172:        status: str,
+novaic-cortex/novaic_cortex/workspace.py:177:            status=status,
+novaic-cortex/novaic_cortex/workspace.py:320:                "status": "executing",
+novaic-cortex/novaic_cortex/workspace.py:379:        ``archived -> executing`` regression can slip through a raw
+novaic-cortex/novaic_cortex/workspace.py:386:        ended_at = self._now()
+novaic-cortex/novaic_cortex/workspace.py:387:        await scope_state.mark_archived(
+novaic-cortex/novaic_cortex/workspace.py:389:            reason="scope_end_child", actor="cortex.workspace",
+novaic-cortex/novaic_cortex/workspace.py:390:            ended_at=ended_at,
+novaic-cortex/novaic_cortex/workspace.py:392:            created_at_ms=int(ended_at * 1000),
+novaic-cortex/novaic_cortex/workspace.py:400:    async def _build_archive_scope_index_projection(
+novaic-cortex/novaic_cortex/workspace.py:405:        """Build `/ro/scopes/_index.jsonl` archive projection entries.
+novaic-cortex/novaic_cortex/workspace.py:407:        This helper is intentionally archive/debug projection-only. Runtime
+novaic-cortex/novaic_cortex/workspace.py:429:            "ts": meta.get("ended_at") or meta.get("start_time", 0),
+novaic-cortex/novaic_cortex/workspace.py:441:                child_entries = await self._build_archive_scope_index_projection(
+novaic-cortex/novaic_cortex/workspace.py:455:        skill, we auto-archive the leftover nested scopes so the archive is
+novaic-cortex/novaic_cortex/workspace.py:478:            if child_meta.get("phase") != "archived":
+novaic-cortex/novaic_cortex/workspace.py:483:    async def archive_root_scope(self, scope_id: str, summary: str) -> str:
+novaic-cortex/novaic_cortex/workspace.py:486:        Both are Cortex-managed zones. Active → archived is just a path change.
+novaic-cortex/novaic_cortex/workspace.py:487:        Returns the archive path (e.g. "/ro/scopes/task-001/").
+novaic-cortex/novaic_cortex/workspace.py:505:        ended_at = self._now()
+novaic-cortex/novaic_cortex/workspace.py:506:        await scope_state.mark_archived(
+novaic-cortex/novaic_cortex/workspace.py:508:            reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/novaic_cortex/workspace.py:509:            ended_at=ended_at,
+novaic-cortex/novaic_cortex/workspace.py:511:            created_at_ms=int(ended_at * 1000),
+novaic-cortex/novaic_cortex/workspace.py:514:        scope_entries = await self._build_archive_scope_index_projection(active_path)
+novaic-cortex/novaic_cortex/workspace.py:518:        archive_base = f"/ro/scopes/{scope_id}"
+novaic-cortex/novaic_cortex/workspace.py:522:                entry["path"] = archive_base + old_path[len(active_path):]
+novaic-cortex/novaic_cortex/workspace.py:531:                phase="archived",
+novaic-cortex/novaic_cortex/workspace.py:533:                generation=int(ended_at * 1000),
+novaic-cortex/novaic_cortex/workspace.py:535:                closed_at_ms=int(ended_at * 1000),
+novaic-cortex/novaic_cortex/workspace.py:536:                close_reason="scope_end_root",
+novaic-cortex/novaic_cortex/workspace.py:549:        await self._emit("on_scope_archived", scope_id, summary, f"/ro/scopes/{scope_id}/")
+novaic-cortex/novaic_cortex/workspace.py:551:            "scope.archived",
+novaic-cortex/novaic_cortex/workspace.py:557:    async def archive_root_scope_projection(self, scope_id: str, summary: str) -> str:
+novaic-cortex/novaic_cortex/workspace.py:558:        """Materialize a root-scope archive projection after archive event append."""
+novaic-cortex/novaic_cortex/workspace.py:559:        return await self.archive_root_scope(scope_id, summary)
+novaic-cortex/novaic_cortex/workspace.py:618:            status="available",
+novaic-cortex/novaic_cortex/workspace.py:632:                status="missing",
+novaic-cortex/novaic_cortex/workspace.py:641:                status="corrupt",
+novaic-cortex/novaic_cortex/workspace.py:648:                status="corrupt",
+novaic-cortex/novaic_cortex/workspace.py:656:                    status="unavailable",
+novaic-cortex/novaic_cortex/workspace.py:668:                    status="unavailable",
+novaic-cortex/novaic_cortex/workspace.py:760:            "status": step.get("status", ""),
+novaic-cortex/novaic_cortex/workspace.py:854:    # ── Session context (conversation history) ──
+novaic-cortex/novaic_cortex/context_event_writer.py:74:    async def wake_archived(
+novaic-cortex/novaic_cortex/context_event_writer.py:80:        remaining_stack: list[str],
+novaic-cortex/novaic_cortex/context_event_writer.py:81:        archive_diagnostics: dict[str, Any] | None = None,
+novaic-cortex/novaic_cortex/context_event_writer.py:86:            "remaining_stack": remaining_stack,
+novaic-cortex/novaic_cortex/context_event_writer.py:88:        if archive_diagnostics is not None:
+novaic-cortex/novaic_cortex/context_event_writer.py:89:            payload["archive_diagnostics"] = dict(archive_diagnostics)
+novaic-cortex/novaic_cortex/context_event_writer.py:94:            idempotency_key=f"context-wake:archive:{ctx.stream_id}:{wake_scope_id}",
+novaic-cortex/novaic_cortex/context_event_writer.py:211:        status: str,
+novaic-cortex/novaic_cortex/context_event_writer.py:221:            "status": status,
+novaic-cortex/novaic_cortex/step_result_projection.py:185:    # 5. Unknown dict fallback: diagnostic text only, bounded so unexpected
+novaic-cortex/novaic_cortex/step_result_projection.py:247:def format_for_history_llm(
+novaic-cortex/novaic_cortex/logical_fs.py:226:        # total agent history. Shell does not need the runtime tool-schema
+novaic-cortex/novaic_cortex/operational_store.py:151:                    status TEXT NOT NULL,
+novaic-cortex/novaic_cortex/operational_store.py:196:                status TEXT NOT NULL,
+novaic-cortex/novaic_cortex/operational_store.py:491:        status: str,
+novaic-cortex/novaic_cortex/operational_store.py:504:                    mime_type, size_bytes, sha256, status, retention_class,
+novaic-cortex/novaic_cortex/operational_store.py:517:                    status=excluded.status,
+novaic-cortex/novaic_cortex/operational_store.py:532:                    status,
+novaic-cortex/novaic_cortex/main_cortex.py:119:    # single-worker / internal-key / sweeper diagnostics from ops.
+novaic-cortex/novaic_cortex/api.py:103:    root scope archives. Best-effort — backend decides what "release" means
+novaic-cortex/novaic_cortex/api.py:173:                status_code=401,
+novaic-cortex/novaic_cortex/api.py:240:    include_archived: bool = True,
+novaic-cortex/novaic_cortex/api.py:262:        if not include_archived and row.get("phase") == "archived":
+novaic-cortex/novaic_cortex/api.py:276:    include_archived: bool = True,
+novaic-cortex/novaic_cortex/api.py:285:        include_archived=include_archived,
+novaic-cortex/novaic_cortex/api.py:410:class ScopeEndRequest(_TenantMixin):
+novaic-cortex/novaic_cortex/api.py:417:    remaining_stack: dict[str, Any] | None = None
+novaic-cortex/novaic_cortex/api.py:424:            raise ValueError("positive session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:428:    def _validate_archive_diagnostics(self) -> "ScopeEndRequest":
+novaic-cortex/novaic_cortex/api.py:429:        has_diagnostics = (
+novaic-cortex/novaic_cortex/api.py:432:            or self.remaining_stack is not None
+novaic-cortex/novaic_cortex/api.py:434:        if not has_diagnostics:
+novaic-cortex/novaic_cortex/api.py:437:            raise ValueError("session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:439:            raise ValueError("positive session_generation is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:441:            raise ValueError("finalize_reason is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:442:        if self.remaining_stack is None:
+novaic-cortex/novaic_cortex/api.py:443:            raise ValueError("remaining_stack is required for archive diagnostics")
+novaic-cortex/novaic_cortex/api.py:447:async def _append_wake_archived_event(
+novaic-cortex/novaic_cortex/api.py:448:    req: ScopeEndRequest,
+novaic-cortex/novaic_cortex/api.py:454:    remaining_stack: list[str],
+novaic-cortex/novaic_cortex/api.py:459:    await _context_event_writer(ws).wake_archived(
+novaic-cortex/novaic_cortex/api.py:467:        remaining_stack=remaining_stack,
+novaic-cortex/novaic_cortex/api.py:468:        archive_diagnostics=_archive_diagnostics(req),
+novaic-cortex/novaic_cortex/api.py:472:def _archive_diagnostics(req: ScopeEndRequest) -> dict[str, Any] | None:
+novaic-cortex/novaic_cortex/api.py:476:        and req.remaining_stack is None
+novaic-cortex/novaic_cortex/api.py:482:        "remaining_stack": dict(req.remaining_stack or {}),
+novaic-cortex/novaic_cortex/api.py:495:def _semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:498:    archived_scope_id: str,
+novaic-cortex/novaic_cortex/api.py:502:    Operational finalize events record the full pre-archive stack. Context
+novaic-cortex/novaic_cortex/api.py:503:    events use this post-archive stack so LLM context projection does not keep
+novaic-cortex/novaic_cortex/api.py:504:    an archived wake/scope visible.
+novaic-cortex/novaic_cortex/api.py:508:        archived_index = scope_ids.index(archived_scope_id)
+novaic-cortex/novaic_cortex/api.py:511:    return scope_ids[archived_index + 1:]
+novaic-cortex/novaic_cortex/api.py:523:async def _finalize_active_stack_for_archive(
+novaic-cortex/novaic_cortex/api.py:585:            include_archived=True,
+novaic-cortex/novaic_cortex/api.py:672:@app.post("/v1/scope/end")
+novaic-cortex/novaic_cortex/api.py:673:async def scope_end(req: ScopeEndRequest):
+novaic-cortex/novaic_cortex/api.py:675:    archived returns the archive path without raising (``wake_finalize`` →
+novaic-cortex/novaic_cortex/api.py:676:    ``cortex_scope_end`` can safely retry after a transient failure).
+novaic-cortex/novaic_cortex/api.py:678:    Structural scope_end is not a summary API. Non-empty reports must go
+novaic-cortex/novaic_cortex/api.py:685:            status_code=400,
+novaic-cortex/novaic_cortex/api.py:687:                "scope_end is structural and does not accept report; "
+novaic-cortex/novaic_cortex/api.py:693:        archived_path = f"/ro/scopes/{req.scope_id}"
+novaic-cortex/novaic_cortex/api.py:694:        archived_meta = await ws.read_session_meta(archived_path)
+novaic-cortex/novaic_cortex/api.py:695:        if archived_meta and archived_meta.get("phase") == "archived":
+novaic-cortex/novaic_cortex/api.py:699:                "archive_path": archived_path + "/",
+novaic-cortex/novaic_cortex/api.py:709:        await _append_wake_archived_event(
+novaic-cortex/novaic_cortex/api.py:714:            reason="scope_end_root",
+novaic-cortex/novaic_cortex/api.py:715:            remaining_stack=_semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:717:                archived_scope_id=req.scope_id,
+novaic-cortex/novaic_cortex/api.py:720:        await _finalize_active_stack_for_archive(
+novaic-cortex/novaic_cortex/api.py:725:            reason="scope_end_root",
+novaic-cortex/novaic_cortex/api.py:727:        archive_path = await ws.archive_root_scope_projection(req.scope_id, "")
+novaic-cortex/novaic_cortex/api.py:734:            include_archived=True,
+novaic-cortex/novaic_cortex/api.py:737:        if child_meta.get("phase") == "archived":
+novaic-cortex/novaic_cortex/api.py:741:                "archive_path": scope_path.rstrip("/") + "/",
+novaic-cortex/novaic_cortex/api.py:750:        await _append_wake_archived_event(
+novaic-cortex/novaic_cortex/api.py:755:            reason="scope_end_child",
+novaic-cortex/novaic_cortex/api.py:756:            remaining_stack=_semantic_remaining_stack_after_archive(
+novaic-cortex/novaic_cortex/api.py:758:                archived_scope_id=_scope_id_from_path(scope_path),
+novaic-cortex/novaic_cortex/api.py:762:            await _finalize_active_stack_for_archive(
+novaic-cortex/novaic_cortex/api.py:767:                reason="scope_end_child",
+novaic-cortex/novaic_cortex/api.py:777:        archive_path = scope_path + "/"
+novaic-cortex/novaic_cortex/api.py:781:        "archive_path": archive_path,
+novaic-cortex/novaic_cortex/api.py:786:# Scope state transition history.
+novaic-cortex/novaic_cortex/api.py:791:@app.get("/v1/scope/history")
+novaic-cortex/novaic_cortex/api.py:792:async def scope_history(scope_path: str, limit: int = 50):
+novaic-cortex/novaic_cortex/api.py:794:        raise HTTPException(status_code=503, detail="Cortex registry not configured")
+novaic-cortex/novaic_cortex/api.py:825:# ── Context (conversation history) ──────────────────────────────────────
+novaic-cortex/novaic_cortex/api.py:893:        include_archived=True,
+novaic-cortex/novaic_cortex/api.py:909:            include_archived=False,
+novaic-cortex/novaic_cortex/api.py:930:            include_archived=False,
+novaic-cortex/novaic_cortex/api.py:1066:    scope tree (both active and archived).
+novaic-cortex/novaic_cortex/api.py:1310:@app.post("/v1/context/status")
+novaic-cortex/novaic_cortex/api.py:1311:async def context_status(req: ContextStatusRequest):
+novaic-cortex/novaic_cortex/api.py:1312:    """Get context status.
+novaic-cortex/novaic_cortex/api.py:1319:    does not render archived scope files.
+novaic-cortex/novaic_cortex/api.py:1351:    st = prepared.status()
+novaic-cortex/novaic_cortex/api.py:1365:        status_code=409,
+novaic-cortex/novaic_cortex/api.py:1394:        include_archived=True,
+novaic-cortex/novaic_cortex/api.py:1407:        include_archived=False,
+novaic-cortex/novaic_cortex/api.py:1468:            include_archived=False,
+novaic-cortex/novaic_cortex/api.py:1517:            include_archived=False,
+novaic-cortex/novaic_cortex/api.py:1607:                status=str(normalized_step.get("status") or ""),
+novaic-cortex/novaic_cortex/api.py:1651:    projection: str = "history"
+novaic-cortex/novaic_cortex/api.py:1803:        status_code = {
+novaic-cortex/novaic_cortex/api.py:1811:            status_code=status_code,
+novaic-cortex/novaic_cortex/api.py:1829:        format_for_history_llm,
+novaic-cortex/novaic_cortex/api.py:1847:    elif projection == "history":
+novaic-cortex/novaic_cortex/api.py:1848:        content = format_for_history_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1851:            status_code=400,
+novaic-cortex/novaic_cortex/api.py:1855:                "allowed": ["history", "current_tool_result", "display_perception"],
+novaic-cortex/novaic_cortex/api.py:1906:        raise HTTPException(status_code=400, detail=f"invalid payload read mode: {mode!r}")
+novaic-cortex/novaic_cortex/api.py:1921:        raise HTTPException(status_code=400, detail="payload_ref is required")
+novaic-cortex/novaic_cortex/api.py:1924:        raise HTTPException(status_code=404, detail="payload_ref not found")
+novaic-cortex/novaic_cortex/api.py:1927:        raise HTTPException(status_code=404, detail="payload content not found")
+novaic-cortex/novaic_cortex/api.py:1936:        raise HTTPException(status_code=400, detail=f"invalid payload read mode: {mode!r}")
+novaic-cortex/novaic_cortex/api.py:1962:        raise HTTPException(status_code=400, detail="query is required")
+novaic-cortex/novaic_cortex/api.py:2070:        raise HTTPException(status_code=400, detail="factory_url is required")
+novaic-cortex/novaic_cortex/api.py:2072:        raise HTTPException(status_code=400, detail="model_id is required")
+novaic-cortex/novaic_cortex/api.py:2074:        raise HTTPException(status_code=400, detail="factory_user_id is required")
+novaic-cortex/novaic_cortex/api.py:2089:    if resp.status_code >= 400:
+novaic-cortex/novaic_cortex/api.py:2091:            status_code=502,
+novaic-cortex/novaic_cortex/api.py:2092:            detail=f"Factory interpretation call failed ({resp.status_code})",
+novaic-cortex/novaic_cortex/api.py:2097:        raise HTTPException(status_code=502, detail="Factory returned invalid JSON") from exc
+novaic-cortex/novaic_cortex/api.py:2100:        raise HTTPException(status_code=502, detail="Factory returned empty interpretation")
+novaic-cortex/novaic_cortex/api.py:2180:        raise HTTPException(status_code=400, detail="question is required")
+novaic-cortex/novaic_cortex/api.py:2257:    # Best archive label: first user message from the materialized context projection.
+novaic-cortex/novaic_cortex/api.py:2276:    # Secondary archive label source: summary projection — skip format headers and [Think] prefixes.
+novaic-cortex/novaic_cortex/api.py:2359:    return {"status": "ok", "service": "cortex"}
+novaic-cortex/novaic_cortex/api.py:2369:      - ``cortex_scopes_archived_total``
+novaic-cortex/novaic_cortex/api.py:2389:    On any failure returns 503 with per-dependency status so ops can tell
+novaic-cortex/novaic_cortex/api.py:2393:    status_code = 200
+novaic-cortex/novaic_cortex/api.py:2397:        status_code = 503
+novaic-cortex/novaic_cortex/api.py:2406:                status_code = 503
+novaic-cortex/novaic_cortex/api.py:2411:                        resp.raise_for_status()
+novaic-cortex/novaic_cortex/api.py:2415:                    status_code = 503
+novaic-cortex/novaic_cortex/api.py:2418:            status_code = 503
+novaic-cortex/novaic_cortex/api.py:2426:    body = {"status": "ok" if status_code == 200 else "degraded", "checks": checks}
+novaic-cortex/novaic_cortex/api.py:2427:    if status_code != 200:
+novaic-cortex/novaic_cortex/api.py:2428:        raise HTTPException(status_code=status_code, detail=body)
+novaic-cortex/novaic_cortex/observability.py:51:    Typical events include ``scope.created``, ``scope.archived``,
+novaic-cortex/novaic_cortex/observability.py:66:    elif event == "scope.archived":
+novaic-cortex/novaic_cortex/observability.py:67:        metric_inc("cortex_scopes_archived_total")
+novaic-cortex/novaic_cortex/context_stack/__init__.py:4:shared budget/status types.
+novaic-cortex/novaic_cortex/shell_capabilities.py:61:  agentctl im history [--limit N]
+novaic-cortex/novaic_cortex/shell_capabilities.py:325:    diagnostics: dict | None = None,
+novaic-cortex/novaic_cortex/shell_capabilities.py:334:        "diagnostics": {{"truncated": False, **(diagnostics or {{}})}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:408:        projection={{"history": "manifest_only", "monitor": "thumbnail_allowed"}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:415:        diagnostics={{
+novaic-cortex/novaic_cortex/shell_capabilities.py:446:        projection={{"history": "manifest_only"}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:453:        diagnostics={{
+novaic-cortex/novaic_cortex/shell_capabilities.py:668:        print("Usage: agentctl im <read|reply|send|history|search|context> [options]")
+novaic-cortex/novaic_cortex/shell_capabilities.py:741:    if subcmd == "history":
+novaic-cortex/novaic_cortex/shell_capabilities.py:743:            f"/internal/environment/{{urllib.parse.quote(agent_id, safe='')}}/im/history",
+novaic-cortex/novaic_cortex/hooks.py:16:    on_scope_archived: list[Callable[..., Any]] = field(default_factory=list)
+novaic-cortex/novaic_cortex/scope_locks.py:27:- ``release_key(key)`` is a hint for GC (after a root scope is archived the
+novaic-cortex/novaic_cortex/blob_payload.py:93:            create_resp.raise_for_status()
+novaic-cortex/novaic_cortex/blob_payload.py:105:                part_resp.raise_for_status()
+novaic-cortex/novaic_cortex/blob_payload.py:113:            complete_resp.raise_for_status()
+novaic-cortex/novaic_cortex/blob_payload.py:127:            resp.raise_for_status()
+novaic-cortex/novaic_cortex/scope_state.py:5:``complete_child_scope``, ``archive_root_scope``) plus the generic
+novaic-cortex/novaic_cortex/scope_state.py:8:buggy code path from flipping an archived scope back to ``executing``
+novaic-cortex/novaic_cortex/scope_state.py:9:(which would violate INV-5 "scope_end is idempotent" and INV-6
+novaic-cortex/novaic_cortex/scope_state.py:16:        to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.api",
+novaic-cortex/novaic_cortex/scope_state.py:28:  and persists no transition event. This is what makes ``scope_end`` safe
+novaic-cortex/novaic_cortex/scope_state.py:41:  * ``archived`` — terminal after scope_end / archive_root.
+novaic-cortex/novaic_cortex/scope_state.py:65:    ARCHIVED   = "archived"     # terminal
+novaic-cortex/novaic_cortex/scope_state.py:80:#   * complete_child_scope      → "executing" -> "archived"
+novaic-cortex/novaic_cortex/scope_state.py:81:#   * archive_root_scope        → "executing" -> "archived"
+novaic-cortex/novaic_cortex/scope_state.py:82:#   * scope_end (idempotent)    → "archived"  -> "archived" (noop)
+novaic-cortex/novaic_cortex/scope_state.py:104:# Durable machine-readable history is written by ``scope_transition_events``.
+novaic-cortex/novaic_cortex/scope_state.py:163:        reason:     Short snake_case reason (``"scope_end_root"``,
+novaic-cortex/novaic_cortex/scope_state.py:164:                    ``"scope_end_child"``, ``"scope_create"``, …).
+novaic-cortex/novaic_cortex/scope_state.py:167:                    (e.g. ``{"ended_at": caller_supplied_timestamp}``). MUST NOT contain
+novaic-cortex/novaic_cortex/scope_state.py:195:        # retried scope_end still updates ``ended_at`` etc.
+novaic-cortex/novaic_cortex/scope_state.py:252:async def mark_archived(workspace, scope_path: str, *, reason: str, actor: str,
+novaic-cortex/novaic_cortex/scope_state.py:253:                        ended_at: float,
+novaic-cortex/novaic_cortex/scope_state.py:258:    ``ended_at`` is supplied by the caller's clock boundary; the state
+novaic-cortex/novaic_cortex/scope_state.py:261:    extra = {"ended_at": float(ended_at)}
+novaic-cortex/novaic_cortex/scope_state.py:288:    "mark_archived",
+=== tests archive/scope diagnostics ===
+novaic-cortex/tests/test_operational_store.py:86:                status TEXT NOT NULL,
+novaic-cortex/tests/test_operational_store.py:98:                mime_type, size_bytes, sha256, status, retention_class,
+novaic-cortex/tests/test_operational_store.py:128:        status="available",
+novaic-cortex/tests/test_operational_store.py:168:        payload={"remaining_stack": []},
+novaic-cortex/tests/test_operational_store.py:222:        phase="archived",
+novaic-cortex/tests/test_operational_store.py:231:    assert closed["phase"] == "archived"
+novaic-cortex/tests/test_operational_store.py:338:def test_payload_manifest_stores_metadata_and_updates_status(tmp_path):
+novaic-cortex/tests/test_operational_store.py:351:        status="available",
+novaic-cortex/tests/test_operational_store.py:364:        status="failed",
+novaic-cortex/tests/test_operational_store.py:390:        status="available",
+novaic-cortex/tests/test_pr56_root_scope_summary.py:3:PR-74 tightens the invariant further: lifecycle ``scope_end`` is structural
+novaic-cortex/tests/test_pr56_root_scope_summary.py:15:    ScopeEndRequest,
+novaic-cortex/tests/test_pr56_root_scope_summary.py:18:    scope_end,
+novaic-cortex/tests/test_pr56_root_scope_summary.py:47:async def test_scope_end_rejects_non_empty_report() -> None:
+novaic-cortex/tests/test_pr56_root_scope_summary.py:56:        await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_pr56_root_scope_summary.py:63:    assert exc.value.status_code == 400
+novaic-cortex/tests/test_pr56_root_scope_summary.py:68:async def test_scope_end_empty_report_writes_empty_summary_even_with_stale_meta() -> None:
+novaic-cortex/tests/test_pr56_root_scope_summary.py:76:    await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_pr56_root_scope_summary.py:136:    await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_pr56_root_scope_summary.py:143:    archived_child = child.replace("/ro/active/scp-auto", "/ro/scopes/scp-auto")
+novaic-cortex/tests/test_pr56_root_scope_summary.py:144:    assert await ws.read(f"{archived_child}/summary.md") == ""
+novaic-cortex/tests/test_step_result_projection.py:4:    format_for_history_llm,
+novaic-cortex/tests/test_step_result_projection.py:70:def test_history_projection_truncation():
+novaic-cortex/tests/test_step_result_projection.py:75:    formatted_str = format_for_history_llm(result_data, max_text_len=100)
+novaic-cortex/tests/test_step_result_projection.py:100:def test_empty_display_perception_projection_is_diagnostic_not_ok():
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:19:    ScopeEndRequest,
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:22:    scope_end,
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:73:async def test_structural_scope_end_rejects_report() -> None:
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:78:        await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:85:    assert exc.value.status_code == 400
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:90:async def test_structural_scope_end_empty_report_writes_no_summary() -> None:
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:94:    result = await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:106:async def test_structural_api_scope_end_has_no_generated_summary() -> None:
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:110:    await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:125:def test_scope_end_request_validates_archive_diagnostics_contract() -> None:
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:126:    req = ScopeEndRequest(
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:132:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:138:        ScopeEndRequest(
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:143:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:147:        ScopeEndRequest(
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:153:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:157:        ScopeEndRequest(
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:163:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:166:    with pytest.raises(PydanticValidationError, match="remaining_stack is required"):
+novaic-cortex/tests/test_pr74_scope_summary_contract.py:167:        ScopeEndRequest(
+novaic-cortex/tests/test_step_index_outcome.py:60:        "status": "success",
+novaic-cortex/tests/test_step_index_outcome.py:77:    assert entry["status"] == "success"
+novaic-cortex/tests/test_step_index_outcome.py:93:        "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:113:    assert manifest["status"] == "available"
+novaic-cortex/tests/test_step_index_outcome.py:126:        "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:164:        "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:191:    assert manifest["status"] == "available"
+novaic-cortex/tests/test_step_index_outcome.py:196:async def test_read_payload_missing_record_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:205:        "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:219:    assert manifest["status"] == "missing"
+novaic-cortex/tests/test_step_index_outcome.py:224:async def test_read_payload_corrupt_record_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:233:        "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:247:    assert manifest["status"] == "corrupt"
+novaic-cortex/tests/test_step_index_outcome.py:252:async def test_read_payload_ref_mismatch_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:261:        "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:275:    assert manifest["status"] == "corrupt"
+novaic-cortex/tests/test_step_index_outcome.py:280:async def test_read_payload_blob_failures_update_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:293:        "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:305:    assert manifest["status"] == "unavailable"
+novaic-cortex/tests/test_step_index_outcome.py:310:async def test_read_payload_missing_blob_client_updates_manifest_status():
+novaic-cortex/tests/test_step_index_outcome.py:323:        "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:336:    assert manifest["status"] == "unavailable"
+novaic-cortex/tests/test_step_index_outcome.py:354:            "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:372:            "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:387:            "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:397:            "status": "completed",
+novaic-cortex/tests/test_step_index_outcome.py:412:            "status": "success",
+novaic-cortex/tests/test_step_index_outcome.py:431:        "status": "success",
+novaic-cortex/tests/test_step_index_outcome.py:453:        "status": "success",
+novaic-cortex/tests/test_step_index_outcome.py:477:        "status": "started",
+novaic-cortex/tests/test_step_index_outcome.py:519:        "type": "tool", "call_id": "tc_1", "status": "success",
+novaic-cortex/tests/test_step_index_outcome.py:523:        "type": "tool", "call_id": "tc_2", "status": "success",
+novaic-cortex/tests/test_step_index_outcome.py:533:async def test_index_survives_archive():
+novaic-cortex/tests/test_step_index_outcome.py:534:    """Step index should be readable after scope is archived."""
+novaic-cortex/tests/test_step_index_outcome.py:539:        "type": "tool", "call_id": "tc_1", "status": "success",
+novaic-cortex/tests/test_step_index_outcome.py:544:    await ws.archive_root_scope("s1", "done")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:103:                self._write_json({"session_id": "upload-" + "a" * 32, "status": "created", "parts": []})
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:129:            self._write_json({"part_number": 1, "status": "receiving"})
+novaic-cortex/tests/test_scope_history_api.py:22:async def test_scope_history_reads_operational_sqlite(tmp_path):
+novaic-cortex/tests/test_scope_history_api.py:28:        to_state="archived",
+novaic-cortex/tests/test_scope_history_api.py:29:        reason="scope_end_root",
+novaic-cortex/tests/test_scope_history_api.py:31:        extra={"ended_at": 12.5},
+novaic-cortex/tests/test_scope_history_api.py:38:        response = await api.scope_history("/ro/active/root-scope")
+novaic-cortex/tests/test_scope_history_api.py:50:                "metadata": {"ended_at": 12.5},
+novaic-cortex/tests/test_scope_history_api.py:51:                "reason": "scope_end_root",
+novaic-cortex/tests/test_scope_history_api.py:53:                "to_state": "archived",
+novaic-cortex/tests/test_compaction_meta.py:1:"""After scope end, archived meta.json has phase=archived and required keys."""
+novaic-cortex/tests/test_compaction_meta.py:10:from novaic_cortex.api import ScopeEndRequest, scope_end, set_registry
+novaic-cortex/tests/test_compaction_meta.py:29:async def _structural_scope_end(agent_id: str, scope_id: str) -> None:
+novaic-cortex/tests/test_compaction_meta.py:30:    await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_compaction_meta.py:39:async def test_archived_meta_has_required_keys() -> None:
+novaic-cortex/tests/test_compaction_meta.py:53:    await _structural_scope_end(agent_id, scope_id)
+novaic-cortex/tests/test_compaction_meta.py:57:    assert meta["phase"] == "archived"
+novaic-cortex/tests/test_compaction_meta.py:58:    assert isinstance(meta["ended_at"], (int, float))
+novaic-cortex/tests/test_payload_inspection_api.py:45:        "status": "completed",
+novaic-cortex/tests/test_payload_inspection_api.py:117:    assert exc.value.status_code == 404
+novaic-cortex/tests/test_payload_inspection_api.py:136:    assert exc.value.status_code == 404
+novaic-cortex/tests/test_payload_inspection_api.py:140:    assert manifest["status"] == "missing"
+novaic-cortex/tests/test_payload_inspection_api.py:226:    assert exc.value.status_code == 400
+novaic-cortex/tests/test_workspace.py:64:        "status": "success",
+novaic-cortex/tests/test_workspace.py:75:    await ws.archive_root_scope("s1", "done")
+novaic-cortex/tests/test_workspace.py:76:    archived_meta = json.loads(await ws.read("/ro/scopes/s1/meta.json"))
+novaic-cortex/tests/test_workspace.py:77:    assert archived_meta["ended_at"] == 103.0
+novaic-cortex/tests/test_workspace.py:81:async def test_archive_scope_moves_keys_under_ro_scopes() -> None:
+novaic-cortex/tests/test_workspace.py:84:    await ws.create_scope("arch", "To archive", skill="s")
+novaic-cortex/tests/test_workspace.py:86:        "type": "tool", "call_id": "note", "tool": "note", "status": "success",
+novaic-cortex/tests/test_workspace.py:91:    archived = await ws.archive_root_scope("arch", "## done")
+novaic-cortex/tests/test_workspace.py:92:    assert archived == "/ro/scopes/arch/"
+novaic-cortex/tests/test_workspace.py:123:        "status": "success", "payload": {"hits": 3},
+novaic-cortex/tests/test_workspace.py:138:        "status": "success", "payload": {"content": "..."},
+novaic-cortex/tests/test_workspace.py:165:    """Steps move from rw to ro on archive_root_scope via move_prefix."""
+novaic-cortex/tests/test_workspace.py:172:        "status": "success", "payload": {}, "payload_ref": "step-ref:s1:tc_001",
+novaic-cortex/tests/test_workspace.py:181:    await ws.archive_root_scope("s1", "## done")
+novaic-cortex/tests/test_workspace.py:183:    archived_path = "/ro/scopes/s1"
+novaic-cortex/tests/test_workspace.py:184:    listed = await ws.list_steps(archived_path)
+novaic-cortex/tests/test_workspace.py:190:    raw = await ws.read(f"{archived_path}/steps/0001_tool_tc_001.json")
+novaic-cortex/tests/test_workspace.py:192:    raw2 = await ws.read(f"{archived_path}/steps/0002_scope_child_X.json")
+novaic-cortex/tests/test_archive_invariants.py:16:    from novaic_cortex.api import ScopeEndRequest, scope_end, set_registry
+novaic-cortex/tests/test_archive_invariants.py:23:    {"name", "skill", "start_time", "phase", "ended_at"}
+novaic-cortex/tests/test_archive_invariants.py:40:async def _structural_scope_end(agent_id: str, scope_id: str) -> dict:
+novaic-cortex/tests/test_archive_invariants.py:41:    return await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_archive_invariants.py:64:    out = await _structural_scope_end(agent_id, scope_id)
+novaic-cortex/tests/test_archive_invariants.py:65:    assert out["archive_path"] == f"/ro/scopes/{scope_id}/"
+novaic-cortex/tests/test_archive_invariants.py:74:    assert meta["phase"] == "archived"
+novaic-cortex/tests/test_archive_invariants.py:75:    assert isinstance(meta["ended_at"], (int, float))
+novaic-cortex/tests/test_archive_invariants.py:99:    await _structural_scope_end(agent_id, scope_id)
+novaic-cortex/tests/test_archive_invariants.py:103:    assert meta["phase"] == "archived"
+novaic-cortex/tests/test_archive_invariants.py:104:    assert isinstance(meta["ended_at"], (int, float))
+novaic-cortex/tests/test_archive_invariants.py:108:async def test_structural_scope_end_does_not_write_report_summary() -> None:
+novaic-cortex/tests/test_archive_invariants.py:117:    await _structural_scope_end(agent_id, scope_id)
+novaic-cortex/tests/test_archive_invariants.py:133:    await _structural_scope_end(agent_id, scope_id)
+novaic-cortex/tests/test_archive_invariants.py:136:    assert json.loads(raw)["phase"] == "archived"
+novaic-cortex/tests/test_context_event_writer.py:82:        status="completed",
+novaic-cortex/tests/test_context_event_writer.py:130:        status="completed",
+novaic-cortex/tests/test_context_event_writer.py:140:        status="completed",
+novaic-cortex/tests/test_tool_schemas_limits.py:151:        "im_history",
+novaic-cortex/tests/test_context_event_write_authority.py:12:    ScopeEndRequest,
+novaic-cortex/tests/test_context_event_write_authority.py:20:    scope_end,
+novaic-cortex/tests/test_context_event_write_authority.py:127:                "status": "completed",
+novaic-cortex/tests/test_context_event_write_authority.py:141:    await scope_end(
+novaic-cortex/tests/test_context_event_write_authority.py:142:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_write_authority.py:197:        "status": "completed",
+novaic-cortex/tests/test_context_event_write_authority.py:203:        "reason": "scope_end_child",
+novaic-cortex/tests/test_context_event_write_authority.py:204:        "remaining_stack": [],
+novaic-cortex/tests/test_workspace_limits.py:28:async def test_archive_missing_scope_raises_file_not_found_not_keyerror() -> None:
+novaic-cortex/tests/test_workspace_limits.py:33:        await ws.archive_root_scope("nope", "summary")
+novaic-cortex/tests/test_hooks_limits.py:47:async def test_on_scope_archived_hook_raises_userwarning_compact_and_metrics_ok() -> None:
+novaic-cortex/tests/test_hooks_limits.py:49:    hooks.on_scope_archived.append(
+novaic-cortex/tests/test_hooks_limits.py:50:        lambda _sid, _summary, _ap: (_ for _ in ()).throw(RuntimeError("archive hook boom"))
+novaic-cortex/tests/test_hooks_limits.py:54:    workspace, store = make_workspace_with_store("hooks-limits-archived", store=store, hooks=hooks)
+novaic-cortex/tests/test_hooks_limits.py:59:    with pytest.warns(UserWarning, match=r"Cortex hook 'on_scope_archived' failed"):
+novaic-cortex/tests/test_hooks_limits.py:60:        out = await workspace.archive_root_scope_projection("s-arch-hook", "")
+novaic-cortex/tests/test_hooks_limits.py:86:    assert hooks.on_scope_archived == []
+novaic-cortex/tests/test_hooks_limits.py:98:    await cortex.workspace.archive_root_scope_projection("s-empty", "")
+novaic-cortex/tests/test_sandboxd_wiring.py:194:    assert response.status_code == 200
+novaic-cortex/tests/test_hooks_metrics.py:1:"""Hooks: scope created / archived via Workspace projections + MemoryStore."""
+novaic-cortex/tests/test_hooks_metrics.py:13:async def test_scope_hooks_fire_on_create_and_archive() -> None:
+novaic-cortex/tests/test_hooks_metrics.py:16:    archived: list[tuple[str, str, str]] = []
+novaic-cortex/tests/test_hooks_metrics.py:19:    hooks.on_scope_archived.append(
+novaic-cortex/tests/test_hooks_metrics.py:20:        lambda sid, summary, archive_path: archived.append((sid, summary, archive_path))
+novaic-cortex/tests/test_hooks_metrics.py:35:    await workspace.archive_root_scope_projection("s-hook", "")
+novaic-cortex/tests/test_hooks_metrics.py:37:    assert len(archived) == 1
+novaic-cortex/tests/test_hooks_metrics.py:38:    assert archived[0][0] == "s-hook"
+novaic-cortex/tests/test_hooks_metrics.py:39:    assert archived[0][1] == ""
+novaic-cortex/tests/test_hooks_metrics.py:40:    assert "/ro/scopes/s-hook/" in archived[0][2]
+novaic-cortex/tests/test_context_event_read_model.py:56:    assert prepared.status().current_skill is None
+novaic-cortex/tests/test_context_event_read_model.py:57:    assert prepared.status().phase == Phase.CLOSED
+novaic-cortex/tests/test_context_event_read_model.py:121:                    "status": "completed",
+novaic-cortex/tests/test_context_event_read_model.py:166:    assert prepared.status().current_skill == "wake"
+novaic-cortex/tests/test_context_event_read_model.py:167:    assert prepared.status().phase == Phase.EXECUTING
+novaic-cortex/tests/test_context_event_read_model.py:187:                "status": "completed",
+novaic-cortex/tests/test_context_event_read_model.py:225:                    "status": "completed",
+novaic-cortex/tests/test_engine_wiring.py:10:from novaic_cortex.api import ScopeEndRequest, scope_end, set_registry
+novaic-cortex/tests/test_engine_wiring.py:29:async def _structural_scope_end(agent_id: str, scope_id: str) -> None:
+novaic-cortex/tests/test_engine_wiring.py:30:    await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_engine_wiring.py:61:    await _structural_scope_end(agent_id, "ew-a")
+novaic-cortex/tests/test_engine_wiring.py:62:    await _structural_scope_end(agent_id, "ew-b")
+novaic-cortex/tests/test_tool_output_projection.py:6:    format_for_history_llm,
+novaic-cortex/tests/test_tool_output_projection.py:32:                    "history": "manifest_only",
+novaic-cortex/tests/test_tool_output_projection.py:43:        "diagnostics": {"truncated": False},
+novaic-cortex/tests/test_tool_output_projection.py:98:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:102:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:139:            "diagnostics": {"truncated": False},
+novaic-cortex/tests/test_tool_output_projection.py:165:            "diagnostics": {
+novaic-cortex/tests/test_tool_output_projection.py:213:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:217:    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+novaic-cortex/tests/test_tool_output_projection.py:232:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:236:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_context_event_api_lifecycle.py:9:    ScopeEndRequest,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:12:    scope_end,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:125:async def test_scope_end_emits_wake_archived_event_before_child_archive() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:148:    result = await scope_end(
+novaic-cortex/tests/test_context_event_api_lifecycle.py:149:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_api_lifecycle.py:167:        "reason": "scope_end_child",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:168:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_lifecycle.py:173:async def test_scope_end_persists_explicit_archive_diagnostics() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:196:    result = await scope_end(
+novaic-cortex/tests/test_context_event_api_lifecycle.py:197:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_api_lifecycle.py:205:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:215:        "reason": "scope_end_child",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:216:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_lifecycle.py:217:        "archive_diagnostics": {
+novaic-cortex/tests/test_context_event_api_lifecycle.py:220:            "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:226:def test_scope_end_rejects_bool_archive_diagnostics_generation() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:228:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_api_lifecycle.py:235:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:239:def test_scope_end_requires_complete_archive_diagnostics() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:241:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_api_lifecycle.py:247:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_scope_state.py:5:* Idempotent self-loop (INV-5): ``scope_end`` called twice → 2nd is noop.
+novaic-cortex/tests/test_scope_state.py:9:* ``mark_archived`` requires the caller's explicit ``ended_at`` timestamp.
+novaic-cortex/tests/test_scope_state.py:12:* Workspace integration: ``complete_child_scope`` / ``archive_root_scope``
+novaic-cortex/tests/test_scope_state.py:27:    mark_archived,
+novaic-cortex/tests/test_scope_state.py:75:async def test_executing_to_archived_allowed(tmp_path):
+novaic-cortex/tests/test_scope_state.py:79:                         to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:82:    assert r["to"] == "archived"
+novaic-cortex/tests/test_scope_state.py:84:    assert ws._meta["phase"] == "archived"
+novaic-cortex/tests/test_scope_state.py:92:                         to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace")
+novaic-cortex/tests/test_scope_state.py:96:async def test_archived_is_terminal():
+novaic-cortex/tests/test_scope_state.py:97:    ws = _workspace_with("archived")
+novaic-cortex/tests/test_scope_state.py:101:    assert "archived -> executing" in str(ei.value)
+novaic-cortex/tests/test_scope_state.py:128:    ws = _workspace_with("archived")
+novaic-cortex/tests/test_scope_state.py:130:                         to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.api")
+novaic-cortex/tests/test_scope_state.py:132:    assert r["from"] == "archived"
+novaic-cortex/tests/test_scope_state.py:133:    assert r["to"] == "archived"
+novaic-cortex/tests/test_scope_state.py:139:    """A retried scope_end should still refresh ``ended_at`` even though
+novaic-cortex/tests/test_scope_state.py:140:    the phase flip is a noop — otherwise the meta's ``ended_at`` would
+novaic-cortex/tests/test_scope_state.py:142:    ws = _workspace_with("archived")
+novaic-cortex/tests/test_scope_state.py:145:                     extra={"ended_at": 42.0})
+novaic-cortex/tests/test_scope_state.py:146:    assert ws._meta.get("ended_at") == 42.0
+novaic-cortex/tests/test_scope_state.py:147:    ws.update_session_meta.assert_called_once_with("/ro/scopes/s-1", {"ended_at": 42.0})
+novaic-cortex/tests/test_scope_state.py:158:                         extra={"phase": "archived"})
+novaic-cortex/tests/test_scope_state.py:166:                     to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:167:                     extra={"ended_at": 99.0, "notes": "done"},
+novaic-cortex/tests/test_scope_state.py:169:    assert ws._meta["phase"] == "archived"
+novaic-cortex/tests/test_scope_state.py:170:    assert ws._meta["ended_at"] == 99.0
+novaic-cortex/tests/test_scope_state.py:175:# ── mark_archived wrapper ───────────────────────────────────────────────────
+novaic-cortex/tests/test_scope_state.py:178:async def test_mark_archived_requires_explicit_ended_at():
+novaic-cortex/tests/test_scope_state.py:181:        await mark_archived(
+novaic-cortex/tests/test_scope_state.py:184:            reason="scope_end_root",
+novaic-cortex/tests/test_scope_state.py:191:async def test_mark_archived_writes_caller_supplied_ended_at(tmp_path):
+novaic-cortex/tests/test_scope_state.py:194:    r = await mark_archived(
+novaic-cortex/tests/test_scope_state.py:197:        reason="scope_end_root",
+novaic-cortex/tests/test_scope_state.py:199:        ended_at=1234.5,
+novaic-cortex/tests/test_scope_state.py:204:    assert r["to"] == "archived"
+novaic-cortex/tests/test_scope_state.py:205:    assert ws._meta["ended_at"] == 1234.5
+novaic-cortex/tests/test_scope_state.py:211:async def test_mark_archived_preserves_caller_supplied_ended_at(tmp_path):
+novaic-cortex/tests/test_scope_state.py:214:    await mark_archived(ws, "/ro/active/s-1",
+novaic-cortex/tests/test_scope_state.py:215:                        reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:216:                        ended_at=1234.5,
+novaic-cortex/tests/test_scope_state.py:219:    assert ws._meta["ended_at"] == 1234.5
+novaic-cortex/tests/test_scope_state.py:233:                         to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace")
+novaic-cortex/tests/test_scope_state.py:236:# ── Unknown status value ────────────────────────────────────────────────────
+novaic-cortex/tests/test_scope_state.py:251:                     to=ScopeState.ARCHIVED, reason="scope_end_root", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:255:                     to=ScopeState.ARCHIVED, reason="scope_end_child", actor="cortex.workspace",
+novaic-cortex/tests/test_scope_state.py:258:    assert reasons == ["scope_end_root", "scope_end_child"]
+novaic-cortex/tests/test_scope_state.py:270:        reason="scope_end_child",
+novaic-cortex/tests/test_scope_state.py:272:        extra={"ended_at": 12.5},
+novaic-cortex/tests/test_scope_state.py:286:        "metadata": {"ended_at": 12.5},
+novaic-cortex/tests/test_scope_state.py:287:        "reason": "scope_end_child",
+novaic-cortex/tests/test_scope_state.py:289:        "to_state": "archived",
+novaic-cortex/tests/test_scope_state.py:297:    ws = _workspace_with("archived")
+novaic-cortex/tests/test_scope_state.py:303:        reason="scope_end_root",
+novaic-cortex/tests/test_scope_state.py:348:    assert meta["phase"] == "archived"
+novaic-cortex/tests/test_scope_state.py:349:    assert "ended_at" in meta
+novaic-cortex/tests/test_context_event_no_compat.py:10:    context_status,
+novaic-cortex/tests/test_context_event_no_compat.py:37:    assert exc.status_code == 409
+novaic-cortex/tests/test_context_event_no_compat.py:59:async def test_status_include_usage_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-cortex/tests/test_context_event_no_compat.py:60:    await _file_tree_only_workspace("file-tree-status-agent")
+novaic-cortex/tests/test_context_event_no_compat.py:63:        await context_status(
+novaic-cortex/tests/test_context_event_no_compat.py:66:                agent_id="file-tree-status-agent",
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:23:    assert not hasattr(workspace_mod.Workspace, "list_archived_root_" + "summaries")
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:33:    assert "list_archived_root_" + "summaries" not in active_source
+novaic-cortex/tests/test_pr76_boundary_guard.py:64:def test_boundary_guard_ignores_docs_and_ticket_history(tmp_path: Path) -> None:
+novaic-cortex/tests/test_legacy_skill_lifecycle_removed.py:22:    assert not hasattr(Cortex, "scope_end")
+novaic-cortex/tests/test_context_event_read_source_guards.py:42:def test_status_usage_has_no_dfs_read_fallback() -> None:
+novaic-cortex/tests/test_context_event_read_source_guards.py:44:        '@app.post("/v1/context/status")',
+novaic-cortex/tests/test_context_event_read_source_guards.py:58:def test_scope_end_archive_reads_sqlite_active_stack_projection() -> None:
+novaic-cortex/tests/test_context_event_read_source_guards.py:60:        '@app.post("/v1/scope/end")',
+novaic-cortex/tests/test_context_event_read_source_guards.py:61:        '@app.get("/v1/scope/history")',
+novaic-cortex/tests/test_context_event_read_source_guards.py:106:        '@app.post("/v1/context/status")',
+novaic-cortex/tests/test_context_event_read_source_guards.py:116:        "# ── Context (conversation history)",
+novaic-cortex/tests/test_active_stack_projection.py:253:        "remaining_stack": [],
+novaic-cortex/tests/test_active_stack_projection.py:264:def test_finalize_active_stack_projection_records_remaining_stack_then_clears(tmp_path):
+novaic-cortex/tests/test_active_stack_projection.py:296:    remaining = result["event"]["payload"]["remaining_stack"]
+novaic-cortex/tests/test_pr67_wake_child_api.py:15:    ScopeEndRequest,
+novaic-cortex/tests/test_pr67_wake_child_api.py:17:    context_status,
+novaic-cortex/tests/test_pr67_wake_child_api.py:23:    scope_end,
+novaic-cortex/tests/test_pr67_wake_child_api.py:174:async def test_context_status_is_stack_only_by_default(monkeypatch):
+novaic-cortex/tests/test_pr67_wake_child_api.py:179:        raise AssertionError("context_status default path must not render LLM context")
+novaic-cortex/tests/test_pr67_wake_child_api.py:186:    result = await context_status(ContextStatusRequest(
+novaic-cortex/tests/test_pr67_wake_child_api.py:199:async def test_context_status_default_reads_sqlite_active_stack(monkeypatch):
+novaic-cortex/tests/test_pr67_wake_child_api.py:200:    ws = await _workspace("status-sqlite-agent")
+novaic-cortex/tests/test_pr67_wake_child_api.py:203:        agent_id="status-sqlite-agent",
+novaic-cortex/tests/test_pr67_wake_child_api.py:210:        agent_id="status-sqlite-agent",
+novaic-cortex/tests/test_pr67_wake_child_api.py:217:    result = await context_status(ContextStatusRequest(
+novaic-cortex/tests/test_pr67_wake_child_api.py:219:        agent_id="status-sqlite-agent",
+novaic-cortex/tests/test_pr67_wake_child_api.py:231:async def test_context_status_include_usage_uses_event_projection() -> None:
+novaic-cortex/tests/test_pr67_wake_child_api.py:232:    ws = await _workspace("status-usage-agent")
+novaic-cortex/tests/test_pr67_wake_child_api.py:235:        agent_id="status-usage-agent",
+novaic-cortex/tests/test_pr67_wake_child_api.py:242:        agent_id="status-usage-agent",
+novaic-cortex/tests/test_pr67_wake_child_api.py:250:        agent_id="status-usage-agent",
+novaic-cortex/tests/test_pr67_wake_child_api.py:259:    result = await context_status(ContextStatusRequest(
+novaic-cortex/tests/test_pr67_wake_child_api.py:261:        agent_id="status-usage-agent",
+novaic-cortex/tests/test_pr67_wake_child_api.py:275:async def test_non_root_scope_end_archives_wake_child_and_keeps_agent_root_active():
+novaic-cortex/tests/test_pr67_wake_child_api.py:281:    result = await scope_end(ScopeEndRequest(
+novaic-cortex/tests/test_pr67_wake_child_api.py:290:    assert result["archive_path"] == wake + "/"
+novaic-cortex/tests/test_pr67_wake_child_api.py:292:    assert (await ws.read_session_meta(wake))["phase"] == "archived"
+novaic-cortex/tests/test_pr67_wake_child_api.py:293:    assert (await ws.read_session_meta(child))["phase"] == "archived"
+novaic-cortex/tests/test_context_event_api_steps_write.py:118:                "status": "completed",
+novaic-cortex/tests/test_context_event_api_steps_write.py:135:        "status": "completed",
+novaic-cortex/tests/test_context_event_api_steps_write.py:165:                    "status": "completed",
+novaic-cortex/tests/test_context_event_api_steps_write.py:215:                "status": "completed",
+novaic-cortex/tests/test_context_event_api_steps_write.py:229:        "status": "completed",
+novaic-cortex/tests/test_context_event_api_steps_write.py:250:    assert manifest["status"] == "available"
+novaic-cortex/tests/test_context_event_api_steps_write.py:275:                "status": "completed",
+novaic-cortex/tests/test_context_event_api_steps_write.py:313:                "status": "completed",
+novaic-cortex/tests/test_context_event_api_steps_write.py:332:    assert raised.value.status_code == 400
+novaic-cortex/tests/test_context_event_projection.py:166:def test_project_context_events_wake_stack_archive() -> None:
+novaic-cortex/tests/test_context_event_projection.py:181:                    "remaining_stack": [],
+novaic-cortex/tests/test_context_event_projection.py:578:                    "status": "completed",
+novaic-cortex/tests/test_context_event_projection.py:597:                "status": "completed",
+novaic-cortex/tests/test_context_event_projection.py:624:                    "status": "completed",
+novaic-cortex/tests/test_context_event_projection.py:635:                    "status": "completed",
+novaic-cortex/tests/test_context_event_projection.py:670:                    "status": "completed",
+novaic-cortex/tests/test_context_event_projection.py:705:                    "status": "completed",
+novaic-cortex/tests/test_context_event_projection.py:729:                    "status": "completed",
+novaic-cortex/tests/test_context_event_projection.py:774:                    "status": "completed",
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:12:    ScopeEndRequest,
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:16:    scope_end,
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:448:async def test_scope_end_root_empty_stack_records_finalize_event_and_clears_projection() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:460:    result = await scope_end(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:461:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:478:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:480:        "reason": "scope_end_root",
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:487:async def test_scope_end_root_records_finalize_event_and_clears_projection() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:491:    result = await scope_end(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:492:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:508:        "remaining_stack": [{"depth": 1, "kind": "wake", "name": "user conversation", "parent_path": root["scope_path"], "parent_scope_id": "agent-root", "scope_id": "wake-1", "scope_path": _wake["scope_path"], "skill_name": "wake"}],
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:510:        "reason": "scope_end_root",
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:517:async def test_scope_end_wake_records_remaining_stack_and_retry_is_idempotent() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:532:    result = await scope_end(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:533:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:541:    retry = await scope_end(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:542:        ScopeEndRequest(
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:561:    assert [frame["scope_id"] for frame in finalize_events[0]["payload"]["remaining_stack"]] == [
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:565:    assert finalize_events[0]["payload"]["remaining_stack"][0]["scope_path"] == opened["child_path"]
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:566:    assert finalize_events[0]["payload"]["remaining_stack"][1]["scope_path"] == wake["scope_path"]
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:571:        "reason": "scope_end_child",
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:572:        "remaining_stack": [],

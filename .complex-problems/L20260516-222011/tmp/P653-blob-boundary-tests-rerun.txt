@@ -1,0 +1,23 @@
+.F.....                                                                  [100%]
+=================================== FAILURES ===================================
+___________ test_blob_byte_access_is_confined_to_allowed_byte_flows ____________
+
+    def test_blob_byte_access_is_confined_to_allowed_byte_flows() -> None:
+        violations: list[str] = []
+    
+        for source in _iter_runtime_sources():
+            policy_path = _policy_path(source)
+            hits = blob_byte_boundary_violations(policy_path, source.read_text())
+            if hits:
+                violations.append(f"{policy_path}: {', '.join(hits)}")
+    
+>       assert violations == []
+E       AssertionError: assert ['novaic_cort....py: blob://'] == []
+E         
+E         Left contains one more item: 'novaic_cortex/step_result_projection.py: blob://'
+E         Use -v to get more diff
+
+tests/test_blob_boundary_guard.py:78: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_blob_boundary_guard.py::test_blob_byte_access_is_confined_to_allowed_byte_flows
+1 failed, 6 passed in 0.07s

@@ -1,0 +1,225 @@
+=== tests/media guard hits ===
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:3:import base64
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:49:def _server_for_device_and_blob(*, screenshot_bytes: bytes = b"", file_bytes: bytes = b""):
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:77:            if self.path.endswith("/hd/desktop/screenshot"):
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:85:                        "screenshot": base64.b64encode(screenshot_bytes).decode("ascii"),
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:94:                        "data": base64.b64encode(file_bytes).decode("ascii"),
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:95:                        "is_base64": True,
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:137:def test_devicectl_hd_screenshot_uploads_image_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:139:    server, thread, state = _server_for_device_and_blob(screenshot_bytes=image)
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:142:        completed = _run_devicectl(tmp_path, ["hd", "screenshot"], server_url=base_url)
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:149:    assert body["version"] == "tool-output.v1"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:151:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:152:    assert body["artifacts"][0]["modality"] == "image"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:153:    assert body["artifacts"][0]["mime_type"] == "image/jpeg"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:154:    assert body["artifacts"][0]["access"]["display"]["args"]["file_url"] == body["artifacts"][0]["uri"]
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:158:    assert base64.b64encode(image).decode("ascii") not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:159:    assert '"screenshot":' not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:169:            ["hd", "file-pull", "--json", '{"path":"/tmp/note.txt"}'],
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:178:    assert body["version"] == "tool-output.v1"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:180:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:181:    assert body["artifacts"][0]["modality"] == "binary"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:182:    assert body["artifacts"][0]["name"] == "note.txt"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:183:    assert body["artifacts"][0]["mime_type"] == "text/plain"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:186:    assert base64.b64encode(file_payload).decode("ascii") not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:197:    assert "base64 into normal shell output" in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:200:def test_devicectl_help_teaches_artifact_manifest_not_base64(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:204:    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:205:    assert "Do not print or paste raw base64" in completed.stdout
+novaic-cortex/tests/test_payload_inspection_api.py:79:    assert result["_mcp_content"] == [{"type": "text", "text": "FAILED final"}]
+novaic-cortex/tests/test_payload_inspection_api.py:175:    assert result["_mcp_content"] == [{"type": "text", "text": "Summary result"}]
+novaic-cortex/tests/test_payload_inspection_api.py:213:    assert result["_mcp_content"] == [{"type": "text", "text": "A" * 220}]
+novaic-cortex/tests/test_blob_payload_client.py:12:    assert "base64" not in source
+novaic-agent-runtime/tests/test_pr234_tool_logical_failure.py:32:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:186:        "version": "tool-output.v1",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:189:        "artifacts": [],
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:3:import base64
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:65:def test_display_fetches_blob_service_image_as_mcp_content(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:90:    item = result["_mcp_content"][0]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:93:    assert base64.b64decode(item["data"]) == b"\x89PNG\r\n"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:97:    public_item = public["_mcp_content"][0]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:101:    assert wrapped["durable_payload"]["llm_content"]["_mcp_content"][0]["data"] == item["data"]
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:49:    image_url = "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:55:                {"type": "text", "text": "Please inspect this screenshot."},
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:76:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py:105:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:19:            "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:20:                {"type": "text", "text": "screenshot"},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:48:def test_display_perception_can_create_user_image_message_and_strips_marker():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:50:        [_image_tool_message(_projection="display_perception")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:58:    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:63:def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:71:                "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:76:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:82:    text = tool_payload["_mcp_content"][0]["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:102:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:121:                    "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:127:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:148:        _image_tool_message(_projection="display_perception"),
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:152:    assert sanitized[1]["_projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:159:    image_item = tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:164:    assert user_content[0]["image_url"]["url"].startswith("data:image/png;base64,")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:170:        "message": "Loaded screenshot.jpg (6B, image/jpeg)",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:171:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:174:        "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:175:            {"type": "text", "text": "desktop screenshot"},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:183:    assert public_content["_mcp_content"][1]["type"] == "image"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:184:    assert public_content["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:185:    assert "data" not in public_content["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:187:    assert public_content.get("version") != "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:190:    assert llm_content["_mcp_content"][1]["data"] == "YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:198:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:205:    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:206:    assert "data" not in tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:209:    assert processed[1]["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:219:                "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:220:                    {"type": "text", "text": "desktop screenshot"},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:275:    assert calls[0]["projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:283:    image_placeholder = tool_payload["_mcp_content"][1]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:288:    assert image_message["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:292:def test_screenshot_artifact_manifest_display_current_then_history_replay(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:298:        '{"version":"tool-output.v1","ok":true,'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:299:        '"text":"Captured host desktop screenshot.",'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:300:        '"artifacts":[{"uri":"blob://runtime-artifact/screen-1",'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:303:        '[Artifact: hd-screenshot.jpg (image, image/jpeg, 150.6KB)] '
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:313:                return json.dumps({"_mcp_content": [{"type": "text", "text": shell_manifest_text}]})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:314:            if tool_call_id == "display:2" and projection == "display_perception":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:316:                    "_mcp_content": [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:317:                        {"type": "text", "text": "desktop screenshot"},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:322:                return json.dumps({"_mcp_content": [{"type": "text", "text": "desktop screenshot"}]})
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:339:                    "arguments": '{"command":"devicectl hd screenshot"}',
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:396:    assert [call["projection"] for call in calls] == ["history", "display_perception"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:399:    assert shell_payload["_mcp_content"][0]["type"] == "text"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:402:        in shell_payload["_mcp_content"][0]["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:422:        "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:455:    assert replay_display_payload["_mcp_content"] == [
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:456:        {"type": "text", "text": "desktop screenshot"}
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:467:        {"_mcp_content": [{"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"}]},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:472:    assert public_content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:16:        "captured screenshot",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:17:        artifacts=(
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:25:                source={"tool": "device screenshot", "step_ref": "step-ref:1"},
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:30:        events=(event_manifest(type="device.screenshot.captured", id="evt-1", summary="captured"),),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:36:    assert result["text"] == "captured screenshot"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:37:    assert result["artifacts"][0]["uri"] == "blob://runtime-artifact/abc"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:38:    assert result["artifacts"][0]["modality"] == "image"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:39:    assert result["events"][0]["type"] == "device.screenshot.captured"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:70:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:130:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:155:    media_like_stdout = "/9j/" + ("A" * 10_000)
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:162:    assert content["version"] == "tool-output.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:164:    assert "/9j/" in content["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:169:    assert "_mcp_content" not in content
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:170:    assert "data:image/" not in content["text"]
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:147:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:164:        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:177:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:208:        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:221:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:243:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:254:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:276:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:287:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:318:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:329:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:389:            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:105:    assert "hd_screenshot" not in tools
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:107:    assert "hd_screenshot" not in result["tool_names"]
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:1:"""CI entrypoints keep generated Python artifacts out of source scans."""
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:21:    assert "./scripts/ci/lint_generated_artifacts.sh" in source
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:24:def test_canonical_test_runner_cleans_and_checks_generated_artifacts():
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:29:    assert "cleanup_generated_python_artifacts()" in source
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:30:    assert 'run_check "generated-artifacts-lint" scripts/ci/lint_generated_artifacts.sh' in source
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:42:        "version": "tool-output.v1",
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:45:        "artifacts": [],
+novaic-cortex/tests/test_context_event_projection.py:656:        "_mcp_content": [
+novaic-cortex/tests/test_context_event_projection.py:657:            {"type": "text", "text": "loaded screenshot"},
+novaic-cortex/tests/test_context_event_projection.py:658:            {"type": "image", "data": "/9j/" + ("A" * 4000), "mimeType": "image/jpeg"},
+novaic-cortex/tests/test_context_event_projection.py:680:    assert "_mcp_content" in content
+novaic-cortex/tests/test_context_event_projection.py:681:    assert "/9j/" not in content
+novaic-cortex/tests/test_pr75_proxy_boundary.py:17:        "screenshot",
+novaic-cortex/tests/test_step_result_projection.py:3:    format_for_display_perception_llm,
+novaic-cortex/tests/test_step_result_projection.py:13:            {"type": "image", "data": "base64encoded==", "mimeType": "image/jpeg"}
+novaic-cortex/tests/test_step_result_projection.py:19:    assert parsed["display_files"][0]["url"] == "data:image/jpeg;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:22:def test_parse_tool_result_json_string_mcp_content():
+novaic-cortex/tests/test_step_result_projection.py:24:        "_mcp_content": [
+novaic-cortex/tests/test_step_result_projection.py:26:            {"type": "image", "data": "base64encoded==", "mimeType": "image/png"},
+novaic-cortex/tests/test_step_result_projection.py:34:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:78:    assert len(formatted["_mcp_content"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:79:    text_content = formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_step_result_projection.py:84:def test_display_perception_projection_data_url():
+novaic-cortex/tests/test_step_result_projection.py:88:            {"url": "data:image/png;base64,aabbcc"}
+novaic-cortex/tests/test_step_result_projection.py:91:    formatted_str = format_for_display_perception_llm(result_data)
+novaic-cortex/tests/test_step_result_projection.py:94:    mcp_content = formatted["_mcp_content"]
+novaic-cortex/tests/test_step_result_projection.py:100:def test_empty_display_perception_projection_is_diagnostic_not_ok():
+novaic-cortex/tests/test_step_result_projection.py:101:    formatted = json.loads(format_for_display_perception_llm({
+novaic-cortex/tests/test_step_result_projection.py:106:    assert formatted["_mcp_content"] == [{
+novaic-cortex/tests/test_context_event_api_steps_write.py:19:    steps_read_formatted,
+novaic-cortex/tests/test_context_event_api_steps_write.py:123:                    "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:139:            "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:147:    assert index[0]["has_artifacts"] is True
+novaic-cortex/tests/test_context_event_api_steps_write.py:254:async def test_steps_read_formatted_resolves_externalized_payload_by_stable_step_ref() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:283:    result = await steps_read_formatted(
+novaic-cortex/tests/test_context_event_api_steps_write.py:295:    assert content["_mcp_content"] == [
+novaic-cortex/tests/test_context_event_api_steps_write.py:301:async def test_steps_read_formatted_rejects_unknown_projection() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:322:        await steps_read_formatted(
+novaic-cortex/tests/test_tool_output_projection.py:5:    format_for_display_perception_llm,
+novaic-cortex/tests/test_tool_output_projection.py:14:        "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:16:        "text": "Captured host desktop screenshot.",
+novaic-cortex/tests/test_tool_output_projection.py:17:        "artifacts": [
+novaic-cortex/tests/test_tool_output_projection.py:24:                "summary": "Host desktop screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:39:                "type": "device.screenshot.captured",
+novaic-cortex/tests/test_tool_output_projection.py:47:def test_tool_output_v1_artifacts_render_as_manifest_text():
+novaic-cortex/tests/test_tool_output_projection.py:52:    assert parsed["artifacts"][0]["uri"] == "blob://runtime-artifact/screen-1"
+novaic-cortex/tests/test_tool_output_projection.py:53:    assert "Captured host desktop screenshot." in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:56:    assert "[Event: device.screenshot.captured]" in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:59:def test_tool_output_v1_display_perception_never_inlines_artifact_image():
+novaic-cortex/tests/test_tool_output_projection.py:61:    formatted = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:63:    assert formatted["_mcp_content"]
+novaic-cortex/tests/test_tool_output_projection.py:64:    assert all(item["type"] == "text" for item in formatted["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:65:    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_tool_output_projection.py:71:    assert "[1 artifacts]" in preview_for_text(parsed)
+novaic-cortex/tests/test_tool_output_projection.py:77:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:85:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+novaic-cortex/tests/test_tool_output_projection.py:88:def test_mcp_image_content_is_only_visual_in_display_perception_projection():
+novaic-cortex/tests/test_tool_output_projection.py:91:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:100:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:102:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:103:    assert all(item["type"] == "text" for item in current["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:104:    assert display["_mcp_content"][1] == {
+novaic-cortex/tests/test_tool_output_projection.py:116:                "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:126:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:127:    assert all(item["type"] == "text" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:134:            "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:137:            "artifacts": [],
+novaic-cortex/tests/test_tool_output_projection.py:156:    media_like_stdout = "/9j/" + ("A" * 10_000)
+novaic-cortex/tests/test_tool_output_projection.py:160:            "version": "tool-output.v1",
+novaic-cortex/tests/test_tool_output_projection.py:162:            "text": "exit_code=0\nstdout:\n/9j/AAAA\n... [truncated 10000 chars]",
+novaic-cortex/tests/test_tool_output_projection.py:163:            "artifacts": [],
+novaic-cortex/tests/test_tool_output_projection.py:182:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:185:    assert parsed["text"].startswith("exit_code=0\nstdout:\n/9j/AAAA")
+novaic-cortex/tests/test_tool_output_projection.py:187:    assert all(item["type"] == "text" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:188:    assert not any(item.get("type") == "image" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:196:            "message": "Loaded screenshot.jpg (6B, image/jpeg)",
+novaic-cortex/tests/test_tool_output_projection.py:197:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:200:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:201:                {"type": "text", "text": "desktop screenshot"},
+novaic-cortex/tests/test_tool_output_projection.py:207:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:214:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:216:    assert parsed["text"] == "desktop screenshot"
+novaic-cortex/tests/test_tool_output_projection.py:217:    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+novaic-cortex/tests/test_tool_output_projection.py:218:    assert display["_mcp_content"][1] == {
+novaic-cortex/tests/test_tool_output_projection.py:227:        "text": "parsed screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:229:        "display_files": [{"url": "data:image/png;base64,aabbcc"}],
+novaic-cortex/tests/test_tool_output_projection.py:234:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:236:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:237:    assert all(item["type"] == "text" for item in current["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:238:    assert any(item["type"] == "image" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_schemas_limits.py:108:    assert "devicectl hd screenshot/shell-exec/mouse/keyboard" in desc
+novaic-cortex/tests/test_tool_schemas_limits.py:109:    assert "clipboard-set/file-pull/file-push" in desc
+novaic-cortex/tests/test_step_index_outcome.py:65:        "artifacts": [{"url": "blob://user-file/img.png", "filename": "img.png"}],
+novaic-cortex/tests/test_step_index_outcome.py:81:    assert entry["has_artifacts"] is True
+novaic-cortex/tests/test_step_index_outcome.py:441:    assert "has_artifacts" not in entry
+novaic-cortex/tests/test_step_index_outcome.py:445:async def test_index_keeps_zero_duration_and_observation_artifacts():
+novaic-cortex/tests/test_step_index_outcome.py:458:            "artifacts": [{"uri": "blob://runtime-artifact/img"}],
+novaic-cortex/tests/test_step_index_outcome.py:465:    assert index[0]["has_artifacts"] is True

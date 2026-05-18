@@ -1,0 +1,1312 @@
+# P496 attach generation raw guard
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:14:def _positive_generation(value: Any) -> int:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:16:        raise ValidationError("Missing required field: generation")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:18:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:20:        generation = value
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:22:        generation = int(value.strip())
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:24:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:25:    if generation < 1:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:26:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:27:    return generation
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:43:        generation: int
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:50:    generation = payload.get("generation")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:61:    generation = _positive_generation(generation)
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:76:        generation=generation,
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:56:def test_session_rebuild_skips_missing_session_generation(tmp_path):
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:78:@pytest.mark.parametrize("bad_generation", [None, 0, "0", "bad", False, -1])
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:79:def test_session_rebuild_skips_invalid_session_generation(
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:81:    bad_generation,
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:91:            "session_generation": bad_generation,
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:105:def test_session_rebuild_projects_only_positive_explicit_session_generation(tmp_path):
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:114:            "session_generation": 3,
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:124:            "session_generation": "4",
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:136:    assert int_state["generation"] == 3
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:138:    assert str_state["generation"] == 4
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:41:            generation=7,
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:54:            metadata={"message_ids": ["m1"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:55:            message_ids=("m1",),
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:64:            metadata={"message_ids": ["m1", "m2"], "system": True},
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:65:            message_ids=("m1", "m2"),
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:84:            "message_ids": ["m1", "m2"],
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:94:    assert projection_events[0]["generation"] == 7
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:126:        "generation": 0,
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:4:``session.attach_input`` task. Non-attachable triggers stay in the append-only
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:77:        metadata={"message_ids": ["m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:87:        metadata={"message_ids": ["m2"], "turn": "second"},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:101:    assert task_row[0] == "session.attach_input"
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:105:    assert task_payload["expected_wake_scope_id"] == first["scope_id"]
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:106:    assert task_payload["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:107:    assert task_payload["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:112:    assert saga["context"]["message_ids"] == ["m1"]
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:125:        metadata={"message_ids": ["m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:134:        metadata={"message_ids": ["m2"], "turn": "second"},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:143:        metadata={"message_ids": ["m2", "m3"], "turn": "third"},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:148:    assert [event["payload"]["message_ids"] for event in pending] == [
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:158:        generation=1,
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:164:    assert saga["context"]["message_ids"] == ["m2", "m3"]
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:170:def test_pending_metadata_merge_preserves_existing_message_ids(tmp_path):
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:172:        {"message_ids": ["m1", "m2"], "kind": "old"},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:173:        {"message_ids": ["m2", "m3"], "kind": "new"},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:176:    assert merged["message_ids"] == ["m1", "m2", "m3"]
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:193:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:217:        generation=1,
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:241:            metadata={"message_ids": [message_id]},
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:264:        "SELECT COUNT(*) FROM tq_tasks WHERE topic = 'session.attach_input'"
+novaic-agent-runtime/queue_service/routes.py:548:    generation: int = Field(gt=0)
+novaic-agent-runtime/queue_service/routes.py:591:            generation=req.generation,
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:84:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:130:def test_wake_finalize_failure_without_session_state_rejects_generation_zero(tmp_path):
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:169:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:177:        metadata={"message_ids": ["m2"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:204:        metadata={"message_ids": ["m3"], "turn": "new"},
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:215:    assert saga["context"]["message_ids"] == ["m2", "m3"]
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:26:from task_queue.contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:44:    Before the archive call we snapshot ``scope.meta.input_message_ids``.
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:79:    session_generation = require_positive_session_generation(payload, "cortex.scope_end")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:86:    # Step 1 — snapshot input_message_ids BEFORE archive.
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:89:    input_message_ids: list[str] = []
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:92:        raw = meta.get("input_message_ids") or []
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:94:            input_message_ids = [str(x) for x in raw if x]
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:104:        "[cortex.scope_end] scope=%s generation=%s reason=%s round=%s report_len=%d inputs=%d",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:105:        scope_id, session_generation, finalize_reason, round_num,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:106:        len(report or ""), len(input_message_ids),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:114:            session_generation=session_generation,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:130:    if input_message_ids:
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:135:                "input_message_ids processed-transition for scope=%s inputs=%d",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:136:                scope_id, len(input_message_ids),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:142:                    input_message_ids,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:152:                    scope_id, len(input_message_ids),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:158:                    scope_id, len(input_message_ids), e,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:170:        "session_generation": session_generation,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:72:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:101:            generation=1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:105:    with pytest.raises(ValueError, match="generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:114:    with pytest.raises(ValueError, match="positive generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:120:            generation=0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:124:    with pytest.raises(ValueError, match="positive generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:130:            generation=True,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:140:            generation=1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:146:def test_session_finalized_event_persists_reason_generation_and_stack(tmp_path):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:152:        "finalize_generation": 1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:162:        generation=1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:169:    assert int(finalized[0]["generation"]) == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:174:    assert int(closed_events[0]["generation"]) == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:182:def test_generation_mismatch_rejects_finalize_without_clearing_active(tmp_path):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:193:        generation=99,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:199:        "reason": "generation_mismatch",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:200:        "expected_generation": 1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:201:        "actual_generation": 99,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:206:    assert active["generation"] == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:209:    assert state["generation"] == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:215:    assert int(reject_events[0]["generation"]) == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:218:        "finalize_generation": 99,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:238:        generation=1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:251:    assert active["generation"] == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:254:    assert state["generation"] == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:260:    assert int(reject_events[0]["generation"]) == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:263:        "finalize_generation": 1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:280:        "session_generation": 7,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:288:    assert payload["generation"] == 7
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:292:    assert scope_end_payload["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:300:    assert sleeping_payload["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:309:    assert completed_payload["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:315:def test_wake_finalize_payload_rejects_missing_or_zero_generation():
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:324:    with pytest.raises(ValueError, match="session_generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:326:    with pytest.raises(ValueError, match="session_generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:328:    with pytest.raises(ValueError, match="session_generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:330:    with pytest.raises(ValueError, match="session_generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:333:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:336:            "session_generation": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:345:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:365:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:368:            "session_generation": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:370:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:373:            "session_generation": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:375:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:378:            "session_generation": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:395:            "reason": "generation_mismatch",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:409:            "generation": 3,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:421:        "generation": 3,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:431:                "generation": 3,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:444:                "generation": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:453:    with pytest.raises(BusinessError, match="session_ended finalize_rejected: generation_mismatch"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:460:                "generation": 99,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:467:def test_saga_client_rejects_non_positive_session_ended_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:483:            generation=0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:493:        generation=1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:505:            "generation": 1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:511:def test_session_ended_route_rejects_non_positive_generation():
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:518:            generation=0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:527:        generation=1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:530:    assert req.generation == 1
+novaic-agent-runtime/tests/test_pr260_session_harness_generic_fsm_cutover.py:41:    assert "def _session_generation" not in repo_source
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:14:from ..contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:26:def _positive_session_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:28:        return require_positive_session_generation_value(value, owner)
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:65:    session_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:66:        payload.get("session_generation"),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:110:        current_session_generation=session_generation,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:165:    # current-turn delivery uses input_message_ids; cross-wake memory
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:183:    # The ids ride along via payload.message_ids (forwarded by
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:185:    # them from assembler's DispatchRequest.message_ids via Queue
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:189:    input_message_ids = payload.get("message_ids") or []
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:192:    if input_message_ids:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:195:            list(input_message_ids),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:202:                list(input_message_ids),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:211:                len(input_message_ids),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:220:                len(input_message_ids),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:233:        "input_message_ids_count": scope_inputs_total,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:238:@register_handler(TaskTopics.SESSION_ATTACH_INPUT)
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:239:def handle_session_attach_input(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:251:    message_ids = payload.get("message_ids") or []
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:252:    expected_wake_scope_id = payload.get("expected_wake_scope_id")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:253:    expected_generation = payload.get("expected_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:261:    if not isinstance(message_ids, list) or not [mid for mid in message_ids if mid]:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:262:        raise ValidationError("Missing required field: message_ids")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:263:    if not expected_wake_scope_id:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:264:        raise ValidationError("Missing required field: expected_wake_scope_id")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:265:    if expected_generation is None:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:266:        raise ValidationError("Missing required field: expected_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:267:    expected_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:268:        expected_generation,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:269:        "session.attach_input.expected_session_generation",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:273:    clean_message_ids = [str(mid) for mid in message_ids if mid]
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:284:    if current_wake_scope_id != expected_wake_scope_id:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:286:            "Stale session.attach_input: current_wake_scope_id does not match expected"
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:288:    current_generation = root_meta.get("current_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:289:    current_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:290:        current_generation,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:291:        "session.attach_input.current_session_generation",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:293:    if current_generation != expected_generation:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:295:            "Stale session.attach_input: current_session_generation does not match expected"
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:300:        clean_message_ids,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:305:        clean_message_ids,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:308:        reason="session_attach_input",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:312:        "[session.attach_input] attached scope=%s inputs=%d total=%d claimed=%d",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:314:        len(clean_message_ids),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:322:        "session_generation": expected_generation,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:323:        "input_message_ids_count": len(merged),
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:22:    extract_message_ids,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:75:            generation=1,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:80:        message_ids=("m1",),
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:91:            generation=0,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:94:        message_ids=("m1",),
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:105:            generation=1,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:110:        message_ids=("m1",),
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:117:def test_extract_message_ids_is_ordered_and_deduped():
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:118:    assert extract_message_ids({"message_ids": ["m1", "", None, "m2", "m1"]}) == (
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:124:def test_session_attach_input_appends_and_claims(monkeypatch):
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:125:    from task_queue.handlers.runtime_handlers import handle_session_attach_input
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:131:        "current_session_generation": 1,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:145:    result = handle_session_attach_input(
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:149:            "expected_wake_scope_id": "wake-scope",
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:150:            "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:154:            "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:169:        reason="session_attach_input",
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:173:    assert result["input_message_ids_count"] == 2
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:177:def test_session_attach_input_rejects_empty_message_ids(monkeypatch):
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:178:    from task_queue.handlers.runtime_handlers import handle_session_attach_input
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:180:    with pytest.raises(Exception, match="message_ids"):
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:181:        handle_session_attach_input(
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:187:                "message_ids": [],
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:200:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:258:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:265:    assert saga["context"]["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:298:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:306:        metadata={"message_ids": ["m2"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:333:        metadata={"message_ids": ["m3"], "turn": "new"},
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:340:    assert saga["context"]["message_ids"] == ["m2", "m3"]
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:92:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:76:        generation=1,
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:85:        generation=1,
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:98:        generation=1,
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:115:        generation=1,
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:100:def test_generation_must_come_from_fsm_state_not_projection_fallback():
+novaic-agent-runtime/tests/test_context_read_by_ids.py:23:        "input_message_ids": ["m2", "m1", "m3"],
+novaic-agent-runtime/tests/test_context_read_by_ids.py:55:def test_empty_input_message_ids_is_fail_closed(mock_get_bridge):
+novaic-agent-runtime/tests/test_context_read_by_ids.py:58:    bridge.read_session_meta.return_value = {"input_message_ids": []}
+novaic-agent-runtime/tests/test_context_read_by_ids.py:77:def test_meta_missing_input_message_ids_is_fail_closed(mock_get_bridge):
+novaic-agent-runtime/tests/test_context_read_by_ids.py:109:        "input_message_ids": ["m1", "m2"],
+novaic-agent-runtime/tests/test_context_read_by_ids.py:128:def test_invalid_input_message_ids_are_ignored(mock_get_bridge):
+novaic-agent-runtime/tests/test_context_read_by_ids.py:131:    bridge.read_session_meta.return_value = {"input_message_ids": ["m1", None, "", 42, "m2"]}
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:85:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:93:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:100:        metadata={"message_ids": ["m3"]},
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:104:    assert [event["payload"]["message_ids"] for event in inputs] == [
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:119:        event["payload"]["message_ids"]
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:136:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:144:        metadata={"message_ids": ["m2"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:151:        metadata={"message_ids": ["m2", "m3"], "system": True},
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:155:        event["payload"]["message_ids"]
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:164:        generation=1,
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:197:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:206:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:40:            generation=4,
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:52:        "generation": 4,
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:76:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:84:        metadata={"message_ids": ["m2"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:91:        metadata={"message_ids": ["m2", "m3"], "system": True},
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:98:        if event["payload"]["projected_pending"]["metadata"]["message_ids"] == ["m2", "m3"]
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:102:        "message_ids": ["m2", "m3"],
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:121:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:129:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:137:        generation=1,
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:150:    assert projected_pending["metadata"] == {"message_ids": ["m2"]}
+novaic-agent-runtime/queue_service/session_audit.py:13:    generation: int
+novaic-agent-runtime/queue_service/session_audit.py:20:def _audit_generation(value: Any) -> int:
+novaic-agent-runtime/queue_service/session_audit.py:24:        raise ValueError("audit generation must be a non-negative integer")
+novaic-agent-runtime/queue_service/session_audit.py:26:        generation = int(value)
+novaic-agent-runtime/queue_service/session_audit.py:28:        raise ValueError("audit generation must be a non-negative integer") from exc
+novaic-agent-runtime/queue_service/session_audit.py:29:    if generation < 0:
+novaic-agent-runtime/queue_service/session_audit.py:30:        raise ValueError("audit generation must be a non-negative integer")
+novaic-agent-runtime/queue_service/session_audit.py:31:    return generation
+novaic-agent-runtime/queue_service/session_audit.py:51:            generation=_audit_generation(event.get("generation")),
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:91:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:148:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:170:    assert archive_payload["session_generation"] == 1
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:184:@pytest.mark.parametrize("bad_generation", [None, 0, "0", "not-an-int", False])
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:185:def test_recovery_archive_publisher_rejects_non_positive_generation(
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:187:    bad_generation,
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:198:    if bad_generation is not None:
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:199:        payload["session_generation"] = bad_generation
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:202:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:223:                "session_generation": 1,
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:246:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:269:    assert archive_payload["session_generation"] == 1
+novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py:16:    def session_generation(self, *, session_key: str, active_scope_id: str | None):
+novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py:55:            metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:46:def test_attach_input_requires_generation_checked_contract():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:50:    assert "Missing required field: expected_wake_scope_id" in runtime_handlers
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:51:    assert "Missing required field: expected_session_generation" in runtime_handlers
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:52:    assert "current_session_generation does not match expected" in runtime_handlers
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:53:    assert "requires expected_session_generation" in session_outbox
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:62:    for required in ("finalize_reason", "generation", "remaining_stack"):
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:66:            generation=1,
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:74:            generation=1,
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:84:            generation=1,
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:99:        generation=1,
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:106:        generation=1,
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:37:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:48:    bridge.read_session_meta.return_value = {"input_message_ids": []}
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:61:    bridge.read_session_meta.return_value = {"input_message_ids": []}
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:73:    bridge.read_session_meta.return_value = {"input_message_ids": []}
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:136:    bridge.read_session_meta.return_value = {"input_message_ids": []}
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:199:            "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:1:"""message_ids flow through saga → Runtime session_init ownership.
+novaic-agent-runtime/tests/test_session_init_message_ids.py:5:1. The saga payload builder forwards ``ctx["message_ids"]`` into the
+novaic-agent-runtime/tests/test_session_init_message_ids.py:7:   shipped a ``metadata.message_ids`` field that had no downstream
+novaic-agent-runtime/tests/test_session_init_message_ids.py:15:   carries a non-empty ``message_ids``. Empty / missing list does NOT invoke
+novaic-agent-runtime/tests/test_session_init_message_ids.py:18:3. The response surface includes ``input_message_ids_count`` so ops can
+novaic-agent-runtime/tests/test_session_init_message_ids.py:35:def test_saga_payload_forwards_message_ids():
+novaic-agent-runtime/tests/test_session_init_message_ids.py:42:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:43:        "message_ids": ["m1", "m2", "m3"],
+novaic-agent-runtime/tests/test_session_init_message_ids.py:46:    assert payload["message_ids"] == ["m1", "m2", "m3"]
+novaic-agent-runtime/tests/test_session_init_message_ids.py:49:def test_saga_payload_omits_message_ids_when_absent():
+novaic-agent-runtime/tests/test_session_init_message_ids.py:51:    ``payload.get("message_ids") or []`` default then produces the
+novaic-agent-runtime/tests/test_session_init_message_ids.py:60:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:63:    assert "message_ids" not in payload
+novaic-agent-runtime/tests/test_session_init_message_ids.py:65:    ctx["message_ids"] = []
+novaic-agent-runtime/tests/test_session_init_message_ids.py:67:    assert "message_ids" not in payload  # truthy check catches empty list too
+novaic-agent-runtime/tests/test_session_init_message_ids.py:70:def test_saga_payload_message_ids_is_defensive_copy():
+novaic-agent-runtime/tests/test_session_init_message_ids.py:80:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:81:        "message_ids": source,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:85:    assert payload["message_ids"] == ["m1", "m2"]
+novaic-agent-runtime/tests/test_session_init_message_ids.py:88:@pytest.mark.parametrize("bad_generation", [None, 0, True, "not-an-int"])
+novaic-agent-runtime/tests/test_session_init_message_ids.py:89:def test_saga_payload_requires_positive_session_generation(bad_generation):
+novaic-agent-runtime/tests/test_session_init_message_ids.py:96:    if bad_generation is not None:
+novaic-agent-runtime/tests/test_session_init_message_ids.py:97:        ctx["session_generation"] = bad_generation
+novaic-agent-runtime/tests/test_session_init_message_ids.py:99:    with pytest.raises(ValueError, match="session_generation"):
+novaic-agent-runtime/tests/test_session_init_message_ids.py:142:def test_handler_calls_append_scope_input_when_message_ids_present(bridge_double):
+novaic-agent-runtime/tests/test_session_init_message_ids.py:150:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:151:        "message_ids": ["m1", "m2"],
+novaic-agent-runtime/tests/test_session_init_message_ids.py:166:    assert result["input_message_ids_count"] == 2
+novaic-agent-runtime/tests/test_session_init_message_ids.py:170:def test_handler_skips_append_scope_input_when_no_message_ids(bridge_double):
+novaic-agent-runtime/tests/test_session_init_message_ids.py:178:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:183:    assert result["input_message_ids_count"] == 0
+novaic-agent-runtime/tests/test_session_init_message_ids.py:198:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:199:        "message_ids": [],
+novaic-agent-runtime/tests/test_session_init_message_ids.py:204:    assert result["input_message_ids_count"] == 0
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:33:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:34:        "message_ids": ["m1"],
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:137:    bridge.read_session_meta.return_value = {"input_message_ids": []}
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:155:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:170:        session_generation=1,
+novaic-agent-runtime/queue_service/session_outbox.py:8:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/queue_service/session_outbox.py:9:    require_positive_session_generation_value,
+novaic-agent-runtime/queue_service/session_outbox.py:31:    PUBLISH_ATTACH_INPUT = "publish_attach_input"
+novaic-agent-runtime/queue_service/session_outbox.py:145:            return self._publish_attach_input(effect)
+novaic-agent-runtime/queue_service/session_outbox.py:203:        session_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_outbox.py:204:            payload.get("session_generation"),
+novaic-agent-runtime/queue_service/session_outbox.py:220:                "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_outbox.py:230:    def _publish_attach_input(self, effect: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_outbox.py:232:        message_ids = [
+novaic-agent-runtime/queue_service/session_outbox.py:234:            for message_id in (payload.get("message_ids") or [])
+novaic-agent-runtime/queue_service/session_outbox.py:237:        if not message_ids:
+novaic-agent-runtime/queue_service/session_outbox.py:238:            raise ValueError("attach input outbox payload requires message_ids")
+novaic-agent-runtime/queue_service/session_outbox.py:242:        expected_generation = payload.get("expected_session_generation")
+novaic-agent-runtime/queue_service/session_outbox.py:243:        if expected_generation is None:
+novaic-agent-runtime/queue_service/session_outbox.py:245:                "attach input outbox payload requires expected_session_generation"
+novaic-agent-runtime/queue_service/session_outbox.py:247:        expected_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_outbox.py:248:            expected_generation,
+novaic-agent-runtime/queue_service/session_outbox.py:256:            TaskTopics.SESSION_ATTACH_INPUT,
+novaic-agent-runtime/queue_service/session_outbox.py:262:                "expected_wake_scope_id": scope_id,
+novaic-agent-runtime/queue_service/session_outbox.py:263:                "expected_session_generation": expected_generation,
+novaic-agent-runtime/queue_service/session_outbox.py:269:                "message_ids": message_ids,
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:12:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:13:        "message_ids": ["m1", "m2"],
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:16:    assert payload["message_ids"] == ["m1", "m2"]
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:14:        "finalize_generation": 1,
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:24:            {"message_ids": ["m1"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:32:        session_generation=2,
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:36:    assert restart.metadata == {"message_ids": ["m1"], "scheduled": True}
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:42:        "session_generation": 2,
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:44:        "message_ids": ["m1"],
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:59:        session_generation=2,
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:65:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:76:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:88:        "attach_input",
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:104:def test_session_audit_rejects_bool_generation():
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:105:    with pytest.raises(ValueError, match="audit generation"):
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:110:                "generation": True,
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:76:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:84:        metadata={"message_ids": ["m2"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:94:        generation=1,
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:104:    assert saga["context"]["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:116:        "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:132:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:141:        generation=1,
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:23:    generation: int = 0,
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:31:        generation=generation,
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:153:        state=_state(status, generation=4),
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:160:    assert decision.generation == 5
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:176:        state=_state(status, generation=8),
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:182:    assert decision.generation == 8
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:188:        state=_state(TaskRuntimeStatus.CLAIMED, generation=2),
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:70:        session_generation=1,
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:97:        session_generation=1,
+novaic-agent-runtime/tests/test_pr282_session_decision_trace_boundary.py:13:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr282_session_decision_trace_boundary.py:18:        "fsm_action": "attach_input",
+novaic-agent-runtime/tests/test_pr282_session_decision_trace_boundary.py:21:        "effects": ["attach_input"],
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:24:        "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:31:        "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:42:        "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:49:        "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:56:def test_status_payloads_require_positive_generation():
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:67:            assert "wake_finalize.session_generation is required" in str(exc)
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:69:            raise AssertionError("builder accepted missing session_generation")
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:72:            builder({**base, "session_generation": 0})
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:74:            assert "positive session_generation" in str(exc)
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:76:            raise AssertionError("builder accepted non-positive session_generation")
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:90:            "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:101:    assert "session_generation" not in updates
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:111:            "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:124:    assert "session_generation" not in updates
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:144:        ({"scope_id": "scope-current"}, "session_generation is required"),
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:145:        ({"scope_id": "scope-current", "session_generation": 0}, "positive session_generation"),
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:147:            {"scope_id": "scope-current", "session_generation": "not-an-int"},
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:148:            "positive session_generation",
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:25:        if topic == TaskTopics.SESSION_ATTACH_INPUT and self.fail_attach:
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:87:def test_attach_input_outbox_is_published_by_drain_and_marks_published(tmp_path):
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:96:        metadata={"message_ids": ["m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:104:        metadata={"message_ids": ["m2"], "turn": "second"},
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:118:    assert outbox[0]["payload"]["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:120:    assert outbox[0]["payload"]["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:144:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:148:    assert task[0] == TaskTopics.SESSION_ATTACH_INPUT
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:152:    assert task_payload["expected_wake_scope_id"] == first["scope_id"]
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:153:    assert task_payload["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:154:    assert task_payload["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:168:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:177:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:203:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:219:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:223:    assert json.loads(task[0])["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:235:            generation=1,
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:248:            metadata={"message_ids": ["m-race"]},
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:260:        "metadata": {"message_ids": ["m-race"]},
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:267:            generation=2,
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:293:        "reason": "active_session_changed_before_attach",
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:305:    assert "_publish_attach_input_task" not in source
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:306:    assert "TaskTopics.SESSION_ATTACH_INPUT" not in source
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:58:    worker.drain_once(effect_types=("publish_attach_input",), limit=3)
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:61:        "effect_types": ["publish_attach_input"],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:86:        metadata={"message_ids": ["m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:109:    assert effect["payload"]["context"]["message_ids"] == ["m1"]
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:110:    assert effect["payload"]["context"]["session_generation"] == 1
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:128:    assert saga["context"]["message_ids"] == ["m1"]
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:150:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:161:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:168:        generation=1,
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:186:    assert wake_effects[1]["payload"]["context"]["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:200:    assert saga["context"]["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:229:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:236:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:256:    assert orchestrator.get("saga-1")["context"]["message_ids"] == ["m1"]
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:258:    assert [event["payload"]["message_ids"] for event in remaining] == [["m2"]]
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:276:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:318:    assert saga["context"]["message_ids"] == ["m1"]
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:331:        generation=1,
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:338:            "generation": 1,
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:16:    extract_message_ids,
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:77:    for active_scope_id, trigger_type, message_ids, expected_action in scenarios:
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:85:                generation=1 if active_scope_id else 0,
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:90:            message_ids=tuple(message_ids),
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:106:        metadata={"message_ids": ["m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:116:        metadata={"message_ids": ["m2"], "turn": "second"},
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:125:        metadata={"message_ids": ["m3"], "turn": "scheduled"},
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:137:        "attach_input",
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:148:    assert extract_message_ids({"message_ids": ["m3"]}) == ("m3",)
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:29:        "session_generation": 1,
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:44:        "session_generation": 1,
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:62:        "session_generation": 1,
+novaic-agent-runtime/tests/test_context_read_ordering.py:7:that order. Runtime now receives scoped `input_message_ids` from dispatch and
+novaic-agent-runtime/tests/test_context_read_ordering.py:30:    bridge.read_session_meta.return_value = {"input_message_ids": []}
+novaic-agent-runtime/tests/test_context_read_ordering.py:55:        "input_message_ids": ["m3", "m1", "m2"],
+novaic-agent-runtime/tests/test_context_read_ordering.py:89:    bridge.read_session_meta.return_value = {"input_message_ids": ["b", "a"]}
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:22:    generation: int = 0,
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:31:        generation=generation,
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:57:    assert acquired.generation == 1
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:63:            generation=1,
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:72:    assert heartbeated.generation == 2
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:79:            generation=2,
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:88:    assert released.generation == 3
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:93:        _state(LeaseRuntimeStatus.RELEASED, generation=3),
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:103:    assert reacquired.generation == 4
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:111:            generation=3,
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:123:    assert expired.generation == 4
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:134:    assert rejected.generation == 0
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:140:        generation=7,
+novaic-agent-runtime/task_queue/handlers/__init__.py:138:from . import runtime_handlers  # session.init / session.attach_input
+novaic-agent-runtime/tests/test_pr271_session_attach_flow_consolidation.py:13:    assert source.count("build_attach_input_effect(") == 1
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:5:1. ``handle_cortex_scope_end`` reads ``input_message_ids`` from the
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:28:def _mk_bridge(*, input_message_ids: list[str] | None = None):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:31:        "input_message_ids": list(input_message_ids or []),
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:49:        "session_generation": 1,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:60:    bridge = _mk_bridge(input_message_ids=["m1", "m2", "m3"])
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:82:    assert bridge.scope_end.call_args.kwargs["session_generation"] == 1
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:102:    """No input_message_ids → don't even call Business. Saves an RTT for
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:104:    bridge = _mk_bridge(input_message_ids=[])
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:122:    bridge = _mk_bridge(input_message_ids=["m1"])
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:142:    bridge = _mk_bridge(input_message_ids=["m1"])
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:164:    bridge = _mk_bridge(input_message_ids=["m1"])
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:183:    input_message_ids to empty and continue."""
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:184:    bridge = _mk_bridge(input_message_ids=["m1"])
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:200:def test_scope_end_requires_positive_session_generation_before_archive(mock_get_bridge, _rm):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:201:    bridge = _mk_bridge(input_message_ids=["m1"])
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:204:    with pytest.raises(ValueError, match="cortex.scope_end.session_generation is required"):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:210:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:216:                "session_generation": 0,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:245:        session_generation=7,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:261:            "session_generation": 7,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:270:def test_cortex_bridge_scope_end_rejects_bool_session_generation():
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:278:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:282:            session_generation=True,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:23:            generation=1 if status is not SessionRuntimeStatus.NO_ACTIVE else 0,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:28:        message_ids=("message-1",),
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:67:            "generation": 3,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:73:def test_persisted_active_state_requires_positive_generation():
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:74:    with pytest.raises(ValueError, match="positive generation"):
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:77:            "generation": True,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:82:    with pytest.raises(ValueError, match="positive generation"):
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:85:            "generation": 0,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:91:def test_persisted_no_active_state_allows_zero_generation_only_as_non_negative():
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:94:        "generation": 0,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:98:    assert state.generation == 0
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:100:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:103:            "generation": False,
+novaic-agent-runtime/tests/test_no_tool_warning.py:51:        "session_generation": 1,
+novaic-agent-runtime/tests/test_no_tool_warning.py:66:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:69:        metadata={"message_ids": ["m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:78:        metadata={"message_ids": ["m2"], "turn": "second"},
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:86:        metadata={"message_ids": ["m3"], "turn": "scheduled"},
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:93:    assert [event["payload"]["message_ids"] for event in input_events] == [
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:120:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:128:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:140:    assert input_events[0]["payload"]["message_ids"] == ["m1"]
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:12:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:66:        require_positive_session_generation(payload, owner)
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:79:        session_generation: int
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:123:        session_generation: int
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:71:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:79:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:96:    assert outbox[0]["payload"]["context"]["message_ids"] == ["m1"]
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:101:        "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:102:        "expected_wake_scope_id": "scope-1",
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:104:        "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:105:        "metadata": {"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:118:    assert task[0] == "session.attach_input"
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:119:    assert json.loads(task[1])["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:133:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:141:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:148:        generation=1,
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:166:    assert outbox[1]["payload"]["context"]["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:172:    assert saga["context"]["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:57:    assert [int(event["generation"]) for event in ledger.list_events(saga_id)] == [
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:66:    assert int(state["generation"]) == 5
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:15:def test_merge_pending_metadata_preserves_message_ids_and_latest_metadata():
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:17:        {"message_ids": ["m1", "m2"], "kind": "old", "old_only": True},
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:18:        {"message_ids": ["m2", "m3"], "kind": "new"},
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:22:        "message_ids": ["m1", "m2", "m3"],
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:35:                "metadata": {"message_ids": ["m1"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:43:                "metadata": {"message_ids": ["m1", "m2"], "system": True},
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:53:            "message_ids": ["m1", "m2"],
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:65:        "metadata": {"message_ids": ["m1", "m2"], "中文": "保留"},
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:82:        "message_ids": ["m1", "m2"],
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:18:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:20:        session_generation=2,
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:33:            "metadata": {"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:55:            "metadata": '{"message_ids":["m2"]}',
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:58:        session_generation=3,
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:63:    assert plan.pending_metadata == {"message_ids": ["m2"]}
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:65:    assert plan.saga_context["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:24:    bridge.read_session_meta.return_value = {"input_message_ids": ["n1"]}
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:54:            return {"input_message_ids": ["n1", "n2"]}
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:77:            "session_generation": 1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:25:                generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:32:            "missing_generation",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:36:                "reason": "missing_generation",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:37:                "expected_generation": 1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:38:                "actual_generation": 0,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:45:                generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:59:                generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:66:            "generation_mismatch",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:70:                "reason": "generation_mismatch",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:71:                "expected_generation": 1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:72:                "actual_generation": 99,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:79:                generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:99:                generation=0,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:113:        finalize_generation,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:116:        expected_event_generation,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:122:            finalize_generation=finalize_generation,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:127:        assert decision.event_generation == expected_event_generation
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:135:    assert '"expected_generation"' not in source
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:136:    assert '"actual_generation"' not in source
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:141:def test_pure_session_fsm_rejects_malformed_finalize_generation():
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:145:            generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:150:        finalize_generation=True,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:154:    assert decision.reason == "missing_generation"
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:155:    assert decision.event_generation == 1
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:156:    assert decision.result["actual_generation"] == 0
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:159:def test_pure_session_fsm_rejects_malformed_state_generation():
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:160:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:164:                generation=True,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:169:            finalize_generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:173:def test_pure_session_fsm_requires_explicit_decision_event_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:182:                generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:193:                generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:198:            finalize_generation=1,
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:81:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:89:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:96:        metadata={"message_ids": ["m3"]},
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:110:        "attach_input",
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:116:        "active_non_attachable_or_no_message_ids",
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:25:        "generation": 4,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:55:    assert marker["session_generation"] == 4
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:72:        input_metadata={"message_ids": ["new"], "turn": "new"},
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:76:            "metadata": {"message_ids": ["old", "new"], "scheduled": True},
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:81:    assert recovery.metadata["message_ids"] == ["old", "new"]
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:118:            "session_generation": 4,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:129:def test_build_recovery_archive_effect_rejects_missing_or_invalid_generation():
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:131:    event.pop("generation")
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:148:        recovery_marker={**marker, "session_generation": 0},
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:23:        state={"state": "done", "generation": 3},
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:28:                "generation": 1,
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:41:                "generation": 3,
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:56:                "generation": 1,
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:67:        "final_generation": 3,
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:82:        state={"state": "active", "generation": 2},
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:87:                "generation": 1,
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:105:def test_queue_fsm_audit_rejects_bool_generation():
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:106:    with pytest.raises(ValueError, match="audit generation"):
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:114:                    "generation": True,
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:25:# ── PR-46 (2026-04-23): context.read by message_ids (SSOT) ─────────────
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:35:# PR-46 moves the SSOT to ``scope.meta.input_message_ids`` (maintained
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:137:    raw_input_ids = session_meta.get("input_message_ids") or []
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:43:            metadata={"message_ids": ["raw-m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:44:            message_ids=("m1", "m2"),
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:53:            metadata={"message_ids": ["raw-m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:54:            message_ids=("m1", "m2"),
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:63:    assert events[0]["generation"] == 0
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:66:        "message_ids": ["m1", "m2"],
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:67:        "metadata": {"message_ids": ["raw-m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:83:            metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:84:            message_ids=("m1",),
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:91:            generation=3,
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:136:    assert consumed_events[0]["generation"] == 3
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:73:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:81:        metadata={"message_ids": ["m2"]},
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:88:        generation=1,
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:127:        payload={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:115:            generation=1,
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:117:            payload={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:123:            generation=1,
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:136:            generation=1,
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:137:            effect_type="publish_attach_input",
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:147:    assert events[0]["payload"] == {"message_ids": ["m1"]}
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:148:    assert events[0]["generation"] == 1
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:153:    assert state["generation"] == 1
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:177:            payload={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:185:            payload={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:213:def test_session_ledger_generation_helpers_reject_malformed_state(tmp_path):
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:217:        "generation": True,
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:222:            lambda: ledger.session_generation(
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:226:            lambda: ledger.next_generation("agent-1:main"),
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:231:                assert "non-negative generation" in str(exc)
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:233:                raise AssertionError("malformed generation was accepted")
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:247:        metadata={"message_ids": ["m1"], "turn": "first"},
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:265:        metadata={"message_ids": ["m2"], "turn": "second"},
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:275:        generation=1,
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:295:    assert result_events[0]["payload"]["metadata"]["message_ids"] == ["m1"]
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:296:    assert result_events[1]["payload"]["metadata"]["message_ids"] == ["m2"]
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:304:    assert state["generation"] == 1
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:44:        "session.attach_input",
+novaic-agent-runtime/tests/test_pr340_ci_generated_artifact_hygiene.py:11:def test_runtime_supervision_lint_disables_bytecode_generation():
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:22:        state=SessionRuntimeState(status=SessionRuntimeStatus.NO_ACTIVE, generation=0),
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:24:        message_ids=("message-1",),
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:39:            generation=7,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:44:        message_ids=("message-2",),
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:59:            generation=3,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:63:        message_ids=("message-3",),
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:78:            generation=4,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:83:        finalize_generation=4,
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:70:        generation=1,
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:77:        generation=1,
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:90:        generation=1,
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:103:        generation=1,
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:110:        generation=1,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:67:def test_generic_fsm_store_rejects_bool_missing_or_negative_generation():
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:79:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:85:            generation=True,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:89:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:93:            generation=False,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:97:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:103:            generation=None,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:108:    with pytest.raises(ValueError, match="non-negative generation"):
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:114:            generation=-1,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:153:        generation=1,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:233:            generation=2,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:235:            payload={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:241:            generation=2,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:254:            generation=2,
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:255:            effect_type="publish_attach_input",
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:256:            payload={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:10:    build_attach_input_effect,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:24:        session_generation=2,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:25:        saga_context={"scope_id": "scope-1", "message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:40:            "generation": 2,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:42:            "context": {"scope_id": "scope-1", "message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:52:def test_build_attach_input_effect_keeps_payload_and_key_shape():
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:53:    effect = build_attach_input_effect(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:60:        metadata={"message_ids": ["m2"], "turn": "second"},
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:61:        message_ids=("m2",),
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:64:        expected_session_generation=3,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:74:            "expected_wake_scope_id": "scope-1",
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:75:            "expected_session_generation": 3,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:78:            "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:79:            "metadata": {"message_ids": ["m2"], "turn": "second"},
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:86:def test_build_attach_input_effect_requires_message_ids():
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:87:    with pytest.raises(ValueError, match="message_ids are required"):
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:88:        build_attach_input_effect(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:96:            message_ids=(),
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:99:            expected_session_generation=1,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:103:def test_attach_outbox_delivery_requires_expected_generation():
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:107:    with pytest.raises(ValueError, match="requires expected_session_generation"):
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:108:        dispatcher._publish_attach_input({
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:114:                "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:119:def test_attach_outbox_delivery_rejects_bool_expected_generation():
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:123:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:124:        dispatcher._publish_attach_input({
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:130:                "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:131:                "expected_session_generation": True,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:144:    assert "build_attach_input_effect(" in repo_source
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:150:    assert "_attach_input_outbox_effect" not in repo_source
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:152:    assert '"expected_wake_scope_id"' not in repo_source
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:169:    assert 'effect.get("generation") or payload.get("generation")' not in (
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:65:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:64:            metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:52:    assert [int(event["generation"]) for event in events] == [1, 2, 3]
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:55:    assert int(state["generation"]) == 3
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:63:            "message_ids": ["m1"],
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:64:            "session_generation": 1,
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:77:        "input_message_ids": ["m1"],
+novaic-agent-runtime/queue_service/task_fsm.py:56:    generation: int = 0
+novaic-agent-runtime/queue_service/task_fsm.py:75:    generation: int
+novaic-agent-runtime/queue_service/task_fsm.py:87:        generation=state.generation,
+novaic-agent-runtime/queue_service/task_fsm.py:108:        generation=int(decision.next_state.generation),
+novaic-agent-runtime/queue_service/task_fsm.py:302:            generation=int(state.generation) + 1,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:51:        generation=3,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:74:                generation=reducer_state.generation + 1,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:97:    assert decision.next_state.generation == 4
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:109:            generation=0,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:112:        message_ids=("m1",),
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:119:            generation=1,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:124:        message_ids=("m2",),
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:131:            generation=1,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:136:        message_ids=("m3",),
+novaic-agent-runtime/task_queue/client.py:20:def _require_positive_generation(generation: int) -> int:
+novaic-agent-runtime/task_queue/client.py:21:    if isinstance(generation, bool) or not isinstance(generation, int):
+novaic-agent-runtime/task_queue/client.py:22:        raise ValueError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/client.py:23:    if generation < 1:
+novaic-agent-runtime/task_queue/client.py:24:        raise ValueError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/client.py:25:    return generation
+novaic-agent-runtime/task_queue/client.py:483:        generation: int,
+novaic-agent-runtime/task_queue/client.py:492:        generation = _require_positive_generation(generation)
+novaic-agent-runtime/task_queue/client.py:498:            "generation": generation,
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:69:                generation=1,
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:82:    assert state["generation"] == 1
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:106:        generation=1,
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:129:        generation=2,
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:157:    assert state["generation"] == 1
+novaic-agent-runtime/queue_service/queue_audit.py:13:    generation: int
+novaic-agent-runtime/queue_service/queue_audit.py:26:    generation: int
+novaic-agent-runtime/queue_service/queue_audit.py:36:    final_generation: int | None
+novaic-agent-runtime/queue_service/queue_audit.py:45:            "final_generation": self.final_generation,
+novaic-agent-runtime/queue_service/queue_audit.py:80:        final_generation=_optional_int((state or {}).get("generation")),
+novaic-agent-runtime/queue_service/queue_audit.py:96:        generation=_required_non_negative_int(event.get("generation")),
+novaic-agent-runtime/queue_service/queue_audit.py:121:        generation=_required_non_negative_int(effect.get("generation")),
+novaic-agent-runtime/queue_service/queue_audit.py:146:        raise ValueError("audit generation must be a non-negative integer")
+novaic-agent-runtime/queue_service/queue_audit.py:150:        raise ValueError("audit generation must be a non-negative integer") from exc
+novaic-agent-runtime/queue_service/queue_audit.py:152:        raise ValueError("audit generation must be a non-negative integer")
+novaic-agent-runtime/tests/test_pr234_tool_logical_failure.py:54:        ReactActionsInput(scope_id="wake-1", session_generation=1, round_num=2),
+novaic-agent-runtime/task_queue/topics.py:22:    SESSION_ATTACH_INPUT = "session.attach_input"
+novaic-agent-runtime/task_queue/contracts/session_generation.py:1:"""Shared session generation contract helpers."""
+novaic-agent-runtime/task_queue/contracts/session_generation.py:8:def require_positive_session_generation_value(raw: Any, owner: str) -> int:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:9:    """Normalize and validate a positive session generation value."""
+novaic-agent-runtime/task_queue/contracts/session_generation.py:12:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:14:        generation = raw
+novaic-agent-runtime/task_queue/contracts/session_generation.py:17:            generation = int(raw)
+novaic-agent-runtime/task_queue/contracts/session_generation.py:20:                f"positive session_generation is required for {owner}"
+novaic-agent-runtime/task_queue/contracts/session_generation.py:23:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:25:    if generation < 1:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:26:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:27:    return generation
+novaic-agent-runtime/task_queue/contracts/session_generation.py:30:def require_positive_session_generation(ctx: dict[str, Any], owner: str) -> int:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:31:    """Read an explicit positive session generation from a saga context."""
+novaic-agent-runtime/task_queue/contracts/session_generation.py:33:    if "session_generation" not in ctx or ctx.get("session_generation") is None:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:34:        raise ValueError(f"{owner}.session_generation is required")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:35:    return require_positive_session_generation_value(ctx["session_generation"], owner)
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:64:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:98:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:69:            "session_generation": 7,
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:88:    assert context["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:96:    assert _build_cortex_scope_end_payload(context)["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:98:    assert session_payload["generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:113:    assert finalize["context"]["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:120:    "bad_generation",
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:123:def test_wake_saga_failure_without_positive_generation_does_not_create_finalize_effect(
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:125:    bad_generation,
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:137:    if bad_generation is not None:
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:138:        context["session_generation"] = bad_generation
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:165:            "session_generation": 7,
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:195:        generation=4,
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:235:    assert suspected_events[0]["generation"] == 4
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:250:        generation=1,
+novaic-agent-runtime/task_queue/contracts/react_think.py:15:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/task_queue/contracts/react_think.py:16:    require_positive_session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:17:    require_positive_session_generation_value,
+novaic-agent-runtime/task_queue/contracts/react_think.py:26:    session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_think.py:42:            "session_generation",
+novaic-agent-runtime/task_queue/contracts/react_think.py:43:            require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/contracts/react_think.py:44:                self.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:61:            session_generation=require_positive_session_generation(ctx, "ReactThinkInput"),
+novaic-agent-runtime/task_queue/contracts/react_think.py:108:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:128:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:184:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:220:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:333:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:358:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:386:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:6:2. Notify Session Coordinator with the expected session generation
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:17:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:36:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:72:def _session_generation(ctx) -> int:
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:73:    return require_positive_session_generation(ctx, "wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:93:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:112:        "generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:17:from ..contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:128:        session_generation: int | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:141:        if session_generation is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:142:            payload["session_generation"] = require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:143:                session_generation,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:240:        message_ids: list[str],
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:249:           assembler's ``DispatchRequest.message_ids`` through the wake
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:250:           payload (``metadata.message_ids`` → saga context → session_init
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:252:        2. ``handle_session_attach_input`` during an active wake — for new
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:258:        An empty ``message_ids`` is a no-op (we do not round-trip to
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:266:        if not message_ids:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:271:            "message_ids": list(message_ids),
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:276:        merged = result.get("input_message_ids", [])
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:280:            len(message_ids),
+novaic-agent-runtime/queue_service/saga_fsm.py:65:    generation: int = 0
+novaic-agent-runtime/queue_service/saga_fsm.py:85:    generation: int
+novaic-agent-runtime/queue_service/saga_fsm.py:98:        generation=state.generation,
+novaic-agent-runtime/queue_service/saga_fsm.py:120:        generation=int(decision.next_state.generation),
+novaic-agent-runtime/queue_service/saga_fsm.py:342:            generation=int(state.generation) + 1,
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:13:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:46:        # message_ids for consistency.
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:48:    # PR-20 — message_ids flow: assembler → Queue Service metadata →
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:50:    # here. On the handler side they land in scope.meta.input_message_ids
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:54:    if ctx.get("message_ids"):
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:55:        payload["message_ids"] = list(ctx["message_ids"])
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:56:    payload["session_generation"] = require_positive_session_generation(
+novaic-agent-runtime/task_queue/contracts/react_actions.py:12:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/task_queue/contracts/react_actions.py:13:    require_positive_session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:14:    require_positive_session_generation_value,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:22:    session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_actions.py:39:            "session_generation",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:40:            require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/contracts/react_actions.py:41:                self.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:58:            session_generation=require_positive_session_generation(ctx, "ReactActionsInput"),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:373:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:417:            "session_generation": source.session_generation,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:44:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:45:        message_ids=("m1",),
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:52:        generation=1,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:71:            "generation": 1,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:77:                "generation": 1,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:103:def test_wake_created_observation_rejects_bool_generation(tmp_path):
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:123:        generation=1,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:135:    with pytest.raises(ValueError, match="positive generation"):
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:143:                    "generation": True,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:154:def test_wake_created_observation_rejects_stale_generation_and_scope(tmp_path):
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:176:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:177:        message_ids=("m1",),
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:184:        generation=2,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:202:            "generation": 1,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:208:                "generation": 1,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:222:    assert state["generation"] == 2
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:255:                "generation": 1,
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:259:                    "generation": 1,
+novaic-agent-runtime/queue_service/db/schema.py:78:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:89:    ON tq_task_events(task_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:100:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:128:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:145:    ON tq_task_outbox(task_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:181:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:192:    ON tq_saga_events(saga_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:203:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:226:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:243:    ON tq_saga_outbox(saga_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:256:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:267:    ON tq_worker_lease_events(lease_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:269:    ON tq_worker_lease_events(machine_type, machine_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:278:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:298:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:315:    ON tq_worker_lease_outbox(lease_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:348:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:359:    ON tq_session_events(session_key, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:370:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:392:    generation INTEGER NOT NULL DEFAULT 0,
+novaic-agent-runtime/queue_service/db/schema.py:409:    ON tq_session_outbox(session_key, generation, created_at);
+novaic-agent-runtime/queue_service/task_ledger.py:31:    generation: int
+novaic-agent-runtime/queue_service/task_ledger.py:75:        generation: int = 0,
+novaic-agent-runtime/queue_service/task_ledger.py:94:            generation=generation,
+novaic-agent-runtime/queue_service/task_ledger.py:105:            generation=state.generation,
+novaic-agent-runtime/queue_service/task_ledger.py:129:        generation: int = 0,
+novaic-agent-runtime/queue_service/task_ledger.py:143:            generation=generation,
+novaic-agent-runtime/queue_service/task_ledger.py:166:            generation=state.generation,
+novaic-agent-runtime/queue_service/saga_ledger.py:36:    generation: int
+novaic-agent-runtime/queue_service/saga_ledger.py:77:        generation: int = 0,
+novaic-agent-runtime/queue_service/saga_ledger.py:96:            generation=generation,
+novaic-agent-runtime/queue_service/saga_ledger.py:107:            generation=state.generation,
+novaic-agent-runtime/queue_service/saga_ledger.py:128:        generation: int = 0,
+novaic-agent-runtime/queue_service/saga_ledger.py:142:            generation=generation,
+novaic-agent-runtime/queue_service/saga_ledger.py:166:            generation=state.generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:43:    session_generation: int,
+novaic-agent-runtime/queue_service/session_wake_plan.py:66:        "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:83:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:98:    session_generation: int,
+novaic-agent-runtime/queue_service/session_wake_plan.py:105:        session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:120:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/queue_db.py:63:    ts.generation AS version
+novaic-agent-runtime/queue_service/queue_db.py:141:                generation=0,
+novaic-agent-runtime/queue_service/queue_db.py:1223:    def _task_generation(self, task_id: str) -> int:
+novaic-agent-runtime/queue_service/queue_db.py:1225:        return int(current.get("generation") or 0)
+novaic-agent-runtime/queue_service/queue_db.py:1232:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1308:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/queue_db.py:1322:            event_id=f"tevt-{task_id}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/queue_db.py:1324:                f"task-event:{task_id}:{generation}:{event_type.value}"
+novaic-agent-runtime/queue_service/queue_db.py:1329:                generation=generation,
+novaic-agent-runtime/queue_service/queue_db.py:1366:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1401:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/queue_db.py:1407:            generation=generation,
+novaic-agent-runtime/queue_service/queue_db.py:1418:            event_id=f"levt-{lease_key}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/queue_db.py:1419:            idempotency_key=f"lease-event:{lease_key}:{generation}:{event_type.value}",
+novaic-agent-runtime/queue_service/queue_db.py:1425:            generation=generation,
+novaic-agent-runtime/queue_service/lease_fsm.py:46:    generation: int = 0
+novaic-agent-runtime/queue_service/lease_fsm.py:63:    generation: int
+novaic-agent-runtime/queue_service/lease_fsm.py:74:        generation=state.generation,
+novaic-agent-runtime/queue_service/lease_fsm.py:94:        generation=int(decision.next_state.generation),
+novaic-agent-runtime/queue_service/lease_fsm.py:193:            generation=int(state.generation) + 1,
+novaic-agent-runtime/queue_service/session_fsm.py:29:    ATTACH_INPUT = "attach_input"
+novaic-agent-runtime/queue_service/session_fsm.py:40:    ATTACH_INPUT = "attach_input"
+novaic-agent-runtime/queue_service/session_fsm.py:48:    generation: int
+novaic-agent-runtime/queue_service/session_fsm.py:63:    message_ids: tuple[str, ...]
+novaic-agent-runtime/queue_service/session_fsm.py:79:    finalize_generation: int
+novaic-agent-runtime/queue_service/session_fsm.py:86:    event_generation: int
+novaic-agent-runtime/queue_service/session_fsm.py:98:def _positive_generation_or_none(value: Any) -> int | None:
+novaic-agent-runtime/queue_service/session_fsm.py:102:        generation = value
+novaic-agent-runtime/queue_service/session_fsm.py:105:            generation = int(value)
+novaic-agent-runtime/queue_service/session_fsm.py:110:    if generation < 1:
+novaic-agent-runtime/queue_service/session_fsm.py:112:    return generation
+novaic-agent-runtime/queue_service/session_fsm.py:115:def _require_non_negative_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/queue_service/session_fsm.py:117:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_fsm.py:119:        generation = value
+novaic-agent-runtime/queue_service/session_fsm.py:122:            generation = int(value)
+novaic-agent-runtime/queue_service/session_fsm.py:125:                f"non-negative generation is required for {owner}"
+novaic-agent-runtime/queue_service/session_fsm.py:128:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_fsm.py:129:    if generation < 0:
+novaic-agent-runtime/queue_service/session_fsm.py:130:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_fsm.py:131:    return generation
+novaic-agent-runtime/queue_service/session_fsm.py:134:def extract_message_ids(metadata: dict[str, Any] | None) -> tuple[str, ...]:
+novaic-agent-runtime/queue_service/session_fsm.py:136:    raw_ids = (metadata or {}).get("message_ids")
+novaic-agent-runtime/queue_service/session_fsm.py:156:        generation=decision_input.state.generation,
+novaic-agent-runtime/queue_service/session_fsm.py:166:            "message_ids": decision_input.message_ids,
+novaic-agent-runtime/queue_service/session_fsm.py:201:            generation=1 if status is SessionRuntimeStatus.ACTIVE else 0,
+novaic-agent-runtime/queue_service/session_fsm.py:206:        message_ids=extract_message_ids(metadata),
+novaic-agent-runtime/queue_service/session_fsm.py:219:    """Decide whether one finalize event may close the active generation."""
+novaic-agent-runtime/queue_service/session_fsm.py:225:        generation=decision_input.state.generation,
+novaic-agent-runtime/queue_service/session_fsm.py:235:            "finalize_generation": decision_input.finalize_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:246:        event_generation=_require_non_negative_generation(
+novaic-agent-runtime/queue_service/session_fsm.py:247:            decision.payload.get("event_generation"),
+novaic-agent-runtime/queue_service/session_fsm.py:285:    message_ids = tuple(payload.get("message_ids") or ())
+novaic-agent-runtime/queue_service/session_fsm.py:289:        message_ids
+novaic-agent-runtime/queue_service/session_fsm.py:305:        reason="active_non_attachable_or_no_message_ids",
+novaic-agent-runtime/queue_service/session_fsm.py:319:    finalize_generation = _positive_generation_or_none(
+novaic-agent-runtime/queue_service/session_fsm.py:320:        event.payload.get("finalize_generation")
+novaic-agent-runtime/queue_service/session_fsm.py:322:    current_generation = _require_non_negative_generation(
+novaic-agent-runtime/queue_service/session_fsm.py:323:        state.generation, "session finalize state"
+novaic-agent-runtime/queue_service/session_fsm.py:328:    if finalize_generation is None:
+novaic-agent-runtime/queue_service/session_fsm.py:332:            reason="missing_generation",
+novaic-agent-runtime/queue_service/session_fsm.py:334:                "event_generation": current_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:337:                    "reason": "missing_generation",
+novaic-agent-runtime/queue_service/session_fsm.py:338:                    "expected_generation": current_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:339:                    "actual_generation": 0,
+novaic-agent-runtime/queue_service/session_fsm.py:346:        current_generation > 0
+novaic-agent-runtime/queue_service/session_fsm.py:347:        and finalize_generation != current_generation
+novaic-agent-runtime/queue_service/session_fsm.py:352:            reason="generation_mismatch",
+novaic-agent-runtime/queue_service/session_fsm.py:354:                "event_generation": current_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:357:                    "reason": "generation_mismatch",
+novaic-agent-runtime/queue_service/session_fsm.py:358:                    "expected_generation": current_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:359:                    "actual_generation": finalize_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:371:                "event_generation": current_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:382:    event_generation = finalize_generation
+novaic-agent-runtime/queue_service/session_fsm.py:388:            generation=event_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:393:        payload={"event_generation": event_generation},
+novaic-agent-runtime/queue_service/session_fsm.py:436:        generation=state.generation,
+novaic-agent-runtime/queue_service/session_observed_events.py:10:def _require_positive_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/queue_service/session_observed_events.py:12:        raise ValueError(f"{owner} requires generation")
+novaic-agent-runtime/queue_service/session_observed_events.py:14:        raise ValueError(f"{owner} requires positive generation")
+novaic-agent-runtime/queue_service/session_observed_events.py:16:        generation = int(value)
+novaic-agent-runtime/queue_service/session_observed_events.py:18:        raise ValueError(f"{owner} requires positive generation") from exc
+novaic-agent-runtime/queue_service/session_observed_events.py:19:    if generation < 1:
+novaic-agent-runtime/queue_service/session_observed_events.py:20:        raise ValueError(f"{owner} requires positive generation")
+novaic-agent-runtime/queue_service/session_observed_events.py:21:    return generation
+novaic-agent-runtime/queue_service/session_observed_events.py:58:            generation = _require_positive_generation(
+novaic-agent-runtime/queue_service/session_observed_events.py:59:                payload.get("generation"),
+novaic-agent-runtime/queue_service/session_observed_events.py:88:                generation=generation,
+novaic-agent-runtime/queue_service/session_observed_events.py:105:                generation=generation,
+novaic-agent-runtime/queue_service/session_observed_events.py:149:        generation: int,
+novaic-agent-runtime/queue_service/session_observed_events.py:158:            state_generation = _require_positive_generation(
+novaic-agent-runtime/queue_service/session_observed_events.py:159:                state.get("generation"),
+novaic-agent-runtime/queue_service/session_observed_events.py:164:        return state_generation == generation
+novaic-agent-runtime/queue_service/session_rebuild.py:30:            session_generation = _positive_session_generation(
+novaic-agent-runtime/queue_service/session_rebuild.py:31:                context.get("session_generation")
+novaic-agent-runtime/queue_service/session_rebuild.py:33:            if not agent_id or not subagent_id or session_generation is None:
+novaic-agent-runtime/queue_service/session_rebuild.py:38:                generation=session_generation,
+novaic-agent-runtime/queue_service/session_rebuild.py:50:def _positive_session_generation(raw: Any) -> int | None:
+novaic-agent-runtime/queue_service/session_rebuild.py:54:        generation = raw
+novaic-agent-runtime/queue_service/session_rebuild.py:57:            generation = int(raw.strip())
+novaic-agent-runtime/queue_service/session_rebuild.py:62:    return generation if generation > 0 else None
+novaic-agent-runtime/queue_service/session_recovery.py:13:def _positive_session_generation(raw: Any) -> int | None:
+novaic-agent-runtime/queue_service/session_recovery.py:17:        generation = raw
+novaic-agent-runtime/queue_service/session_recovery.py:20:            generation = int(raw.strip())
+novaic-agent-runtime/queue_service/session_recovery.py:25:    return generation if generation > 0 else None
+novaic-agent-runtime/queue_service/session_recovery.py:87:    session_generation = _positive_session_generation(event.get("generation"))
+novaic-agent-runtime/queue_service/session_recovery.py:88:    if session_generation is not None:
+novaic-agent-runtime/queue_service/session_recovery.py:89:        marker["session_generation"] = session_generation
+novaic-agent-runtime/queue_service/session_recovery.py:147:    session_generation = _positive_session_generation(
+novaic-agent-runtime/queue_service/session_recovery.py:148:        recovery_marker.get("session_generation")
+novaic-agent-runtime/queue_service/session_recovery.py:150:    if not failed_scope_id or session_generation is None:
+novaic-agent-runtime/queue_service/session_recovery.py:172:            "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:22:from queue_service.session_effects import build_attach_input_effect
+novaic-agent-runtime/queue_service/session_repo.py:39:    extract_message_ids,
+novaic-agent-runtime/queue_service/session_repo.py:60:def _require_positive_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/queue_service/session_repo.py:62:        raise ValueError(f"generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_repo.py:64:        raise ValueError(f"positive generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_repo.py:66:        generation = int(value)
+novaic-agent-runtime/queue_service/session_repo.py:68:        raise ValueError(f"positive generation is required for {owner}") from exc
+novaic-agent-runtime/queue_service/session_repo.py:69:    if generation < 1:
+novaic-agent-runtime/queue_service/session_repo.py:70:        raise ValueError(f"positive generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_repo.py:71:    return generation
+novaic-agent-runtime/queue_service/session_repo.py:74:def _require_non_negative_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/queue_service/session_repo.py:76:        raise ValueError(f"generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_repo.py:78:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_repo.py:80:        generation = int(value)
+novaic-agent-runtime/queue_service/session_repo.py:82:        raise ValueError(f"non-negative generation is required for {owner}") from exc
+novaic-agent-runtime/queue_service/session_repo.py:83:    if generation < 0:
+novaic-agent-runtime/queue_service/session_repo.py:84:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_repo.py:85:    return generation
+novaic-agent-runtime/queue_service/session_repo.py:88:def _runtime_generation_for_status(
+novaic-agent-runtime/queue_service/session_repo.py:96:        return _require_non_negative_generation(value, owner)
+novaic-agent-runtime/queue_service/session_repo.py:97:    return _require_positive_generation(value, owner)
+novaic-agent-runtime/queue_service/session_repo.py:274:                    message_ids=extract_message_ids(metadata),
+novaic-agent-runtime/queue_service/session_repo.py:328:                session_generation = self.session_ledger.next_generation(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:343:                    session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:376:        session_generation = self._next_session_generation_after_transaction(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:388:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:407:        session_generation: int,
+novaic-agent-runtime/queue_service/session_repo.py:434:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:509:        generation: Optional[int] = None,
+novaic-agent-runtime/queue_service/session_repo.py:524:        finalize_generation = _require_positive_generation(generation, "session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:527:            "finalize_generation": finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:532:        # Step 1: finalize the active generation and derive restart source from inbox.
+novaic-agent-runtime/queue_service/session_repo.py:538:                finalize_generation=finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:547:                    event_generation=finalize_decision.event_generation,
+novaic-agent-runtime/queue_service/session_repo.py:551:                    finalize_generation=finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:558:            event_generation = finalize_decision.event_generation
+novaic-agent-runtime/queue_service/session_repo.py:572:                event_generation=event_generation,
+novaic-agent-runtime/queue_service/session_repo.py:626:            session_generation = self.session_ledger.next_generation(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:631:                session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:782:                generation=_runtime_generation_for_status(
+novaic-agent-runtime/queue_service/session_repo.py:784:                    (active_session or {}).get("generation"),
+novaic-agent-runtime/queue_service/session_repo.py:791:            message_ids=extract_message_ids(metadata),
+novaic-agent-runtime/queue_service/session_repo.py:802:                generation=0,
+novaic-agent-runtime/queue_service/session_repo.py:811:            generation=_runtime_generation_for_status(
+novaic-agent-runtime/queue_service/session_repo.py:813:                state.get("generation"),
+novaic-agent-runtime/queue_service/session_repo.py:827:            "generation": item.get("generation"),
+novaic-agent-runtime/queue_service/session_repo.py:888:                    "reason": "active_session_changed_before_attach",
+novaic-agent-runtime/queue_service/session_repo.py:925:            session_generation = _require_positive_generation(
+novaic-agent-runtime/queue_service/session_repo.py:926:                current_active.get("generation"), "active session attach"
+novaic-agent-runtime/queue_service/session_repo.py:929:            outbox_effect = build_attach_input_effect(
+novaic-agent-runtime/queue_service/session_repo.py:937:                message_ids=extract_message_ids(attach_request["metadata"]),
+novaic-agent-runtime/queue_service/session_repo.py:942:                expected_session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:1007:            message_ids=extract_message_ids(metadata),
+novaic-agent-runtime/queue_service/session_repo.py:1068:    def _next_session_generation_after_transaction(self, session_key: str) -> int:
+novaic-agent-runtime/queue_service/session_repo.py:1071:            return ledger.next_generation(session_key)
+novaic-agent-runtime/queue_service/session_projection.py:26:    `message_ids` is the exception because every ID is an input the restarted
+novaic-agent-runtime/queue_service/session_projection.py:36:    for source in (existing.get("message_ids"), incoming.get("message_ids")):
+novaic-agent-runtime/queue_service/session_projection.py:45:        merged["message_ids"] = ordered_ids
+novaic-agent-runtime/queue_service/session_projection.py:110:    session_generation: int,
+novaic-agent-runtime/queue_service/session_projection.py:121:        "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_effects.py:17:    session_generation: int,
+novaic-agent-runtime/queue_service/session_effects.py:32:            "generation": session_generation,
+novaic-agent-runtime/queue_service/session_effects.py:44:def build_attach_input_effect(
+novaic-agent-runtime/queue_service/session_effects.py:53:    message_ids: tuple[str, ...],
+novaic-agent-runtime/queue_service/session_effects.py:56:    expected_session_generation: int | None,
+novaic-agent-runtime/queue_service/session_effects.py:58:    if not message_ids:
+novaic-agent-runtime/queue_service/session_effects.py:59:        raise ValueError("message_ids are required for active input attachment")
+novaic-agent-runtime/queue_service/session_effects.py:62:        or f"{agent_id}:{subagent_id}:{scope_id}:{','.join(message_ids)}"
+novaic-agent-runtime/queue_service/session_effects.py:71:            "expected_wake_scope_id": scope_id,
+novaic-agent-runtime/queue_service/session_effects.py:72:            "expected_session_generation": expected_session_generation,
+novaic-agent-runtime/queue_service/session_effects.py:75:            "message_ids": list(message_ids),
+novaic-agent-runtime/queue_service/fsm/runner.py:33:    generation: int
+novaic-agent-runtime/queue_service/fsm/runner.py:62:            generation=transition.generation,
+novaic-agent-runtime/queue_service/fsm/runner.py:76:            generation=transition.generation,
+novaic-agent-runtime/queue_service/fsm/runner.py:87:                generation=transition.generation,
+novaic-agent-runtime/queue_service/session_ledger.py:42:    generation: int
+novaic-agent-runtime/queue_service/session_ledger.py:53:def _require_non_negative_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/queue_service/session_ledger.py:55:        raise ValueError(f"generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_ledger.py:57:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_ledger.py:59:        generation = int(value)
+novaic-agent-runtime/queue_service/session_ledger.py:61:        raise ValueError(f"non-negative generation is required for {owner}") from exc
+novaic-agent-runtime/queue_service/session_ledger.py:62:    if generation < 0:
+novaic-agent-runtime/queue_service/session_ledger.py:63:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/session_ledger.py:64:    return generation
+novaic-agent-runtime/queue_service/session_ledger.py:98:        generation: int = 0,
+novaic-agent-runtime/queue_service/session_ledger.py:113:            generation=generation,
+novaic-agent-runtime/queue_service/session_ledger.py:130:            generation=state.generation,
+novaic-agent-runtime/queue_service/session_ledger.py:155:        generation: int = 0,
+novaic-agent-runtime/queue_service/session_ledger.py:169:            generation=generation,
+novaic-agent-runtime/queue_service/session_ledger.py:200:        message_ids: tuple[str, ...] | list[str],
+novaic-agent-runtime/queue_service/session_ledger.py:205:        generation = self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:214:            generation=generation,
+novaic-agent-runtime/queue_service/session_ledger.py:218:                "message_ids": list(message_ids or []),
+novaic-agent-runtime/queue_service/session_ledger.py:280:        generation = self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:290:                generation=generation,
+novaic-agent-runtime/queue_service/session_ledger.py:326:            generation=self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:350:        event_generation: int,
+novaic-agent-runtime/queue_service/session_ledger.py:354:        finalize_generation: int,
+novaic-agent-runtime/queue_service/session_ledger.py:367:            generation=event_generation,
+novaic-agent-runtime/queue_service/session_ledger.py:372:                f"{session_key}:{scope_id}:{finalize_generation}:"
+novaic-agent-runtime/queue_service/session_ledger.py:387:        event_generation: int,
+novaic-agent-runtime/queue_service/session_ledger.py:398:            generation=event_generation,
+novaic-agent-runtime/queue_service/session_ledger.py:403:                f"{event_generation}:{finalize_reason}"
+novaic-agent-runtime/queue_service/session_ledger.py:410:            generation=event_generation,
+novaic-agent-runtime/queue_service/session_ledger.py:421:            generation=event_generation,
+novaic-agent-runtime/queue_service/session_ledger.py:438:        generation: int,
+novaic-agent-runtime/queue_service/session_ledger.py:446:            generation=generation,
+novaic-agent-runtime/queue_service/session_ledger.py:458:    def session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:467:        generation = _require_non_negative_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:468:            current.get("generation"), "session ledger current state"
+novaic-agent-runtime/queue_service/session_ledger.py:471:            return generation + 1
+novaic-agent-runtime/queue_service/session_ledger.py:472:        return generation
+novaic-agent-runtime/queue_service/session_ledger.py:474:    def next_generation(self, session_key: str) -> int:
+novaic-agent-runtime/queue_service/session_ledger.py:479:            _require_non_negative_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:480:                current.get("generation"), "session ledger next generation"
+novaic-agent-runtime/queue_service/session_ledger.py:568:        generation = self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:582:            generation=generation,
+novaic-agent-runtime/queue_service/session_ledger.py:606:            generation=state_record.generation,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:36:        "finalize_generation": 3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:50:            generation=3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:63:            event_generation=3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:73:            finalize_generation=3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:82:    assert events[0]["generation"] == 3
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:106:            generation=3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:121:            event_generation=3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:134:            event_generation=3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:156:    assert state["generation"] == 3
+novaic-agent-runtime/queue_service/fsm/core.py:20:    generation: int = 0
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:52:def _require_non_negative_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:54:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:56:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:58:        generation = int(value)
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:60:        raise ValueError(f"non-negative generation is required for {owner}") from exc
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:61:    if generation < 0:
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:62:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:63:    return generation
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:85:        generation: int,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:97:            generation=generation,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:112:        generation: int,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:123:            "generation": _require_non_negative_generation(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:124:                generation,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:153:        generation: int,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:163:            "generation": _require_non_negative_generation(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:164:                generation,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:192:        generation: int,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:203:            "generation": _require_non_negative_generation(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:204:                generation,
+novaic-agent-runtime/queue_service/lease_ledger.py:30:    generation: int
+novaic-agent-runtime/queue_service/lease_ledger.py:67:        generation: int = 0,
+novaic-agent-runtime/queue_service/lease_ledger.py:86:            generation=generation,
+novaic-agent-runtime/queue_service/lease_ledger.py:101:            generation=state.generation,
+novaic-agent-runtime/queue_service/lease_ledger.py:119:        generation: int = 0,
+novaic-agent-runtime/queue_service/lease_ledger.py:133:            generation=generation,
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:71:                generation=0,
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:84:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:91:    assert orchestrator.get(active["saga_id"])["context"]["message_ids"] == ["m1"]
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:106:                generation=7,
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:121:        metadata={"message_ids": ["m1"]},
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:131:    assert outbox[0]["payload"]["expected_session_generation"] == 7
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:134:        "SELECT COUNT(*) FROM tq_tasks WHERE topic = 'session.attach_input'"
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:145:        "SELECT topic, payload FROM tq_tasks WHERE topic = 'session.attach_input'"
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:149:    assert json.loads(row[1])["expected_session_generation"] == 7
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:164:            "session_generation": 5,
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:173:                generation=3,
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:187:    assert ledger.get_state("agent-1:main")["generation"] == 5
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:21:    generation: int = 0,
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:27:        generation=generation,
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:38:    generation: int = 0,
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:42:        state=_state(status, generation=generation, step_results=step_results),
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:60:    assert created.generation == 1
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:71:        generation=created.generation,
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:84:        generation=claimed.generation,
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:99:        generation=launched.generation,
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:115:        generation=5,
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:121:    assert decision.generation == 6
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:177:def test_saga_invalid_transitions_reject_without_generation_increment():
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:182:        generation=7,
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:187:    assert decision.generation == 7
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:193:        state=_state(SagaRuntimeStatus.PENDING, generation=2),
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:64:    assert repo_source.count("build_attach_input_effect(") == 1
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:43:        "session_generation": 2,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:57:        "session_generation": 2,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:67:    assert call_payload["session_generation"] == 2
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:72:def test_react_think_requires_positive_session_generation():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:73:    with pytest.raises(ValueError, match="ReactThinkInput.session_generation is required"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:76:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:77:        ReactThinkInput.from_context({"scope_id": "wake-1", "session_generation": 0})
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:79:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:80:        ReactThinkInput(scope_id="wake-1", session_generation=0)
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:86:        "session_generation": 1,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:117:        "session_generation": 1,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:202:        "session_generation": 1,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:220:        "session_generation": 1,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:265:def test_react_actions_requires_positive_session_generation():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:266:    with pytest.raises(ValueError, match="ReactActionsInput.session_generation is required"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:269:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:270:        ReactActionsInput.from_context({"scope_id": "wake-1", "session_generation": 0})
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:272:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:273:        ReactActionsInput(scope_id="wake-1", session_generation=0)
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:279:        "session_generation": 4,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:302:    assert payload["context"]["session_generation"] == 4
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:305:def test_react_contracts_do_not_default_session_generation_to_zero():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:309:    assert "session_generation: int = 0" not in think_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:310:    assert "session_generation: int = 0" not in actions_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:311:    assert 'ctx.get("session_generation") or 0' not in think_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:312:    assert 'ctx.get("session_generation") or 0' not in actions_source
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:12:    assert ".publish_attach_input_effect(" not in source
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:26:    assert "def publish_attach_input_effect(" not in source
+novaic-agent-runtime/queue_service/saga_repo.py:38:from task_queue.contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/queue_service/saga_repo.py:121:                generation=0,
+novaic-agent-runtime/queue_service/saga_repo.py:911:    def _saga_generation(self, saga_id: str) -> int:
+novaic-agent-runtime/queue_service/saga_repo.py:913:        return int(current.get("generation") or 0)
+novaic-agent-runtime/queue_service/saga_repo.py:920:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/saga_repo.py:980:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/saga_repo.py:994:            event_id=f"sevt-{saga_id}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/saga_repo.py:996:                f"saga-event:{saga_id}:{generation}:{event_type.value}"
+novaic-agent-runtime/queue_service/saga_repo.py:1001:                generation=generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1015:                    outbox_id=f"sout-{saga_id}-{generation}-{index}",
+novaic-agent-runtime/queue_service/saga_repo.py:1020:                        f"saga-effect:{saga_id}:{generation}:"
+novaic-agent-runtime/queue_service/saga_repo.py:1048:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/saga_repo.py:1083:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/saga_repo.py:1089:            generation=generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1100:            event_id=f"levt-{lease_key}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/saga_repo.py:1101:            idempotency_key=f"lease-event:{lease_key}:{generation}:{event_type.value}",
+novaic-agent-runtime/queue_service/saga_repo.py:1107:            generation=generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1124:def _positive_session_generation_from_context(context: Dict[str, Any]) -> int | None:
+novaic-agent-runtime/queue_service/saga_repo.py:1125:    raw = context.get("session_generation")
+novaic-agent-runtime/queue_service/saga_repo.py:1129:        generation = raw
+novaic-agent-runtime/queue_service/saga_repo.py:1132:            generation = int(raw.strip())
+novaic-agent-runtime/queue_service/saga_repo.py:1137:    return generation if generation > 0 else None
+novaic-agent-runtime/queue_service/saga_repo.py:1288:        session_generation = _positive_session_generation_from_context(context)
+novaic-agent-runtime/queue_service/saga_repo.py:1289:        if not scope_id or not agent_id or session_generation is None:
+novaic-agent-runtime/queue_service/saga_repo.py:1296:            "session_generation": session_generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1382:            generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/saga_repo.py:1383:                state.get("generation"),
+novaic-agent-runtime/queue_service/saga_repo.py:1391:                generation=generation,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:1:"""PR-238 / FSM-04 — generation checked active input attachment."""
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:12:def test_session_init_persists_current_session_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:35:            "session_generation": 7,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:43:    assert first_meta_call.kwargs["current_session_generation"] == 7
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:46:def test_session_init_rejects_bool_session_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:55:    with pytest.raises(ValidationError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:63:                "session_generation": True,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:71:def test_session_attach_input_rejects_stale_wake_scope(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:72:    from task_queue.handlers.runtime_handlers import handle_session_attach_input
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:77:        "current_session_generation": 2,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:85:        handle_session_attach_input(
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:89:                "expected_wake_scope_id": "old-wake",
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:90:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:94:                "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:102:def test_session_attach_input_requires_generation_contract(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:103:    from task_queue.handlers.runtime_handlers import handle_session_attach_input
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:111:    with pytest.raises(ValidationError, match="expected_session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:112:        handle_session_attach_input(
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:116:                "expected_wake_scope_id": "wake-scope",
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:120:                "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:129:def test_session_attach_input_rejects_bool_expected_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:130:    from task_queue.handlers.runtime_handlers import handle_session_attach_input
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:138:    with pytest.raises(ValidationError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:139:        handle_session_attach_input(
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:143:                "expected_wake_scope_id": "wake-scope",
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:144:                "expected_session_generation": True,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:148:                "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:157:def test_session_attach_input_requires_expected_wake_scope(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:158:    from task_queue.handlers.runtime_handlers import handle_session_attach_input
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:166:    with pytest.raises(ValidationError, match="expected_wake_scope_id"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:167:        handle_session_attach_input(
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:171:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:175:                "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:184:def test_session_attach_input_rejects_stale_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:185:    from task_queue.handlers.runtime_handlers import handle_session_attach_input
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:190:        "current_session_generation": 2,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:197:    with pytest.raises(ValidationError, match="current_session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:198:        handle_session_attach_input(
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:202:                "expected_wake_scope_id": "wake-scope",
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:203:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:207:                "message_ids": ["m2"],
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:44:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:80:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:116:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:127:        session_generation=1,

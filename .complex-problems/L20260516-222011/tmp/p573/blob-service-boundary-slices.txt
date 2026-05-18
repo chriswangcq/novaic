@@ -1,0 +1,991 @@
+## Blob Service README boundary
+     1	# novaic-blob-service
+     2	
+     3	Blob Service（默认 `:19995`）：大对象字节基础设施。
+     4	HTTP API 是 `/v1/blobs/*` 和 `/v1/objects/*`，业务层保存
+     5	`blob://{namespace}/{blob_id}`，不保存存储后端私有 URL。
+     6	服务内部边界统一使用 `blob_service.contracts` 中的显式 input
+     7	contract；路由负责把 HTTP body/header/path materialize 成 contract，
+     8	存储层不接受散落的兼容参数袋。
+     9	
+    10	## 当前能力
+    11	
+    12	- `POST /v1/blobs/uploads`：创建 multipart upload session。
+    13	- `PUT /v1/blobs/uploads/{session_id}/parts/{part_number}`：上传 raw bytes part。
+    14	- `POST /v1/blobs/uploads/{session_id}/complete`：完成 session 并生成稳定 BlobRef。
+    15	- `POST /v1/blobs/uploads/{session_id}/abort`：中止 session。
+    16	- `GET /v1/blobs/uploads`：列出当前租户 upload sessions。
+    17	- `POST /v1/blobs/uploads/_expire`：回收过期未完成 sessions。
+    18	- `/v1/objects/*`：Cortex object-tree 原语。
+    19	- `POST /v1/blobs/{namespace}/{blob_id}/presign`：返回显式
+    20	  `mode=presign|proxy` 访问描述；Disk dev backend 使用 `proxy`，S3/OSS
+    21	  backend 使用 presigned URL。
+    22	
+    23	## Payload 限制
+    24	
+    25	默认限制：
+    26	
+    27	- `NOVAIC_BLOB_MAX_OBJECT_PUT_BYTES=67108864`
+    28	- `NOVAIC_BLOB_MAX_MULTIPART_PART_BYTES=16777216`
+    29	- `NOVAIC_BLOB_MAX_MULTIPART_COMPLETED_BYTES=2147483648`
+    30	
+    31	超限请求返回 HTTP `413`，错误文案包含具体 payload 类型、实际字节数和限制。
+    32	生命周期日志只记录 tenant、namespace、session/blob id、size 和结果，不记录 raw bytes。
+    33	
+    34	父仓库文档：`docs/reference/blob-service.md`。
+    35	
+    36	## 开发
+    37	
+    38	```bash
+    39	pip install -r requirements.txt
+    40	pytest
+    41	```
+    42	
+    43	## License
+    44	
+    45	MIT
+
+## Blob ref contract
+     1	"""Blob infrastructure contract helpers.
+     2	
+     3	Blob Service owns bytes and infrastructure metadata only. Product services own
+     4	the meaning of those bytes and should persist a BlobRef plus their own domain
+     5	semantics.
+     6	"""
+     7	
+     8	from __future__ import annotations
+     9	
+    10	import json
+    11	import re
+    12	from dataclasses import dataclass
+    13	from functools import lru_cache
+    14	from pathlib import Path
+    15	from typing import Any
+    16	
+    17	_CONTRACT_PATH = Path(__file__).with_name("blob.json")
+    18	_BLOB_PREFIX = "blob://"
+    19	_SAFE_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,255}$")
+    20	
+    21	
+    22	@dataclass(frozen=True)
+    23	class BlobRef:
+    24	    namespace: str
+    25	    blob_id: str
+    26	
+    27	    @property
+    28	    def uri(self) -> str:
+    29	        return make_blob_ref(self.namespace, self.blob_id)
+    30	
+    31	
+    32	@lru_cache(maxsize=1)
+    33	def blob_contract() -> dict[str, Any]:
+    34	    return json.loads(_CONTRACT_PATH.read_text(encoding="utf-8"))
+    35	
+    36	
+    37	def blob_scheme() -> str:
+    38	    return str(blob_contract()["scheme"])
+    39	
+    40	
+    41	def blob_namespaces() -> set[str]:
+    42	    return set(blob_contract()["namespaces"])
+    43	
+    44	
+    45	def blob_owned_concepts() -> set[str]:
+    46	    return set(blob_contract()["owns"])
+    47	
+    48	
+    49	def blob_excluded_concepts() -> set[str]:
+    50	    return set(blob_contract()["does_not_own"])
+    51	
+    52	
+    53	def blob_metadata_required_fields() -> set[str]:
+    54	    return set(blob_contract()["metadata_required_fields"])
+    55	
+    56	
+    57	def is_blob_ref(value: str) -> bool:
+    58	    return isinstance(value, str) and value.startswith(_BLOB_PREFIX)
+    59	
+    60	
+    61	def _validate_blob_id(blob_id: str) -> str:
+    62	    if not isinstance(blob_id, str) or not _SAFE_ID.match(blob_id):
+    63	        raise ValueError(f"invalid blob_id: {blob_id!r}")
+    64	    if "/" in blob_id or ".." in blob_id:
+    65	        raise ValueError(f"invalid blob_id: {blob_id!r}")
+    66	    return blob_id
+    67	
+    68	
+    69	def make_blob_ref(namespace: str, blob_id: str) -> str:
+    70	    if namespace not in blob_namespaces():
+    71	        raise ValueError(f"unknown blob namespace: {namespace!r}")
+    72	    return f"{_BLOB_PREFIX}{namespace}/{_validate_blob_id(blob_id)}"
+    73	
+    74	
+    75	def parse_blob_ref(ref: str) -> BlobRef:
+    76	    if not is_blob_ref(ref):
+    77	        raise ValueError(f"not a blob ref: {ref!r}")
+    78	    rest = ref[len(_BLOB_PREFIX):]
+    79	    parts = rest.split("/")
+    80	    if len(parts) != 2:
+    81	        raise ValueError(f"blob ref must be blob://{{namespace}}/{{blob_id}}: {ref!r}")
+    82	    namespace, blob_id = parts
+    83	    if namespace not in blob_namespaces():
+    84	        raise ValueError(f"unknown blob namespace: {namespace!r}")
+    85	    return BlobRef(namespace=namespace, blob_id=_validate_blob_id(blob_id))
+    86	
+    87	
+    88	def validate_blob_metadata(metadata: dict[str, Any]) -> None:
+    89	    missing = blob_metadata_required_fields() - set(metadata)
+    90	    if missing:
+    91	        raise ValueError(f"missing blob metadata fields: {sorted(missing)}")
+    92	
+    93	    ref = make_blob_ref(str(metadata["namespace"]), str(metadata["blob_id"]))
+    94	    if metadata.get("blob_ref") is not None and metadata["blob_ref"] != ref:
+    95	        raise ValueError("blob_ref does not match namespace/blob_id")
+    96	
+    97	    size = metadata["size"]
+    98	    if not isinstance(size, int) or size < 0:
+    99	        raise ValueError("blob metadata size must be a non-negative integer")
+   100	
+   101	    sha256 = metadata["sha256"]
+   102	    if not isinstance(sha256, str) or not re.match(r"^[a-fA-F0-9]{64}$", sha256):
+   103	        raise ValueError("blob metadata sha256 must be a 64-char hex digest")
+   104	
+   105	    mime_type = metadata["mime_type"]
+   106	    if not isinstance(mime_type, str) or "/" not in mime_type:
+   107	        raise ValueError("blob metadata mime_type must look like a MIME type")
+   108	
+   109	    if "content" in metadata or "payload" in metadata or "data" in metadata:
+   110	        raise ValueError("blob metadata must not embed raw payload bytes/content")
+
+## Byte blob storage service
+     1	"""Blob Service storage facade over the existing byte backend.
+     2	
+     3	This module is the new infrastructure boundary. It stores raw bytes plus
+     4	metadata and returns shared ``blob://`` references. It deliberately does not
+     5	know chat, Cortex, prompt, or Agent Monitor semantics.
+     6	"""
+     7	
+     8	from __future__ import annotations
+     9	
+    10	import hashlib
+    11	import json
+    12	import re
+    13	from collections.abc import Callable
+    14	from typing import Any, Optional
+    15	
+    16	from common.contracts.blob import (
+    17	    make_blob_ref,
+    18	    parse_blob_ref,
+    19	    validate_blob_metadata,
+    20	)
+    21	
+    22	from .contracts import BlobIdentity, BlobPresignInput, BlobPutInput
+    23	from .storage import BlobByteStore
+    24	
+    25	_SAFE_TENANT_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,255}$")
+    26	
+    27	
+    28	def _validate_tenant_id(tenant_id: str) -> str:
+    29	    if not isinstance(tenant_id, str) or not _SAFE_TENANT_ID.match(tenant_id):
+    30	        raise ValueError(f"invalid tenant_id: {tenant_id!r}")
+    31	    if "/" in tenant_id or ".." in tenant_id:
+    32	        raise ValueError(f"invalid tenant_id: {tenant_id!r}")
+    33	    return tenant_id
+    34	
+    35	
+    36	def _blob_rel_path(namespace: str, blob_id: str) -> str:
+    37	    return f"blobs/{namespace}/{blob_id}"
+    38	
+    39	
+    40	def _blob_meta_rel_path(namespace: str, blob_id: str) -> str:
+    41	    return f"blobs/{namespace}/{blob_id}.meta.json"
+    42	
+    43	
+    44	BlobIdProvider = Callable[[bytes, float], str]
+    45	Clock = Callable[[], float]
+    46	
+    47	
+    48	def generate_blob_id(data: bytes, now: float) -> str:
+    49	    digest = hashlib.sha256(data).hexdigest()
+    50	    return f"{int(now * 1000)}-{digest[:24]}"
+    51	
+    52	
+    53	class BlobStorage:
+    54	    """Infrastructure blob storage backed by the configured byte backend."""
+    55	
+    56	    def __init__(
+    57	        self,
+    58	        file_storage: BlobByteStore,
+    59	        *,
+    60	        clock: Clock,
+    61	        blob_id_provider: BlobIdProvider,
+    62	    ):
+    63	        self._file_storage = file_storage
+    64	        self._clock = clock
+    65	        self._blob_id_provider = blob_id_provider
+    66	
+    67	    @property
+    68	    def file_storage(self) -> BlobByteStore:
+    69	        return self._file_storage
+    70	
+    71	    def put_blob(self, request: BlobPutInput) -> dict[str, Any]:
+    72	        tenant_id = _validate_tenant_id(request.tenant_id)
+    73	        if request.data is None:
+    74	            raise ValueError("blob data is required")
+    75	
+    76	        now = self._clock()
+    77	        blob_id = request.blob_id or self._blob_id_provider(request.data, now)
+    78	        blob_ref = make_blob_ref(request.namespace, blob_id)
+    79	        sha256 = hashlib.sha256(request.data).hexdigest()
+    80	        metadata: dict[str, Any] = {
+    81	            "tenant_id": tenant_id,
+    82	            "namespace": request.namespace,
+    83	            "blob_id": blob_id,
+    84	            "blob_ref": blob_ref,
+    85	            "mime_type": request.mime_type or "application/octet-stream",
+    86	            "size": len(request.data),
+    87	            "sha256": sha256,
+    88	            "created_at": now,
+    89	        }
+    90	        if request.created_by:
+    91	            metadata["created_by"] = request.created_by
+    92	        if request.source_ref:
+    93	            metadata["source_ref"] = request.source_ref
+    94	        if request.content_disposition:
+    95	            metadata["content_disposition"] = request.content_disposition
+    96	        validate_blob_metadata(metadata)
+    97	
+    98	        rel_path = _blob_rel_path(request.namespace, blob_id)
+    99	        meta_path = _blob_meta_rel_path(request.namespace, blob_id)
+   100	        self._file_storage.backend.save_bytes(request.data, tenant_id, rel_path)
+   101	        self._file_storage.backend.save_bytes(
+   102	            json.dumps(metadata, ensure_ascii=False).encode("utf-8"),
+   103	            tenant_id,
+   104	            meta_path,
+   105	        )
+   106	        return metadata
+   107	
+   108	    def stat_blob(self, request: BlobIdentity) -> Optional[dict[str, Any]]:
+   109	        tenant_id = _validate_tenant_id(request.tenant_id)
+   110	        blob_ref = make_blob_ref(request.namespace, request.blob_id)
+   111	        parsed = parse_blob_ref(blob_ref)
+   112	        meta = self._load_metadata(parsed.namespace, parsed.blob_id, tenant_id)
+   113	        if meta is None:
+   114	            return None
+   115	        validate_blob_metadata(meta)
+   116	        return meta
+   117	
+   118	    def get_blob(self, request: BlobIdentity) -> Optional[bytes]:
+   119	        tenant_id = _validate_tenant_id(request.tenant_id)
+   120	        blob_ref = make_blob_ref(request.namespace, request.blob_id)
+   121	        parsed = parse_blob_ref(blob_ref)
+   122	        return self._file_storage.backend.load_bytes(
+   123	            tenant_id,
+   124	            _blob_rel_path(parsed.namespace, parsed.blob_id),
+   125	        )
+   126	
+   127	    def delete_blob(self, request: BlobIdentity) -> bool:
+   128	        tenant_id = _validate_tenant_id(request.tenant_id)
+   129	        blob_ref = make_blob_ref(request.namespace, request.blob_id)
+   130	        parsed = parse_blob_ref(blob_ref)
+   131	        deleted_data = self._file_storage.backend.delete(
+   132	            tenant_id,
+   133	            _blob_rel_path(parsed.namespace, parsed.blob_id),
+   134	        )
+   135	        self._file_storage.backend.delete(
+   136	            tenant_id,
+   137	            _blob_meta_rel_path(parsed.namespace, parsed.blob_id),
+   138	        )
+   139	        return bool(deleted_data)
+   140	
+   141	    def presign_blob(self, request: BlobPresignInput) -> Optional[str]:
+   142	        tenant_id = _validate_tenant_id(request.tenant_id)
+   143	        blob_ref = make_blob_ref(request.namespace, request.blob_id)
+   144	        parsed = parse_blob_ref(blob_ref)
+   145	        if not hasattr(self._file_storage.backend, "presign"):
+   146	            return None
+   147	        return self._file_storage.backend.presign(
+   148	            tenant_id,
+   149	            _blob_rel_path(parsed.namespace, parsed.blob_id),
+   150	            ttl=request.ttl,
+   151	        )
+   152	
+   153	    def _load_metadata(self, namespace: str, blob_id: str, tenant_id: str) -> Optional[dict[str, Any]]:
+   154	        raw = self._file_storage.backend.load_bytes(
+   155	            tenant_id,
+   156	            _blob_meta_rel_path(namespace, blob_id),
+   157	        )
+   158	        if raw is None:
+   159	            return None
+   160	        return json.loads(raw.decode("utf-8"))
+
+## Object storage API service
+     1	"""Generic object storage facade owned by Blob Service.
+     2	
+     3	This is the infrastructure boundary for services that need object-tree
+     4	semantics. Product services provide tenant, namespace, and object keys; Blob
+     5	Service owns the backing byte store and optional S3/OSS configuration.
+     6	"""
+     7	
+     8	from __future__ import annotations
+     9	
+    10	import re
+    11	from dataclasses import dataclass
+    12	from typing import Optional
+    13	
+    14	from .contracts import (
+    15	    ObjectIdentity,
+    16	    ObjectListInput,
+    17	    ObjectMovePrefixInput,
+    18	    ObjectPutInput,
+    19	    ObjectRecursiveListInput,
+    20	)
+    21	from .storage import BlobByteStore
+    22	
+    23	_SAFE_TENANT_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,255}$")
+    24	_SAFE_NAMESPACE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$")
+    25	
+    26	
+    27	@dataclass(frozen=True)
+    28	class ObjectEntry:
+    29	    key: str
+    30	    size: int = 0
+    31	    is_prefix: bool = False
+    32	
+    33	
+    34	def _validate_tenant_id(tenant_id: str) -> str:
+    35	    if not isinstance(tenant_id, str) or not _SAFE_TENANT_ID.match(tenant_id):
+    36	        raise ValueError(f"invalid tenant_id: {tenant_id!r}")
+    37	    if "/" in tenant_id or ".." in tenant_id:
+    38	        raise ValueError(f"invalid tenant_id: {tenant_id!r}")
+    39	    return tenant_id
+    40	
+    41	
+    42	def _validate_namespace(namespace: str) -> str:
+    43	    if not isinstance(namespace, str) or not _SAFE_NAMESPACE.match(namespace):
+    44	        raise ValueError(f"invalid namespace: {namespace!r}")
+    45	    if "/" in namespace or ".." in namespace:
+    46	        raise ValueError(f"invalid namespace: {namespace!r}")
+    47	    return namespace
+    48	
+    49	
+    50	def _normalize_key(key: str, *, allow_empty: bool = False) -> str:
+    51	    if not isinstance(key, str):
+    52	        raise ValueError("object key must be a string")
+    53	    key = key.replace("\\", "/").strip("/")
+    54	    if not key and allow_empty:
+    55	        return ""
+    56	    if not key:
+    57	        raise ValueError("object key is required")
+    58	    parts = [part for part in key.split("/") if part]
+    59	    if any(part == ".." for part in parts):
+    60	        raise ValueError(f"invalid object key: {key!r}")
+    61	    return "/".join(parts)
+    62	
+    63	
+    64	def _object_rel_path(namespace: str, key: str) -> str:
+    65	    namespace = _validate_namespace(namespace)
+    66	    key = _normalize_key(key)
+    67	    return f"objects/{namespace}/{key}"
+    68	
+    69	
+    70	def _object_rel_prefix(namespace: str, prefix: str = "") -> str:
+    71	    namespace = _validate_namespace(namespace)
+    72	    prefix = _normalize_key(prefix, allow_empty=True)
+    73	    base = f"objects/{namespace}"
+    74	    return f"{base}/{prefix}/" if prefix else f"{base}/"
+    75	
+    76	
+    77	class ObjectStorage:
+    78	    """Object-tree storage backed by BlobByteStore."""
+    79	
+    80	    def __init__(self, byte_store: BlobByteStore) -> None:
+    81	        self._byte_store = byte_store
+    82	
+    83	    def put_object(self, request: ObjectPutInput) -> dict:
+    84	        tenant_id = _validate_tenant_id(request.tenant_id)
+    85	        rel_path = _object_rel_path(request.namespace, request.key)
+    86	        ok = self._byte_store.backend.save_bytes(request.data, tenant_id, rel_path)
+    87	        if not ok:
+    88	            raise RuntimeError("failed to save object")
+    89	        return {
+    90	            "tenant_id": tenant_id,
+    91	            "namespace": request.namespace,
+    92	            "key": _normalize_key(request.key),
+    93	            "size": len(request.data),
+    94	            "content_type": request.content_type or "application/octet-stream",
+    95	        }
+    96	
+    97	    def get_object(self, request: ObjectIdentity) -> Optional[bytes]:
+    98	        tenant_id = _validate_tenant_id(request.tenant_id)
+    99	        return self._byte_store.backend.load_bytes(
+   100	            tenant_id,
+   101	            _object_rel_path(request.namespace, request.key),
+   102	        )
+   103	
+   104	    def stat_object(self, request: ObjectIdentity) -> Optional[dict]:
+   105	        tenant_id = _validate_tenant_id(request.tenant_id)
+   106	        info = self._byte_store.backend.get_info(
+   107	            tenant_id,
+   108	            _object_rel_path(request.namespace, request.key),
+   109	        )
+   110	        if info is None:
+   111	            return None
+   112	        return {
+   113	            "tenant_id": tenant_id,
+   114	            "namespace": request.namespace,
+   115	            "key": _normalize_key(request.key),
+   116	            "size": int(info.get("size") or 0),
+   117	            "created": info.get("created"),
+   118	        }
+   119	
+   120	    def delete_object(self, request: ObjectIdentity) -> bool:
+   121	        tenant_id = _validate_tenant_id(request.tenant_id)
+   122	        return bool(
+   123	            self._byte_store.backend.delete(
+   124	                tenant_id,
+   125	                _object_rel_path(request.namespace, request.key),
+   126	            )
+   127	        )
+   128	
+   129	    def list_objects(self, request: ObjectListInput) -> list[ObjectEntry]:
+   130	        if request.delimiter != "/":
+   131	            raise ValueError("only delimiter='/' is supported")
+   132	
+   133	        prefix_norm = _normalize_key(request.prefix, allow_empty=True)
+   134	        tenant_id = _validate_tenant_id(request.tenant_id)
+   135	        single = (
+   136	            self.stat_object(ObjectIdentity(tenant_id=tenant_id, namespace=request.namespace, key=prefix_norm))
+   137	            if prefix_norm
+   138	            else None
+   139	        )
+   140	        if single is not None:
+   141	            return [ObjectEntry(key=prefix_norm, size=single["size"])]
+   142	
+   143	        rel_prefix = _object_rel_prefix(request.namespace, prefix_norm)
+   144	        base = _object_rel_prefix(request.namespace, "")
+   145	        seen_prefixes: set[str] = set()
+   146	        out: list[ObjectEntry] = []
+   147	        for item in self._byte_store.backend.list(tenant_id, rel_prefix):
+   148	            rel_path = str(item.get("path") or "")
+   149	            if not rel_path.startswith(base):
+   150	                continue
+   151	            key = rel_path[len(base) :]
+   152	            if prefix_norm:
+   153	                key = key[len(prefix_norm.strip("/") + "/") :] if key.startswith(prefix_norm.strip("/") + "/") else key
+   154	            if "/" in key:
+   155	                child = f"{prefix_norm.rstrip('/') + '/' if prefix_norm else ''}{key.split('/', 1)[0]}/"
+   156	                if child not in seen_prefixes:
+   157	                    seen_prefixes.add(child)
+   158	                    out.append(ObjectEntry(key=child, is_prefix=True))
+   159	            else:
+   160	                out.append(
+   161	                    ObjectEntry(
+   162	                        key=f"{prefix_norm.rstrip('/') + '/' if prefix_norm else ''}{key}",
+   163	                        size=int(item.get("size") or 0),
+   164	                    )
+   165	                )
+   166	        return sorted(out, key=lambda entry: entry.key)
+   167	
+   168	    def list_recursive(self, request: ObjectRecursiveListInput) -> list[str]:
+   169	        prefix_norm = _normalize_key(request.prefix, allow_empty=True)
+   170	        tenant_id = _validate_tenant_id(request.tenant_id)
+   171	        rel_prefix = _object_rel_prefix(request.namespace, prefix_norm)
+   172	        base = _object_rel_prefix(request.namespace, "")
+   173	        keys: list[str] = []
+   174	        for item in self._byte_store.backend.list(tenant_id, rel_prefix):
+   175	            rel_path = str(item.get("path") or "")
+   176	            if rel_path.startswith(base):
+   177	                keys.append(rel_path[len(base) :])
+   178	        return sorted(keys)
+   179	
+   180	    def move_object(self, *, tenant_id: str, namespace: str, src: str, dst: str) -> None:
+   181	        data = self.get_object(ObjectIdentity(tenant_id=tenant_id, namespace=namespace, key=src))
+   182	        if data is None:
+   183	            raise KeyError(src)
+   184	        self.put_object(ObjectPutInput(
+   185	            tenant_id=tenant_id,
+   186	            namespace=namespace,
+   187	            key=dst,
+   188	            data=data,
+   189	            content_type="application/octet-stream",
+   190	        ))
+
+## HTTP API routes
+     1	"""
+     2	Blob Service - 独立运行入口
+     3	可单独启动为 HTTP 服务，监听独立端口。
+     4	
+     5	用法:
+     6	  python -m blob_service.main
+     7	  python -m blob_service.main --port 9100 --base-dir /path/to/data
+     8	"""
+     9	
+    10	import argparse
+    11	import logging
+    12	import os
+    13	
+    14	from .limits import load_blob_limits_from_env
+    15	from .routes import BlobRuntimeDependencies, create_blob_router
+    16	from .storage import BlobByteStore, load_blob_backend_config_from_env
+    17	
+    18	logging.basicConfig(
+    19	    level=logging.INFO,
+    20	    format="[%(asctime)s] [%(levelname)s] %(message)s",
+    21	    datefmt="%H:%M:%S",
+    22	)
+    23	logger = logging.getLogger(__name__)
+    24	
+    25	# data-dir 必须通过命令行参数提供
+    26	DEFAULT_DATA_DIR = ""
+    27	
+    28	
+    29	def create_app(base_dir: str = None):
+    30	    """Create the Blob Service app."""
+    31	    from fastapi import FastAPI
+    32	
+    33	    if base_dir is None:
+    34	        base_dir = DEFAULT_DATA_DIR
+    35	    files_dir = os.path.join(base_dir, "files")
+    36	    os.makedirs(files_dir, exist_ok=True)
+    37	
+    38	    storage = BlobByteStore(
+    39	        base_dir=files_dir,
+    40	        backend_config=load_blob_backend_config_from_env(os.environ),
+    41	    )
+    42	    deps = BlobRuntimeDependencies.system(limits=load_blob_limits_from_env(os.environ))
+    43	
+    44	    app = FastAPI(title="NovaIC Blob Service", version="2.0.0")
+    45	    
+    46	    @app.get("/api/health")
+    47	    def health():
+    48	        return {
+    49	            "status": "ok",
+    50	            "service": "blob-service",
+    51	            "contract_version": "blob/v1",
+    52	        }
+    53	    
+    54	    app.include_router(create_blob_router(storage, deps=deps))
+    55	    app.state.storage = storage
+    56	
+    57	    logger.info(f"[BlobService] Started, base_dir={files_dir}")
+    58	
+    59	    return app
+    60	
+    61	
+    62	def main():
+    63	    parser = argparse.ArgumentParser(description="NovaIC Blob Service")
+    64	    parser.add_argument("--port", type=int, default=19995, help="Port to listen")
+    65	    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind")
+    66	    parser.add_argument("--data-dir", type=str, required=True, help="Data directory (required)")
+    67	    args = parser.parse_args()
+    68	
+    69	    logger.info(f"[BlobService] Starting on {args.host}:{args.port}")
+    70	    app = create_app(base_dir=args.data_dir)
+    71	
+    72	    import uvicorn
+    73	    uvicorn.run(app, host=args.host, port=args.port)
+    74	
+    75	
+    76	if __name__ == "__main__":
+    77	    main()
+
+## Cortex runtime artifact and payload clients
+   259	def _put_blob(data: bytes, *, mime_type: str, filename: str = "", source_ref: str = "") -> dict:
+   260	    base = _env("NOVAIC_BLOB_SERVICE_URL").rstrip("/")
+   261	    user_id = _env("NOVAIC_USER_ID")
+   262	    if not base:
+   263	        print(f"{{COMMAND}}: NOVAIC_BLOB_SERVICE_URL is not set", file=sys.stderr)
+   264	        raise SystemExit(1)
+   265	    if not user_id:
+   266	        print(f"{{COMMAND}}: NOVAIC_USER_ID is not set", file=sys.stderr)
+   267	        raise SystemExit(1)
+   268	    sha = hashlib.sha256(data).hexdigest()
+   269	    blob_id = f"artifact-{{uuid.uuid4().hex}}"
+   270	    headers = {{"X-Tenant-ID": user_id}}
+   271	    create_body = {{
+   272	        "namespace": "runtime-artifact",
+   273	        "mime_type": mime_type or "application/octet-stream",
+   274	        "blob_id": blob_id,
+   275	        "expected_size": len(data),
+   276	        "expected_sha256": sha,
+   277	    }}
+   278	    if filename:
+   279	        create_body["filename"] = filename
+   280	    if source_ref:
+   281	        create_body["source_ref"] = source_ref
+   282	    created = _post_json(base, "/v1/blobs/uploads", create_body, headers)
+   283	    session_id = str(created.get("session_id") or "")
+   284	    if not session_id:
+   285	        print(f"{{COMMAND}}: Blob Service did not return upload session_id", file=sys.stderr)
+   286	        raise SystemExit(1)
+   287	    parts: list[int] = []
+   288	    if data:
+   289	        request = urllib.request.Request(
+   290	            f"{{base}}/v1/blobs/uploads/{{urllib.parse.quote(session_id, safe='')}}/parts/1",
+   291	            data=data,
+   292	            headers=headers,
+   293	            method="PUT",
+   294	        )
+   295	        try:
+   296	            with urllib.request.urlopen(request, timeout=60) as response:
+   297	                response.read()
+   298	        except urllib.error.HTTPError as exc:
+   299	            detail = exc.read().decode("utf-8", errors="replace") if exc.fp else str(exc)
+   300	            print(f"{{COMMAND}}: Blob Service HTTP {{exc.code}} uploading part: {{detail}}", file=sys.stderr)
+   301	            raise SystemExit(1)
+   302	        except OSError as exc:
+   303	            print(f"{{COMMAND}}: Blob Service connection failed uploading part: {{exc}}", file=sys.stderr)
+   304	            raise SystemExit(1)
+   305	        parts = [1]
+   306	    completed = _post_json(
+   307	        base,
+   308	        f"/v1/blobs/uploads/{{urllib.parse.quote(session_id, safe='')}}/complete",
+   309	        {{"parts": parts, "final_sha256": sha}},
+   310	        headers,
+   311	    )
+   312	    blob = completed.get("blob")
+   313	    if not isinstance(blob, dict) or not blob.get("blob_ref"):
+   314	        print(f"{{COMMAND}}: Blob Service complete did not return blob_ref", file=sys.stderr)
+   315	        raise SystemExit(1)
+   316	    return blob
+   317	
+   318	
+   319	def _tool_output(
+   320	    *,
+   360	        "sha256": sha256,
+   361	        "summary": summary,
+   362	        "source": source or {{}},
+   363	        "access": access or {{}},
+   364	        "projection": projection or {{}},
+   365	    }}
+   366	
+   367	
+   368	def _decode_b64_field(value: str, *, field: str) -> bytes:
+   369	    try:
+   370	        return base64.b64decode(value.encode("ascii"), validate=True)
+   371	    except Exception as exc:
+   372	        print(f"{{COMMAND}}: invalid base64 {{field}} in device response: {{exc}}", file=sys.stderr)
+   373	        raise SystemExit(1)
+   374	
+   375	
+   376	def _wrap_hd_screenshot(result: dict) -> dict:
+   377	    if result.get("success") is False or not result.get("screenshot"):
+   378	        return result
+   379	    fmt = str(result.get("format") or "jpeg").lower().strip(".") or "jpeg"
+   380	    mime_type = "image/jpeg" if fmt in ("jpg", "jpeg") else f"image/{{fmt}}"
+   381	    data = _decode_b64_field(str(result.get("screenshot") or ""), field="screenshot")
+   382	    blob = _put_blob(
+   383	        data,
+   384	        mime_type=mime_type,
+   385	        filename=f"hd-screenshot.{{'jpg' if fmt == 'jpeg' else fmt}}",
+   386	        source_ref="devicectl hd screenshot",
+   387	    )
+   388	    blob_ref = str(blob["blob_ref"])
+   389	    size = int(blob.get("size") or len(data))
+   390	    sha = str(blob.get("sha256") or hashlib.sha256(data).hexdigest())
+   391	    width = result.get("width")
+   392	    height = result.get("height")
+   393	    artifact = _artifact_manifest(
+   394	        uri=blob_ref,
+   395	        modality="image",
+   396	        name="hd-screenshot.jpg" if fmt == "jpeg" else f"hd-screenshot.{{fmt}}",
+   397	        mime_type=mime_type,
+   398	        size_bytes=size,
+   399	        sha256=sha,
+   400	        summary="Host desktop screenshot",
+   401	        source={{
+   402	            "tool": "devicectl hd screenshot",
+   403	            "width": width,
+   404	            "height": height,
+   405	            "format": fmt,
+   406	        }},
+   407	        access={{"display": {{"tool": "display", "args": {{"file_url": blob_ref}}}}}},
+   408	        projection={{"history": "manifest_only", "monitor": "thumbnail_allowed"}},
+   409	    )
+   410	    return _tool_output(
+   411	        ok=True,
+   412	        text=f"Captured host desktop screenshot: {{width}}x{{height}}, stored as {{blob_ref}}.",
+   413	        artifacts=[artifact],
+   414	        events=[{{"type": "device.screenshot.captured", "summary": "Screenshot stored as runtime artifact."}}],
+   415	        diagnostics={{
+   416	            "device_result": {{k: v for k, v in result.items() if k != "screenshot"}},
+   417	        }},
+   418	    )
+   419	
+   420	
+   421	def _wrap_hd_file_pull(result: dict, request_body: dict) -> dict:
+   422	    if result.get("success") is False or not result.get("data") or result.get("is_base64") is not True:
+   423	        return result
+   424	    path = str(request_body.get("path") or result.get("path") or "")
+   425	    data = _decode_b64_field(str(result.get("data") or ""), field="data")
+   426	    name = Path(path).name or "pulled-file"
+   427	    mime_type = mimetypes.guess_type(name)[0] or "application/octet-stream"
+   428	    blob = _put_blob(
+   429	        data,
+   430	        mime_type=mime_type,
+   431	        filename=name,
+   432	        source_ref=f"devicectl hd file-pull {{path}}".strip(),
+   433	    )
+   434	    blob_ref = str(blob["blob_ref"])
+   435	    size = int(blob.get("size") or len(data))
+   436	    sha = str(blob.get("sha256") or hashlib.sha256(data).hexdigest())
+   437	    artifact = _artifact_manifest(
+   438	        uri=blob_ref,
+   439	        modality="binary",
+   440	        name=name,
+   441	        mime_type=mime_type,
+   442	        size_bytes=size,
+   443	        sha256=sha,
+   444	        summary=f"Host desktop file pulled from {{path}}" if path else "Host desktop file pulled",
+   445	        source={{"tool": "devicectl hd file-pull", "path": path}},
+   446	        projection={{"history": "manifest_only"}},
+   447	    )
+   448	    return _tool_output(
+   449	        ok=True,
+   450	        text=f"Pulled host desktop file {{path or name}} into runtime artifact {{blob_ref}}.",
+   451	        artifacts=[artifact],
+   452	        events=[{{"type": "device.file.pulled", "summary": "File stored as runtime artifact."}}],
+   453	        diagnostics={{
+   454	            "device_result": {{k: v for k, v in result.items() if k != "data"}},
+   455	        }},
+    70	    async def put_payload(
+    71	        self,
+    72	        *,
+    73	        tenant_id: str,
+    74	        scope_path: str,
+    75	        source_payload_ref: str,
+    76	        payload: Any,
+    77	        payload_bytes: bytes,
+    78	    ) -> str:
+    79	        blob_id = _payload_blob_id(tenant_id, scope_path, source_payload_ref)
+    80	        digest = hashlib.sha256(payload_bytes).hexdigest()
+    81	        create_body = {
+    82	            "tenant_id": tenant_id,
+    83	            "namespace": "cortex-payload",
+    84	            "mime_type": "application/json",
+    85	            "blob_id": blob_id,
+    86	            "expected_size": len(payload_bytes),
+    87	            "expected_sha256": digest,
+    88	            "created_by": "cortex",
+    89	            "source_ref": source_payload_ref,
+    90	        }
+    91	        async with internal_async_client("cortex", timeout=self._timeout) as client:
+    92	            create_resp = await client.post(f"{self._base_url}/v1/blobs/uploads", json=create_body)
+    93	            create_resp.raise_for_status()
+    94	            session_id = create_resp.json().get("session_id")
+    95	            if not isinstance(session_id, str) or not session_id:
+    96	                raise ValueError("Blob Service did not return an upload session_id")
+    97	
+    98	            parts: list[int] = []
+    99	            if payload_bytes:
+   100	                part_resp = await client.put(
+   101	                    f"{self._base_url}/v1/blobs/uploads/{quote(session_id)}/parts/1",
+   102	                    content=payload_bytes,
+   103	                    headers={"X-Tenant-ID": tenant_id},
+   104	                )
+   105	                part_resp.raise_for_status()
+   106	                parts = [1]
+   107	
+   108	            complete_resp = await client.post(
+   109	                f"{self._base_url}/v1/blobs/uploads/{quote(session_id)}/complete",
+   110	                json={"parts": parts, "final_sha256": digest},
+   111	                headers={"X-Tenant-ID": tenant_id},
+   112	            )
+   113	            complete_resp.raise_for_status()
+   114	            data = complete_resp.json().get("blob") or {}
+   115	        blob_ref = data.get("blob_ref")
+   116	        if not isinstance(blob_ref, str) or not blob_ref.startswith("blob://cortex-payload/"):
+   117	            raise ValueError("Blob Service did not return a cortex-payload BlobRef")
+   118	        return blob_ref
+   119	
+   120	    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+   121	        namespace, blob_id = _parse_blob_ref(blob_ref)
+   122	        async with internal_async_client("cortex", timeout=self._timeout) as client:
+   123	            resp = await client.get(
+   124	                f"{self._base_url}/v1/blobs/{quote(namespace)}/{quote(blob_id)}",
+   125	                headers={"X-Tenant-ID": tenant_id},
+   126	            )
+   127	            resp.raise_for_status()
+   128	            raw = resp.content
+   129	        return json.loads(raw.decode("utf-8"))
+   130	
+
+## Blob contract tests
+    90	                state["device_bodies"].append(body)
+    91	                self._write_json(
+    92	                    {
+    93	                        "success": True,
+    94	                        "data": base64.b64encode(file_bytes).decode("ascii"),
+    95	                        "is_base64": True,
+    96	                        "size": len(file_bytes),
+    97	                    }
+    98	                )
+    99	                return
+   100	            if self.path == "/v1/blobs/uploads":
+   101	                upload = body
+   102	                state["uploads"].append(upload)
+   103	                self._write_json({"session_id": "upload-" + "a" * 32, "status": "created", "parts": []})
+   104	                return
+   105	            if self.path.endswith("/complete"):
+   106	                parts = state["parts"]
+   107	                data = b"".join(part["data"] for part in parts) if parts else b""
+   108	                upload = state["uploads"][-1]
+   109	                blob_id = upload["blob_id"]
+   110	                self._write_json(
+   111	                    {
+   112	                        "blob": {
+   113	                            "blob_ref": f"blob://runtime-artifact/{blob_id}",
+   114	                            "namespace": "runtime-artifact",
+   115	                            "blob_id": blob_id,
+   116	                            "mime_type": upload["mime_type"],
+   117	                            "size": len(data),
+   118	                            "sha256": hashlib.sha256(data).hexdigest(),
+   119	                        }
+   120	                    }
+   121	                )
+   122	                return
+   123	            self.send_error(404)
+   124	
+   125	        def do_PUT(self) -> None:
+   126	            length = int(self.headers.get("content-length", "0") or "0")
+   127	            data = self.rfile.read(length) if length else b""
+   128	            state["parts"].append({"path": self.path, "data": data})
+   129	            self._write_json({"part_number": 1, "status": "receiving"})
+   130	
+   131	    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+   132	    thread = threading.Thread(target=server.serve_forever, daemon=True)
+   133	    thread.start()
+   134	    return server, thread, state
+   135	
+   136	
+   137	def test_devicectl_hd_screenshot_uploads_image_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+   138	    image = b"\xff\xd8jpeg-bytes"
+   139	    server, thread, state = _server_for_device_and_blob(screenshot_bytes=image)
+   140	    try:
+   141	        base_url = f"http://127.0.0.1:{server.server_port}"
+   142	        completed = _run_devicectl(tmp_path, ["hd", "screenshot"], server_url=base_url)
+   143	    finally:
+   144	        server.shutdown()
+   145	        thread.join(timeout=5)
+   146	
+   147	    assert completed.returncode == 0, completed.stderr
+   148	    body = json.loads(completed.stdout)
+   149	    assert body["version"] == "tool-output.v1"
+   150	    assert body["ok"] is True
+   151	    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+   152	    assert body["artifacts"][0]["modality"] == "image"
+   153	    assert body["artifacts"][0]["mime_type"] == "image/jpeg"
+   154	    assert body["artifacts"][0]["access"]["display"]["args"]["file_url"] == body["artifacts"][0]["uri"]
+   155	    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+   156	    assert state["uploads"][0]["mime_type"] == "image/jpeg"
+   157	    assert state["parts"][0]["data"] == image
+   158	    assert base64.b64encode(image).decode("ascii") not in completed.stdout
+   159	    assert '"screenshot":' not in completed.stdout
+   160	
+   161	
+   162	def test_devicectl_hd_file_pull_uploads_file_and_prints_tool_output_artifact(tmp_path: Path) -> None:
+   163	    file_payload = b"hello from host file"
+   164	    server, thread, state = _server_for_device_and_blob(file_bytes=file_payload)
+   165	    try:
+   166	        base_url = f"http://127.0.0.1:{server.server_port}"
+   167	        completed = _run_devicectl(
+   168	            tmp_path,
+   169	            ["hd", "file-pull", "--json", '{"path":"/tmp/note.txt"}'],
+   170	            server_url=base_url,
+   171	        )
+   172	    finally:
+   173	        server.shutdown()
+   174	        thread.join(timeout=5)
+   175	
+   176	    assert completed.returncode == 0, completed.stderr
+   177	    body = json.loads(completed.stdout)
+   178	    assert body["version"] == "tool-output.v1"
+   179	    assert body["ok"] is True
+   180	    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+   181	    assert body["artifacts"][0]["modality"] == "binary"
+   182	    assert body["artifacts"][0]["name"] == "note.txt"
+   183	    assert body["artifacts"][0]["mime_type"] == "text/plain"
+   184	    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+   185	    assert state["parts"][0]["data"] == file_payload
+   186	    assert base64.b64encode(file_payload).decode("ascii") not in completed.stdout
+   187	    assert '"data":' not in completed.stdout
+   188	
+   189	
+   190	def test_cortex_payload_help_teaches_bounded_payload_inspection(tmp_path: Path) -> None:
+   191	    completed = _run_cortex(tmp_path, ["payload", "--help"])
+   192	
+   193	    assert completed.returncode == 0, completed.stderr
+   194	    assert "read/search return bounded text slices" in completed.stdout
+   195	    assert "summarize/qa send bounded, redacted" in completed.stdout
+   196	    assert "Do not dump raw large payloads or" in completed.stdout
+   197	    assert "base64 into normal shell output" in completed.stdout
+   198	
+   199	
+   200	def test_devicectl_help_teaches_artifact_manifest_not_base64(tmp_path: Path) -> None:
+   201	    completed = _run_devicectl(tmp_path, ["--help"], server_url="http://127.0.0.1:9")
+   202	
+   203	    assert completed.returncode == 0, completed.stderr
+   204	    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+   205	    assert "Do not print or paste raw base64" in completed.stdout
+   206	    assert "display access hints" in completed.stdout
+     1	"""BlobObjectStore tests."""
+     2	
+     3	from __future__ import annotations
+     4	
+     5	import sys
+     6	from pathlib import Path
+     7	
+     8	import httpx
+     9	import pytest
+    10	
+    11	from logicalfs import BlobObjectStore
+    12	
+    13	
+    14	@pytest.mark.asyncio
+    15	async def test_blob_object_store_roundtrip_and_move_prefix(tmp_path, monkeypatch):
+    16	    storage_root = Path(__file__).resolve().parents[2] / "novaic-blob-service"
+    17	    sys.path.insert(0, str(storage_root))
+    18	    try:
+    19	        from blob_service.main import create_app
+    20	
+    21	        app = create_app(base_dir=str(tmp_path))
+    22	        real_async_client = httpx.AsyncClient
+    23	
+    24	        def patched_async_client(*args, **kwargs):
+    25	            kwargs.pop("timeout", None)
+    26	            return real_async_client(
+    27	                transport=httpx.ASGITransport(app=app),
+    28	                base_url="http://blob.local",
+    29	                **kwargs,
+    30	            )
+    31	
+    32	        monkeypatch.setattr(httpx, "AsyncClient", patched_async_client)
+    33	        store = BlobObjectStore(base_url="http://blob.local", tenant_id="user-1")
+    34	
+    35	        await store.put("agents/a/rw/a.txt", b"A", "text/plain")
+    36	        await store.put("agents/a/rw/sub/b.txt", b"B", "text/plain")
+    37	
+    38	        assert await store.get("agents/a/rw/a.txt") == b"A"
+    39	        assert await store.exists("agents/a/rw/a.txt")
+    40	        assert not await store.exists("agents/a/rw/missing.txt")
+    41	
+    42	        infos = await store.list_objects("agents/a/rw/")
+    43	        keys = {(item.key, item.is_prefix, item.size) for item in infos}
+    44	        assert ("agents/a/rw/a.txt", False, 1) in keys
+    45	        assert ("agents/a/rw/sub/", True, 0) in keys
+    46	
+    47	        assert await store.list_recursive("agents/a/rw/") == [
+    48	            "agents/a/rw/a.txt",
+    49	            "agents/a/rw/sub/b.txt",
+    50	        ]
+    51	
+    52	        moved = await store.move_prefix("agents/a/rw/", "agents/a/ro/scopes/s1/")
+    53	        assert moved == 2
+    54	        assert await store.get("agents/a/ro/scopes/s1/a.txt") == b"A"
+    55	        assert not await store.exists("agents/a/rw/a.txt")
+    56	    finally:
+    57	        try:
+    58	            sys.path.remove(str(storage_root))
+    59	        except ValueError:
+    60	            pass

@@ -1,0 +1,17 @@
+=== stable_json observation fallback guard ===
+=== include_display guard ===
+novaic-cortex/novaic_cortex/step_result_projection.py:254:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:264:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:276:        include_display=True,
+=== image/base64 suspicious projection guard ===
+novaic-cortex/novaic_cortex/step_result_projection.py:143:    content = raw.get("content") or raw.get("_mcp_content")
+novaic-cortex/novaic_cortex/step_result_projection.py:154:                # 支持 URL 形式或直接的 data(base64) 形式
+novaic-cortex/novaic_cortex/step_result_projection.py:164:                        "url": f"data:{mime};base64,{item['data']}",
+novaic-cortex/novaic_cortex/step_result_projection.py:202:def _format_mcp_content(
+novaic-cortex/novaic_cortex/step_result_projection.py:244:    return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
+novaic-cortex/novaic_cortex/step_result_projection.py:247:def format_for_history_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:254:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:257:def format_for_current_tool_result_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:264:    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+novaic-cortex/novaic_cortex/step_result_projection.py:267:def format_for_display_perception_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:274:    return _format_mcp_content(

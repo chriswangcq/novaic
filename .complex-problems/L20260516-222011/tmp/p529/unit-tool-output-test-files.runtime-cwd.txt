@@ -1,0 +1,12 @@
+tests/test_queue_explicit_dependencies.py
+tests/unit/task_queue/test_dedup_guard_failure_path.py
+tests/unit/task_queue/test_factory_client_multimodal.py
+tests/unit/task_queue/test_high_concurrency_retry_replay.py
+tests/unit/task_queue/test_no_historical_tool_image_injection.py
+tests/unit/task_queue/test_retry_policy_and_idempotency.py
+tests/unit/task_queue/test_saga_worker_boundary.py
+tests/unit/task_queue/test_shell_output_contract.py
+tests/unit/task_queue/test_tool_handlers_display_chat_history.py
+tests/unit/task_queue/test_tool_handlers_failure_event.py
+tests/unit/task_queue/test_tool_output_contract.py
+tests/unit/task_queue/test_user_content.py

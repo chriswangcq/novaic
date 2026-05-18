@@ -1,0 +1,14 @@
+ business/agent_actions.py                   | 13 ++---
+ business/entity_store.py                    | 16 ++++--
+ business/internal/entity.py                 |  6 +--
+ business/internal/environment.py            |  4 +-
+ business/internal/health.py                 |  5 +-
+ business/internal/subagent.py               | 19 +++----
+ business/internal/subagent_state.py         | 38 ++++++--------
+ business/internal/subagent_utils.py         |  9 ----
+ business/schema_push.py                     |  9 +---
+ business/subscribers/dispatch_subscriber.py | 77 +++++++++++------------------
+ business/wake/assembler_factory.py          |  9 ++--
+ main_subscriber.py                          | 45 +++++++----------
+ tests/test_pr124_subagent_spawn_im.py       |  8 +--
+ 13 files changed, 95 insertions(+), 163 deletions(-)

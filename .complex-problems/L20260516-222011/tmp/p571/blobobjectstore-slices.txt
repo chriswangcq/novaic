@@ -1,0 +1,626 @@
+## Cortex registry uses BlobObjectStore only as LogicalFS object adapter
+     1	"""WorkspaceRegistry — multi-tenant Workspace client/cache wiring.
+     2	
+     3	The registry holds process-local Workspace and object-adapter clients only.
+     4	It is not a production state authority: durable control-plane state lives in
+     5	OperationalSqliteStore, while live Workspace files are owned by the
+     6	LogicalFS/Blob authority boundary. Multiple Cortex processes may each hold
+     7	their own registry cache without changing the source of truth.
+     8	"""
+     9	
+    10	from __future__ import annotations
+    11	
+    12	import logging
+    13	import time
+    14	import uuid
+    15	from pathlib import Path
+    16	from typing import Callable
+    17	
+    18	from logicalfs import BlobObjectStore
+    19	
+    20	from novaic_cortex.blob_payload import BlobPayloadPolicy, HttpBlobPayloadClient, PayloadBlobClient
+    21	from novaic_cortex.operational_store import OperationalSqliteStore, build_operational_sqlite_store
+    22	from novaic_cortex.workspace import Workspace
+    23	from novaic_cortex.workspace_authority import build_workspace_file_authority
+    24	
+    25	logger = logging.getLogger(__name__)
+    26	
+    27	
+    28	class WorkspaceRegistry:
+    29	    """Create and cache Workspace instances per (user_id, agent_id)."""
+    30	
+    31	    def __init__(
+    32	        self,
+    33	        blob_service_url: str,
+    34	        *,
+    35	        operational_store: OperationalSqliteStore,
+    36	        payload_blob_client: PayloadBlobClient | None = None,
+    37	        payload_blob_policy: BlobPayloadPolicy,
+    38	        clock: Callable[[], float],
+    39	    ) -> None:
+    40	        if not blob_service_url or not blob_service_url.strip():
+    41	            raise ValueError("blob_service_url is required")
+    42	        self._blob_service_url = blob_service_url.rstrip("/")
+    43	        self._payload_blob_client = (
+    44	            payload_blob_client
+    45	            if payload_blob_client is not None
+    46	            else HttpBlobPayloadClient(self._blob_service_url)
+    47	        )
+    48	        self._payload_blob_policy = payload_blob_policy
+    49	        self._clock = clock
+    50	        self._operational_store = operational_store
+    51	        self._stores: dict[str, BlobObjectStore] = {}  # user_id -> LogicalFS object adapter
+    52	        self._workspaces: dict[tuple[str, str], Workspace] = {}  # (user_id, agent_id)
+    53	
+    54	    @property
+    55	    def operational_store(self) -> OperationalSqliteStore:
+    56	        return self._operational_store
+    57	
+    58	    def _get_store(self, user_id: str) -> BlobObjectStore:
+    59	        if user_id not in self._stores:
+    60	            self._stores[user_id] = BlobObjectStore(
+    61	                base_url=self._blob_service_url,
+    62	                tenant_id=user_id,
+    63	            )
+    64	            logger.info("[Registry] LogicalFS object adapter created for user=%s", user_id)
+    65	        return self._stores[user_id]
+    66	
+    67	    def get_workspace(self, user_id: str, agent_id: str) -> Workspace:
+    68	        key = (user_id, agent_id)
+    69	        if key not in self._workspaces:
+    70	            object_store = self._get_store(user_id)
+    71	            authority = build_workspace_file_authority(object_store, agent_id)
+    72	            ws = Workspace(
+    73	                authority,
+    74	                agent_id,
+    75	                payload_blob_client=self._payload_blob_client,
+    76	                payload_blob_policy=self._payload_blob_policy,
+    77	                clock=self._clock,
+    78	                operational_store=self._operational_store,
+    79	            )
+    80	            self._workspaces[key] = ws
+    81	            logger.info("[Registry] Workspace created for user=%s agent=%s", user_id, agent_id)
+    82	        return self._workspaces[key]
+    83	
+    84	
+    85	def build_workspace_registry(
+    86	    blob_service_url: str,
+    87	    *,
+    88	    operational_sqlite_path: str | Path,
+    89	    payload_blob_client: PayloadBlobClient | None = None,
+    90	    payload_blob_policy: BlobPayloadPolicy | None = None,
+
+## Cortex workspace authority builds LogicalFS authority from object store
+     1	"""Cortex semantic factory for LogicalFS workspace authorities."""
+     2	
+     3	from __future__ import annotations
+     4	
+     5	from logicalfs import (
+     6	    LogicalFileAuthorityLayout,
+     7	    LogicalObjectStore,
+     8	    StoreBackedLogicalFileAuthority,
+     9	)
+    10	
+    11	
+    12	def validate_agent_id(agent_id: str) -> None:
+    13	    if not isinstance(agent_id, str):
+    14	        raise ValueError("agent_id must be a str")
+    15	    if not agent_id.strip():
+    16	        raise ValueError("agent_id must be non-empty")
+    17	    if "\x00" in agent_id:
+    18	        raise ValueError("agent_id must not contain NUL")
+    19	    if "/" in agent_id:
+    20	        raise ValueError("agent_id must not contain '/'")
+    21	    if ".." in agent_id:
+    22	        raise ValueError("agent_id must not contain '..'")
+    23	
+    24	
+    25	def agent_owner_prefix(agent_id: str) -> str:
+    26	    validate_agent_id(agent_id)
+    27	    return f"agents/{agent_id}"
+    28	
+    29	
+    30	def build_workspace_file_authority(
+    31	    object_store: LogicalObjectStore,
+    32	    agent_id: str,
+    33	) -> StoreBackedLogicalFileAuthority:
+    34	    return StoreBackedLogicalFileAuthority(
+    35	        object_store,
+    36	        LogicalFileAuthorityLayout(owner_prefix=agent_owner_prefix(agent_id)),
+    37	    )
+    38	
+    39	
+    40	__all__ = [
+    41	    "agent_owner_prefix",
+    42	    "build_workspace_file_authority",
+    43	    "validate_agent_id",
+    44	]
+
+## LogicalFS object authority contract and key mapping
+     1	"""Generic live LogicalFS file authority.
+     2	
+     3	This module owns realtime logical file operations over /ro and /rw. It is
+     4	business-agnostic: callers provide explicit namespace/layout configuration and
+     5	a generic object-store adapter. Cortex semantics, agents, scopes, Blob Service,
+     6	and process execution live outside this boundary.
+     7	"""
+     8	
+     9	from __future__ import annotations
+    10	
+    11	import asyncio
+    12	import json
+    13	from dataclasses import dataclass
+    14	from typing import Iterable, Protocol, Sequence
+    15	
+    16	from logicalfs.contracts import LogicalFSDirectoryEntry, LogicalObjectInfo
+    17	
+    18	
+    19	class LogicalObjectStore(Protocol):
+    20	    async def put(self, key: str, data: bytes, content_type: str = "") -> None: ...
+    21	
+    22	    async def get(self, key: str) -> bytes: ...
+    23	
+    24	    async def exists(self, key: str) -> bool: ...
+    25	
+    26	    async def delete(self, key: str) -> None: ...
+    27	
+    28	    async def list_objects(self, prefix: str, delimiter: str = "/") -> Sequence[LogicalObjectInfo]: ...
+    29	
+    30	    async def list_recursive(self, prefix: str) -> Sequence[str]: ...
+    31	
+    32	    async def move_prefix(self, src_prefix: str, dst_prefix: str) -> int: ...
+    33	
+    34	
+    35	@dataclass(frozen=True)
+    36	class LogicalFileAuthorityLayout:
+    37	    owner_prefix: str
+    38	    ro_prefix: str = "ro"
+    39	    rw_prefix: str = "rw"
+    40	
+    41	    def object_prefix(self) -> str:
+    42	        return self.owner_prefix.strip("/")
+    43	
+    44	
+    45	def _normalize_logical_path(path: str) -> str:
+    46	    if not isinstance(path, str):
+    47	        raise ValueError("path must be a string")
+    48	    p = path.strip()
+    49	    if "\x00" in p:
+    50	        raise ValueError("path must not contain NUL")
+    51	    if not p.startswith("/"):
+    52	        p = "/" + p
+    53	    while "//" in p:
+    54	        p = p.replace("//", "/")
+    55	    for segment in p.split("/"):
+    56	        if segment == "..":
+    57	            raise ValueError("path must not contain '..'")
+    58	    if p in {"/ro", "/rw"}:
+    59	        return p + "/"
+    60	    if p.startswith("/ro/") or p.startswith("/rw/"):
+    61	        return p
+    62	    raise ValueError(f"path must start with /ro/ or /rw/: {path!r}")
+    63	
+    64	
+    65	def logical_to_object_key(layout: LogicalFileAuthorityLayout, path: str) -> str:
+    66	    logical = _normalize_logical_path(path)
+    67	    prefix = layout.object_prefix()
+    68	    base = f"{prefix}/" if prefix else ""
+    69	    ro = layout.ro_prefix.strip("/")
+    70	    rw = layout.rw_prefix.strip("/")
+    71	    if logical.startswith("/ro/"):
+    72	        rel = logical.removeprefix("/ro/").lstrip("/")
+    73	        return f"{base}{ro}/{rel}"
+    74	    if logical.startswith("/rw/"):
+    75	        rel = logical.removeprefix("/rw/").lstrip("/")
+    76	        return f"{base}{rw}/{rel}"
+    77	    raise ValueError(f"path must start with /ro/ or /rw/: {path!r}")
+    78	
+    79	
+    80	class StoreBackedLogicalFileAuthority:
+    81	    """Live /ro and /rw authority backed by a generic object store."""
+    82	
+    83	    def __init__(self, store: LogicalObjectStore, layout: LogicalFileAuthorityLayout) -> None:
+    84	        self._store = store
+    85	        self._layout = layout
+    86	
+    87	    @property
+    88	    def layout(self) -> LogicalFileAuthorityLayout:
+    89	        return self._layout
+    90	
+    91	    def key(self, path: str) -> str:
+    92	        return logical_to_object_key(self._layout, path)
+    93	
+    94	    def _prefix_key(self, path: str) -> str:
+    95	        key = self.key(path)
+    96	        return key if key.endswith("/") else key + "/"
+    97	
+    98	    async def write_bytes(self, path: str, data: bytes, content_type: str = "") -> None:
+    99	        await self._store.put(self.key(path), data, content_type)
+   100	
+   101	    async def write_text(self, path: str, content: str) -> None:
+   102	        await self.write_bytes(path, content.encode("utf-8"))
+   103	
+   104	    async def write_json(self, path: str, obj: dict) -> None:
+   105	        await self.write_bytes(
+   106	            path,
+   107	            json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8"),
+   108	            "application/json",
+   109	        )
+   110	
+   111	    async def read_bytes(self, path: str) -> bytes:
+   112	        return await self._store.get(self.key(path))
+   113	
+   114	    async def read_text(self, path: str, encoding: str = "utf-8") -> str:
+   115	        return (await self.read_bytes(path)).decode(encoding)
+   116	
+   117	    async def exists(self, path: str) -> bool:
+   118	        return await self._store.exists(self.key(path))
+   119	
+   120	    async def delete(self, path: str) -> None:
+   121	        await self._store.delete(self.key(path))
+   122	
+   123	    async def append_line(self, path: str, line: str) -> None:
+   124	        await self.append_lines(path, line.rstrip("\n") + "\n")
+   125	
+   126	    async def append_lines(self, path: str, lines: str) -> None:
+   127	        key = self.key(path)
+   128	        try:
+   129	            prev = await self._store.get(key)
+   130	        except KeyError:
+   131	            prev = b""
+   132	        await self._store.put(key, prev + lines.encode("utf-8"))
+   133	
+   134	    async def list_tree_bytes(
+   135	        self,
+   136	        path: str,
+   137	        *,
+   138	        concurrency: int = 16,
+   139	    ) -> list[tuple[str, bytes]]:
+   140	        store_prefix = self._prefix_key(path)
+   141	        keys = list(await self._store.list_recursive(store_prefix))
+   142	
+   143	        async def read_one(key: str) -> tuple[str, bytes] | None:
+   144	            if not key.startswith(store_prefix):
+   145	                return None
+   146	            rel = key[len(store_prefix):].lstrip("/")
+   147	            if not rel:
+   148	                return None
+   149	            return rel, await self._store.get(key)
+   150	
+   151	        if concurrency <= 1:
+   152	            results = [await read_one(key) for key in keys]
+   153	        else:
+   154	            sem = asyncio.Semaphore(max(1, int(concurrency)))
+   155	
+   156	            async def limited_read(key: str) -> tuple[str, bytes] | None:
+   157	                async with sem:
+   158	                    return await read_one(key)
+   159	
+   160	            results = await asyncio.gather(*(limited_read(key) for key in keys))
+   161	        return [item for item in results if item is not None]
+   162	
+   163	    async def list_dir(self, path: str) -> list[LogicalFSDirectoryEntry]:
+   164	        logical_base = _normalize_logical_path(path)
+   165	        if not logical_base.endswith("/"):
+   166	            logical_base += "/"
+   167	        store_prefix = self._prefix_key(logical_base)
+   168	        infos = await self._store.list_objects(store_prefix)
+   169	        entries: list[LogicalFSDirectoryEntry] = []
+   170	        for item in infos:
+   171	            name = item.key.rstrip("/").split("/")[-1]
+   172	            logical = logical_base + name
+   173	            if item.is_prefix:
+   174	                logical = logical.rstrip("/") + "/"
+   175	            entries.append(
+   176	                LogicalFSDirectoryEntry(
+   177	                    name=name,
+   178	                    path=logical,
+   179	                    is_dir=item.is_prefix,
+   180	                    size=item.size,
+   181	                )
+   182	            )
+   183	        return entries
+   184	
+   185	    async def move_tree(self, src_path: str, dst_path: str) -> int:
+   186	        return await self._store.move_prefix(self._prefix_key(src_path), self._prefix_key(dst_path))
+   187	
+   188	    async def list_object_keys(self, path: str) -> list[str]:
+   189	        return list(await self._store.list_recursive(self._prefix_key(path)))
+   190	
+   191	    async def initialize_layout(self, logical_dirs: Iterable[str]) -> None:
+   192	        for logical_dir in logical_dirs:
+   193	            directory = _normalize_logical_path(logical_dir).rstrip("/")
+   194	            await self.write_bytes(f"{directory}/.keep", b"")
+   195	
+   196	
+   197	__all__ = [
+   198	    "LogicalFileAuthorityLayout",
+   199	    "LogicalObjectStore",
+   200	    "StoreBackedLogicalFileAuthority",
+   201	    "logical_to_object_key",
+   202	]
+
+## BlobObjectStore implementation
+     1	"""Blob Service object-store adapter below LogicalFS.
+     2	
+     3	Blob Service is a cheap byte/object server. LogicalFS owns realtime /ro and /rw
+     4	file authority above this adapter; callers should not use this class as a
+     5	semantic workspace API.
+     6	"""
+     7	
+     8	from __future__ import annotations
+     9	
+    10	from typing import Any
+    11	from urllib.parse import quote
+    12	
+    13	from common.http.clients import internal_async_client
+    14	
+    15	from logicalfs.contracts import LogicalObjectInfo
+    16	
+    17	
+    18	class BlobObjectStore:
+    19	    """Async object-store adapter over Blob Service object APIs."""
+    20	
+    21	    def __init__(
+    22	        self,
+    23	        *,
+    24	        base_url: str,
+    25	        tenant_id: str,
+    26	        namespace: str = "cortex-store",
+    27	        timeout: float = 10.0,
+    28	        client_service_name: str = "logicalfs",
+    29	    ) -> None:
+    30	        if not base_url or not base_url.strip():
+    31	            raise ValueError("base_url is required")
+    32	        if not tenant_id or not tenant_id.strip():
+    33	            raise ValueError("tenant_id is required")
+    34	        self._base_url = base_url.rstrip("/")
+    35	        self._tenant_id = tenant_id
+    36	        self._namespace = namespace
+    37	        self._timeout = timeout
+    38	        self._client_service_name = client_service_name
+    39	
+    40	    def _headers(self) -> dict[str, str]:
+    41	        return {"X-Tenant-ID": self._tenant_id}
+    42	
+    43	    def _object_url(self, key: str) -> str:
+    44	        return f"{self._base_url}/v1/objects/{quote(self._namespace)}/{quote(key, safe='/')}"
+    45	
+    46	    async def put(self, key: str, data: bytes, content_type: str = "") -> None:
+    47	        headers = self._headers()
+    48	        if content_type:
+    49	            headers["Content-Type"] = content_type
+    50	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+    51	            resp = await client.put(self._object_url(key), headers=headers, content=data)
+    52	            resp.raise_for_status()
+    53	
+    54	    async def get(self, key: str) -> bytes:
+    55	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+    56	            resp = await client.get(self._object_url(key), headers=self._headers())
+    57	        if resp.status_code == 404:
+    58	            raise KeyError(key)
+    59	        resp.raise_for_status()
+    60	        return resp.content
+    61	
+    62	    async def exists(self, key: str) -> bool:
+    63	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+    64	            resp = await client.get(
+    65	                f"{self._object_url(key)}/info",
+    66	                headers=self._headers(),
+    67	            )
+    68	        if resp.status_code == 404:
+    69	            return False
+    70	        resp.raise_for_status()
+    71	        return True
+    72	
+    73	    async def delete(self, key: str) -> None:
+    74	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+    75	            resp = await client.delete(self._object_url(key), headers=self._headers())
+    76	        if resp.status_code == 404:
+    77	            return
+    78	        resp.raise_for_status()
+    79	
+    80	    async def list_objects(self, prefix: str, delimiter: str = "/") -> list[LogicalObjectInfo]:
+    81	        if delimiter != "/":
+    82	            raise NotImplementedError("BlobObjectStore only supports delimiter='/'")
+    83	        data = await self._list(prefix=prefix, delimiter=delimiter, recursive=False)
+    84	        return [
+    85	            LogicalObjectInfo(
+    86	                key=str(item["key"]),
+    87	                size=int(item.get("size") or 0),
+    88	                is_prefix=bool(item.get("is_prefix")),
+    89	            )
+    90	            for item in data.get("objects", [])
+    91	        ]
+    92	
+    93	    async def list_recursive(self, prefix: str) -> list[str]:
+    94	        data = await self._list(prefix=prefix, delimiter="/", recursive=True)
+    95	        return sorted(str(item["key"]) for item in data.get("objects", []))
+    96	
+    97	    async def _list(self, *, prefix: str, delimiter: str, recursive: bool) -> dict[str, Any]:
+    98	        params = {
+    99	            "namespace": self._namespace,
+   100	            "prefix": prefix,
+   101	            "delimiter": delimiter,
+   102	            "recursive": "true" if recursive else "false",
+   103	        }
+   104	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+   105	            resp = await client.get(
+   106	                f"{self._base_url}/v1/objects/_list",
+   107	                params=params,
+   108	                headers=self._headers(),
+   109	            )
+   110	            resp.raise_for_status()
+   111	            return resp.json()
+   112	
+   113	    async def move(self, src: str, dst: str) -> None:
+   114	        data = await self.get(src)
+   115	        await self.put(dst, data)
+   116	        await self.delete(src)
+   117	
+   118	    async def move_prefix(self, src_prefix: str, dst_prefix: str) -> int:
+   119	        body = {
+   120	            "tenant_id": self._tenant_id,
+   121	            "namespace": self._namespace,
+   122	            "src_prefix": src_prefix,
+   123	            "dst_prefix": dst_prefix,
+   124	        }
+   125	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+   126	            resp = await client.post(f"{self._base_url}/v1/objects/_move-prefix", json=body)
+   127	            resp.raise_for_status()
+   128	            data = resp.json()
+   129	        return int(data.get("moved") or 0)
+   130	
+   131	
+   132	__all__ = ["BlobObjectStore"]
+
+## Cortex payload blob adapter is payload-specific, not workspace authority
+     1	"""Blob raw-byte payload storage for Cortex.
+     2	
+     3	Cortex owns work trace semantics. Blob Service owns large raw bytes. This
+     4	module is the narrow adapter between the two: it stores JSON-serialized tool
+     5	payloads in Blob Service and returns ``blob://cortex-payload/...`` refs.
+     6	"""
+     7	
+     8	from __future__ import annotations
+     9	
+    10	import hashlib
+    11	import json
+    12	import os
+    13	from dataclasses import dataclass
+    14	from typing import Any, Protocol
+    15	from urllib.parse import quote
+    16	
+    17	from common.http.clients import internal_async_client
+    18	
+    19	
+    20	DEFAULT_PAYLOAD_BLOB_THRESHOLD_BYTES = 64 * 1024
+    21	
+    22	
+    23	class PayloadBlobClient(Protocol):
+    24	    async def put_payload(
+    25	        self,
+    26	        *,
+    27	        tenant_id: str,
+    28	        scope_path: str,
+    29	        source_payload_ref: str,
+    30	        payload: Any,
+    31	        payload_bytes: bytes,
+    32	    ) -> str:
+    33	        ...
+    34	
+    35	    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+    36	        ...
+    37	
+    38	
+    39	@dataclass(frozen=True)
+    40	class BlobPayloadPolicy:
+    41	    threshold_bytes: int = DEFAULT_PAYLOAD_BLOB_THRESHOLD_BYTES
+    42	
+    43	    @classmethod
+    44	    def from_env(cls) -> "BlobPayloadPolicy":
+    45	        raw = os.getenv("CORTEX_PAYLOAD_BLOB_THRESHOLD_BYTES", "").strip()
+    46	        if not raw:
+    47	            return cls()
+    48	        try:
+    49	            value = int(raw)
+    50	        except ValueError:
+    51	            value = DEFAULT_PAYLOAD_BLOB_THRESHOLD_BYTES
+    52	        return cls(threshold_bytes=max(0, value))
+    53	
+    54	    def should_externalize(self, payload_size: int) -> bool:
+    55	        return payload_size > self.threshold_bytes
+    56	
+    57	
+    58	class HttpBlobPayloadClient:
+    59	    def __init__(self, base_url: str, *, timeout: float = 10.0) -> None:
+    60	        self._base_url = base_url.rstrip("/")
+    61	        self._timeout = timeout
+    62	
+    63	    @classmethod
+    64	    def from_env(cls) -> "HttpBlobPayloadClient | None":
+    65	        base_url = os.getenv("CORTEX_BLOB_SERVICE_URL", "").strip()
+    66	        if not base_url:
+    67	            return None
+    68	        return cls(base_url)
+    69	
+    70	    async def put_payload(
+    71	        self,
+    72	        *,
+    73	        tenant_id: str,
+    74	        scope_path: str,
+    75	        source_payload_ref: str,
+    76	        payload: Any,
+    77	        payload_bytes: bytes,
+    78	    ) -> str:
+    79	        blob_id = _payload_blob_id(tenant_id, scope_path, source_payload_ref)
+    80	        digest = hashlib.sha256(payload_bytes).hexdigest()
+    81	        create_body = {
+    82	            "tenant_id": tenant_id,
+    83	            "namespace": "cortex-payload",
+    84	            "mime_type": "application/json",
+    85	            "blob_id": blob_id,
+    86	            "expected_size": len(payload_bytes),
+    87	            "expected_sha256": digest,
+    88	            "created_by": "cortex",
+    89	            "source_ref": source_payload_ref,
+    90	        }
+    91	        async with internal_async_client("cortex", timeout=self._timeout) as client:
+    92	            create_resp = await client.post(f"{self._base_url}/v1/blobs/uploads", json=create_body)
+    93	            create_resp.raise_for_status()
+    94	            session_id = create_resp.json().get("session_id")
+    95	            if not isinstance(session_id, str) or not session_id:
+    96	                raise ValueError("Blob Service did not return an upload session_id")
+    97	
+    98	            parts: list[int] = []
+    99	            if payload_bytes:
+   100	                part_resp = await client.put(
+   101	                    f"{self._base_url}/v1/blobs/uploads/{quote(session_id)}/parts/1",
+   102	                    content=payload_bytes,
+   103	                    headers={"X-Tenant-ID": tenant_id},
+   104	                )
+   105	                part_resp.raise_for_status()
+   106	                parts = [1]
+   107	
+   108	            complete_resp = await client.post(
+   109	                f"{self._base_url}/v1/blobs/uploads/{quote(session_id)}/complete",
+   110	                json={"parts": parts, "final_sha256": digest},
+   111	                headers={"X-Tenant-ID": tenant_id},
+   112	            )
+   113	            complete_resp.raise_for_status()
+   114	            data = complete_resp.json().get("blob") or {}
+   115	        blob_ref = data.get("blob_ref")
+   116	        if not isinstance(blob_ref, str) or not blob_ref.startswith("blob://cortex-payload/"):
+   117	            raise ValueError("Blob Service did not return a cortex-payload BlobRef")
+   118	        return blob_ref
+   119	
+   120	    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+   121	        namespace, blob_id = _parse_blob_ref(blob_ref)
+   122	        async with internal_async_client("cortex", timeout=self._timeout) as client:
+   123	            resp = await client.get(
+   124	                f"{self._base_url}/v1/blobs/{quote(namespace)}/{quote(blob_id)}",
+   125	                headers={"X-Tenant-ID": tenant_id},
+   126	            )
+   127	            resp.raise_for_status()
+   128	            raw = resp.content
+   129	        return json.loads(raw.decode("utf-8"))
+   130	
+   131	
+   132	def encode_payload_bytes(payload: Any) -> bytes:
+   133	    return json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+   134	
+   135	
+   136	def _payload_blob_id(tenant_id: str, scope_path: str, source_payload_ref: str) -> str:
+   137	    digest = hashlib.sha256(f"{tenant_id}:{scope_path}:{source_payload_ref}".encode("utf-8")).hexdigest()
+   138	    return f"cpx-{digest[:40]}"
+   139	
+   140	
+   141	def _parse_blob_ref(blob_ref: str) -> tuple[str, str]:
+   142	    prefix = "blob://"
+   143	    if not isinstance(blob_ref, str) or not blob_ref.startswith(prefix):
+   144	        raise ValueError("payload blob_ref must start with blob://")
+   145	    rest = blob_ref[len(prefix):]
+   146	    parts = rest.split("/")
+   147	    if len(parts) != 2:
+   148	        raise ValueError("payload blob_ref must be blob://{namespace}/{blob_id}")
+   149	    return parts[0], parts[1]

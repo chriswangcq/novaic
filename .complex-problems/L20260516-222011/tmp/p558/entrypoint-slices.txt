@@ -1,0 +1,1750 @@
+## Cortex service and shell entrypoints
+    18	def _parse_args():
+    19	    parser = argparse.ArgumentParser(description="Cortex Service")
+    20	    parser.add_argument("--host", default="0.0.0.0")
+    21	    parser.add_argument("--port", type=int, default=19996)
+    22	    parser.add_argument("--jwt-secret", default="", help="Capability JWT signing secret")
+    23	    parser.add_argument("--internal-key", default="cortex-internal-dev", help="Service-to-service auth key")
+    24	    parser.add_argument(
+    25	        "--blob-service-url",
+    26	        required=True,
+    27	        help="Blob Service base URL. Cortex never talks to a physical object store directly.",
+    28	    )
+    29	    parser.add_argument(
+    30	        "--sandboxd-url",
+    31	        required=True,
+    32	        help="Sandboxd base URL. Cortex server shell execution must go through sandboxd.",
+    33	    )
+    34	    parser.add_argument(
+    35	        "--operational-sqlite-path",
+    36	        required=True,
+    37	        help="Durable SQLite path for Cortex operational state and projections.",
+    38	    )
+    39	
+    40	    # P3-6 distributed scope-lock backend — Redis is mandatory. There is
+    41	    # Cortex refuses to start without a reachable
+    42	    # Redis. See novaic_cortex/scope_locks.py::install_redis_backend.
+    43	    parser.add_argument(
+    44	        "--redis-url",
+    45	        required=True,
+    46	        help="Redis URL for scope locks (required, e.g. redis://127.0.0.1:6379/0)",
+    47	    )
+    48	    parser.add_argument(
+    49	        "--redis-lock-ttl-seconds",
+    50	        type=float,
+    51	        default=300.0,
+    52	        help="Lease TTL for Redis scope locks (default: 300s; heartbeat renews while held)",
+    53	    )
+    54	    parser.add_argument(
+    55	        "--redis-validate-at-startup",
+    56	        default="1",
+    57	        choices=["0", "1"],
+    58	        help="1=sync PING at startup / fail-fast (default), 0=lazy connect (tests only)",
+    59	    )
+    60	    return parser.parse_args()
+    61	
+    62	
+    63	def _configure_app(cli_args) -> None:
+    64	    """Wire registry / internal-key into the app synchronously.
+    65	
+    66	    Previously done in an ``@app.on_event("startup")`` hook, but all the
+    67	    work here is pure object construction (WorkspaceRegistry, ``set_*``
+    68	    setters) with no IO that needs the event
+    69	    loop. Doing it before ``uvicorn.run`` removes the need for the
+    70	    deprecated ``on_event`` decorator and keeps the per-request
+    71	    ``lifespan`` context (defined in ``api.py``) focused on the sweeper
+    72	    task only.
+    73	    """
+    74	    from novaic_cortex.registry import build_workspace_registry
+    75	
+    76	    # P3-6: Redis scope lock is mandatory. If Redis is unreachable or
+    77	    # ``--redis-url`` is malformed, ``install_redis_backend`` raises and
+    78	    # the process dies before ``uvicorn.run`` — no silent downgrade to an
+    79	    # in-process lock. Multi-worker / multi-replica Cortex is therefore
+    80	    # always safe because every endpoint serializes through Redis.
+    81	    install_redis_backend(
+    82	        redis_url=cli_args.redis_url,
+    83	        ttl_seconds=cli_args.redis_lock_ttl_seconds,
+    84	        validate_at_startup=(cli_args.redis_validate_at_startup != "0"),
+    85	    )
+    86	    logger.info(
+    87	        "[Cortex] Redis scope lock installed (url=%s ttl=%.0fs)",
+    88	        cli_args.redis_url, cli_args.redis_lock_ttl_seconds,
+    89	    )
+    90	
+    91	    set_registry(
+    92	        build_workspace_registry(
+    93	            cli_args.blob_service_url,
+    94	            operational_sqlite_path=cli_args.operational_sqlite_path,
+    95	        )
+    96	    )
+    97	    set_sandbox_process_runner_factory(
+    98	        lambda: SandboxdClient(cli_args.sandboxd_url)
+    99	    )
+   100	    logger.info("[Cortex] Sandbox process runner installed (sandboxd=%s)", cli_args.sandboxd_url)
+   101	
+   315	class ShellRequest(BaseModel):
+   316	    command: str
+   317	    timeout: int | None = None
+   318	
+   319	
+   320	@app.post("/v1/shell")
+   321	async def shell(req: ShellRequest, claims: TokenClaims = Depends(_verify_token)):
+   322	    ws = _get_workspace(claims.user_id, claims.agent_id)
+   323	    cortex = _build_cortex(ws)
+   324	    await cortex.initialize()
+   325	    result = await cortex.tool_shell(req.command, req.timeout)
+   326	    return {
+   327	        "stdout": result.stdout,
+   328	        "stderr": result.stderr,
+   329	        "exit_code": result.exit_code,
+   330	        "files_changed": result.files_changed,
+   331	    }
+    30	class Cortex:
+    31	    """NovAIC Cortex — cognitive infrastructure for AI agents."""
+    32	
+    33	    def __init__(
+    34	        self,
+    35	        *,
+    36	        workspace: Workspace,
+    37	        hooks: CortexHooks | None = None,
+    38	        metrics: CortexMetrics | None = None,
+    39	        sandbox_process_runner: object | None = None,
+    40	    ) -> None:
+    41	        self.hooks = hooks if hooks is not None else CortexHooks()
+    42	        self.metrics = metrics if metrics is not None else CortexMetrics()
+    43	        self.config: EngineConfig | None = None
+    44	        self._sandbox_process_runner = sandbox_process_runner
+    45	        self.workspace = workspace
+    46	        cfg0 = EngineConfig()
+    47	        self.sandbox = Sandbox(
+    48	            self.workspace,
+    49	            max_sync_bytes=None,
+    50	            max_wall_timeout=cfg0.sandbox_timeout_max,
+    51	            process_runner=self._sandbox_process_runner,
+    52	        )
+    53	
+    54	    async def initialize(self) -> None:
+    55	        await self.workspace.initialize()
+    56	        await self._seed_builtin_tools()
+    57	        cfg = await load_engine_config(self.workspace)
+    58	        self.config = cfg
+    59	        self.sandbox = Sandbox(
+    60	            self.workspace,
+    61	            max_sync_bytes=None,
+    62	            max_wall_timeout=cfg.sandbox_timeout_max,
+    63	            process_runner=self._sandbox_process_runner,
+    64	        )
+   178	    async def tool_shell(
+   179	        self,
+   180	        command: str,
+   181	        timeout: int | None = None,
+   182	        env: dict[str, str] | None = None,
+   183	    ) -> ShellResult:
+   184	        cfg = self.config
+   185	        if timeout is None:
+   186	            timeout = cfg.sandbox_timeout_default if cfg is not None else 30
+   187	        if cfg is not None:
+   188	            timeout = min(timeout, cfg.sandbox_timeout_max)
+   189	        result = await self.sandbox.exec(command, timeout, extra_env=env)
+   190	        self.metrics.shell_executions += 1
+   191	        if result.exit_code == -1:
+   192	            self.metrics.shell_timeouts += 1
+   193	        return result
+     1	"""Cortex shell execution boundary.
+     2	
+     3	The public ``Sandbox`` facade composes two explicit substrates:
+     4	
+     5	* ``MountNamespaceLogicalFS`` owns Cortex filesystem semantics and the stable
+     6	  private ``/cortex`` mount namespace.
+     7	* A sandboxd SDK client owns remote process execution.
+     8	
+     9	There is deliberately no alternate local path adapter. If a host cannot provide
+    10	the sandboxd service boundary, shell execution fails explicitly instead of
+    11	silently running with different path semantics.
+    12	"""
+    53	class ShellExecutionOrchestrator:
+    54	    """Acquire LogicalFS view, run a process, release view, assemble ShellResult."""
+    55	
+    56	    def __init__(
+    57	        self,
+    58	        logical_fs: MountNamespaceLogicalFS,
+    59	        sandbox_executor: SandboxExecutor | None,
+    60	        *,
+    61	        max_wall_timeout: int | None = None,
+    62	    ) -> None:
+    63	        self.logical_fs = logical_fs
+    64	        self.sandbox_executor = sandbox_executor
+    65	        self._max_wall_timeout = max_wall_timeout
+    66	
+    67	    async def exec(
+    68	        self,
+    69	        command: str,
+    70	        timeout: int = 30,
+    71	        cwd: str | None = None,
+    72	        extra_env: dict[str, str] | None = None,
+    73	    ) -> ShellResult:
+    74	        rejected = _reject_ephemeral_sandbox_paths(command)
+    75	        if rejected is not None:
+    76	            return rejected
+    77	
+    78	        if self._max_wall_timeout is not None:
+    79	            timeout = min(timeout, self._max_wall_timeout)
+    80	
+    81	        if self.sandbox_executor is None:
+    82	            return ShellResult(
+    83	                stdout="",
+    84	                stderr=(
+    85	                    "Sandbox executor is not configured. Cortex shell execution "
+    86	                    "must go through sandboxd via sandbox_sdk."
+    87	                ),
+    88	                exit_code=-2,
+    89	                files_changed=[],
+    90	            )
+    91	
+    92	        with tempfile.TemporaryDirectory(prefix="novaic-cortex-logicalfs-") as tmp:
+    93	            root = Path(tmp)
+    94	            try:
+    95	                view = await self.logical_fs.acquire_view(root, cwd=cwd, extra_env=extra_env)
+    96	            except ValueError as exc:
+    97	                return ShellResult(
+    98	                    stdout="",
+    99	                    stderr=str(exc),
+   100	                    exit_code=-2,
+   101	                    files_changed=[],
+   102	                )
+   103	            if not view.cwd.is_dir():
+   104	                stderr = self.logical_fs.sanitize_output(
+   105	                    f"cwd is not a directory: {view.cwd}",
+   106	                    view,
+   107	                )
+   108	                return ShellResult(stdout="", stderr=stderr, exit_code=-2, files_changed=[])
+   109	
+   110	            try:
+   111	                mount_plan = self.logical_fs.process_mount_plan(view)
+   112	            except RuntimeError as exc:
+   113	                return ShellResult(stdout="", stderr=str(exc), exit_code=-2, files_changed=[])
+   114	            process_result = await self.sandbox_executor.execute(
+   115	                SandboxExecSpec(
+   116	                    command=command,
+   117	                    cwd=str(self.logical_fs.process_cwd(view)),
+   118	                    env=view.env,
+   119	                    timeout=timeout,
+   120	                    display_command=command,
+   121	                    mount=mount_plan,
+   122	                )
+   123	            )
+   124	
+   125	            try:
+   126	                from novaic_cortex.observability import log_cortex
+   127	
+   128	                dur_ms = int(process_result.duration_s * 1000)
+   129	                log_cortex(
+   130	                    "sandbox.exec",
+   131	                    cmd=command[:200],
+   132	                    exit_code=process_result.exit_code,
+   133	                    duration_ms=dur_ms,
+   134	                    duration_s=round(process_result.duration_s, 3),
+   135	                    fs_provider=view.capabilities.provider,
+   136	                )
+   137	            except ImportError:
+   138	                pass
+   139	
+   140	            files_changed = await self.logical_fs.release_view(view)
+   141	
+   142	            stdout = process_result.stdout.decode("utf-8", errors="replace")
+   143	            stderr = process_result.stderr.decode("utf-8", errors="replace")
+   144	            stdout = self.logical_fs.sanitize_output(stdout, view)
+   145	            stderr = self.logical_fs.sanitize_output(stderr, view)
+   146	
+   147	            return ShellResult(
+   148	                stdout=stdout,
+   149	                stderr=stderr,
+   150	                exit_code=process_result.exit_code,
+   151	                files_changed=files_changed,
+   152	            )
+     1	"""Cortex adapter for the business-agnostic LogicalFS substrate.
+     2	
+     3	Cortex owns Workspace semantics, shell capability injection, and applying RW
+     4	patches back to the Workspace. The generic snapshot/view/patch mechanics live
+     5	in ``novaic-logicalfs``.
+     6	"""
+   111	class MountNamespaceLogicalFS:
+   112	    """Cortex Workspace adapter over the generic LogicalFS substrate."""
+   113	
+   114	    def __init__(
+   115	        self,
+   116	        workspace: Workspace,
+   117	        *,
+   118	        max_sync_bytes: int | None = None,
+   119	        max_wall_timeout: int | None = None,
+   120	        token_factory: Callable[[], str] | None = None,
+   121	        cortex_api_url: str = "http://localhost:19996",
+   122	        provider: LocalLogicalFSProvider | None = None,
+   123	    ) -> None:
+   124	        self._workspace = workspace
+   125	        self._max_sync_bytes = max_sync_bytes
+   126	        self._token_factory = token_factory
+   127	        self._cortex_api_url = cortex_api_url
+   128	        self._provider = provider or LocalLogicalFSProvider()
+   129	        self.capabilities = _detect_logicalfs_capabilities()
+   216	    async def _workspace_snapshot(
+   217	        self,
+   218	        *,
+   219	        generated_rw_files: Mapping[str, bytes],
+   220	        extra_env: Mapping[str, str] | None,
+   221	    ) -> LogicalFSSnapshot:
+   222	        files: dict[tuple[bool, str], LogicalFSFile] = {}
+   223	
+   224	        # Keep shell startup bounded. The previous implementation recursively
+   225	        # materialized all of /ro, which made every shell call proportional to
+   226	        # total agent history. Shell does not need the runtime tool-schema
+   227	        # store or the installed skill library as local files; capability CLIs
+   228	        # are generated into /cortex/bin and call Cortex/Business APIs when
+   229	        # they need agent-harness data. Historical or broad reads must be
+   230	        # explicit API reads, not implicit full mounts.
+   231	        await self._add_file_if_exists(files, "/ro/config/engine.json")
+   232	        await self._add_file_if_exists(files, "/ro/config/tools/_index.json")
+   233	
+   234	        scope_id = str((extra_env or {}).get("NOVAIC_SCOPE_ID") or "").strip()
+   235	        wake_scope_path = str((extra_env or {}).get("NOVAIC_WAKE_SCOPE_PATH") or "").strip().rstrip("/")
+   236	        if scope_id:
+   237	            root_path = f"/ro/active/{scope_id}"
+   238	            await self._add_file_if_exists(files, f"{root_path}/meta.json")
+   239	            await self._add_file_if_exists(files, f"{root_path}/steps/_index.jsonl")
+   240	            await self._add_file_if_exists(files, f"{root_path}/context_events/events.jsonl")
+   241	            if wake_scope_path and (
+   242	                wake_scope_path == root_path or wake_scope_path.startswith(root_path + "/")
+   243	            ):
+   244	                await self._add_tree(files, wake_scope_path + "/")
+   245	
+   246	        await self._add_rw_working_set(files, extra_env=extra_env)
+   247	        for relpath, data in generated_rw_files.items():
+   248	            files[(True, relpath.lstrip("/"))] = LogicalFSFile(
+   249	                path=relpath.lstrip("/"),
+   250	                data=data,
+   251	                writable=True,
+   252	            )
+   253	        return LogicalFSSnapshot(files=tuple(files.values()))
+   254	
+   255	    @staticmethod
+   256	    def _snapshot_bytes(snapshot: LogicalFSSnapshot) -> int:
+   257	        return sum(len(item.data) for item in snapshot.files)
+   258	
+   259	    def _rw_layout(self, extra_env: Mapping[str, str] | None) -> LogicalFSLayout:
+   260	        subagent_id = _safe_subagent_path_component((extra_env or {}).get("NOVAIC_SUBAGENT_ID"), "main")
+   261	        writable_env = {
+   262	            "RW_PUBLIC": f"{STABLE_CORTEX_RW}/public",
+   263	            "RW_SELF": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}",
+   264	            "RW_TMP": f"{STABLE_CORTEX_RW}/tmp",
+   265	            "RW_ARTIFACTS": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/artifacts",
+   266	            "RW_SCRATCH": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/scratch",
+   267	        }
+   268	        return LogicalFSLayout(
+   269	            paths=StableLogicalPaths(
+   270	                root=STABLE_CORTEX_ROOT,
+   271	                ro=STABLE_CORTEX_RO,
+   272	                rw=STABLE_CORTEX_RW,
+   273	                bin=STABLE_CORTEX_BIN,
+   274	            ),
+   275	            writable_env=writable_env,
+   276	            writable_dirs=(f"{STABLE_CORTEX_RW}/system",),
+   277	        )
+   278	
+   279	    def _execution_env(self, extra_env: Mapping[str, str] | None, token: str | None) -> LogicalFSEnv:
+   280	        values = {
+   281	            "NOVAIC_API": self._cortex_api_url,
+   282	            "CORTEX_FS_PROVIDER": self.capabilities.provider,
+   283	            "CORTEX_TRUE_STABLE_PATH_MOUNT": "1" if self.capabilities.true_stable_path_mount else "0",
+   284	        }
+   285	        values.update(_capability_env(dict(extra_env or {})))
+   286	        if token is not None:
+   287	            values["NOVAIC_TOKEN"] = token
+   288	        return LogicalFSEnv(values)
+   289	
+   290	    def _generated_env_file(self, token: str | None) -> bytes:
+   291	        env_json: dict[str, str] = {
+   292	            "api": self._cortex_api_url,
+   293	            "fs_provider": self.capabilities.provider,
+   294	        }
+   295	        if token is not None:
+   296	            env_json["token"] = token
+   297	        return _json.dumps(env_json).encode("utf-8")
+   298	
+   299	    async def acquire_view(
+   300	        self,
+   301	        root: Path,
+   302	        *,
+   303	        cwd: str | None,
+   304	        extra_env: dict[str, str] | None,
+   305	    ) -> LogicalFSView:
+   306	        token = self._token_factory() if self._token_factory is not None else None
+   307	        snapshot = await self._workspace_snapshot(
+   308	            generated_rw_files={".novaic_env.json": self._generated_env_file(token)},
+   309	            extra_env=extra_env,
+   310	        )
+   311	
+   312	        if self._max_sync_bytes is not None:
+   313	            total = self._snapshot_bytes(snapshot)
+   314	            if total > self._max_sync_bytes:
+   315	                raise ValueError(
+   316	                    f"logicalfs sync would read {total} bytes from workspace files, "
+   317	                    f"exceeds max_sync_bytes={self._max_sync_bytes}"
+   318	                )
+   319	
+   320	        substrate = self._provider.materialize(
+   321	            snapshot=snapshot,
+   322	            root=root,
+   323	            layout=self._rw_layout(extra_env),
+   324	            env=self._execution_env(extra_env, token),
+   325	            cwd=cwd,
+   326	        )
+   327	        _write_capability_scripts(substrate.bin)
+   328	        return LogicalFSView(substrate=substrate, capabilities=self.capabilities)
+   345	    async def _apply_patch(self, patch: LogicalFSPatch) -> None:
+   346	        for path in patch.deletes:
+   347	            await self._workspace.delete(_workspace_path_from_stable_rw(path))
+   348	        for item in patch.upserts:
+   349	            await self._workspace.write_bytes(_workspace_path_from_stable_rw(item.path), item.data)
+   350	
+   351	    async def release_view(self, view: LogicalFSView) -> list[str]:
+   352	        patch = self._provider.observe_patch(view.substrate)
+   353	        await self._apply_patch(patch)
+   354	        return [_workspace_path_from_stable_rw(path) for path in patch.changed_paths()]
+
+## Agent runtime tool/display projection entrypoints
+    84	def _tool_output_dict(result, *, tool_success: bool, tool_name: str = "") -> dict[str, Any]:
+    85	    if isinstance(result, dict) and result.get("version") == TOOL_OUTPUT_VERSION:
+    86	        return {
+    87	            key: value
+    88	            for key, value in result.items()
+    89	            if key != _DURABLE_PAYLOAD_KEY
+    90	        }
+    91	
+    92	    if (
+    93	        tool_name == "display"
+    94	        and isinstance(result, dict)
+    95	        and isinstance(result.get("_mcp_content"), list)
+    96	    ):
+    97	        return _display_public_output(result)
+    98	
+    99	    text = _unstructured_result_text(result)
+   100	    if not tool_success:
+   101	        error = ""
+   102	        if isinstance(result, dict):
+   103	            error = str(result.get("error") or result.get("message") or "")
+   104	        return ToolOutputV1(
+   105	            ok=False,
+   106	            text=text,
+   107	            diagnostics=ToolDiagnostics(extra={"unstructured_executor_result": True}),
+   108	            error=error,
+   109	        ).to_dict()
+   110	
+   111	    return tool_text(
+   112	        text,
+   113	        ok=True,
+   114	        diagnostics={"unstructured_executor_result": True},
+   115	    ).to_dict()
+   116	
+   117	
+   118	def _display_public_output(result: dict[str, Any]) -> dict[str, Any]:
+   119	    """Return display output safe for public tool history."""
+   120	
+   121	    def sanitize_item(item: Any) -> Any:
+   122	        if not isinstance(item, dict) or item.get("type") != "image":
+   123	            return item
+   124	        return {
+   125	            "type": "image",
+   126	            "_placeholder": True,
+   127	            "mimeType": item.get("mimeType") or item.get("mime_type") or "image/png",
+   128	            "_note": "Image data provided separately to LLM",
+   129	        }
+   130	
+   131	    public: dict[str, Any] = {}
+   132	    for key, value in result.items():
+   133	        if key == _DURABLE_PAYLOAD_KEY:
+   134	            continue
+   135	        if key == "_mcp_content" and isinstance(value, list):
+   136	            public[key] = [sanitize_item(item) for item in value]
+   137	        else:
+   138	            public[key] = value
+   139	    return public
+   140	
+   141	
+   142	def _display_durable_payload(result: dict[str, Any]) -> dict[str, Any] | None:
+   143	    mcp_content = result.get("_mcp_content")
+   144	    if not isinstance(mcp_content, list):
+   145	        return None
+   146	    if not any(
+   147	        isinstance(item, dict) and item.get("type") == "image" and item.get("data")
+   148	        for item in mcp_content
+   149	    ):
+   150	        return None
+   151	    return {
+   152	        "version": _DURABLE_PAYLOAD_VERSION,
+   153	        "llm_content": {
+   154	            key: value
+   155	            for key, value in result.items()
+   156	            if key != _DURABLE_PAYLOAD_KEY
+   157	        },
+   158	        "raw": {
+   159	            "type": "display_result",
+   160	            "file_url": result.get("file_url", ""),
+   161	            "mime_type": result.get("mime_type", ""),
+   162	            "size": result.get("size", 0),
+   163	        },
+   164	    }
+   167	_SHELL_STREAM_PREVIEW_CHARS = 1600
+   168	_SHELL_TEXT_LIMIT_CHARS = 4000
+   169	
+   170	
+   171	def _preview_shell_stream(value: Any, *, limit: int = _SHELL_STREAM_PREVIEW_CHARS) -> tuple[str, bool, int]:
+   172	    text = "" if value is None else str(value)
+   173	    if len(text) <= limit:
+   174	        return text, False, len(text)
+   175	    return text[:limit] + f"\n... [truncated {len(text) - limit} chars]", True, len(text)
+   176	
+   177	
+   178	def _shell_result_text(result: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+   179	    exit_code = result.get("exit_code")
+   180	    stdout_preview, stdout_truncated, stdout_chars = _preview_shell_stream(result.get("stdout", ""))
+   181	    stderr_preview, stderr_truncated, stderr_chars = _preview_shell_stream(result.get("stderr", ""))
+   182	    files_changed = result.get("files_changed") if isinstance(result.get("files_changed"), list) else []
+   183	
+   184	    lines = [f"exit_code={exit_code}"]
+   185	    if stdout_preview:
+   186	        lines.extend(["stdout:", stdout_preview])
+   187	    if stderr_preview:
+   188	        lines.extend(["stderr:", stderr_preview])
+   189	    if files_changed:
+   190	        lines.append("files_changed:")
+   191	        lines.extend(f"- {path}" for path in files_changed[:40])
+   192	        if len(files_changed) > 40:
+   193	            lines.append(f"... [truncated {len(files_changed) - 40} changed files]")
+   194	    if len(lines) == 1:
+   195	        lines.append("shell completed with no stdout/stderr")
+   196	
+   197	    diagnostics = {
+   198	        "shell_result": {
+   199	            "exit_code": exit_code,
+   200	            "stdout_chars": stdout_chars,
+   201	            "stderr_chars": stderr_chars,
+   202	            "stdout_truncated": stdout_truncated,
+   203	            "stderr_truncated": stderr_truncated,
+   204	            "files_changed_count": len(files_changed),
+   205	        },
+   206	    }
+   207	    return "\n".join(lines), diagnostics
+   208	
+   209	
+   210	def _shell_result_output(result: dict[str, Any]) -> dict[str, Any]:
+   211	    exit_code = result.get("exit_code")
+   212	    ok = exit_code == 0
+   213	    text, diagnostics = _shell_result_text(result)
+   214	    output = tool_text(
+   215	        text,
+   216	        ok=ok,
+   217	        text_limit=_SHELL_TEXT_LIMIT_CHARS,
+   218	        diagnostics=diagnostics,
+   219	    ).to_dict()
+   220	    if not ok:
+   221	        stderr = str(result.get("stderr") or "").strip()
+   222	        output["error"] = stderr[:500] if stderr else f"shell exited with code {exit_code}"
+   223	    output[_DURABLE_PAYLOAD_KEY] = {
+   224	        "version": _DURABLE_PAYLOAD_VERSION,
+   225	        "llm_content": {
+   226	            key: value
+   227	            for key, value in output.items()
+   228	            if key != _DURABLE_PAYLOAD_KEY
+   229	        },
+   230	        "raw": {
+   231	            "type": "shell_result",
+   232	            "exit_code": exit_code,
+   233	            "stdout": result.get("stdout", ""),
+   234	            "stderr": result.get("stderr", ""),
+   235	            "files_changed": (
+   236	                result.get("files_changed")
+   237	                if isinstance(result.get("files_changed"), list)
+   238	                else []
+   239	            ),
+   240	        },
+   241	    }
+   242	    return output
+   243	
+   244	
+   245	def _ok(scope_id, round_id, tool_call_id, tool_name, result):
+   246	    tool_success = _executor_success(result)
+   247	    public_output = _tool_output_dict(result, tool_success=tool_success, tool_name=tool_name)
+   248	    content = json.dumps(public_output, ensure_ascii=False)
+   249	    response = {
+   250	        "success": True, "status": "completed",
+   251	        "tool_success": tool_success,
+   252	        "tool_status": "completed" if tool_success else "error",
+   253	        "scope_id": scope_id, "round_id": round_id,
+   254	        "tool_call_id": tool_call_id, "tool_name": tool_name,
+   255	        "content": content, "error": None,
+   256	    }
+   257	    if isinstance(result, dict) and isinstance(result.get(_DURABLE_PAYLOAD_KEY), dict):
+   258	        response["durable_payload"] = result[_DURABLE_PAYLOAD_KEY]
+   259	    elif tool_name == "display" and isinstance(result, dict):
+   260	        durable_payload = _display_durable_payload(result)
+   261	        if durable_payload is not None:
+   262	            response["durable_payload"] = durable_payload
+   263	    return response
+   288	def _exec_shell(args, deps):
+   289	    command = args.get("command", "") if isinstance(args, dict) else str(args)
+   290	    timeout = args.get("timeout", 30) if isinstance(args, dict) else 30
+   291	    bridge = deps["bridge"]
+   292	    capability_env = {
+   293	        "NOVAIC_AGENT_ID": deps.get("agent_id", ""),
+   294	        "NOVAIC_BLOB_SERVICE_URL": ServiceConfig.BLOB_SERVICE_URL,
+   295	        "NOVAIC_BUSINESS_URL": ServiceConfig.BUSINESS_URL,
+   296	        "NOVAIC_CORTEX_INTERNAL_KEY": ServiceConfig.CORTEX_INTERNAL_KEY,
+   297	        "NOVAIC_DEVICE_URL": ServiceConfig.DEVICE_URL,
+   298	        "NOVAIC_MAX_USER_REPLIES_PER_SESSION": str(ServiceConfig.MAX_USER_REPLIES_PER_SESSION),
+   299	        "NOVAIC_QUEUE_SERVICE_URL": ServiceConfig.QUEUE_SERVICE_URL,
+   300	        "NOVAIC_SCOPE_ID": deps.get("scope_id", ""),
+   301	        "NOVAIC_SUBAGENT_ID": deps.get("subagent_id", ""),
+   302	        "NOVAIC_USER_ID": deps.get("user_id", ""),
+   303	        "NOVAIC_WAKE_SCOPE_PATH": deps.get("wake_scope_path", ""),
+   304	    }
+   305	    if "cortex payload summarize" in command or "cortex payload qa" in command:
+   306	        model_config = _payload_interpretation_model_config(deps, "cortex payload")
+   307	        if model_config.get("success"):
+   308	            capability_env.update({
+   309	                "NOVAIC_PAYLOAD_FACTORY_URL": model_config["factory_url"],
+   310	                "NOVAIC_PAYLOAD_FACTORY_USER_ID": model_config["factory_user_id"],
+   311	                "NOVAIC_PAYLOAD_MODEL_ID": model_config["model_id"],
+   312	            })
+   313	    result = bridge.shell_exec(command, timeout, capability_env=capability_env)
+   314	    shell_result = result or {"stdout": "", "stderr": "Cortex unavailable", "exit_code": -1, "files_changed": []}
+   315	    if not isinstance(shell_result, dict):
+   316	        shell_result = {"stdout": "", "stderr": str(shell_result), "exit_code": -1, "files_changed": []}
+   317	    shell_result.setdefault("stdout", "")
+   318	    shell_result.setdefault("stderr", "")
+   319	    shell_result.setdefault("files_changed", [])
+   320	    return _shell_result_output(shell_result)
+   321	
+   322	
+   323	_DISPLAY_INLINE_BUDGET_BYTES = 200_000
+   324	_TEXT_MIME_TYPES = {
+   325	    "application/json",
+   326	    "application/xml",
+   327	    "application/yaml",
+   328	    "application/x-yaml",
+   329	    "application/toml",
+   330	}
+   331	_TEXT_EXTS = {"txt", "md", "csv", "json", "xml", "html", "yaml", "yml", "toml", "log"}
+   332	
+   333	
+   334	def _human_size(n: int) -> str:
+   335	    size = float(max(n, 0))
+   336	    for unit in ("B", "KB", "MB", "GB"):
+   337	        if size < 1024:
+   338	            return f"{int(size)}B" if unit == "B" else f"{size:.1f}{unit}"
+   339	        size /= 1024
+   340	    return f"{size:.1f}TB"
+   341	
+   342	
+   343	def _blob_ref_path(file_url: str) -> tuple[str, str]:
+   344	    if not file_url or not isinstance(file_url, str):
+   345	        raise ValueError("file_url is required")
+   346	    try:
+   347	        parsed = parse_blob_ref(file_url.strip())
+   348	    except ValueError as exc:
+   349	        raise ValueError("display only supports Blob refs: blob://{namespace}/{blob_id}") from exc
+   350	    return parsed.namespace, parsed.blob_id
+   351	
+   352	
+   353	def _guess_mime(file_url: str, response: Any | None = None) -> str:
+   354	    if response is not None:
+   355	        content_type = response.headers.get("content-type", "").split(";", 1)[0].strip()
+   356	        if content_type:
+   357	            return content_type
+   358	    guessed, _ = mimetypes.guess_type(file_url)
+   359	    return guessed or "application/octet-stream"
+   360	
+   361	
+   362	def _display_content_for_llm(file_url: str, data: bytes, mime_type: str) -> dict:
+   363	    filename = file_url.rstrip("/").rsplit("/", 1)[-1] or "file"
+   364	    size = len(data)
+   365	    content: list[dict[str, str]] = []
+   366	
+   367	    if mime_type.startswith("image/"):
+   368	        if size <= _DISPLAY_INLINE_BUDGET_BYTES:
+   369	            content.append({
+   370	                "type": "image",
+   371	                "data": base64.b64encode(data).decode("ascii"),
+   372	                "mimeType": mime_type,
+   373	            })
+   374	        else:
+   375	            content.append({
+   376	                "type": "text",
+   377	                "text": f"[Image: {filename} ({_human_size(size)}) — too large for context]",
+   378	            })
+   379	    elif mime_type.startswith("text/") or mime_type in _TEXT_MIME_TYPES or filename.rsplit(".", 1)[-1].lower() in _TEXT_EXTS:
+   380	        text = data.decode("utf-8", errors="replace")
+   381	        if len(text) > _DISPLAY_INLINE_BUDGET_BYTES:
+   382	            text = text[:_DISPLAY_INLINE_BUDGET_BYTES] + f"\n\n... [Truncated — full file is {_human_size(size)}]"
+   383	        content.append({"type": "text", "text": text})
+   384	    else:
+   385	        content.append({
+   386	            "type": "text",
+   387	            "text": f"[Binary file: {filename} ({_human_size(size)}, {mime_type})]",
+   388	        })
+   389	
+   390	    return {
+   391	        "success": True,
+   392	        "message": f"Loaded {filename} ({_human_size(size)}, {mime_type})",
+   393	        "file_url": file_url,
+   394	        "mime_type": mime_type,
+   395	        "size": size,
+   396	        "_mcp_content": content,
+   397	    }
+   398	
+   399	
+   400	def _exec_display(args, deps):
+   401	    file_url = (args.get("file_url") or "").strip()
+   402	    user_id = (deps.get("user_id") or "").strip()
+   403	    if not user_id:
+   404	        return {"success": False, "error": "display requires user_id to access Blob Service files"}
+   405	
+   406	    try:
+   407	        namespace, blob_id = _blob_ref_path(file_url)
+   408	    except ValueError as exc:
+   409	        return {"success": False, "error": str(exc)}
+   410	
+   411	    base_url = ServiceConfig.BLOB_SERVICE_URL.rstrip("/")
+   412	    url = f"{base_url}/v1/blobs/{quote(namespace, safe='')}/{quote(blob_id, safe='')}"
+   413	    logger.info("[tool] display: agent=%s file=%s", deps.get("agent_id"), file_url)
+   414	    with internal_sync_client("agent-runtime", timeout=30.0) as client:
+   415	        resp = client.get(url, headers={"X-Tenant-ID": user_id})
+   416	    if resp.status_code >= 400:
+   417	        return {
+   418	            "success": False,
+   419	            "error": f"Blob Service returned {resp.status_code}: {resp.text[:200]}",
+   420	            "file_url": file_url,
+   421	        }
+   422	    return _display_content_for_llm(file_url, resp.content, _guess_mime(file_url, resp))
+   514	_EXECUTORS: Dict[str, Callable] = {
+   515	    "sleep":            _exec_sleep,
+   516	    "shell":            _exec_shell,
+   517	    "display":          _exec_display,
+   518	    "skill_begin":      _exec_skill_begin,
+   519	    "skill_end":        _exec_skill_end,
+   520	}
+   521	
+   522	KNOWN_TOOLS = set(_EXECUTORS.keys())
+   523	
+   524	
+   525	# ── Handler ───────────────────────────────────────────────────────────────
+   526	
+   527	@register_handler(TaskTopics.TOOL_EXECUTE)
+   528	def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+   529	    """Execute tool — unified dispatch, unified content return."""
+   530	    scope_id = payload.get("scope_id") or payload.get("runtime_id", "")
+   531	    cortex_scope_id = payload.get("agent_root_scope_id") or scope_id
+   532	    for field in ("round_id", "tool_call_id", "tool_name"):
+   533	        if not payload.get(field):
+   534	            raise ValidationError(f"Missing required field: {field}")
+   535	    if not scope_id:
+   536	        raise ValidationError("Missing required field: scope_id")
+   537	
+   538	    round_id = payload["round_id"]
+   539	    tool_call_id = payload["tool_call_id"]
+   540	    tool_name = payload["tool_name"]
+   541	    arguments = payload.get("arguments", {})
+   542	
+   543	    if isinstance(arguments, str):
+   544	        try:
+   545	            arguments = json.loads(arguments)
+   546	        except json.JSONDecodeError:
+   547	            pass
+   548	
+   549	    agent_id = payload.get("agent_id", "")
+   550	    subagent_id = payload.get("subagent_id", "main")
+   551	    user_id = payload.get("user_id") or ctx.get("user_id") or ""
+   552	
+   553	    executor = _EXECUTORS.get(tool_name)
+   554	    if not executor:
+   555	        logger.warning(f"[tool] Unknown tool: {tool_name} ({tool_call_id})")
+   556	        err_msg = f"Unknown tool: {tool_name}. Available: {', '.join(sorted(KNOWN_TOOLS))}"
+   557	        step_ref = _tool_step_ref(scope_id, round_id, tool_call_id)
+   558	        tool_result = _err(scope_id, round_id, tool_call_id, tool_name, err_msg)
+   559	        tool_result["arguments"] = arguments if isinstance(arguments, dict) else {}
+   560	        tool_result["step_ref"] = step_ref
+   561	        return tool_result
+   562	
+   563	    deps = {
+   564	        "gw_client": ctx.get("business_client"),
+   565	        "agent_id": agent_id,
+   566	        "subagent_id": subagent_id,
+   567	        "tool_call_id": tool_call_id,
+   568	        "tool_name": tool_name,
+   569	        "user_id": user_id,
+   570	    }
+   571	    if tool_name in (
+   572	        "shell",
+   573	        "skill_begin",
+   574	        "skill_end",
+   575	    ):
+   576	        from ..utils.cortex_bridge import get_cortex_bridge
+   577	        deps["bridge"] = get_cortex_bridge(cortex_scope_id, user_id, agent_id)
+   578	        deps["scope_id"] = cortex_scope_id
+   579	        deps["wake_scope_path"] = payload.get("wake_scope_path") or payload.get("scope_path")
+   580	
+   581	    try:
+   582	        result = executor(arguments if isinstance(arguments, dict) else {}, deps)
+   583	        step_ref = _tool_step_ref(scope_id, round_id, tool_call_id)
+   584	        tool_result = _ok(scope_id, round_id, tool_call_id, tool_name, result)
+   585	        tool_result["arguments"] = arguments if isinstance(arguments, dict) else {}
+   586	        tool_result["step_ref"] = step_ref
+   587	        return tool_result
+   588	    except Exception as e:
+   589	        # Structured failure event. Grep-target for ops dashboards and the
+   590	        # PR-17 bake-snapshot runner. The error is otherwise swallowed into
+   591	        # tool_output and the Queue task still marks "complete" — which is
+   592	        # exactly the silent-failure pattern PR-33 §"no silent failure"
+   593	        # requires us to surface at the service boundary.
+   594	        reason_type = type(e).__name__
+   595	        reason_msg = str(e)[:160].replace("\n", " ")
+   596	        logger.error(
+   597	            "event=tool_call_failed tool=%s agent=%s subagent=%s "
+   598	            "tool_call_id=%s reason_type=%s reason=%s",
+   599	            tool_name, agent_id or "-", subagent_id or "-",
+   600	            tool_call_id, reason_type, reason_msg,
+   601	        )
+   602	        step_ref = _tool_step_ref(scope_id, round_id, tool_call_id)
+   603	        tool_result = _err(scope_id, round_id, tool_call_id, tool_name, e)
+   604	        tool_result["arguments"] = arguments if isinstance(arguments, dict) else {}
+   605	        tool_result["step_ref"] = step_ref
+   606	        return tool_result
+   183	def process_multimodal_messages(
+   184	    messages: List[Dict[str, Any]], 
+   185	    provider: str = "openai"
+   186	) -> List[Dict[str, Any]]:
+   187	    """
+   188	    处理消息中的多模态内容
+   189	    
+   190	    将 tool_result 中的图片提取出来，作为单独的 user message 添加
+   191	    （因为 LLM API 不支持在 tool result 中放图片）
+   192	    
+   193	    关键：保证 assistant+tool_calls 后的所有 tool results 连续，
+   194	    图片 user messages 添加到所有 tool results 之后。
+   195	    
+   196	    Args:
+   197	        messages: 原始消息列表
+   198	        provider: LLM 提供商 ("openai" 或 "anthropic")
+   199	        
+   200	    Returns:
+   201	        处理后的消息列表
+   202	        
+   203	    Only current-turn ``display_perception`` tool messages may be converted to
+   204	    provider-native image content. Shell and historical tool messages stay as
+   205	    terminal-style text receipts.
+   206	    """
+   207	    if not HAS_MULTIMODAL:
+   208	        return messages
+   209	    
+   210	    processed = []
+   211	    pending_images = []  # 收集待添加的图片 user messages
+   212	    
+   213	    for i, msg in enumerate(messages):
+   214	        role = msg.get("role")
+   215	        content = msg.get("content", "")
+   216	        
+   217	        if role in ("tool_result", "tool"):
+   218	            projection = msg.get("_projection")
+   219	            tool_msg = {k: v for k, v in msg.items() if k != "_projection"}
+   220	            if projection != "display_perception":
+   221	                processed.append(tool_msg)
+   222	                continue
+   223	
+   224	            try:
+   225	                result = json.loads(content) if isinstance(content, str) else content
+   226	            except (json.JSONDecodeError, TypeError):
+   227	                result = {"content": content}
+   228	
+   229	            if isinstance(result, dict) and multimodal.has_images(result):
+   230	                _, images = multimodal.extract_from_result(result)
+   231	                text_only = multimodal.result_to_text_only(result)
+   232	
+   233	                # 添加文本版本的 tool result
+   234	                processed.append({
+   235	                    **tool_msg,
+   236	                    "content": text_only,
+   237	                })
+   238	                
+   239	                # 收集图片，但不立即添加
+   240	                if images:
+   241	                    tool_name = msg.get("name", "tool")
+   242	                    description = f"[Image from {tool_name}]"
+   243	                    
+   244	                    if provider == "anthropic":
+   245	                        img_content = multimodal.to_anthropic_content(images, description)
+   246	                    else:
+   247	                        img_content = multimodal.to_openai_content(images, description)
+   248	                    
+   249	                    pending_images.append({
+   250	                        "role": "user",
+   251	                        "content": img_content,
+   252	                    })
+   253	            else:
+   254	                processed.append(tool_msg)
+   255	        elif role == "user":
+   256	            # User message: 若有 {text, attachments} 格式，转为 LLM content 数组
+   257	            # 注意：Repository 层已统一将 content 解析为 dict
+   258	            if pending_images:
+   259	                processed.extend(pending_images)
+   260	                pending_images = []
+   261	            
+   262	            if isinstance(content, dict) and "attachments" in content and content["attachments"]:
+   263	                # 有附件，转为 LLM 格式（文本 + 附件描述）
+   264	                from .user_content import user_content_to_llm
+   265	                llm_content = user_content_to_llm(content, provider=provider)
+   266	                processed.append({"role": "user", "content": llm_content})
+   267	            elif isinstance(content, dict) and "text" in content:
+   268	                # 无附件，直接使用 text
+   269	                processed.append({"role": "user", "content": content.get("text", "")})
+   270	            else:
+   271	                # 兼容旧格式（纯字符串）
+   272	                processed.append(msg)
+   273	        else:
+   274	            # 其他消息
+   275	            if pending_images:
+   276	                processed.extend(pending_images)
+   277	                pending_images = []
+   278	            processed.append(msg)
+   279	    
+   280	    # 处理末尾剩余的图片
+   281	    if pending_images:
+   282	        processed.extend(pending_images)
+   283	    
+   284	    return processed
+    56	def _parse_tool_output_v1(raw: Dict[str, Any]) -> Dict[str, Any]:
+    57	    text_parts: list[str] = []
+    58	    text = raw.get("text")
+    59	    if text:
+    60	        text_parts.append(str(text))
+    61	
+    62	    artifacts = raw.get("artifacts") if isinstance(raw.get("artifacts"), list) else []
+    63	    for artifact in artifacts:
+    64	        if isinstance(artifact, dict):
+    65	            text_parts.append(_tool_output_artifact_line(artifact))
+    66	
+    67	    events = raw.get("events") if isinstance(raw.get("events"), list) else []
+    68	    for event in events:
+    69	        if not isinstance(event, dict):
+    70	            continue
+    71	        event_type = str(event.get("type") or "").strip()
+    72	        summary = str(event.get("summary") or "").strip()
+    73	        if event_type or summary:
+    74	            label = f"[Event: {event_type or 'event'}]"
+    75	            text_parts.append(f"{label} {summary}".strip())
+    76	
+    77	    error = raw.get("error")
+    78	    if error and not raw.get("ok", True):
+    79	        text_parts.append(f"[Error] {error}")
+    80	
+    81	    return {
+    82	        "text": "\n".join(text_parts),
+    83	        "files_created": [],
+    84	        "display_files": [],
+    85	        "artifacts": artifacts,
+    86	        "events": events,
+    87	    }
+   119	    if raw.get("version") == _TOOL_STEP_PAYLOAD_VERSION:
+   120	        return parse_tool_result(raw.get("llm_content", ""))
+   121	
+   122	    if raw.get("version") == "tool-output.v1":
+   123	        return _parse_tool_output_v1(raw)
+   124	
+   125	    # 1. 统一格式（三要素）
+   126	    if "display_files" in raw or "files_created" in raw:
+   127	        text_parts = []
+   128	        if raw.get("text"):
+   129	            text_parts.append(str(raw["text"]))
+   130	        # 把 files_created 的 URL 写入文本
+   131	        files_created = raw.get("files_created") or []
+   132	        if files_created and isinstance(files_created, list):
+   133	            urls = [f.get("url") for f in files_created if isinstance(f, dict) and f.get("url")]
+   134	            if urls:
+   135	                text_parts.append(f"file_url: {urls[0]}" if len(urls) == 1 else f"file_urls: {', '.join(urls)}")
+   136	        return {
+   137	            "text": "\n".join(text_parts),
+   138	            "files_created": files_created,
+   139	            "display_files": raw.get("display_files") or [],
+   140	        }
+   141	
+   142	    # 2. MCP 格式 content 数组
+   143	    content = raw.get("content") or raw.get("_mcp_content")
+   144	    if isinstance(content, list):
+   145	        text_parts = []
+   146	        display_files = []
+   147	        for item in content:
+   148	            if not isinstance(item, dict):
+   149	                continue
+   150	            t = item.get("type", "")
+   151	            if t == "text":
+   152	                text_parts.append(item.get("text", ""))
+   153	            elif t == "image":
+   154	                # 支持 URL 形式或直接的 data(base64) 形式
+   155	                if item.get("url"):
+   156	                    display_files.append({
+   157	                        "url": item["url"],
+   158	                        "filename": "",
+   159	                        "modality": "image",
+   160	                    })
+   161	                elif item.get("data"):
+   162	                    mime = item.get("mimeType", "image/png")
+   163	                    display_files.append({
+   164	                        "url": f"data:{mime};base64,{item['data']}",
+   165	                        "filename": "",
+   166	                        "modality": "image",
+   167	                    })
+   168	            elif t == "resource":
+   169	                if item.get("url"):
+   170	                    display_files.append({
+   171	                        "url": item["url"],
+   172	                        "filename": "",
+   173	                        "modality": "resource",
+   174	                    })
+   175	        return {
+   176	            "text": "\n".join(text_parts),
+   177	            "files_created": [],
+   178	            "display_files": display_files,
+   179	        }
+   202	def _format_mcp_content(
+   203	    result_data: Dict[str, Any],
+   204	    *,
+   205	    include_display: bool,
+   206	    max_text_len: Optional[int] = None,
+   207	    empty_text: str = "OK",
+   208	) -> str:
+   209	    converted = []
+   210	
+   211	    text = result_data.get("text", "")
+   212	    if max_text_len is not None and len(text) > max_text_len:
+   213	        text = text[:max_text_len] + f"\n\n... [Truncated due to context budget length > {max_text_len}]"
+   214	
+   215	    if text:
+   216	        converted.append({"type": "text", "text": text})
+   217	
+   218	    if include_display:
+   219	        display_files = result_data.get("display_files", [])
+   220	        for f in display_files:
+   221	            url = f.get("url", "")
+   222	            if not url:
+   223	                continue
+   224	            if url.startswith("data:"):
+   225	                # Data URL
+   226	                parts = url.split(",", 1)
+   227	                mime = "image/png"
+   228	                if len(parts) >= 1 and ";" in parts[0]:
+   229	                    mime = parts[0].split(";")[0].replace("data:", "")
+   230	                data_b64 = parts[1] if len(parts) > 1 else ""
+   231	
+   232	                converted.append({
+   233	                    "type": "image",
+   234	                    "data": data_b64,
+   235	                    "mimeType": mime,
+   236	                })
+   237	            else:
+   238	                # Normal URL: represent unresolved display media as text.
+   239	                converted.append({"type": "text", "text": f"[Image: {url}]"})
+   240	                
+   241	    if not converted:
+   242	        converted.append({"type": "text", "text": empty_text})
+   243	
+   244	    return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
+   245	
+   246	
+   247	def format_for_history_llm(
+   248	    result_data: Dict[str, Any],
+   249	    provider: str = "openai",
+   250	    max_text_len: Optional[int] = None,
+   251	) -> str:
+   252	    """Format historical tool output as manifest/text only."""
+   253	    _ = provider
+   254	    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+   255	
+   256	
+   257	def format_for_current_tool_result_llm(
+   258	    result_data: Dict[str, Any],
+   259	    provider: str = "openai",
+   260	    max_text_len: Optional[int] = None,
+   261	) -> str:
+   262	    """Format current non-display tool output as manifest/text only."""
+   263	    _ = provider
+   264	    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+   265	
+   266	
+   267	def format_for_display_perception_llm(
+   268	    result_data: Dict[str, Any],
+   269	    provider: str = "openai",
+   270	    max_text_len: Optional[int] = None,
+   271	) -> str:
+   272	    """Format explicit display perception output with allowed visual content."""
+   273	    _ = provider
+   274	    return _format_mcp_content(
+   275	        result_data,
+   276	        include_display=True,
+   277	        max_text_len=max_text_len,
+   278	        empty_text="[Display produced no text or media for LLM perception]",
+   279	    )
+
+## Sandbox service and SDK entrypoints
+    67	def create_app(*, runner: Any | None = None):
+    68	    app = FastAPI(title="NovaIC Sandboxd", version="1.0.0")
+    69	    app.state.runner = runner or AsyncProcessRunner()
+    70	
+    71	    @app.get("/health")
+    72	    @app.get("/api/health")
+    73	    def health() -> dict[str, str]:
+    74	        return {
+    75	            "status": "ok",
+    76	            "service": "sandboxd",
+    77	            "contract_version": "sandboxd/v1",
+    78	        }
+    79	
+    80	    @app.post("/v1/execute")
+    81	    async def execute(request: Request) -> dict[str, Any]:
+    82	        try:
+    83	            payload = await request.json()
+    84	            if not isinstance(payload, dict):
+    85	                raise ValueError("request body must be a JSON object")
+    86	            execute_request = SandboxdExecuteRequest.from_dict(payload)
+    87	            spec = _sdk_request_to_core_spec(execute_request)
+    88	            _validate_spec(spec)
+    89	        except ValueError as exc:
+    90	            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    91	
+    92	        result = await app.state.runner.run(spec)
+    93	        return _to_response(result).to_dict()
+    94	
+    98	def main() -> None:
+    99	    parser = argparse.ArgumentParser(description="NovaIC sandboxd service")
+   100	    parser.add_argument("--host", default="127.0.0.1", help="Host to bind")
+   101	    parser.add_argument("--port", type=int, default=19994, help="Port to listen")
+   102	    args = parser.parse_args()
+   103	
+   104	    logging.basicConfig(
+   105	        level=logging.INFO,
+   106	        format="[%(asctime)s] [%(levelname)s] %(message)s",
+   107	        datefmt="%H:%M:%S",
+   108	    )
+   109	    logger.info("Starting sandboxd on %s:%s", args.host, args.port)
+   110	
+   111	    import uvicorn
+   112	
+   113	    uvicorn.run(create_app(), host=args.host, port=args.port)
+    19	@dataclass(frozen=True)
+    20	class SandboxdClient:
+    21	    base_url: str
+    22	    request_timeout: int = 30
+    23	
+    24	    async def execute(self, spec: SandboxExecSpec) -> SandboxExecResult:
+    25	        return await asyncio.to_thread(self._execute_sync, spec)
+    26	
+    27	    def _execute_sync(self, spec: SandboxExecSpec) -> SandboxExecResult:
+    28	        url = self.base_url.rstrip("/") + "/v1/execute"
+    29	        payload = json.dumps(
+    30	            SandboxdExecuteRequest.from_spec(spec).to_dict(),
+    31	            ensure_ascii=False,
+    32	        ).encode("utf-8")
+    33	        request = urllib.request.Request(
+    34	            url,
+    35	            data=payload,
+    36	            headers={"Content-Type": "application/json"},
+    37	            method="POST",
+    38	        )
+    39	        try:
+    40	            with urllib.request.urlopen(request, timeout=self.request_timeout) as response:
+    41	                raw = response.read()
+    42	        except urllib.error.HTTPError as exc:
+    43	            body = exc.read().decode("utf-8", errors="replace")
+    44	            raise SandboxdClientError(f"sandboxd returned HTTP {exc.code}: {body}") from exc
+    45	        except urllib.error.URLError as exc:
+    46	            raise SandboxdClientError(f"sandboxd request failed: {exc.reason}") from exc
+    47	        except TimeoutError as exc:
+    48	            raise SandboxdClientError("sandboxd request timed out") from exc
+    49	
+    50	        try:
+    51	            data = json.loads(raw.decode("utf-8"))
+    52	            return SandboxdExecuteResponse.from_dict(data).to_result()
+    53	        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+    54	            raise SandboxdClientError("sandboxd returned an invalid response") from exc
+    35	@dataclass(frozen=True)
+    36	class SandboxdExecuteRequest:
+    37	    command: str
+    38	    cwd: str
+    39	    env: Mapping[str, str]
+    40	    timeout: int
+    41	    display_command: str = ""
+    42	    mount: SandboxBindMount | None = None
+    43	
+    44	    @classmethod
+    45	    def from_spec(cls, spec: SandboxExecSpec) -> "SandboxdExecuteRequest":
+    46	        return cls(
+    47	            command=spec.command,
+    48	            cwd=spec.cwd,
+    49	            env=dict(spec.env),
+    50	            timeout=spec.timeout,
+    51	            display_command=spec.display_command,
+    52	            mount=spec.mount,
+    53	        )
+    54	
+    55	    @classmethod
+    56	    def from_dict(cls, data: Mapping[str, Any]) -> "SandboxdExecuteRequest":
+    57	        env_raw = data.get("env", {})
+    58	        if not isinstance(env_raw, Mapping):
+    59	            raise ValueError("env must be an object")
+    60	        env: dict[str, str] = {}
+    61	        for key, value in env_raw.items():
+    62	            if not isinstance(key, str) or not isinstance(value, str):
+    63	                raise ValueError("env keys and values must be strings")
+    64	            env[key] = value
+    65	
+    66	        mount_raw = data.get("mount")
+    67	        mount: SandboxBindMount | None = None
+    68	        if mount_raw is not None:
+    69	            if not isinstance(mount_raw, Mapping):
+    70	                raise ValueError("mount must be an object or null")
+    71	            mount = SandboxBindMount(
+    72	                source_root=_require_str(mount_raw, "source_root"),
+    73	                mount_point=_require_str(mount_raw, "mount_point"),
+    74	                stable_cwd=_require_str(mount_raw, "stable_cwd"),
+    75	            )
+    76	
+    77	        return cls(
+    78	            command=_require_str(data, "command"),
+    79	            cwd=_require_str(data, "cwd"),
+    80	            env=env,
+    81	            timeout=_require_int(data, "timeout"),
+    82	            display_command=_optional_str(data, "display_command"),
+    83	            mount=mount,
+    84	        )
+    85	
+    86	    def to_spec(self) -> SandboxExecSpec:
+    87	        return SandboxExecSpec(
+    88	            command=self.command,
+    89	            cwd=self.cwd,
+    90	            env=dict(self.env),
+    91	            timeout=self.timeout,
+    92	            display_command=self.display_command,
+    93	            mount=self.mount,
+    94	        )
+    95	
+    96	    def to_dict(self) -> JsonObject:
+    97	        mount: JsonObject | None = None
+    98	        if self.mount is not None:
+    99	            mount = {
+   100	                "source_root": self.mount.source_root,
+   101	                "mount_point": self.mount.mount_point,
+   102	                "stable_cwd": self.mount.stable_cwd,
+   103	            }
+   104	        return {
+   105	            "command": self.command,
+   106	            "cwd": self.cwd,
+   107	            "env": dict(self.env),
+   108	            "timeout": self.timeout,
+   109	            "display_command": self.display_command,
+   110	            "mount": mount,
+   111	        }
+   114	@dataclass(frozen=True)
+   115	class SandboxdExecuteResponse:
+   116	    stdout: bytes
+   117	    stderr: bytes
+   118	    exit_code: int
+   119	    duration_s: float
+   120	
+   121	    @classmethod
+   122	    def from_result(cls, result: SandboxExecResult) -> "SandboxdExecuteResponse":
+   123	        return cls(
+   124	            stdout=result.stdout,
+   125	            stderr=result.stderr,
+   126	            exit_code=result.exit_code,
+   127	            duration_s=result.duration_s,
+   128	        )
+   129	
+   130	    @classmethod
+   131	    def from_dict(cls, data: Mapping[str, Any]) -> "SandboxdExecuteResponse":
+   132	        duration = data.get("duration_s")
+   133	        if not isinstance(duration, (int, float)) or isinstance(duration, bool):
+   134	            raise ValueError("duration_s must be a number")
+   135	        return cls(
+   136	            stdout=base64.b64decode(_require_str(data, "stdout_b64")),
+   137	            stderr=base64.b64decode(_require_str(data, "stderr_b64")),
+   138	            exit_code=_require_int(data, "exit_code"),
+   139	            duration_s=float(duration),
+   140	        )
+   141	
+   142	    def to_result(self) -> SandboxExecResult:
+   143	        return SandboxExecResult(
+   144	            stdout=self.stdout,
+   145	            stderr=self.stderr,
+   146	            exit_code=self.exit_code,
+   147	            duration_s=self.duration_s,
+   148	        )
+   149	
+   150	    def to_dict(self) -> JsonObject:
+   151	        return {
+   152	            "stdout_b64": base64.b64encode(self.stdout).decode("ascii"),
+   153	            "stderr_b64": base64.b64encode(self.stderr).decode("ascii"),
+   154	            "exit_code": self.exit_code,
+   155	            "duration_s": self.duration_s,
+   156	        }
+
+## Blob and LogicalFS substrate entrypoints
+    29	def create_app(base_dir: str = None):
+    30	    """Create the Blob Service app."""
+    31	    from fastapi import FastAPI
+    32	
+    33	    if base_dir is None:
+    34	        base_dir = DEFAULT_DATA_DIR
+    35	    files_dir = os.path.join(base_dir, "files")
+    36	    os.makedirs(files_dir, exist_ok=True)
+    37	
+    38	    storage = BlobByteStore(
+    39	        base_dir=files_dir,
+    40	        backend_config=load_blob_backend_config_from_env(os.environ),
+    41	    )
+    42	    deps = BlobRuntimeDependencies.system(limits=load_blob_limits_from_env(os.environ))
+    43	
+    44	    app = FastAPI(title="NovaIC Blob Service", version="2.0.0")
+    45	    
+    46	    @app.get("/api/health")
+    47	    def health():
+    48	        return {
+    49	            "status": "ok",
+    50	            "service": "blob-service",
+    51	            "contract_version": "blob/v1",
+    52	        }
+    53	    
+    54	    app.include_router(create_blob_router(storage, deps=deps))
+    62	def main():
+    63	    parser = argparse.ArgumentParser(description="NovaIC Blob Service")
+    64	    parser.add_argument("--port", type=int, default=19995, help="Port to listen")
+    65	    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind")
+    66	    parser.add_argument("--data-dir", type=str, required=True, help="Data directory (required)")
+    67	    args = parser.parse_args()
+    68	
+    69	    logger.info(f"[BlobService] Starting on {args.host}:{args.port}")
+    70	    app = create_app(base_dir=args.data_dir)
+    71	
+    72	    import uvicorn
+    73	    uvicorn.run(app, host=args.host, port=args.port)
+   107	def create_blob_router(storage: BlobByteStore, *, deps: BlobRuntimeDependencies) -> APIRouter:
+   108	    """Create the new Blob Service API router."""
+   109	
+   110	    limits = deps.limits
+   111	    blob_storage = BlobStorage(
+   112	        storage,
+   113	        clock=deps.clock,
+   114	        blob_id_provider=deps.blob_id_provider,
+   115	    )
+   116	    multipart_storage = MultipartStorage(
+   117	        storage,
+   118	        limits=limits,
+   119	        clock=deps.clock,
+   120	        session_id_provider=deps.session_id_provider,
+   121	        blob_storage=blob_storage,
+   122	    )
+   123	    object_storage = ObjectStorage(storage)
+   124	    router = APIRouter(prefix="/v1/blobs", tags=["blobs"])
+   127	    @router.post("/uploads")
+   128	    async def create_multipart_upload(
+   129	        req: MultipartCreateBody,
+   130	        x_tenant_id: Optional[str] = Header(None),
+   131	    ):
+   132	        tenant_id = _tenant_id(x_tenant_id, req.tenant_id)
+   133	        try:
+   134	            return multipart_storage.create_upload(MultipartCreateInput(
+   135	                tenant_id=tenant_id,
+   136	                namespace=req.namespace,
+   137	                mime_type=req.mime_type,
+   138	                blob_id=req.blob_id,
+   139	                filename=req.filename,
+   140	                expected_size=req.expected_size,
+   141	                expected_sha256=req.expected_sha256,
+   142	                part_size=req.part_size,
+   143	                ttl_seconds=req.ttl_seconds,
+   144	                created_by=req.created_by,
+   145	                source_ref=req.source_ref,
+   146	                content_disposition=req.content_disposition,
+   147	            ))
+   148	        except (MultipartError, BlobSizeLimitError, ValueError) as exc:
+   149	            raise _multipart_http_error(exc) from exc
+   150	
+   239	    @router.get("/{namespace}/{blob_id}/info")
+   240	    async def blob_info(
+   241	        namespace: str,
+   242	        blob_id: str,
+   243	        x_tenant_id: Optional[str] = Header(None),
+   244	        tenant_id: Optional[str] = None,
+   245	    ):
+   246	        tid = _tenant_id(x_tenant_id, tenant_id)
+   247	        try:
+   248	            blob_ref = make_blob_ref(namespace, blob_id)
+   249	            metadata = blob_storage.stat_blob(BlobIdentity(tenant_id=tid, namespace=namespace, blob_id=blob_id))
+   250	        except ValueError as exc:
+   251	            raise HTTPException(status_code=400, detail=str(exc)) from exc
+   252	        if metadata is None:
+   253	            raise HTTPException(status_code=404, detail="Blob not found")
+   254	        return metadata
+   255	
+   256	    @router.get("/{namespace}/{blob_id}")
+   257	    async def get_blob(
+   258	        namespace: str,
+   259	        blob_id: str,
+   260	        x_tenant_id: Optional[str] = Header(None),
+   261	        tenant_id: Optional[str] = None,
+   262	    ):
+   263	        tid = _tenant_id(x_tenant_id, tenant_id)
+   264	        try:
+   265	            blob_ref = make_blob_ref(namespace, blob_id)
+   266	            identity = BlobIdentity(tenant_id=tid, namespace=namespace, blob_id=blob_id)
+   267	            metadata = blob_storage.stat_blob(identity)
+   268	            data = blob_storage.get_blob(identity)
+   269	        except ValueError as exc:
+   270	            raise HTTPException(status_code=400, detail=str(exc)) from exc
+   271	        if metadata is None or data is None:
+   272	            raise HTTPException(status_code=404, detail="Blob not found")
+   273	        from fastapi.responses import Response
+   274	        return Response(content=data, media_type=metadata.get("mime_type") or "application/octet-stream")
+   275	
+   276	    @router.post("/{namespace}/{blob_id}/presign")
+   277	    async def presign_blob(
+   278	        namespace: str,
+   279	        blob_id: str,
+   280	        ttl: int = 3600,
+   281	        x_tenant_id: Optional[str] = Header(None),
+   282	        tenant_id: Optional[str] = None,
+   283	    ):
+   284	        tid = _tenant_id(x_tenant_id, tenant_id)
+   285	        try:
+   286	            blob_ref = make_blob_ref(namespace, blob_id)
+   287	            url = blob_storage.presign_blob(BlobPresignInput(
+   288	                tenant_id=tid,
+   289	                namespace=namespace,
+   290	                blob_id=blob_id,
+   291	                ttl=ttl,
+   292	            ))
+   293	        except ValueError as exc:
+   294	            raise HTTPException(status_code=400, detail=str(exc)) from exc
+   295	        return build_download_access(
+   296	            blob_ref=blob_ref,
+   297	            namespace=namespace,
+   298	            blob_id=blob_id,
+   299	            ttl=ttl,
+   300	            presigned_url=url,
+   301	        ).to_response()
+   302	
+   303	    @router.delete("/{namespace}/{blob_id}")
+   304	    async def delete_blob(
+   305	        namespace: str,
+   306	        blob_id: str,
+   307	        x_tenant_id: Optional[str] = Header(None),
+   308	        tenant_id: Optional[str] = None,
+   309	    ):
+   310	        tid = _tenant_id(x_tenant_id, tenant_id)
+   311	        try:
+   312	            blob_ref = make_blob_ref(namespace, blob_id)
+   313	            deleted = blob_storage.delete_blob(BlobIdentity(tenant_id=tid, namespace=namespace, blob_id=blob_id))
+   314	        except ValueError as exc:
+   315	            raise HTTPException(status_code=400, detail=str(exc)) from exc
+   316	        if not deleted:
+   317	            raise HTTPException(status_code=404, detail="Blob not found")
+   318	        return {"deleted": True, "blob_ref": blob_ref}
+   320	    @objects_router.put("/{namespace}/{object_path:path}")
+   321	    async def put_object(
+   322	        namespace: str,
+   323	        object_path: str,
+   324	        request: Request,
+   325	        x_tenant_id: Optional[str] = Header(None),
+   326	        tenant_id: Optional[str] = None,
+   327	        content_type: Optional[str] = Header(None),
+   328	    ):
+   329	        tid = _tenant_id(x_tenant_id, tenant_id)
+   330	        body = await request.body()
+   331	        try:
+   332	            check_size("object payload", len(body), limits.max_object_put_bytes)
+   333	        except BlobSizeLimitError as exc:
+   334	            logger.info(
+   335	                "blob_object_put_rejected tenant=%s namespace=%s key=%s reason=size_limit size=%s limit=%s",
+   336	                tid,
+   337	                namespace,
+   338	                object_path,
+   339	                exc.size,
+   340	                exc.limit,
+   341	            )
+   342	            raise HTTPException(status_code=413, detail=str(exc)) from exc
+   343	        try:
+   344	            result = object_storage.put_object(ObjectPutInput(
+   345	                tenant_id=tid,
+   346	                namespace=namespace,
+   347	                key=object_path,
+   348	                data=body,
+   349	                content_type=content_type or "application/octet-stream",
+   350	            ))
+   351	            logger.info(
+   352	                "blob_object_put tenant=%s namespace=%s key=%s size=%s",
+   353	                tid,
+   354	                namespace,
+   355	                object_path,
+   356	                result.get("size"),
+   357	            )
+   358	            return result
+   359	        except ValueError as exc:
+   360	            raise HTTPException(status_code=400, detail=str(exc)) from exc
+   361	
+   362	    @objects_router.get("/_list")
+   363	    async def list_objects(
+   364	        namespace: str,
+   365	        prefix: str = "",
+   366	        delimiter: str = "/",
+   367	        recursive: bool = False,
+   368	        x_tenant_id: Optional[str] = Header(None),
+   369	        tenant_id: Optional[str] = None,
+   370	    ):
+   371	        tid = _tenant_id(x_tenant_id, tenant_id)
+   372	        try:
+   373	            if recursive:
+   374	                keys = object_storage.list_recursive(ObjectRecursiveListInput(
+   375	                    tenant_id=tid,
+   376	                    namespace=namespace,
+   377	                    prefix=prefix,
+   378	                ))
+   379	                return {"objects": [{"key": key, "is_prefix": False} for key in keys]}
+   380	            entries = object_storage.list_objects(ObjectListInput(
+   381	                tenant_id=tid,
+   382	                namespace=namespace,
+   383	                prefix=prefix,
+   384	                delimiter=delimiter,
+   385	            ))
+   386	            return {
+   387	                "objects": [
+   388	                    {"key": entry.key, "size": entry.size, "is_prefix": entry.is_prefix}
+   389	                    for entry in entries
+   390	                ]
+   391	            }
+   392	        except ValueError as exc:
+   393	            raise HTTPException(status_code=400, detail=str(exc)) from exc
+   394	
+   395	    @objects_router.post("/_move-prefix")
+   396	    async def move_prefix(req: ObjectMovePrefixRequest):
+   397	        try:
+   398	            count = object_storage.move_prefix(ObjectMovePrefixInput(
+   399	                tenant_id=req.tenant_id,
+   400	                namespace=req.namespace,
+   401	                src_prefix=req.src_prefix,
+   402	                dst_prefix=req.dst_prefix,
+   403	            ))
+   404	        except ValueError as exc:
+   405	            raise HTTPException(status_code=400, detail=str(exc)) from exc
+   406	        return {"moved": count}
+    86	class LocalLogicalFSProvider:
+    87	    """Materialize explicit snapshots into local RO/RW views and observe patches."""
+    88	
+    89	    def materialize(
+    90	        self,
+    91	        *,
+    92	        snapshot: LogicalFSSnapshot,
+    93	        root: Path,
+    94	        layout: LogicalFSLayout,
+    95	        env: LogicalFSEnv,
+    96	        cwd: str | None = None,
+    97	    ) -> LogicalFSView:
+    98	        ro = root / "ro"
+    99	        rw = root / "rw"
+   100	        bin_dir = root / "bin"
+   101	        ro.mkdir(parents=True)
+   102	        rw.mkdir(parents=True)
+   103	        bin_dir.mkdir(parents=True)
+   104	
+   105	        for item in snapshot.files:
+   106	            clean = item.path.strip("/")
+   107	            if not clean:
+   108	                continue
+   109	            base = rw if item.writable else ro
+   110	            dest = base / clean
+   111	            dest.parent.mkdir(parents=True, exist_ok=True)
+   112	            dest.write_bytes(item.data)
+   113	
+   114	        for stable_path in [*layout.writable_env.values(), *layout.writable_dirs]:
+   115	            if stable_path.startswith(layout.paths.rw + "/"):
+   116	                rel = stable_path.removeprefix(layout.paths.rw + "/")
+   117	                (rw / rel).mkdir(parents=True, exist_ok=True)
+   118	
+   119	        proc_cwd = _resolve_cwd_under_root(rw, cwd)
+   120	        base_env = {
+   121	            "PATH": f"{layout.paths.bin}:/usr/local/bin:/usr/bin:/bin",
+   122	            "RO": layout.paths.ro,
+   123	            "RW": layout.paths.rw,
+   124	            "CORTEX_RO": layout.paths.ro,
+   125	            "CORTEX_RW": layout.paths.rw,
+   126	            "CORTEX_ROOT": layout.paths.root,
+   127	            "CORTEX_FS_PROVIDER": "logicalfs",
+   128	            "CORTEX_TRUE_STABLE_PATH_MOUNT": "1",
+   129	            "HOME": layout.paths.rw,
+   130	        }
+   131	        base_env.update(dict(layout.writable_env))
+   132	        base_env.update(dict(env.values))
+   133	        return LogicalFSView(
+   134	            root=root,
+   135	            ro=ro,
+   136	            rw=rw,
+   137	            bin=bin_dir,
+   138	            cwd=proc_cwd,
+   139	            stable_cwd=_stable_path_for_actual(
+   140	                proc_cwd,
+   141	                view_root=root,
+   142	                ro=ro,
+   143	                rw=rw,
+   144	                stable=layout.paths,
+   145	            ),
+   146	            env=base_env,
+   147	            before_rw=_file_stats(rw),
+   148	            paths=layout.paths,
+   149	        )
+   150	
+   151	    def observe_patch(self, view: LogicalFSView) -> LogicalFSPatch:
+   152	        after = _file_stats(view.rw)
+   153	        upserts: list[LogicalFSPatchFile] = []
+   154	        deletes: list[str] = []
+   155	        for rel in _changed_relative_paths(view.before_rw, after):
+   156	            logical = _logical_rw_path(rel, view.paths)
+   157	            if rel not in after:
+   158	                deletes.append(logical)
+   159	            else:
+   160	                upserts.append(LogicalFSPatchFile(path=logical, data=(view.rw / rel).read_bytes()))
+   161	        return LogicalFSPatch(upserts=tuple(upserts), deletes=tuple(sorted(deletes)))
+   162	
+   163	    def sanitize_output(self, text: str, view: LogicalFSView) -> str:
+   164	        return sanitize_paths(
+   165	            text,
+   166	            {
+   167	                str(view.ro.resolve()): view.paths.ro,
+   168	                str(view.rw.resolve()): view.paths.rw,
+   169	                str(view.root.resolve()): view.paths.root,
+   170	            },
+   171	        )
+     1	"""Blob Service object-store adapter below LogicalFS.
+     2	
+     3	Blob Service is a cheap byte/object server. LogicalFS owns realtime /ro and /rw
+     4	file authority above this adapter; callers should not use this class as a
+     5	semantic workspace API.
+     6	"""
+    18	class BlobObjectStore:
+    19	    """Async object-store adapter over Blob Service object APIs."""
+    20	
+    21	    def __init__(
+    22	        self,
+    23	        *,
+    24	        base_url: str,
+    25	        tenant_id: str,
+    26	        namespace: str = "cortex-store",
+    27	        timeout: float = 10.0,
+    28	        client_service_name: str = "logicalfs",
+    29	    ) -> None:
+    30	        if not base_url or not base_url.strip():
+    31	            raise ValueError("base_url is required")
+    32	        if not tenant_id or not tenant_id.strip():
+    33	            raise ValueError("tenant_id is required")
+    34	        self._base_url = base_url.rstrip("/")
+    35	        self._tenant_id = tenant_id
+    36	        self._namespace = namespace
+    37	        self._timeout = timeout
+    38	        self._client_service_name = client_service_name
+    39	
+    40	    def _headers(self) -> dict[str, str]:
+    41	        return {"X-Tenant-ID": self._tenant_id}
+    42	
+    43	    def _object_url(self, key: str) -> str:
+    44	        return f"{self._base_url}/v1/objects/{quote(self._namespace)}/{quote(key, safe='/')}"
+    45	
+    46	    async def put(self, key: str, data: bytes, content_type: str = "") -> None:
+    47	        headers = self._headers()
+    48	        if content_type:
+    49	            headers["Content-Type"] = content_type
+    50	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+    51	            resp = await client.put(self._object_url(key), headers=headers, content=data)
+    52	            resp.raise_for_status()
+    53	
+    54	    async def get(self, key: str) -> bytes:
+    55	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+    56	            resp = await client.get(self._object_url(key), headers=self._headers())
+    57	        if resp.status_code == 404:
+    58	            raise KeyError(key)
+    59	        resp.raise_for_status()
+    60	        return resp.content
+    61	
+    62	    async def exists(self, key: str) -> bool:
+    63	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+    64	            resp = await client.get(
+    65	                f"{self._object_url(key)}/info",
+    66	                headers=self._headers(),
+    67	            )
+    68	        if resp.status_code == 404:
+    69	            return False
+    70	        resp.raise_for_status()
+    71	        return True
+    72	
+    73	    async def delete(self, key: str) -> None:
+    74	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+    75	            resp = await client.delete(self._object_url(key), headers=self._headers())
+    76	        if resp.status_code == 404:
+    77	            return
+    78	        resp.raise_for_status()
+    79	
+    80	    async def list_objects(self, prefix: str, delimiter: str = "/") -> list[LogicalObjectInfo]:
+    81	        if delimiter != "/":
+    82	            raise NotImplementedError("BlobObjectStore only supports delimiter='/'")
+    83	        data = await self._list(prefix=prefix, delimiter=delimiter, recursive=False)
+    84	        return [
+    85	            LogicalObjectInfo(
+    86	                key=str(item["key"]),
+    87	                size=int(item.get("size") or 0),
+    88	                is_prefix=bool(item.get("is_prefix")),
+    89	            )
+    90	            for item in data.get("objects", [])
+    91	        ]
+    92	
+    93	    async def list_recursive(self, prefix: str) -> list[str]:
+    94	        data = await self._list(prefix=prefix, delimiter="/", recursive=True)
+    95	        return sorted(str(item["key"]) for item in data.get("objects", []))
+    96	
+    97	    async def _list(self, *, prefix: str, delimiter: str, recursive: bool) -> dict[str, Any]:
+    98	        params = {
+    99	            "namespace": self._namespace,
+   100	            "prefix": prefix,
+   101	            "delimiter": delimiter,
+   102	            "recursive": "true" if recursive else "false",
+   103	        }
+   104	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+   105	            resp = await client.get(
+   106	                f"{self._base_url}/v1/objects/_list",
+   107	                params=params,
+   108	                headers=self._headers(),
+   109	            )
+   110	            resp.raise_for_status()
+   111	            return resp.json()
+   112	
+   113	    async def move(self, src: str, dst: str) -> None:
+   114	        data = await self.get(src)
+   115	        await self.put(dst, data)
+   116	        await self.delete(src)
+   117	
+   118	    async def move_prefix(self, src_prefix: str, dst_prefix: str) -> int:
+   119	        body = {
+   120	            "tenant_id": self._tenant_id,
+   121	            "namespace": self._namespace,
+   122	            "src_prefix": src_prefix,
+   123	            "dst_prefix": dst_prefix,
+   124	        }
+   125	        async with internal_async_client(self._client_service_name, timeout=self._timeout) as client:
+   126	            resp = await client.post(f"{self._base_url}/v1/objects/_move-prefix", json=body)
+   127	            resp.raise_for_status()
+   128	            data = resp.json()
+   129	        return int(data.get("moved") or 0)
+   130	

@@ -1,0 +1,57 @@
+    matched_skills = []
+    user_message = payload.get("user_message")
+    business_client = ctx.get("business_client")
+
+    if payload.get("initial_context"):
+        initial_context = list(payload["initial_context"])
+        context_parts = len(initial_context)
+        print(f"[session.init] Using provided initial context with {context_parts} parts for {subagent_id}")
+
+    # Cross-wake continuity is intentionally not synthesized here. Prior work
+    # lives as explicit child-skill summaries under the agent root and is
+    # rendered by Cortex's ContextEvent-backed read model when
+    # ``context.prepare_for_llm`` starts from ``agent_root_scope_id``.
+
+    # 4. System Prompt (Business-owned identity + capabilities)
+    if business_client is None:
+        raise ValidationError("Missing required client in ctx: business_client")
+
+    prompt_resp = business_client.build_system_prompt(
+        agent_id,
+        task=user_message,
+        auto_match_skills=True,
+        subagent_id=subagent_id,
+    )
+    sys_prompt = prompt_resp.get("system_prompt", "")
+    matched_skills = list(prompt_resp.get("matched_skills") or [])
+    if not sys_prompt:
+        raise ValidationError("Business returned empty system_prompt")
+    initial_context.insert(0, {
+        "role": "system",
+        "content": sys_prompt,
+        "_message_type": "SYSTEM_MESSAGE",
+    })
+    context_parts += 1
+
+    # 5. Write context.jsonl (batch)
+    if initial_context:
+        bridge.append_context_batch(
+            agent_root_scope_id,
+            initial_context,
+            scope_path=wake_scope_path,
+        )
+    ensure_participant(payload, with_system_activity_dependencies(ctx), status="running")
+
+    # 6. Write meta.json. PR-113 removed the old wake IM replay flag:
+    # current-turn delivery uses input_message_ids; cross-wake memory
+    # uses Cortex folded scope summaries.
+    bridge.update_session_meta(
+        agent_root_scope_id,
+        scope_path=wake_scope_path,
+        subagent_id=subagent_id,
+        agent_id=agent_id,
+        user_id=user_id,
+        trigger_type=trigger_type,
+        scope_name=scope_name,
+        agent_root_scope_id=agent_root_scope_id,
+        agent_root_scope_path=agent_root_scope_path,

@@ -1,0 +1,53 @@
+    async def read_context(self, scope_path: str) -> List[Dict[str, Any]]:
+        """Read the materialized context projection for inspection/debug.
+
+        Returns a list of message dicts in order.  Empty list if file
+        does not exist or is empty.
+        """
+        path = scope_path.rstrip("/") + "/context.jsonl"
+        try:
+            raw = await self.read(path)
+        except (KeyError, FileNotFoundError):
+            return []
+        messages: List[Dict[str, Any]] = []
+        for line_no, line in enumerate(raw.splitlines(), start=1):
+            line = line.strip()
+            if line:
+                try:
+                    messages.append(json.loads(line))
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        f"corrupt context projection {path}:{line_no}: {exc.msg}"
+                    ) from exc
+        return messages
+
+    async def append_context(self, scope_path: str, message: Dict[str, Any]) -> int:
+        """Append a single message to the materialized context projection."""
+        path = scope_path.rstrip("/") + "/context.jsonl"
+        line = json.dumps(message, ensure_ascii=False)
+        await self._sys_append_line(path, line)
+        return -1
+
+    async def append_context_projection(self, scope_path: str, message: Dict[str, Any]) -> int:
+        """Materialize a context-message projection after ContextMessageAppended."""
+        return await self.append_context(scope_path, message)
+
+    async def append_context_batch(self, scope_path: str, messages: List[Dict[str, Any]]) -> None:
+        """Append multiple messages to the materialized context projection."""
+        if not messages:
+            return
+        path = scope_path.rstrip("/") + "/context.jsonl"
+        lines = "".join(
+            json.dumps(m, ensure_ascii=False) + "\n" for m in messages
+        )
+        await self._files.append_lines(path, lines)
+
+    async def append_context_batch_projection(
+        self,
+        scope_path: str,
+        messages: List[Dict[str, Any]],
+    ) -> None:
+        """Materialize context-message projections after batch event append."""
+        await self.append_context_batch(scope_path, messages)
+
+    async def read_session_meta(self, scope_path: str) -> Dict[str, Any]:

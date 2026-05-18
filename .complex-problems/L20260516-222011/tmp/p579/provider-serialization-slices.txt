@@ -1,0 +1,757 @@
+## Runtime multimodal processing
+   183	def process_multimodal_messages(
+   184	    messages: List[Dict[str, Any]], 
+   185	    provider: str = "openai"
+   186	) -> List[Dict[str, Any]]:
+   187	    """
+   188	    处理消息中的多模态内容
+   189	    
+   190	    将 tool_result 中的图片提取出来，作为单独的 user message 添加
+   191	    （因为 LLM API 不支持在 tool result 中放图片）
+   192	    
+   193	    关键：保证 assistant+tool_calls 后的所有 tool results 连续，
+   194	    图片 user messages 添加到所有 tool results 之后。
+   195	    
+   196	    Args:
+   197	        messages: 原始消息列表
+   198	        provider: LLM 提供商 ("openai" 或 "anthropic")
+   199	        
+   200	    Returns:
+   201	        处理后的消息列表
+   202	        
+   203	    Only current-turn ``display_perception`` tool messages may be converted to
+   204	    provider-native image content. Shell and historical tool messages stay as
+   205	    terminal-style text receipts.
+   206	    """
+   207	    if not HAS_MULTIMODAL:
+   208	        return messages
+   209	    
+   210	    processed = []
+   211	    pending_images = []  # 收集待添加的图片 user messages
+   212	    
+   213	    for i, msg in enumerate(messages):
+   214	        role = msg.get("role")
+   215	        content = msg.get("content", "")
+   216	        
+   217	        if role in ("tool_result", "tool"):
+   218	            projection = msg.get("_projection")
+   219	            tool_msg = {k: v for k, v in msg.items() if k != "_projection"}
+   220	            if projection != "display_perception":
+   221	                processed.append(tool_msg)
+   222	                continue
+   223	
+   224	            try:
+   225	                result = json.loads(content) if isinstance(content, str) else content
+   226	            except (json.JSONDecodeError, TypeError):
+   227	                result = {"content": content}
+   228	
+   229	            if isinstance(result, dict) and multimodal.has_images(result):
+   230	                _, images = multimodal.extract_from_result(result)
+   231	                text_only = multimodal.result_to_text_only(result)
+   232	
+   233	                # 添加文本版本的 tool result
+   234	                processed.append({
+   235	                    **tool_msg,
+   236	                    "content": text_only,
+   237	                })
+   238	                
+   239	                # 收集图片，但不立即添加
+   240	                if images:
+   241	                    tool_name = msg.get("name", "tool")
+   242	                    description = f"[Image from {tool_name}]"
+   243	                    
+   244	                    if provider == "anthropic":
+   245	                        img_content = multimodal.to_anthropic_content(images, description)
+   246	                    else:
+   247	                        img_content = multimodal.to_openai_content(images, description)
+   248	                    
+   249	                    pending_images.append({
+   250	                        "role": "user",
+   251	                        "content": img_content,
+   252	                    })
+   253	            else:
+   254	                processed.append(tool_msg)
+   255	        elif role == "user":
+   256	            # User message: 若有 {text, attachments} 格式，转为 LLM content 数组
+   257	            # 注意：Repository 层已统一将 content 解析为 dict
+   258	            if pending_images:
+   259	                processed.extend(pending_images)
+   260	                pending_images = []
+   261	            
+   262	            if isinstance(content, dict) and "attachments" in content and content["attachments"]:
+   263	                # 有附件，转为 LLM 格式（文本 + 附件描述）
+   264	                from .user_content import user_content_to_llm
+   265	                llm_content = user_content_to_llm(content, provider=provider)
+   266	                processed.append({"role": "user", "content": llm_content})
+   267	            elif isinstance(content, dict) and "text" in content:
+   268	                # 无附件，直接使用 text
+   269	                processed.append({"role": "user", "content": content.get("text", "")})
+   270	            else:
+   271	                # 兼容旧格式（纯字符串）
+   272	                processed.append(msg)
+   273	        else:
+   274	            # 其他消息
+   275	            if pending_images:
+   276	                processed.extend(pending_images)
+   277	                pending_images = []
+   278	            processed.append(msg)
+   279	    
+   280	    # 处理末尾剩余的图片
+   281	    if pending_images:
+   282	        processed.extend(pending_images)
+   283	    
+   284	    return processed
+     1	"""Display-only multimodal conversion for LLM calls.
+     2	
+     3	The runtime does not scan arbitrary tool output for images. Only Cortex
+     4	``display_perception`` tool messages may carry ``_mcp_content`` media into this
+     5	module; shell and other tools are terminal/text receipts.
+     6	"""
+     7	
+     8	from typing import Any, Dict, List, Tuple
+     9	import json
+    10	
+    11	_TEXT_ONLY_CONTENT_LIMIT_CHARS = 4_000
+    12	
+    13	
+    14	def _bounded_text(value: Any, *, limit: int = _TEXT_ONLY_CONTENT_LIMIT_CHARS) -> str:
+    15	    text = "" if value is None else str(value)
+    16	    if len(text) <= limit:
+    17	        return text
+    18	    return text[:limit] + f"\n\n... [truncated display text to {limit} chars]"
+    19	
+    20	
+    21	def extract_from_result(result: Dict[str, Any]) -> Tuple[str, List[Dict[str, str]]]:
+    22	    """Extract text/images from the current display ``_mcp_content`` contract."""
+    23	    text_parts = []
+    24	    images = []
+    25	    mcp_content = result.get("_mcp_content")
+    26	    if not isinstance(mcp_content, list):
+    27	        return "", []
+    28	
+    29	    for item in mcp_content:
+    30	        if not isinstance(item, dict):
+    31	            continue
+    32	        item_type = item.get("type", "")
+    33	        if item_type == "text":
+    34	            text = item.get("text", "")
+    35	            if text:
+    36	                text_parts.append(text)
+    37	        elif item_type == "image":
+    38	            data = item.get("data", "")
+    39	            if data:
+    40	                images.append({
+    41	                    "data": data,
+    42	                    "mime_type": item.get("mimeType", "image/png"),
+    43	                })
+    44	
+    45	    return "\n".join(text_parts), images
+    46	
+    47	
+    48	def has_images(result: Dict[str, Any]) -> bool:
+    49	    """Return whether a display ``_mcp_content`` result contains image data."""
+    50	    mcp_content = result.get("_mcp_content", [])
+    51	    for item in mcp_content:
+    52	        if isinstance(item, dict) and item.get("type") == "image" and item.get("data"):
+    53	            return True
+    54	
+    55	    return False
+    56	
+    57	
+    58	def to_openai_content(images: List[Dict[str, str]], text: str = "") -> List[Dict[str, Any]]:
+    59	    """
+    60	    转换为 OpenAI 多模态 content 格式
+    61	    
+    62	    Args:
+    63	        images: 图片列表
+    64	        text: 附加的文本说明
+    65	        
+    66	    Returns:
+    67	        OpenAI content 数组 [{"type": "image_url", ...}, {"type": "text", ...}]
+    68	    """
+    69	    content = []
+    70	    
+    71	    for img in images:
+    72	        data_url = f"data:{img['mime_type']};base64,{img['data']}"
+    73	        content.append({
+    74	            "type": "image_url",
+    75	            "image_url": {"url": data_url}
+    76	        })
+    77	    
+    78	    if text:
+    79	        content.append({"type": "text", "text": text})
+    80	    
+    81	    return content
+    82	
+    83	
+    84	def to_anthropic_content(images: List[Dict[str, str]], text: str = "") -> List[Dict[str, Any]]:
+    85	    """
+    86	    转换为 Anthropic 多模态 content 格式
+    87	    
+    88	    Args:
+    89	        images: 图片列表
+    90	        text: 附加的文本说明
+    91	        
+    92	    Returns:
+    93	        Anthropic content 数组 [{"type": "image", ...}, {"type": "text", ...}]
+    94	    """
+    95	    content = []
+    96	    
+    97	    for img in images:
+    98	        content.append({
+    99	            "type": "image",
+   100	            "source": {
+   101	                "type": "base64",
+   102	                "media_type": img["mime_type"],
+   103	                "data": img["data"]
+   104	            }
+   105	        })
+   106	    
+   107	    if text:
+   108	        content.append({"type": "text", "text": text})
+   109	    
+   110	    return content
+   111	
+   112	
+   113	def result_to_text_only(result: Dict[str, Any]) -> str:
+   114	    """Return JSON with display image payloads replaced by placeholders."""
+   115	    output = {}
+   116	    
+   117	    def sanitize_content_array(content: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+   118	        sanitized = []
+   119	        for item in content:
+   120	            if item.get("type") == "image":
+   121	                sanitized.append({
+   122	                    "type": "image",
+   123	                    "_placeholder": True,
+   124	                    "mimeType": item.get("mimeType", item.get("mime_type", "image/png")),
+   125	                    "_note": "Image data provided separately to LLM"
+   126	                })
+   127	            elif item.get("type") == "text":
+   128	                sanitized.append({
+   129	                    **item,
+   130	                    "text": _bounded_text(item.get("text", "")),
+   131	                })
+   132	            else:
+   133	                sanitized.append(item)
+   134	        return sanitized
+   135	    
+   136	    for key, value in result.items():
+   137	        if key == "_mcp_content":
+   138	            if isinstance(value, list):
+   139	                output[key] = sanitize_content_array(value)
+   140	            else:
+   141	                output[key] = value
+   142	        else:
+   143	            output[key] = value
+   144	    
+   145	    return json.dumps(output)
+
+## LLM prepare contract and factory client passthrough
+   115	def prepare_llm_call(
+   116	    source: LLMCallInput,
+   117	    config: LLMTransportConfig,
+   118	    *,
+   119	    ctx_user_id: str = "",
+   120	    expand_messages_for_llm: Callable[..., list[dict[str, Any]]],
+   121	    sanitize_context: Callable[[list[dict[str, Any]]], list[dict[str, Any]]],
+   122	    process_multimodal_messages: Callable[[list[dict[str, Any]], str], list[dict[str, Any]]],
+   123	) -> PreparedLLMCall:
+   124	    """Build provider-ready messages from explicit inputs and injected helpers."""
+   125	
+   126	    agent_id = source.agent_id or config.agent_id
+   127	    cortex_scope_id = source.agent_root_scope_id or source.scope_id
+   128	    messages_for_llm = expand_messages_for_llm(
+   129	        deepcopy(source.messages),
+   130	        provider=source.provider,
+   131	        current_round_id=source.round_id,
+   132	        runtime_id=cortex_scope_id,
+   133	        user_id=source.user_id or ctx_user_id,
+   134	        agent_id=agent_id,
+   135	    )
+   136	    sanitized = sanitize_context(messages_for_llm)
+   137	    processed = process_multimodal_messages(sanitized, source.provider)
+   138	    return PreparedLLMCall(
+   139	        scope_id=source.scope_id,
+   140	        round_id=source.round_id,
+   141	        messages=processed,
+   142	        model=config.model_id,
+   143	        tools=deepcopy(source.tools),
+   144	        provider=source.provider,
+   145	        agent_id=agent_id,
+   146	    )
+    20	class FactoryLLMClient:
+    21	    """通过 Factory 代理的 LLM Client，接口兼容 OpenAIClient.chat()"""
+    22	
+    23	    def __init__(self, factory_url: str, model_id: str, user_id: str,
+    24	                 agent_id: str = "", runtime_id: str = "", round_id: str = ""):
+    25	        self.factory_url = factory_url.rstrip("/")
+    26	        self.model_id = model_id
+    27	        self.user_id = user_id
+    28	        self.agent_id = agent_id
+    29	        self.runtime_id = runtime_id
+    30	        self.round_id = round_id
+    31	
+    32	    def chat(
+    33	        self,
+    34	        messages: List[Dict[str, Any]],
+    35	        model: Optional[str] = None,
+    36	        tools: Optional[List[Dict[str, Any]]] = None,
+    37	        max_tokens: Optional[int] = None,
+    38	        tool_choice: Optional[str] = None,
+    39	        **kwargs,
+    40	    ) -> Dict[str, Any]:
+    41	        """调用 Factory /v1/chat/completions
+    42	
+    43	        Args:
+    44	            messages: 对话消息
+    45	            model: 忽略（使用 self.model_id，Factory 内部解析真实 model_name）
+    46	            tools: 工具定义
+    47	            max_tokens: 最大输出 token 数
+    48	            tool_choice: 工具选择策略，默认有 tools 时为 "required"
+    49	        Returns:
+    50	            标准 OpenAI chat completion 格式 JSON
+    51	        """
+    52	        payload: Dict[str, Any] = {
+    53	            "model": self.model_id,
+    54	            "messages": messages,
+    55	            "max_tokens": max_tokens or DEFAULT_MAX_TOKENS,
+    56	            "x_factory": {
+    57	                "user_id": self.user_id,
+    58	                "agent_id": self.agent_id,
+    59	                "runtime_id": self.runtime_id,
+    60	                "round_id": self.round_id,
+    61	            },
+    62	        }
+    63	        if tools:
+    64	            payload["tools"] = tools
+    65	            if tool_choice:
+    66	                payload["tool_choice"] = tool_choice
+    67	
+    68	        url = f"{self.factory_url}/v1/chat/completions"
+    69	        logger.info(f"[Factory] POST {url} model={self.model_id} tools={len(tools) if tools else 0} max_tokens={payload['max_tokens']}")
+    70	        try:
+    71	            with internal_sync_client(service_name="runtime-task", timeout=DEFAULT_TIMEOUT, verify=True) as client:
+    72	                resp = client.post(url, json=payload)
+    73	            status = resp.status_code
+    74	            logger.info(f"[Factory] Response status: {status}")
+    75	            if status != 200:
+    76	                body = resp.text[:500]
+    77	                logger.error(f"[Factory] Error ({status}): {body}")
+    78	                raise RuntimeError(f"Factory LLM call failed ({status}): {body}")
+    79	            result = resp.json()
+    80	            choices = result.get("choices", [])
+    81	            if choices:
+    82	                msg = choices[0].get("message", {})
+    83	                tc = msg.get("tool_calls", [])
+    84	                logger.info(f"[Factory] finish_reason={choices[0].get('finish_reason')} tool_calls={len(tc)}")
+    85	            return result
+    86	        except httpx.HTTPStatusError as e:
+    87	            detail = ""
+    88	            try:
+
+## Factory client structured image test
+     1	from task_queue.factory_client import FactoryLLMClient
+     2	
+     3	
+     4	def _text_values(value):
+     5	    if isinstance(value, dict):
+     6	        for key, item in value.items():
+     7	            if key == "text" and isinstance(item, str):
+     8	                yield item
+     9	            yield from _text_values(item)
+    10	    elif isinstance(value, list):
+    11	        for item in value:
+    12	            yield from _text_values(item)
+    13	
+    14	
+    15	def test_factory_client_preserves_structured_image_content(monkeypatch):
+    16	    captured = {}
+    17	
+    18	    class Response:
+    19	        status_code = 200
+    20	
+    21	        def json(self):
+    22	            return {
+    23	                "choices": [
+    24	                    {
+    25	                        "finish_reason": "stop",
+    26	                        "message": {"content": "ok"},
+    27	                    }
+    28	                ]
+    29	            }
+    30	
+    31	    class Client:
+    32	        def post(self, url, json):
+    33	            captured["url"] = url
+    34	            captured["json"] = json
+    35	            return Response()
+    36	
+    37	    class ClientContext:
+    38	        def __enter__(self):
+    39	            return Client()
+    40	
+    41	        def __exit__(self, exc_type, exc, tb):
+    42	            return False
+    43	
+    44	    monkeypatch.setattr(
+    45	        "task_queue.factory_client.internal_sync_client",
+    46	        lambda **_kwargs: ClientContext(),
+    47	    )
+    48	
+    49	    image_url = "data:image/jpeg;base64,YWJjMTIz"
+    50	    messages = [
+    51	        {
+    52	            "role": "user",
+    53	            "content": [
+    54	                {"type": "image_url", "image_url": {"url": image_url}},
+    55	                {"type": "text", "text": "Please inspect this screenshot."},
+    56	            ],
+    57	        }
+    58	    ]
+    59	
+    60	    client = FactoryLLMClient(
+    61	        "http://factory.test",
+    62	        model_id="model-1",
+    63	        user_id="user-1",
+    64	        agent_id="agent-1",
+    65	        runtime_id="runtime-1",
+    66	        round_id="round-1",
+    67	    )
+    68	
+    69	    result = client.chat(messages=messages, tools=[])
+    70	
+    71	    assert result["choices"][0]["message"]["content"] == "ok"
+    72	    assert captured["url"] == "http://factory.test/v1/chat/completions"
+    73	    payload_message = captured["json"]["messages"][0]
+    74	    assert payload_message["content"][0] == {
+    75	        "type": "image_url",
+    76	        "image_url": {"url": image_url},
+    77	    }
+    78	    assert all("YWJjMTIz" not in text for text in _text_values(captured["json"]))
+
+## Runtime current display and history replay tests
+    48	def test_display_perception_can_create_user_image_message_and_strips_marker():
+    49	    processed = process_multimodal_messages(
+    50	        [_image_tool_message(_projection="display_perception")],
+    51	        provider="openai",
+    52	    )
+    53	
+    54	    assert len(processed) == 2
+    55	    assert processed[0]["role"] == "tool"
+    56	    assert "_projection" not in processed[0]
+    57	    tool_payload = json.loads(processed[0]["content"])
+    58	    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+    59	    assert processed[1]["role"] == "user"
+    60	    assert processed[1]["content"][0]["type"] == "image_url"
+    61	
+    62	
+    63	def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+    64	    large_text = "x" * 10_000
+    65	    processed = process_multimodal_messages(
+    66	        [{
+    67	            "role": "tool",
+    68	            "tool_call_id": "display:large-text",
+    69	            "name": "display",
+    70	            "content": json.dumps({
+    71	                "_mcp_content": [
+    72	                    {"type": "text", "text": large_text},
+    73	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+    74	                ]
+    75	            }),
+    76	            "_projection": "display_perception",
+    77	        }],
+    78	        provider="openai",
+    79	    )
+    80	
+    81	    tool_payload = json.loads(processed[0]["content"])
+    82	    text = tool_payload["_mcp_content"][0]["text"]
+    83	
+    84	    assert len(text) < len(large_text)
+    85	    assert "truncated display text" in text
+    86	    assert "YWJjMTIz" not in processed[0]["content"]
+    87	    assert processed[1]["content"][0]["type"] == "image_url"
+    88	
+    89	
+    90	def test_unsupported_content_array_does_not_create_image_projection():
+   190	    assert llm_content["_mcp_content"][1]["data"] == "YWJjMTIz"
+   191	
+   192	    processed = process_multimodal_messages(
+   193	        [{
+   194	            "role": "tool",
+   195	            "tool_call_id": "display:2",
+   196	            "name": "display",
+   197	            "content": json.dumps(llm_content),
+   198	            "_projection": "display_perception",
+   199	        }],
+   200	        provider="openai",
+   201	    )
+   202	
+   203	    assert [message["role"] for message in processed] == ["tool", "user"]
+   204	    tool_payload = json.loads(processed[0]["content"])
+   205	    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+   206	    assert "data" not in tool_payload["_mcp_content"][1]
+   207	    assert "YWJjMTIz" not in processed[0]["content"]
+   208	    assert processed[1]["content"][0]["type"] == "image_url"
+   209	    assert processed[1]["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+   210	
+   211	
+   212	def test_prepare_llm_call_injects_display_step_image_before_following_system(monkeypatch):
+   213	    calls = []
+   214	
+   215	    class Bridge:
+   216	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   217	            calls.append({"scope_id": scope_id, "tool_call_id": tool_call_id, **kwargs})
+   218	            return json.dumps({
+   219	                "_mcp_content": [
+   220	                    {"type": "text", "text": "desktop screenshot"},
+   221	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/jpeg"},
+   222	                ]
+   223	            })
+   224	
+   225	    monkeypatch.setattr(
+   226	        "task_queue.utils.step_result_client._get_bridge",
+   227	        lambda runtime_id, user_id, agent_id: Bridge(),
+   228	    )
+   229	
+   230	    prepared = prepare_llm_call(
+   231	        LLMCallInput(
+   232	            scope_id="wake-1",
+   233	            agent_root_scope_id="agent-root-main",
+   234	            round_id="round-2",
+   235	            user_id="user-1",
+   236	            agent_id="agent-1",
+   237	            provider="openai",
+   238	            messages=[
+   239	                {
+   240	                    "role": "assistant",
+   241	                    "content": "Screenshot captured; loading it now.",
+   242	                    "tool_calls": [{
+   243	                        "id": "display:2",
+   244	                        "type": "function",
+   245	                        "function": {
+   246	                            "name": "display",
+   247	                            "arguments": '{"file_url":"blob://runtime-artifact/screen"}',
+   248	                        },
+   249	                    }],
+   250	                },
+   251	                {
+   252	                    "role": "tool",
+   253	                    "tool_call_id": "display:2",
+   254	                    "step_ref": "step-ref:wake-1:round1:display:2",
+   255	                    "content": "inline content must be ignored",
+   256	                },
+   257	                {
+   258	                    "role": "system",
+   259	                    "content": "[Active skill stack] this system message follows the display result",
+   260	                },
+   261	            ],
+   262	        ),
+   263	        LLMTransportConfig(
+   264	            factory_url="http://factory.test",
+   265	            model_id="model-1",
+   266	            user_id="user-1",
+   267	            agent_id="agent-1",
+   268	        ),
+   269	        expand_messages_for_llm=expand_messages_for_llm,
+   270	        sanitize_context=sanitize_context,
+   271	        process_multimodal_messages=process_multimodal_messages,
+   272	    )
+   273	
+   274	    assert calls[0]["scope_id"] == "agent-root-main"
+   275	    assert calls[0]["projection"] == "display_perception"
+   276	    assert [message["role"] for message in prepared.messages] == [
+   277	        "assistant",
+   278	        "tool",
+   279	        "user",
+   280	        "system",
+   281	    ]
+   282	    tool_payload = json.loads(prepared.messages[1]["content"])
+   283	    image_placeholder = tool_payload["_mcp_content"][1]
+   284	    assert image_placeholder["_placeholder"] is True
+   285	    assert "data" not in image_placeholder
+   286	    image_message = prepared.messages[2]
+   287	    assert image_message["content"][0]["type"] == "image_url"
+   288	    assert image_message["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+   289	    assert prepared.messages[3]["role"] == "system"
+   290	
+   291	
+   292	def test_screenshot_artifact_manifest_display_current_then_history_replay(monkeypatch):
+   293	    calls = []
+   294	
+   295	    shell_manifest_text = (
+   296	        "exit_code=0\n"
+   297	        "stdout:\n"
+   298	        '{"version":"tool-output.v1","ok":true,'
+   299	        '"text":"Captured host desktop screenshot.",'
+   300	        '"artifacts":[{"uri":"blob://runtime-artifact/screen-1",'
+   301	        '"modality":"image","mime_type":"image/jpeg",'
+   302	        '"access":{"display":{"args":{"file_url":"blob://runtime-artifact/screen-1"}}}}]}\n'
+   303	        '[Artifact: hd-screenshot.jpg (image, image/jpeg, 150.6KB)] '
+   304	        'Access: display(file_url="blob://runtime-artifact/screen-1")'
+   305	    )
+   306	
+   307	    class Bridge:
+   308	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   309	            calls.append({"scope_id": scope_id, "tool_call_id": tool_call_id, **kwargs})
+   310	            projection = kwargs["projection"]
+   311	            if tool_call_id == "shell:1":
+   312	                assert projection in {"history", "current_tool_result"}
+   313	                return json.dumps({"_mcp_content": [{"type": "text", "text": shell_manifest_text}]})
+   314	            if tool_call_id == "display:2" and projection == "display_perception":
+   315	                return json.dumps({
+   316	                    "_mcp_content": [
+   317	                        {"type": "text", "text": "desktop screenshot"},
+   318	                        {"type": "image", "data": "YWJjMTIz", "mimeType": "image/jpeg"},
+   319	                    ]
+   320	                })
+   321	            if tool_call_id == "display:2" and projection == "history":
+   322	                return json.dumps({"_mcp_content": [{"type": "text", "text": "desktop screenshot"}]})
+   323	            raise AssertionError(f"unexpected read_step_formatted call: {tool_call_id=} {projection=}")
+   324	
+   325	    monkeypatch.setattr(
+   326	        "task_queue.utils.step_result_client._get_bridge",
+   327	        lambda runtime_id, user_id, agent_id: Bridge(),
+   328	    )
+   329	
+   330	    messages = [
+   331	        {
+   332	            "role": "assistant",
+   333	            "content": "",
+   334	            "tool_calls": [{
+   335	                "id": "shell:1",
+   336	                "type": "function",
+   337	                "function": {
+   338	                    "name": "shell",
+   339	                    "arguments": '{"command":"devicectl hd screenshot"}',
+   340	                },
+   341	            }],
+   342	        },
+   343	        {
+   344	            "role": "tool",
+   345	            "tool_call_id": "shell:1",
+   346	            "_round_id": "round-1",
+   347	            "step_ref": "step-ref:wake-1:round1:shell:1",
+   348	            "content": "inline shell content must be ignored",
+   349	        },
+   350	        {
+   351	            "role": "assistant",
+   352	            "content": "Screenshot captured; loading the artifact now.",
+   353	            "tool_calls": [{
+   354	                "id": "display:2",
+   355	                "type": "function",
+   356	                "function": {
+   357	                    "name": "display",
+   358	                    "arguments": '{"file_url":"blob://runtime-artifact/screen-1","modality":"image"}',
+   359	                },
+   360	            }],
+   361	        },
+   362	        {
+   363	            "role": "tool",
+   364	            "tool_call_id": "display:2",
+   365	            "_round_id": "round-2",
+   366	            "step_ref": "step-ref:wake-1:round2:display:2",
+   367	            "content": "inline display content must be ignored",
+   368	        },
+   369	        {
+   370	            "role": "system",
+   371	            "content": "[Active skill stack] this system message follows the display result",
+   372	        },
+   373	    ]
+   374	
+   375	    current = prepare_llm_call(
+   376	        LLMCallInput(
+   377	            scope_id="wake-1",
+   378	            agent_root_scope_id="agent-root-main",
+   379	            round_id="round-2",
+   380	            user_id="user-1",
+   381	            agent_id="agent-1",
+   382	            provider="openai",
+   383	            messages=messages,
+   384	        ),
+   385	        LLMTransportConfig(
+   386	            factory_url="http://factory.test",
+   387	            model_id="model-1",
+   388	            user_id="user-1",
+   389	            agent_id="agent-1",
+   390	        ),
+   391	        expand_messages_for_llm=expand_messages_for_llm,
+   392	        sanitize_context=sanitize_context,
+   393	        process_multimodal_messages=process_multimodal_messages,
+   394	    )
+   395	
+   396	    assert [call["projection"] for call in calls] == ["history", "display_perception"]
+   397	    shell_tool = current.messages[1]
+   398	    shell_payload = json.loads(shell_tool["content"])
+   399	    assert shell_payload["_mcp_content"][0]["type"] == "text"
+   400	    assert (
+   401	        'display(file_url="blob://runtime-artifact/screen-1")'
+   402	        in shell_payload["_mcp_content"][0]["text"]
+   403	    )
+   404	    assert "YWJjMTIz" not in shell_tool["content"]
+   405	
+   406	    assert [message["role"] for message in current.messages] == [
+   407	        "assistant",
+   408	        "tool",
+   409	        "assistant",
+   410	        "tool",
+   411	        "user",
+   412	        "system",
+   413	    ]
+   414	    current_image_messages = [
+   415	        message for message in current.messages
+   416	        if isinstance(message.get("content"), list)
+   417	        and message["content"]
+   418	        and message["content"][0].get("type") == "image_url"
+   419	    ]
+   420	    assert len(current_image_messages) == 1
+   421	    assert current_image_messages[0]["content"][0]["image_url"]["url"] == (
+   422	        "data:image/jpeg;base64,YWJjMTIz"
+   423	    )
+   424	
+   425	    calls.clear()
+   426	    replay = prepare_llm_call(
+   427	        LLMCallInput(
+   428	            scope_id="wake-1",
+   429	            agent_root_scope_id="agent-root-main",
+   430	            round_id="round-3",
+   431	            user_id="user-1",
+   432	            agent_id="agent-1",
+   433	            provider="openai",
+   434	            messages=messages,
+   435	        ),
+   436	        LLMTransportConfig(
+   437	            factory_url="http://factory.test",
+   438	            model_id="model-1",
+   439	            user_id="user-1",
+   440	            agent_id="agent-1",
+   441	        ),
+   442	        expand_messages_for_llm=expand_messages_for_llm,
+   443	        sanitize_context=sanitize_context,
+   444	        process_multimodal_messages=process_multimodal_messages,
+   445	    )
+   446	
+   447	    assert [call["projection"] for call in calls] == ["history", "history"]
+   448	    assert not any(
+   449	        isinstance(message.get("content"), list)
+   450	        and any(item.get("type") == "image_url" for item in message["content"])
+   451	        for message in replay.messages
+   452	    )
+   453	    assert "YWJjMTIz" not in json.dumps(replay.messages)
+   454	    replay_display_payload = json.loads(replay.messages[3]["content"])
+   455	    assert replay_display_payload["_mcp_content"] == [
+   456	        {"type": "text", "text": "desktop screenshot"}
+   457	    ]
+   458	    assert replay.messages[-1]["role"] == "system"
+   459	
+   460	
+   461	def test_runtime_wrapper_does_not_preserve_media_for_non_display_tools():
+   462	    wrapped = _ok(
+   463	        "scope-1",
+   464	        "round-1",
+   465	        "shell:1",
+   466	        "shell",
+   467	        {"_mcp_content": [{"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"}]},
+   468	    )
+   469	
+   470	    public_content = json.loads(wrapped["content"])

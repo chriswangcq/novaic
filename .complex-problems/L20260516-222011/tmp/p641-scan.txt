@@ -1,0 +1,10 @@
+=== command: rg -n "/rw/scratch" novaic-cortex/tests/test_workspace.py novaic-cortex/tests/test_workspace_limits.py novaic-cortex/tests/test_workspace_authority.py || true ===
+
+=== command: rg -n "/rw/tmp" touched files ===
+novaic-cortex/tests/test_workspace_authority.py:16:    assert authority.key("/rw/tmp/a.txt") == "agents/agent-1/rw/tmp/a.txt"
+novaic-cortex/tests/test_workspace_limits.py:17:    missing = "/rw/tmp/no-such-file.txt"
+novaic-cortex/tests/test_workspace_limits.py:62:    path = "/rw/tmp/payload.bin"
+novaic-cortex/tests/test_workspace_limits.py:71:    await ws.write_bytes("/rw/tmp/a.txt", b"a")
+novaic-cortex/tests/test_workspace_limits.py:72:    await ws.write_bytes("/rw/tmp/nested/b.txt", b"b")
+novaic-cortex/tests/test_workspace_limits.py:74:    rows = await ws.read_tree_bytes("/rw/tmp/")
+novaic-cortex/tests/test_workspace.py:33:    log_path = "/rw/tmp/run.log"

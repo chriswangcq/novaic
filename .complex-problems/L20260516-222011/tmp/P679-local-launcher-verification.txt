@@ -1,0 +1,8 @@
+=== bash -n novaic-app/scripts/start-backends.sh ===
+PASS
+=== check_start_config_contract ===
+start_config_contract OK
+=== test_no_legacy_file_hot_paths ===
+.                                                                        [100%]
+1 passed in 0.03s
+=== stale phrase rg (expect no matches, exit 1 acceptable) ===

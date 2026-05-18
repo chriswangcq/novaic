@@ -1,0 +1,92 @@
+--- direct saga create / queue publish source guard ---
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:40:@register_handler(TaskTopics.CORTEX_SCOPE_END)
+novaic-agent-runtime/queue_service/routes.py:201:        orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/routes.py:219:        task_id = queue.publish(
+novaic-agent-runtime/queue_service/routes.py:370:                saga_id = orchestrator.create(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:238:@register_handler(TaskTopics.SESSION_ATTACH_INPUT)
+novaic-agent-runtime/task_queue/handlers/saga_handlers.py:71:        saga_id = saga_client.create(
+novaic-agent-runtime/queue_service/session_outbox.py:185:        saga_id = self.saga_orchestrator.create(
+novaic-agent-runtime/queue_service/session_outbox.py:212:        self.queue.publish(
+novaic-agent-runtime/queue_service/session_outbox.py:213:            TaskTopics.CORTEX_SCOPE_END,
+novaic-agent-runtime/queue_service/session_outbox.py:255:        task_id = self.queue.publish(
+novaic-agent-runtime/queue_service/session_outbox.py:256:            TaskTopics.SESSION_ATTACH_INPUT,
+novaic-agent-runtime/queue_service/main.py:173:saga_orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/queue_db.py:75:        task_id = queue.publish("my_topic", {"key": "value"})
+novaic-agent-runtime/queue_service/saga_repo.py:1140:class SagaOrchestrator(SagaRepository):
+novaic-agent-runtime/queue_service/saga_repo.py:1261:            self.create(
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:133:    topic=TaskTopics.CORTEX_SCOPE_END,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:275:    saga_orchestrator = SagaOrchestrator(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:368:        orchestrator=SagaOrchestrator(
+
+--- session outbox ownership guard ---
+novaic-agent-runtime/queue_service/dependencies.py:19:    session_outbox_id_provider: Callable[[], str]
+novaic-agent-runtime/queue_service/dependencies.py:29:            session_outbox_id_provider=lambda: f"seff-{uuid.uuid4().hex[:12]}",
+novaic-agent-runtime/queue_service/session_outbox.py:21:class SessionOutboxDispatcher:
+novaic-agent-runtime/queue_service/session_outbox.py:29:    CREATE_WAKE_SAGA = "create_wake_saga"
+novaic-agent-runtime/queue_service/session_outbox.py:30:    RECOVERY_ARCHIVE_SCOPE = "recovery_archive_scope"
+novaic-agent-runtime/queue_service/session_outbox.py:31:    PUBLISH_ATTACH_INPUT = "publish_attach_input"
+novaic-agent-runtime/queue_service/session_outbox.py:33:        CREATE_WAKE_SAGA,
+novaic-agent-runtime/queue_service/session_outbox.py:34:        RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/queue_service/session_outbox.py:35:        PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/queue_service/session_outbox.py:139:        if effect_type == self.CREATE_WAKE_SAGA:
+novaic-agent-runtime/queue_service/session_outbox.py:141:        if effect_type == self.RECOVERY_ARCHIVE_SCOPE:
+novaic-agent-runtime/queue_service/session_outbox.py:144:        if effect_type == self.PUBLISH_ATTACH_INPUT:
+novaic-agent-runtime/queue_service/session_outbox.py:278:        if effect.get("effect_type") == self.CREATE_WAKE_SAGA:
+novaic-agent-runtime/queue_service/session_outbox.py:298:        if effect.get("effect_type") == self.CREATE_WAKE_SAGA:
+novaic-agent-runtime/queue_service/session_outbox.py:300:        if effect.get("effect_type") != self.PUBLISH_ATTACH_INPUT:
+novaic-agent-runtime/queue_service/main.py:183:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/main.py:189:    outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/queue_service/main.py:191:session_outbox_dispatcher = SessionOutboxDispatcher(
+novaic-agent-runtime/queue_service/main.py:202:    outbox_dispatcher=session_outbox_dispatcher,
+novaic-agent-runtime/queue_service/main.py:258:    for table in ("tq_tasks", "tq_sagas", "tq_session_state", "tq_session_outbox"):
+novaic-agent-runtime/queue_service/main.py:266:    session_outbox: dict = {}
+novaic-agent-runtime/queue_service/main.py:271:            FROM tq_session_outbox
+novaic-agent-runtime/queue_service/main.py:276:        session_outbox["pending_count"] = pending_count
+novaic-agent-runtime/queue_service/main.py:277:        session_outbox["oldest_pending_created_at"] = (
+novaic-agent-runtime/queue_service/main.py:281:            "SELECT COUNT(*) AS count FROM tq_session_outbox WHERE status = 'dead_letter'"
+novaic-agent-runtime/queue_service/main.py:283:        session_outbox["dead_letter_count"] = int(dead_row["count"] if dead_row else 0)
+novaic-agent-runtime/queue_service/main.py:284:        checks["session_outbox"] = "ok"
+novaic-agent-runtime/queue_service/main.py:286:        checks["session_outbox"] = f"error: {type(exc).__name__}: {str(exc)[:120]}"
+novaic-agent-runtime/queue_service/main.py:311:        "session_outbox": session_outbox,
+novaic-agent-runtime/queue_service/db/schema.py:386:CREATE TABLE IF NOT EXISTS tq_session_outbox (
+novaic-agent-runtime/queue_service/db/schema.py:405:CREATE INDEX IF NOT EXISTS idx_tq_session_outbox_pending
+novaic-agent-runtime/queue_service/db/schema.py:406:    ON tq_session_outbox(status, created_at)
+novaic-agent-runtime/queue_service/db/schema.py:408:CREATE INDEX IF NOT EXISTS idx_tq_session_outbox_session
+novaic-agent-runtime/queue_service/db/schema.py:409:    ON tq_session_outbox(session_key, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:410:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_session_outbox_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:411:    ON tq_session_outbox(idempotency_key);
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:20:    assemble_session_outbox_worker as _assemble_session_outbox_worker,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:38:    WorkerAssemblySpec(mode="session-outbox-worker", build_process=_assemble_session_outbox_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:77:def assemble_session_outbox_worker(
+novaic-agent-runtime/queue_service/session_effects.py:9:def build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_effects.py:44:def build_attach_input_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:11:from queue_service.session_effects import build_create_wake_saga_effect
+novaic-agent-runtime/queue_service/session_wake_plan.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_wake_plan.py:76:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:77:            effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/queue_service/session_wake_plan.py:113:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:114:            effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/task_queue/workers/registry.py:21:    assemble_session_outbox_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:71:            build_process=assemble_session_outbox_worker,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:237:def assemble_session_outbox_worker(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:254:    from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:255:    from queue_service.session_outbox_worker import (
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:285:        outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:288:        dispatcher=SessionOutboxDispatcher(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:365:        outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/queue_service/saga_repo.py:1169:            outbox_id_provider=_missing_session_outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1418:def _missing_session_outbox_id() -> str:
+novaic-agent-runtime/queue_service/session_ledger.py:31:    outbox_table="tq_session_outbox",
+novaic-agent-runtime/queue_service/session_outbox_worker.py:8:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_outbox_worker.py:18:SESSION_OUTBOX_DRAIN_JOB = WorkerJobSpec(kind="session_outbox_drain")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:37:        dispatcher: SessionOutboxDispatcher,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:50:            return WorkerResult.success(result, reason="session_outbox_drained")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:51:        return WorkerResult.noop(result, reason="session_outbox_empty")
+novaic-agent-runtime/queue_service/session_repo.py:22:from queue_service.session_effects import build_attach_input_effect
+novaic-agent-runtime/queue_service/session_repo.py:42:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_repo.py:110:        outbox_dispatcher: SessionOutboxDispatcher,
+novaic-agent-runtime/queue_service/session_repo.py:455:                effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/queue_service/session_repo.py:929:            outbox_effect = build_attach_input_effect(
+novaic-agent-runtime/queue_service/session_repo.py:930:                effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+
+--- observed wake obsolete production guard ---

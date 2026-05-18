@@ -1,0 +1,49 @@
+=== compatibility / legacy source hits ===
+novaic-cortex/scripts/check_cortex_boundary.py:50:        "Cortex must not own user-profile inference or profile mutation.",
+novaic-cortex/scripts/check_cortex_boundary.py:51:        re.compile(r"\b(user_profile|drive_update_profile|profile_inference|infer_user_profile)\b"),
+novaic-cortex/novaic_cortex/step_result_projection.py:185:    # 5. Unknown dict fallback: diagnostic text only, bounded so unexpected
+novaic-cortex/tests/test_operational_store.py:36:def test_initialize_creates_schema_and_rejects_memory_fallback(tmp_path):
+novaic-cortex/tests/test_operational_store.py:72:def test_initialize_resets_incompatible_payload_manifest_schema(tmp_path):
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:12:async def test_shell_has_no_local_fallback_without_sandboxd_executor() -> None:
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:13:    ws, store = make_workspace_with_store("no-local-fallback")
+novaic-cortex/tests/test_context_event_store.py:233:async def test_context_event_store_initializes_fresh_root_without_legacy_migration() -> None:
+novaic-cortex/tests/test_pr76_boundary_guard.py:80:    rel = "novaic-cortex/novaic_cortex/compat.py"
+novaic-cortex/tests/test_tool_schemas_limits.py:114:def test_skill_end_schema_does_not_advertise_root_summary_fallback() -> None:
+novaic-cortex/tests/test_context_budget.py:40:def test_compact_level_only_emits_contract_literals_not_legacy_compact_alias() -> None:
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:1:"""PR-255 - retired session harness compatibility paths stay removed."""
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:15:def test_legacy_dispatch_route_module_is_removed():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:29:    assert "shadow_legacy_action" not in session_repo
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:31:    assert '"legacy_pending"' not in session_repo
+novaic-agent-runtime/tests/test_health_dispatch.py:110:# ── PR-19 invariant: no fallback-dispatch surface ──────────────────────────
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:38:    """Build a tool_call dict in the OpenAI-compatible shape the saga
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:62:def test_session_repository_no_longer_imports_legacy_dispatch_route():
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:8:scope with an empty report, but it must not infer memory from reply actions
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:82:def test_active_queue_coordinators_have_no_legacy_dual_path_language():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:90:        "legacy",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:91:        "compat",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:92:        "fallback",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:100:def test_generation_must_come_from_fsm_state_not_projection_fallback():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:106:    assert "fallback" not in queue_source
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:107:    assert "fallback" not in saga_source
+novaic-cortex/tests/test_context_event_no_compat.py:43:async def test_prepare_for_llm_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-cortex/tests/test_context_event_no_compat.py:59:async def test_status_include_usage_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-agent-runtime/tests/test_pr112_business_client_boundary.py:46:def test_business_client_init_has_no_ignored_backcompat_parameters():
+novaic-cortex/tests/test_context_event_read_source_guards.py:28:def test_prepare_for_llm_has_no_dfs_read_fallback() -> None:
+novaic-cortex/tests/test_context_event_read_source_guards.py:42:def test_status_usage_has_no_dfs_read_fallback() -> None:
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:1:"""PR-43 legacy ``last_scope_id`` path retired by PR-69."""
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:91:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:113:            "last_scope_id": "legacy-scope",
+novaic-cortex/tests/test_legacy_skill_lifecycle_removed.py:7:def test_legacy_jwt_skill_routes_are_removed() -> None:
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:134:        {"role": "user", "content": "legacy context.read projection"},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:159:    assert "legacy context.read projection" not in contents
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:15:def test_runtime_has_no_legacy_recap_builder_or_env_flags() -> None:
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:23:def test_runtime_handler_source_no_longer_mentions_legacy_recap_blocks() -> None:
+novaic-agent-runtime/task_queue/sagas/react_think.py:48:    # the saga, not inferred message-tail shape.
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:279:def test_expand_messages_for_llm_infers_display_projection_from_assistant_tool_call(monkeypatch):
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:1:"""PR-43 legacy ``previous_scope_id`` transport retired by PR-69."""
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py:1:"""PR-83: active Runtime must not expose legacy summary producers."""
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:15:def test_cortex_api_has_no_legacy_root_summary_read_routes() -> None:
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:21:def test_workspace_has_no_legacy_root_summary_read_helpers() -> None:
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:26:def test_active_cortex_source_no_longer_mentions_legacy_prompt_blocks() -> None:
+novaic-cortex/tests/test_step_result_projection.py:60:def test_parse_tool_result_unknown_dict_fallback_is_bounded_text_only():
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:26:    assert "legacy" not in combined

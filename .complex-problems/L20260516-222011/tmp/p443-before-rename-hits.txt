@@ -1,0 +1,37 @@
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:157:        bridge.append_context_batch(
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:74:    bridge.read_context.return_value = [{"role": "system", "content": "SYSTEM"}]
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:159:    def read_context(self, scope_id: str, *, scope_path: str | None = None) -> list[dict]:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:167:    def append_context(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:180:    def append_context_batch(
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:104:    context = bridge.read_context(cortex_scope_id, scope_path=scope_path)
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:108:    # crashed after bridge.append_context.
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:154:            bridge.append_context(cortex_scope_id, ctx_msg, scope_path=scope_path)
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:219:    bridge.append_context(cortex_scope_id, message, scope_path=scope_path)
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:299:    assert "read_context" not in handler_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:347:        bridge.read_context("scope-1")
+novaic-agent-runtime/tests/test_context_read_ordering.py:29:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_ordering.py:53:    bridge.read_context.return_value = []  # empty starting context
+novaic-agent-runtime/tests/test_context_read_ordering.py:76:        for call in bridge.append_context.call_args_list
+novaic-agent-runtime/tests/test_context_read_ordering.py:88:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_ordering.py:109:        for call in bridge.append_context.call_args_list
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:133:    bridge.read_context.return_value = [
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:21:    bridge.read_context.return_value = [
+novaic-agent-runtime/tests/test_pr193_activity_projection.py:174:    bridge.append_context.assert_called_once()
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:50:    bridge.append_context_batch.assert_called_once()
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:51:    assert bridge.append_context_batch.call_args.args[0] == "agent-root-main-agent"
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:52:    assert bridge.append_context_batch.call_args.kwargs["scope_path"].endswith("/0001_scope_wake-1")
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:55:    bridge.read_context.assert_not_called()
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:67:    bridge.read_context.assert_not_called()
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:79:    bridge.read_context.assert_not_called()
+novaic-agent-runtime/tests/test_context_read_by_ids.py:21:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:37:    appended = [call.args[1] for call in bridge.append_context.call_args_list]
+novaic-agent-runtime/tests/test_context_read_by_ids.py:57:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:71:    bridge.append_context.assert_not_called()
+novaic-agent-runtime/tests/test_context_read_by_ids.py:79:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:93:    bridge.append_context.assert_not_called()
+novaic-agent-runtime/tests/test_context_read_by_ids.py:100:    bridge.read_context.return_value = [
+novaic-agent-runtime/tests/test_context_read_by_ids.py:123:    appended = [call.args[1] for call in bridge.append_context.call_args_list]
+novaic-agent-runtime/tests/test_context_read_by_ids.py:130:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_context_read_by_ids.py:144:    appended = [call.args[1] for call in bridge.append_context.call_args_list]
+novaic-agent-runtime/tests/test_context_read_by_ids.py:151:    bridge.read_context.return_value = []
+novaic-agent-runtime/tests/test_no_tool_warning.py:25:    bridge.read_context.return_value = list(messages)

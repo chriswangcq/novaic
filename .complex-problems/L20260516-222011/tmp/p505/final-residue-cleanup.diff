@@ -1,0 +1,716 @@
+diff --git a/queue_service/session_repo.py b/queue_service/session_repo.py
+index 14077b1..04c2372 100644
+--- a/queue_service/session_repo.py
++++ b/queue_service/session_repo.py
+@@ -57,6 +57,46 @@ from queue_service.session_wake_plan import (
+ logger = logging.getLogger(__name__)
+ 
+ 
++def _require_positive_generation(value: Any, owner: str) -> int:
++    if value is None:
++        raise ValueError(f"generation is required for {owner}")
++    if isinstance(value, bool):
++        raise ValueError(f"positive generation is required for {owner}")
++    try:
++        generation = int(value)
++    except (TypeError, ValueError) as exc:
++        raise ValueError(f"positive generation is required for {owner}") from exc
++    if generation < 1:
++        raise ValueError(f"positive generation is required for {owner}")
++    return generation
++
++
++def _require_non_negative_generation(value: Any, owner: str) -> int:
++    if value is None:
++        raise ValueError(f"generation is required for {owner}")
++    if isinstance(value, bool):
++        raise ValueError(f"non-negative generation is required for {owner}")
++    try:
++        generation = int(value)
++    except (TypeError, ValueError) as exc:
++        raise ValueError(f"non-negative generation is required for {owner}") from exc
++    if generation < 0:
++        raise ValueError(f"non-negative generation is required for {owner}")
++    return generation
++
++
++def _runtime_generation_for_status(
++    status: SessionRuntimeStatus,
++    value: Any,
++    owner: str,
++) -> int:
++    if status is SessionRuntimeStatus.NO_ACTIVE:
++        if value is None:
++            return 0
++        return _require_non_negative_generation(value, owner)
++    return _require_positive_generation(value, owner)
++
++
+ class SessionRepository:
+     """Session coordination layer on top of Queue Service SQLite."""
+ 
+@@ -181,9 +221,8 @@ class SessionRepository:
+                             "metadata": metadata,
+                             "idempotency_key": idempotency_key,
+                         }
+-                        # Publish outside the global DB transaction; TaskQueue.publish
+-                        # acquires the same lock and the lock is intentionally FIFO,
+-                        # not reentrant.
++                        # Persist the attach request after this transaction; the
++                        # session outbox worker owns external delivery.
+                     else:
+                         logger.info(
+                             "[SessionCoordinator] dispatch buffered: %s trigger=%s saga=%s scope=%s",
+@@ -285,16 +324,6 @@ class SessionRepository:
+                 )
+                 return result
+             elif not recovery_marker:
+-                start_decision = self._decide_live_dispatch(
+-                    active_session=None,
+-                    trigger_type=trigger_type,
+-                    metadata=metadata,
+-                )
+-                if start_decision.action is not SessionDispatchAction.START_WAKE:
+-                    raise RuntimeError(
+-                        "session FSM refused start wake: "
+-                        f"{start_decision.action.value}"
+-                    )
+                 scope_id = self._new_scope_id()
+                 session_generation = self.session_ledger.next_generation(session_key)
+                 input_event_ids = [
+@@ -303,7 +332,7 @@ class SessionRepository:
+                         session_key
+                     )
+                 ]
+-                wake_plan = build_dispatch_wake_plan(
++                return self._queue_start_wake_transition(
+                     session_key=session_key,
+                     agent_id=agent_id,
+                     subagent_id=subagent_id,
+@@ -314,49 +343,12 @@ class SessionRepository:
+                     session_generation=session_generation,
+                     idempotency_key=idempotency_key,
+                     input_event_ids=input_event_ids,
+-                    recovery_marker=None,
+-                    recovery_pending_projection=None,
+-                )
+-                logger.info(
+-                    "[SessionCoordinator] dispatch queued wake start: %s scope=%s",
+-                    session_key, scope_id,
+-                )
+-                result = {
+-                    "action": QueueDispatchAction.WAKE_START_QUEUED.value,
+-                    "scope_id": scope_id,
+-                    "delivery": "outbox_pending",
+-                }
+-                outbox_ids = self.session_ledger.record_transition(
+-                    event_type=SessionEventType.DISPATCH_WAKE_START_QUEUED.value,
+-                    event_key=session_event_key(
+-                        SessionEventKeyPrefix.DISPATCH_WAKE_START_QUEUED,
+-                        wake_plan.outbox_effect["idempotency_key"],
+-                    ),
+-                    agent_id=agent_id,
+-                    subagent_id=subagent_id,
+-                    user_id=user_id,
+-                    trigger_type=wake_plan.effective_trigger_type,
+-                    metadata=wake_plan.dispatch_metadata,
+-                    result=result,
+-                    state=SessionRuntimeStatus.STARTING.value,
+-                    active_saga_id=None,
+-                    active_scope_id=scope_id,
+-                    decision_trace=build_session_dispatch_decision_trace(
+-                        result_action=result["action"],
+-                        active_saga_id=None,
+-                        active_scope_id=None,
+-                        trigger_type=trigger_type,
+-                        metadata=metadata,
+-                    ),
+-                    outbox_effect=wake_plan.outbox_effect,
+                     created_at=now,
++                    record_in_current_transaction=True,
+                 )
+-                if outbox_ids:
+-                    result["outbox_id"] = outbox_ids[0]
+-                return result
+ 
+         if attach_request:
+-            result = self._publish_attach_request_after_transaction(
++            result = self._record_attach_request_after_transaction(
+                 session_key=session_key,
+                 agent_id=agent_id,
+                 subagent_id=subagent_id,
+@@ -369,15 +361,57 @@ class SessionRepository:
+                 created_at=now,
+             )
+             logger.info(
+-                "[SessionCoordinator] dispatch attached: %s trigger=%s saga=%s scope=%s task=%s",
++                "[SessionCoordinator] dispatch attached: %s trigger=%s saga=%s scope=%s outbox=%s delivery=%s",
+                 session_key,
+                 attach_request["trigger_type"],
+                 attach_request["saga_id"],
+                 attach_request["scope_id"],
+-                result["task_id"],
++                result["outbox_id"],
++                result["delivery"],
+             )
+             return result
+ 
++        # Step 2: persist wake intent; the session outbox worker creates the saga.
++        scope_id = self._new_scope_id()
++        session_generation = self._next_session_generation_after_transaction(session_key)
++        input_event_ids = self._unconsumed_input_event_ids_after_transaction(
++            session_key=session_key,
++        )
++        return self._queue_start_wake_transition(
++            session_key=session_key,
++            agent_id=agent_id,
++            subagent_id=subagent_id,
++            user_id=user_id,
++            trigger_type=trigger_type,
++            metadata=metadata,
++            scope_id=scope_id,
++            session_generation=session_generation,
++            idempotency_key=idempotency_key,
++            input_event_ids=input_event_ids,
++            recovery_marker=recovery_marker,
++            recovery_pending_projection=recovery_pending_projection,
++            created_at=now,
++            record_in_current_transaction=False,
++        )
++
++    def _queue_start_wake_transition(
++        self,
++        *,
++        session_key: str,
++        agent_id: str,
++        subagent_id: str,
++        user_id: str,
++        trigger_type: str,
++        metadata: Dict[str, Any],
++        scope_id: str,
++        session_generation: int,
++        idempotency_key: Optional[str],
++        input_event_ids: list[str],
++        created_at: str,
++        record_in_current_transaction: bool,
++        recovery_marker: Optional[Dict[str, Any]] = None,
++        recovery_pending_projection: Optional[Dict[str, Any]] = None,
++    ) -> Dict[str, Any]:
+         start_decision = self._decide_live_dispatch(
+             active_session=None,
+             trigger_type=trigger_type,
+@@ -385,15 +419,10 @@ class SessionRepository:
+         )
+         if start_decision.action is not SessionDispatchAction.START_WAKE:
+             raise RuntimeError(
+-                f"session FSM refused start wake: {start_decision.action.value}"
++                "session FSM refused start wake: "
++                f"{start_decision.action.value}"
+             )
+ 
+-        # Step 2: persist wake intent; the session outbox worker creates the saga.
+-        scope_id = self._new_scope_id()
+-        session_generation = self._next_session_generation_after_transaction(session_key)
+-        input_event_ids = self._unconsumed_input_event_ids_after_transaction(
+-            session_key=session_key,
+-        )
+         wake_plan = build_dispatch_wake_plan(
+             session_key=session_key,
+             agent_id=agent_id,
+@@ -428,32 +457,44 @@ class SessionRepository:
+             if recovery_archive_effect:
+                 outbox_effects.append(recovery_archive_effect)
+ 
+-        outbox_ids = self._record_session_transition_after_transaction(
+-            event_type=SessionEventType.DISPATCH_WAKE_START_QUEUED.value,
+-            event_key=session_event_key(
++        transition_kwargs = {
++            "event_type": SessionEventType.DISPATCH_WAKE_START_QUEUED.value,
++            "event_key": session_event_key(
+                 SessionEventKeyPrefix.DISPATCH_WAKE_START_QUEUED,
+                 wake_plan.outbox_effect["idempotency_key"],
+             ),
+-            agent_id=agent_id,
+-            subagent_id=subagent_id,
+-            user_id=user_id,
+-            trigger_type=wake_plan.effective_trigger_type,
+-            metadata=wake_plan.dispatch_metadata,
+-            result=result,
+-            state=SessionRuntimeStatus.STARTING.value,
+-            active_saga_id=None,
+-            active_scope_id=scope_id,
+-            decision_trace=build_session_dispatch_decision_trace(
++            "agent_id": agent_id,
++            "subagent_id": subagent_id,
++            "user_id": user_id,
++            "trigger_type": wake_plan.effective_trigger_type,
++            "metadata": wake_plan.dispatch_metadata,
++            "result": result,
++            "state": SessionRuntimeStatus.STARTING.value,
++            "active_saga_id": None,
++            "active_scope_id": scope_id,
++            "decision_trace": build_session_dispatch_decision_trace(
+                 result_action=result["action"],
+                 active_saga_id=None,
+                 active_scope_id=None,
+                 trigger_type=trigger_type,
+                 metadata=metadata,
+             ),
+-            outbox_effects=outbox_effects,
+-            created_at=now,
+-            require_outbox=True,
+-        )
++            "outbox_effects": outbox_effects,
++            "created_at": created_at,
++        }
++        if record_in_current_transaction:
++            outbox_ids = self._record_session_transition_in_current_transaction(
++                **transition_kwargs
++            )
++            if not outbox_ids:
++                raise RuntimeError(
++                    "required session transition outbox effect was not recorded"
++                )
++        else:
++            outbox_ids = self._record_session_transition_after_transaction(
++                **transition_kwargs,
++                require_outbox=True,
++            )
+         if outbox_ids:
+             result["outbox_id"] = outbox_ids[0]
+         return result
+@@ -466,7 +507,7 @@ class SessionRepository:
+         *,
+         finalize_reason: Optional[str] = None,
+         generation: Optional[int] = None,
+-        remaining_stack: Optional[Dict[str, Any]] = None,
++        remaining_stack: Dict[str, Any],
+     ) -> Dict[str, Any]:
+         """Clean up session and optionally restart from pending inbox.
+ 
+@@ -478,15 +519,13 @@ class SessionRepository:
+         now = self._clock()
+         if not (finalize_reason or "").strip():
+             raise ValueError("finalize_reason is required for session finalize")
+-        if generation is None:
+-            raise ValueError("generation is required for session finalize")
+         if remaining_stack is None:
+             raise ValueError("remaining_stack is required for session finalize")
+-        finalize_generation = int(generation)
++        finalize_generation = _require_positive_generation(generation, "session finalize")
+         finalize_metadata = {
+             "finalize_reason": finalize_reason,
+             "finalize_generation": finalize_generation,
+-            "remaining_stack": dict(remaining_stack or {}),
++            "remaining_stack": dict(remaining_stack),
+             "ended_scope_id": scope_id,
+         }
+ 
+@@ -583,59 +622,60 @@ class SessionRepository:
+                 projection=pending_projection,
+             )
+ 
+-        # Step 2: persist restart wake intent; the session outbox worker creates it.
+-        new_scope_id = self._new_scope_id()
+-        session_generation = self._next_session_generation_after_transaction(session_key)
+-        restart_plan = build_restart_wake_plan(
+-            session_key=session_key,
+-            pending=pending,
+-            scope_id=new_scope_id,
+-            session_generation=session_generation,
+-            finalize_metadata=finalize_metadata,
+-            pending_input_event_ids=list(
+-                pending_projection.get("input_event_ids") or []
+-            ),
+-        )
+-        logger.info(
+-            "[SessionCoordinator] session_ended queued restart: %s scope=%s trigger=%s",
+-            session_key, new_scope_id, pending["trigger_type"],
+-        )
+-        result = {
+-            "action": QueueFinalizeAction.RESTART_PENDING.value,
+-            "scope_id": new_scope_id,
+-            "delivery": "outbox_pending",
+-        }
+-        outbox_ids = self._record_session_transition_after_transaction(
+-            event_type=SessionEventType.SESSION_RESTART_PENDING.value,
+-            event_key=session_event_key(
+-                SessionEventKeyPrefix.SESSION_RESTART_PENDING,
+-                restart_plan.outbox_effect["idempotency_key"],
+-            ),
+-            agent_id=pending["agent_id"],
+-            subagent_id=pending["subagent_id"],
+-            user_id=pending.get("user_id"),
+-            trigger_type=pending["trigger_type"],
+-            metadata=restart_plan.pending_metadata,
+-            result=result,
+-            state=SessionRuntimeStatus.STARTING.value,
+-            active_saga_id=None,
+-            active_scope_id=new_scope_id,
+-            outbox_effect=restart_plan.outbox_effect,
+-            created_at=now,
+-            require_outbox=True,
+-        )
+-        self._record_pending_projection_after_transaction(
+-            session_key=session_key,
+-            agent_id=pending["agent_id"],
+-            subagent_id=pending["subagent_id"],
+-            user_id=pending.get("user_id"),
+-            active_scope_id=new_scope_id,
+-            marker=f"restart_pending:{new_scope_id}",
+-            created_at=now,
+-        )
+-        if outbox_ids:
++            new_scope_id = self._new_scope_id()
++            session_generation = self.session_ledger.next_generation(session_key)
++            restart_plan = build_restart_wake_plan(
++                session_key=session_key,
++                pending=pending,
++                scope_id=new_scope_id,
++                session_generation=session_generation,
++                finalize_metadata=finalize_metadata,
++                pending_input_event_ids=list(
++                    pending_projection.get("input_event_ids") or []
++                ),
++            )
++            logger.info(
++                "[SessionCoordinator] session_ended queued restart: %s scope=%s trigger=%s",
++                session_key, new_scope_id, pending["trigger_type"],
++            )
++            result = {
++                "action": QueueFinalizeAction.RESTART_PENDING.value,
++                "scope_id": new_scope_id,
++                "delivery": "outbox_pending",
++            }
++            outbox_ids = self._record_session_transition_in_current_transaction(
++                event_type=SessionEventType.SESSION_RESTART_PENDING.value,
++                event_key=session_event_key(
++                    SessionEventKeyPrefix.SESSION_RESTART_PENDING,
++                    restart_plan.outbox_effect["idempotency_key"],
++                ),
++                agent_id=pending["agent_id"],
++                subagent_id=pending["subagent_id"],
++                user_id=pending.get("user_id"),
++                trigger_type=pending["trigger_type"],
++                metadata=restart_plan.pending_metadata,
++                result=result,
++                state=SessionRuntimeStatus.STARTING.value,
++                active_saga_id=None,
++                active_scope_id=new_scope_id,
++                outbox_effect=restart_plan.outbox_effect,
++                created_at=now,
++            )
++            if not outbox_ids:
++                raise RuntimeError(
++                    "required session restart outbox effect was not recorded"
++                )
++            self._record_pending_projection_in_current_transaction(
++                session_key=session_key,
++                agent_id=pending["agent_id"],
++                subagent_id=pending["subagent_id"],
++                user_id=pending.get("user_id"),
++                active_scope_id=new_scope_id,
++                marker=f"restart_pending:{new_scope_id}",
++                created_at=now,
++            )
+             result["outbox_id"] = outbox_ids[0]
+-        return result
++            return result
+ 
+     def rebuild(self) -> int:
+         """Reconstruct session_state from running/launched sagas on startup.
+@@ -739,7 +779,11 @@ class SessionRepository:
+         return decide_session_dispatch(SessionDispatchInput(
+             state=SessionRuntimeState(
+                 status=status,
+-                generation=int((active_session or {}).get("generation") or 0),
++                generation=_runtime_generation_for_status(
++                    status,
++                    (active_session or {}).get("generation"),
++                    "live dispatch runtime state",
++                ),
+                 active_saga_id=(active_session or {}).get("saga_id"),
+                 active_scope_id=(active_session or {}).get("scope_id"),
+             ),
+@@ -764,7 +808,11 @@ class SessionRepository:
+             raise ValueError(f"unknown session runtime state: {raw_state}") from exc
+         return SessionRuntimeState(
+             status=status,
+-            generation=int(state.get("generation") or 0),
++            generation=_runtime_generation_for_status(
++                status,
++                state.get("generation"),
++                "persisted session runtime state",
++            ),
+             active_saga_id=state.get("active_saga_id"),
+             active_scope_id=state.get("active_scope_id"),
+         )
+@@ -797,10 +845,13 @@ class SessionRepository:
+             raise RuntimeError("required session transition outbox effect was not recorded")
+         return outbox_ids
+ 
+-    def _record_session_transition_in_current_transaction(self, **kwargs: Any) -> None:
+-        self.session_ledger.record_transition(**kwargs)
++    def _record_session_transition_in_current_transaction(
++        self,
++        **kwargs: Any,
++    ) -> list[str]:
++        return self.session_ledger.record_transition(**kwargs)
+ 
+-    def _publish_attach_request_after_transaction(
++    def _record_attach_request_after_transaction(
+         self,
+         *,
+         session_key: str,
+@@ -814,72 +865,126 @@ class SessionRepository:
+         consume_reason: str,
+         created_at: str,
+     ) -> Dict[str, Any]:
+-        session_generation = self._active_session_generation_after_transaction(
+-            session_key=session_key,
+-            active_scope_id=attach_request["scope_id"],
+-        )
+-        outbox_effect = build_attach_input_effect(
+-            effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+-            agent_id=attach_request["agent_id"],
+-            subagent_id=attach_request["subagent_id"],
+-            user_id=attach_request["user_id"],
+-            scope_id=attach_request["scope_id"],
+-            trigger_type=attach_request["trigger_type"],
+-            metadata=attach_request["metadata"],
+-            message_ids=extract_message_ids(attach_request["metadata"]),
+-            agent_root_scope_id=derive_agent_root_scope_id(
+-                attach_request["subagent_id"],
+-            ),
+-            idempotency_key=attach_request["idempotency_key"],
+-            expected_session_generation=session_generation,
+-        )
+-        transition_result = {
+-            "action": "attached_to_active",
+-            "saga_id": attach_request["saga_id"],
+-            "scope_id": attach_request["scope_id"],
+-            "delivery": "outbox_pending",
+-        }
+-        outbox_ids = self._record_session_transition_after_transaction(
+-            event_type=transition_event_type,
+-            event_key=session_event_key(
+-                event_key_prefix,
+-                outbox_effect["idempotency_key"],
+-            ),
+-            agent_id=agent_id,
+-            subagent_id=subagent_id,
+-            user_id=user_id,
+-            trigger_type=attach_request["trigger_type"],
+-            metadata=attach_request["metadata"],
+-            result=transition_result,
+-            state=SessionRuntimeStatus.ACTIVE.value,
+-            active_saga_id=attach_request["saga_id"],
+-            active_scope_id=attach_request["scope_id"],
+-            decision_trace=build_session_dispatch_decision_trace(
+-                result_action=transition_result["action"],
+-                active_saga_id=attach_request["saga_id"],
+-                active_scope_id=attach_request["scope_id"],
++        with self.db.transaction(lock_type="global"):
++            current_state = self.session_ledger.get_state(session_key)
++            current_active = self._active_session_from_session_state(current_state)
++            current_saga_id = (current_active or {}).get("saga_id")
++            current_scope_id = (current_active or {}).get("scope_id")
++
++            if (
++                not current_active
++                or current_saga_id != attach_request["saga_id"]
++                or current_scope_id != attach_request["scope_id"]
++            ):
++                attach_marker = (
++                    input_event_id
++                    or attach_request["idempotency_key"]
++                    or session_key
++                )
++                result = {
++                    "action": QueueDispatchAction.BUFFERED.value,
++                    "saga_id": current_saga_id,
++                    "scope_id": current_scope_id,
++                    "reason": "active_session_changed_before_attach",
++                }
++                self._record_session_transition_in_current_transaction(
++                    event_type=SessionEventType.DISPATCH_BUFFERED.value,
++                    event_key=session_event_key(
++                        SessionEventKeyPrefix.DISPATCH_BUFFERED,
++                        attach_marker,
++                    ),
++                    agent_id=agent_id,
++                    subagent_id=subagent_id,
++                    user_id=user_id,
++                    trigger_type=attach_request["trigger_type"],
++                    metadata=attach_request["metadata"],
++                    result=result,
++                    state=str((current_state or {}).get("state") or "no_active"),
++                    active_saga_id=current_saga_id,
++                    active_scope_id=current_scope_id,
++                    decision_trace=build_session_dispatch_decision_trace(
++                        result_action=result["action"],
++                        active_saga_id=current_saga_id,
++                        active_scope_id=current_scope_id,
++                        trigger_type=attach_request["trigger_type"],
++                        metadata=attach_request["metadata"],
++                    ),
++                    created_at=created_at,
++                )
++                self._record_pending_projection_in_current_transaction(
++                    session_key=session_key,
++                    agent_id=agent_id,
++                    subagent_id=subagent_id,
++                    user_id=user_id,
++                    active_scope_id=current_scope_id,
++                    marker=f"attach-race-buffered:{attach_marker}",
++                    created_at=created_at,
++                )
++                return result
++
++            session_generation = _require_positive_generation(
++                current_active.get("generation"), "active session attach"
++            )
++
++            outbox_effect = build_attach_input_effect(
++                effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
++                agent_id=attach_request["agent_id"],
++                subagent_id=attach_request["subagent_id"],
++                user_id=attach_request["user_id"],
++                scope_id=attach_request["scope_id"],
+                 trigger_type=attach_request["trigger_type"],
+                 metadata=attach_request["metadata"],
+-            ),
+-            outbox_effect=outbox_effect,
+-            consume_input_event_ids=[input_event_id] if input_event_id else [],
+-            consume_reason=consume_reason,
+-            consume_result=transition_result,
+-            created_at=created_at,
+-            require_outbox=True,
+-        )
+-        task_id, delivery_status = self.outbox_dispatcher.publish_attach_input_effect(
+-            outbox_ids[-1]
+-        )
+-        result = {
++                message_ids=extract_message_ids(attach_request["metadata"]),
++                agent_root_scope_id=derive_agent_root_scope_id(
++                    attach_request["subagent_id"],
++                ),
++                idempotency_key=attach_request["idempotency_key"],
++                expected_session_generation=session_generation,
++            )
++            transition_result = {
++                "action": "attached_to_active",
++                "saga_id": attach_request["saga_id"],
++                "scope_id": attach_request["scope_id"],
++                "delivery": "outbox_pending",
++            }
++            outbox_ids = self._record_session_transition_in_current_transaction(
++                event_type=transition_event_type,
++                event_key=session_event_key(
++                    event_key_prefix,
++                    outbox_effect["idempotency_key"],
++                ),
++                agent_id=agent_id,
++                subagent_id=subagent_id,
++                user_id=user_id,
++                trigger_type=attach_request["trigger_type"],
++                metadata=attach_request["metadata"],
++                result=transition_result,
++                state=SessionRuntimeStatus.ACTIVE.value,
++                active_saga_id=attach_request["saga_id"],
++                active_scope_id=attach_request["scope_id"],
++                decision_trace=build_session_dispatch_decision_trace(
++                    result_action=transition_result["action"],
++                    active_saga_id=attach_request["saga_id"],
++                    active_scope_id=attach_request["scope_id"],
++                    trigger_type=attach_request["trigger_type"],
++                    metadata=attach_request["metadata"],
++                ),
++                outbox_effect=outbox_effect,
++                consume_input_event_ids=[input_event_id] if input_event_id else [],
++                consume_reason=consume_reason,
++                consume_result=transition_result,
++                created_at=created_at,
++            )
++            if not outbox_ids:
++                raise RuntimeError("required session transition outbox effect was not recorded")
++
++        return {
+             "action": "attached_to_active",
+             "saga_id": attach_request["saga_id"],
+             "scope_id": attach_request["scope_id"],
+-            "task_id": task_id,
+-            "delivery": delivery_status,
++            "delivery": "outbox_pending",
+             "outbox_id": outbox_ids[-1],
+         }
+-        return result
+ 
+     def _append_input_event_in_current_transaction(
+         self,
+@@ -964,16 +1069,3 @@ class SessionRepository:
+         ledger = self.session_ledger
+         with self.db.transaction(lock_type="global"):
+             return ledger.next_generation(session_key)
+-
+-    def _active_session_generation_after_transaction(
+-        self,
+-        *,
+-        session_key: str,
+-        active_scope_id: Optional[str],
+-    ) -> int:
+-        ledger = self.session_ledger
+-        with self.db.transaction(lock_type="global"):
+-            return ledger.active_generation(
+-                session_key=session_key,
+-                active_scope_id=active_scope_id,
+-            )
+diff --git a/task_queue/client.py b/task_queue/client.py
+index fdaf3f2..332d3a1 100644
+--- a/task_queue/client.py
++++ b/task_queue/client.py
+@@ -17,6 +17,14 @@ from common.http import internal_sync_client
+ logger = logging.getLogger(__name__)
+ 
+ 
++def _require_positive_generation(generation: int) -> int:
++    if isinstance(generation, bool) or not isinstance(generation, int):
++        raise ValueError("generation must be a positive integer")
++    if generation < 1:
++        raise ValueError("generation must be a positive integer")
++    return generation
++
++
+ class TaskQueueClient:
+     """
+     TaskQueue HTTP 客户端
+@@ -481,6 +489,7 @@ class SagaClient:
+             {"action": "session_closed"}
+             or {"action": "restarted", "saga_id": ..., "scope_id": ...}
+         """
++        generation = _require_positive_generation(generation)
+         return self._request("POST", "/api/queue/session-ended", {
+             "agent_id": agent_id,
+             "subagent_id": subagent_id,
+@@ -666,8 +675,6 @@ class BusinessClient(_BaseInternalApiClient):
+             "error_count": error_count,
+         }
+ 
+-    # ---------- Deprecated Message polling removed ----------
+-
+     def get_due_for_wake(self) -> list:
+         """Get subagents due for scheduled wake."""
+         data = self.request("GET", "/internal/subagents/due-wake", None)
+diff --git a/task_queue/constants.py b/task_queue/constants.py
+deleted file mode 100644
+index 24e17b8..0000000
+--- a/task_queue/constants.py
++++ /dev/null
+@@ -1,7 +0,0 @@
+-"""Deprecated phase string constants (inline values; do not import from shared package)."""
+-
+-PHASE_NEED_THINK = "need_think"
+-PHASE_WAITING_ACTIONS = "waiting_actions"
+-PHASE_COMPLETED = "completed"
+-
+-__all__ = ["PHASE_NEED_THINK", "PHASE_WAITING_ACTIONS", "PHASE_COMPLETED"]

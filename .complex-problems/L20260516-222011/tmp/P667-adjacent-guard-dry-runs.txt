@@ -1,0 +1,7 @@
+=== lint_cortex_boundary ===
+Cortex boundary guard passed.
+=== lint_lifecycle_loop_ownership ===
+chat_messages_read lint OK
+LIFECYCLE_LOOP_OWNERSHIP_LINT=PASS
+=== lint_wake_continuity_contract ===
+wake_continuity_contract lint OK (minimal Cortex continuity)

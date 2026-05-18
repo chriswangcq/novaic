@@ -1,0 +1,966 @@
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:66 =====
+    63	    return repo, ledger, db
+    64	
+    65	
+    66	def _start_active_session(repo):
+    67	    result = repo.dispatch(
+    68	        agent_id="agent-1",
+    69	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:81 =====
+    78	    return result
+    79	
+    80	
+    81	def _remaining_stack(depth: int = 0):
+    82	    return {"known": True, "depth": depth, "frames": []}
+    83	
+    84	
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:94 =====
+    91	
+    92	def test_session_ended_requires_explicit_finalize_contract(tmp_path):
+    93	    repo, _, db = _repo_with_ledger(tmp_path)
+    94	    first = _start_active_session(repo)
+    95	
+    96	    with pytest.raises(ValueError, match="finalize_reason is required"):
+    97	        repo.session_ended(
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:102 =====
+    99	            subagent_id="main",
+   100	            scope_id=first["scope_id"],
+   101	            generation=1,
+   102	            remaining_stack=_remaining_stack(),
+   103	        )
+   104	
+   105	    with pytest.raises(ValueError, match="generation is required"):
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:111 =====
+   108	            subagent_id="main",
+   109	            scope_id=first["scope_id"],
+   110	            finalize_reason="stack_empty",
+   111	            remaining_stack=_remaining_stack(),
+   112	        )
+   113	
+   114	    with pytest.raises(ValueError, match="positive generation"):
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:121 =====
+   118	            scope_id=first["scope_id"],
+   119	            finalize_reason="stack_empty",
+   120	            generation=0,
+   121	            remaining_stack=_remaining_stack(),
+   122	        )
+   123	
+   124	    with pytest.raises(ValueError, match="positive generation"):
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:131 =====
+   128	            scope_id=first["scope_id"],
+   129	            finalize_reason="stack_empty",
+   130	            generation=True,
+   131	            remaining_stack=_remaining_stack(),
+   132	        )
+   133	
+   134	    with pytest.raises(TypeError, match="missing .*remaining_stack"):
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:134 =====
+   131	            remaining_stack=_remaining_stack(),
+   132	        )
+   133	
+   134	    with pytest.raises(TypeError, match="missing .*remaining_stack"):
+   135	        repo.session_ended(
+   136	            agent_id="agent-1",
+   137	            subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:148 =====
+   145	
+   146	def test_session_finalized_event_persists_reason_generation_and_stack(tmp_path):
+   147	    repo, ledger, db = _repo_with_ledger(tmp_path)
+   148	    first = _start_active_session(repo)
+   149	    session_key = "agent-1:main"
+   150	    expected_metadata = {
+   151	        "finalize_reason": "stack_empty",
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:153 =====
+   150	    expected_metadata = {
+   151	        "finalize_reason": "stack_empty",
+   152	        "finalize_generation": 1,
+   153	        "remaining_stack": _remaining_stack(),
+   154	        "ended_scope_id": first["scope_id"],
+   155	    }
+   156	
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:163 =====
+   160	        scope_id=first["scope_id"],
+   161	        finalize_reason="stack_empty",
+   162	        generation=1,
+   163	        remaining_stack=_remaining_stack(),
+   164	    )
+   165	
+   166	    assert closed == {"action": "session_closed"}
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:176 =====
+   173	    assert len(closed_events) == 1
+   174	    assert int(closed_events[0]["generation"]) == 1
+   175	    assert closed_events[0]["payload"]["metadata"] == expected_metadata
+   176	    assert repo.get_active_session(session_key) is None
+   177	    assert ledger.get_state(session_key)["state"] == "no_active"
+   178	
+   179	    db.close()
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:184 =====
+   181	
+   182	def test_generation_mismatch_rejects_finalize_without_clearing_active(tmp_path):
+   183	    repo, ledger, db = _repo_with_ledger(tmp_path)
+   184	    first = _start_active_session(repo)
+   185	    session_key = "agent-1:main"
+   186	    stale_stack = _remaining_stack(2)
+   187	
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:186 =====
+   183	    repo, ledger, db = _repo_with_ledger(tmp_path)
+   184	    first = _start_active_session(repo)
+   185	    session_key = "agent-1:main"
+   186	    stale_stack = _remaining_stack(2)
+   187	
+   188	    rejected = repo.session_ended(
+   189	        agent_id="agent-1",
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:194 =====
+   191	        scope_id=first["scope_id"],
+   192	        finalize_reason="stale_finalize",
+   193	        generation=99,
+   194	        remaining_stack=stale_stack,
+   195	    )
+   196	
+   197	    assert rejected == {
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:204 =====
+   201	        "actual_generation": 99,
+   202	        "scope_id": first["scope_id"],
+   203	    }
+   204	    active = repo.get_active_session(session_key)
+   205	    assert active["scope_id"] == first["scope_id"]
+   206	    assert active["generation"] == 1
+   207	    state = ledger.get_state(session_key)
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:219 =====
+   216	    assert reject_events[0]["payload"] == {
+   217	        "finalize_reason": "stale_finalize",
+   218	        "finalize_generation": 99,
+   219	        "remaining_stack": stale_stack,
+   220	        "ended_scope_id": first["scope_id"],
+   221	        "result": rejected,
+   222	    }
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:229 =====
+   226	
+   227	def test_scope_mismatch_rejects_finalize_without_clearing_active(tmp_path):
+   228	    repo, ledger, db = _repo_with_ledger(tmp_path)
+   229	    first = _start_active_session(repo)
+   230	    session_key = "agent-1:main"
+   231	    stale_stack = _remaining_stack(3)
+   232	
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:231 =====
+   228	    repo, ledger, db = _repo_with_ledger(tmp_path)
+   229	    first = _start_active_session(repo)
+   230	    session_key = "agent-1:main"
+   231	    stale_stack = _remaining_stack(3)
+   232	
+   233	    rejected = repo.session_ended(
+   234	        agent_id="agent-1",
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:239 =====
+   236	        scope_id="stale-scope",
+   237	        finalize_reason="stale_finalize",
+   238	        generation=1,
+   239	        remaining_stack=stale_stack,
+   240	    )
+   241	
+   242	    assert rejected == {
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:249 =====
+   246	        "actual_scope_id": "stale-scope",
+   247	        "scope_id": "stale-scope",
+   248	    }
+   249	    active = repo.get_active_session(session_key)
+   250	    assert active["scope_id"] == first["scope_id"]
+   251	    assert active["generation"] == 1
+   252	    state = ledger.get_state(session_key)
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:264 =====
+   261	    assert reject_events[0]["payload"] == {
+   262	        "finalize_reason": "stale_finalize",
+   263	        "finalize_generation": 1,
+   264	        "remaining_stack": stale_stack,
+   265	        "ended_scope_id": "stale-scope",
+   266	        "result": rejected,
+   267	    }
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:273 =====
+   270	
+   271	
+   272	def test_wake_finalize_payload_carries_finalize_contract():
+   273	    remaining_stack = {"known": True, "depth": 2, "frames": []}
+   274	    ctx = {
+   275	        "agent_id": "agent-1",
+   276	        "subagent_id": "main",
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:282 =====
+   279	        "wake_scope_path": "/ro/active/agent-root-main/steps/0001_scope_scope-1",
+   280	        "session_generation": 7,
+   281	        "finalize_reason": "stack_nonempty_after_retry",
+   282	        "remaining_stack": remaining_stack,
+   283	        "round_num": 4,
+   284	    }
+   285	    payload = _build_session_ended_payload(ctx)
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:289 =====
+   286	
+   287	    assert payload["finalize_reason"] == "stack_nonempty_after_retry"
+   288	    assert payload["generation"] == 7
+   289	    assert payload["remaining_stack"] == remaining_stack
+   290	
+   291	    scope_end_payload = _build_cortex_scope_end_payload(ctx)
+   292	    assert scope_end_payload["session_generation"] == 7
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:294 =====
+   291	    scope_end_payload = _build_cortex_scope_end_payload(ctx)
+   292	    assert scope_end_payload["session_generation"] == 7
+   293	    assert scope_end_payload["finalize_reason"] == "stack_nonempty_after_retry"
+   294	    assert scope_end_payload["remaining_stack"] == remaining_stack
+   295	    assert scope_end_payload["agent_root_scope_id"] == "agent-root-main"
+   296	    assert scope_end_payload["wake_scope_path"].endswith("0001_scope_scope-1")
+   297	
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:321 =====
+   318	        "subagent_id": "main",
+   319	        "scope_id": "scope-1",
+   320	        "finalize_reason": "stack_empty",
+   321	        "remaining_stack": _remaining_stack(),
+   322	    }
+   323	
+   324	    with pytest.raises(ValueError, match="session_generation is required"):
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:349 =====
+   346	        "finalize_reason": "stack_empty",
+   347	    }
+   348	
+   349	    with pytest.raises(ValueError, match="remaining_stack"):
+   350	        _build_session_ended_payload(dict(base_context))
+   351	    with pytest.raises(ValueError, match="remaining_stack"):
+   352	        _build_cortex_scope_end_payload(dict(base_context))
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:351 =====
+   348	
+   349	    with pytest.raises(ValueError, match="remaining_stack"):
+   350	        _build_session_ended_payload(dict(base_context))
+   351	    with pytest.raises(ValueError, match="remaining_stack"):
+   352	        _build_cortex_scope_end_payload(dict(base_context))
+   353	    with pytest.raises(ValueError, match="remaining_stack"):
+   354	        _build_session_ended_payload({
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:353 =====
+   350	        _build_session_ended_payload(dict(base_context))
+   351	    with pytest.raises(ValueError, match="remaining_stack"):
+   352	        _build_cortex_scope_end_payload(dict(base_context))
+   353	    with pytest.raises(ValueError, match="remaining_stack"):
+   354	        _build_session_ended_payload({
+   355	            **base_context,
+   356	            "remaining_stack": True,
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:356 =====
+   353	    with pytest.raises(ValueError, match="remaining_stack"):
+   354	        _build_session_ended_payload({
+   355	            **base_context,
+   356	            "remaining_stack": True,
+   357	        })
+   358	
+   359	    with pytest.raises(ValueError, match="round_num"):
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:362 =====
+   359	    with pytest.raises(ValueError, match="round_num"):
+   360	        _build_cortex_scope_end_payload({
+   361	            **base_context,
+   362	            "remaining_stack": _remaining_stack(),
+   363	            "round_num": False,
+   364	        })
+   365	    with pytest.raises(ValueError, match="positive session_generation"):
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:410 =====
+   407	            "scope_id": "scope-1",
+   408	            "finalize_reason": "stack_empty",
+   409	            "generation": 3,
+   410	            "remaining_stack": _remaining_stack(),
+   411	        },
+   412	        {"saga_client": client},
+   413	    )
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:422 =====
+   419	        "scope_id": "scope-1",
+   420	        "finalize_reason": "stack_empty",
+   421	        "generation": 3,
+   422	        "remaining_stack": _remaining_stack(),
+   423	    }]
+   424	
+   425	    with pytest.raises(ValidationError, match="finalize_reason"):
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:432 =====
+   429	                "subagent_id": "main",
+   430	                "scope_id": "scope-1",
+   431	                "generation": 3,
+   432	                "remaining_stack": _remaining_stack(),
+   433	            },
+   434	            {"saga_client": client},
+   435	        )
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:445 =====
+   442	                "scope_id": "scope-1",
+   443	                "finalize_reason": "stack_empty",
+   444	                "generation": 0,
+   445	                "remaining_stack": _remaining_stack(),
+   446	            },
+   447	            {"saga_client": client},
+   448	        )
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:461 =====
+   458	                "scope_id": "scope-1",
+   459	                "finalize_reason": "stale_finalize",
+   460	                "generation": 99,
+   461	                "remaining_stack": _remaining_stack(),
+   462	            },
+   463	            {"saga_client": _RejectingSagaClient()},
+   464	        )
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:484 =====
+   481	            scope_id="scope-1",
+   482	            finalize_reason="stack_empty",
+   483	            generation=0,
+   484	            remaining_stack=_remaining_stack(),
+   485	        )
+   486	    assert calls == []
+   487	
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:494 =====
+   491	        scope_id="scope-1",
+   492	        finalize_reason="stack_empty",
+   493	        generation=1,
+   494	        remaining_stack=_remaining_stack(),
+   495	    )
+   496	    assert result == {"action": "session_closed"}
+   497	    assert calls == [(
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:506 =====
+   503	            "scope_id": "scope-1",
+   504	            "finalize_reason": "stack_empty",
+   505	            "generation": 1,
+   506	            "remaining_stack": _remaining_stack(),
+   507	        },
+   508	    )]
+   509	
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:519 =====
+   516	            scope_id="scope-1",
+   517	            finalize_reason="stack_empty",
+   518	            generation=0,
+   519	            remaining_stack=_remaining_stack(),
+   520	        )
+   521	
+   522	    req = SessionEndedRequest(
+
+===== novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:528 =====
+   525	        scope_id="scope-1",
+   526	        finalize_reason="stack_empty",
+   527	        generation=1,
+   528	        remaining_stack=_remaining_stack(),
+   529	    )
+   530	    assert req.generation == 1
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:15 =====
+    12	from queue_service.session_recovery import (
+    13	    build_recovery_archive_effect,
+    14	    build_recovery_dispatch,
+    15	    recovery_marker_from_suspected_dead_event,
+    16	)
+    17	
+    18	RUNTIME_ROOT = Path(__file__).resolve().parents[1]
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:38 =====
+    35	    }
+    36	
+    37	
+    38	def test_recovery_marker_from_suspected_dead_event_is_explicit_and_stable():
+    39	    marker = recovery_marker_from_suspected_dead_event(
+    40	        session_key="agent-1:main",
+    41	        agent_id="agent-1",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:39 =====
+    36	
+    37	
+    38	def test_recovery_marker_from_suspected_dead_event_is_explicit_and_stable():
+    39	    marker = recovery_marker_from_suspected_dead_event(
+    40	        session_key="agent-1:main",
+    41	        agent_id="agent-1",
+    42	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:62 =====
+    59	
+    60	
+    61	def test_build_recovery_dispatch_prefers_pending_projection_metadata():
+    62	    marker = recovery_marker_from_suspected_dead_event(
+    63	        session_key="agent-1:main",
+    64	        agent_id="agent-1",
+    65	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:90 =====
+    87	    assert recovery.metadata["original_trigger_type"] == "user_message"
+    88	    assert recovery.metadata["recovery_from_scope_id"] == "scope-old"
+    89	    assert recovery.metadata["recovery_failed_saga_id"] == "saga-finalize"
+    90	    assert recovery.metadata["recovery_suspected_dead_event_id"] == "suspected-1"
+    91	    assert recovery.metadata["recovery"]["metadata"]["round_num"] == 3
+    92	
+    93	
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:95 =====
+    92	
+    93	
+    94	def test_build_recovery_archive_effect_keeps_scope_end_payload_shape():
+    95	    marker = recovery_marker_from_suspected_dead_event(
+    96	        session_key="agent-1:main",
+    97	        agent_id="agent-1",
+    98	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:121 =====
+   118	            "session_generation": 4,
+   119	            "report": "",
+   120	            "finalize_reason": "recovery:wake_finalize_failed",
+   121	            "remaining_stack": {"known": False, "depth": 0, "frames": []},
+   122	            "round_num": 3,
+   123	            "max_retries": 10,
+   124	        },
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:132 =====
+   129	def test_build_recovery_archive_effect_rejects_missing_or_invalid_generation():
+   130	    event = _suspected_event()
+   131	    event.pop("generation")
+   132	    marker = recovery_marker_from_suspected_dead_event(
+   133	        session_key="agent-1:main",
+   134	        agent_id="agent-1",
+   135	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:155 =====
+   152	    ) is None
+   153	
+   154	
+   155	def test_build_recovery_archive_effect_preserves_explicit_remaining_stack():
+   156	    event = _suspected_event()
+   157	    remaining_stack = {"known": True, "depth": 2, "frames": [{"scope_id": "child"}]}
+   158	    event["payload"]["remaining_stack"] = remaining_stack
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:157 =====
+   154	
+   155	def test_build_recovery_archive_effect_preserves_explicit_remaining_stack():
+   156	    event = _suspected_event()
+   157	    remaining_stack = {"known": True, "depth": 2, "frames": [{"scope_id": "child"}]}
+   158	    event["payload"]["remaining_stack"] = remaining_stack
+   159	    marker = recovery_marker_from_suspected_dead_event(
+   160	        session_key="agent-1:main",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:158 =====
+   155	def test_build_recovery_archive_effect_preserves_explicit_remaining_stack():
+   156	    event = _suspected_event()
+   157	    remaining_stack = {"known": True, "depth": 2, "frames": [{"scope_id": "child"}]}
+   158	    event["payload"]["remaining_stack"] = remaining_stack
+   159	    marker = recovery_marker_from_suspected_dead_event(
+   160	        session_key="agent-1:main",
+   161	        agent_id="agent-1",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:159 =====
+   156	    event = _suspected_event()
+   157	    remaining_stack = {"known": True, "depth": 2, "frames": [{"scope_id": "child"}]}
+   158	    event["payload"]["remaining_stack"] = remaining_stack
+   159	    marker = recovery_marker_from_suspected_dead_event(
+   160	        session_key="agent-1:main",
+   161	        agent_id="agent-1",
+   162	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:174 =====
+   171	        effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+   172	    )
+   173	
+   174	    assert effect["payload"]["remaining_stack"] == remaining_stack
+   175	
+   176	
+   177	def test_build_recovery_archive_effect_rejects_bool_round_and_bad_remaining_stack():
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:177 =====
+   174	    assert effect["payload"]["remaining_stack"] == remaining_stack
+   175	
+   176	
+   177	def test_build_recovery_archive_effect_rejects_bool_round_and_bad_remaining_stack():
+   178	    event = _suspected_event()
+   179	    event["payload"]["round_num"] = False
+   180	    marker = recovery_marker_from_suspected_dead_event(
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:180 =====
+   177	def test_build_recovery_archive_effect_rejects_bool_round_and_bad_remaining_stack():
+   178	    event = _suspected_event()
+   179	    event["payload"]["round_num"] = False
+   180	    marker = recovery_marker_from_suspected_dead_event(
+   181	        session_key="agent-1:main",
+   182	        agent_id="agent-1",
+   183	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:198 =====
+   195	
+   196	    event = _suspected_event()
+   197	    event["payload"].pop("round_num")
+   198	    event["payload"]["remaining_stack"] = True
+   199	    marker = recovery_marker_from_suspected_dead_event(
+   200	        session_key="agent-1:main",
+   201	        agent_id="agent-1",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:199 =====
+   196	    event = _suspected_event()
+   197	    event["payload"].pop("round_num")
+   198	    event["payload"]["remaining_stack"] = True
+   199	    marker = recovery_marker_from_suspected_dead_event(
+   200	        session_key="agent-1:main",
+   201	        agent_id="agent-1",
+   202	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:207 =====
+   204	        event=event,
+   205	    )
+   206	
+   207	    with pytest.raises(ValueError, match="remaining_stack"):
+   208	        build_recovery_archive_effect(
+   209	            recovery_marker=marker,
+   210	            agent_id="agent-1",
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:222 =====
+   219	        encoding="utf-8"
+   220	    )
+   221	
+   222	    assert "recovery_marker_from_suspected_dead_event(" in repo_source
+   223	    assert "build_recovery_dispatch(" not in repo_source
+   224	    assert "build_recovery_dispatch(" in wake_plan_source
+   225	    assert "build_recovery_archive_effect(" in repo_source
+
+===== novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:226 =====
+   223	    assert "build_recovery_dispatch(" not in repo_source
+   224	    assert "build_recovery_dispatch(" in wake_plan_source
+   225	    assert "build_recovery_archive_effect(" in repo_source
+   226	    assert "_recovery_marker_from_suspected_dead_event" not in repo_source
+   227	    assert "_recovery_archive_outbox_effect" not in repo_source
+   228	    assert "_decode_json_dict" not in repo_source
+   229	    assert "recovery_metadata =" not in repo_source
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:75 =====
+    72	    return rows
+    73	
+    74	
+    75	def test_wake_finalize_failure_only_records_suspected_dead_event(tmp_path):
+    76	    repo, ledger, orchestrator, db = _repo_with_ledger(tmp_path)
+    77	    session_key = "agent-1:main"
+    78	
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:97 =====
+    94	            "agent_root_scope_id": "agent-root-main",
+    95	            "wake_scope_path": "/ro/active/agent-root-main/steps/0001_scope_old",
+    96	            "round_num": 3,
+    97	            "remaining_stack": {"known": True, "depth": 2, "frames": []},
+    98	        },
+    99	        idempotency_key="finalize-pr245",
+   100	    )
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:110 =====
+   107	        "dead_letter": 0,
+   108	    }
+   109	
+   110	    assert repo.get_active_session(session_key)["scope_id"] == first["scope_id"]
+   111	    assert _archive_tasks(db) == []
+   112	
+   113	    suspected_events = [
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:115 =====
+   112	
+   113	    suspected_events = [
+   114	        event for event in ledger.list_events(session_key)
+   115	        if event["event_type"] == "session_suspected_dead"
+   116	    ]
+   117	    assert len(suspected_events) == 1
+   118	    payload = suspected_events[0]["payload"]
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:123 =====
+   120	    assert payload["failed_saga_id"] == finalize_saga_id
+   121	    assert payload["reason"] == "wake_finalize_failed"
+   122	    assert payload["force_archive_required"] is True
+   123	    assert payload["remaining_stack"] == {"known": True, "depth": 2, "frames": []}
+   124	    assert payload["wake_scope_path"] == "/ro/active/agent-root-main/steps/0001_scope_old"
+   125	    assert suspected_events[0]["idempotency_key"] == (
+   126	        f"suspected:{session_key}:{finalize_saga_id}"
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:156 =====
+   153	    }
+   154	    assert [
+   155	        event for event in ledger.list_events(session_key)
+   156	        if event["event_type"] == "session_suspected_dead"
+   157	    ] == []
+   158	
+   159	    db.close()
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:162 =====
+   159	    db.close()
+   160	
+   161	
+   162	def test_next_dispatch_recovers_from_suspected_dead_event_and_preserves_inbox(tmp_path):
+   163	    repo, ledger, orchestrator, db = _repo_with_ledger(tmp_path)
+   164	    session_key = "agent-1:main"
+   165	
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:212 =====
+   209	    assert recovered["action"] == "wake_start_queued"
+   210	    assert recovered["scope_id"] != first["scope_id"]
+   211	    _drain_wake(repo, all_effects=True)
+   212	    active = repo.get_active_session(session_key)
+   213	    assert active["scope_id"] == recovered["scope_id"]
+   214	
+   215	    saga = orchestrator.get(active["saga_id"])
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:223 =====
+   220	    assert saga["context"]["original_trigger_type"] == "user_message"
+   221	    assert saga["context"]["recovery_from_scope_id"] == first["scope_id"]
+   222	    assert saga["context"]["recovery_failed_saga_id"] == finalize_saga_id
+   223	    assert saga["context"]["recovery_suspected_dead_event_id"].startswith(
+   224	        f"suspected:{session_key}:"
+   225	    )
+   226	    assert saga["context"]["recovery_pending_input_event_ids"]
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:231 =====
+   228	
+   229	    observed = [
+   230	        event for event in ledger.list_events(session_key)
+   231	        if event["event_type"] == "session_suspected_dead_observed"
+   232	    ]
+   233	    assert len(observed) == 1
+   234	    assert observed[0]["payload"]["result"]["recovery_id"]
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:242 =====
+   239	    assert archive_tasks[0][1] == f"recovery-cortex-scope-end:{first['scope_id']}"
+   240	    assert archive_payload["scope_id"] == first["scope_id"]
+   241	    assert archive_payload["finalize_reason"] == "recovery:wake_finalize_failed"
+   242	    assert archive_payload["remaining_stack"] == {
+   243	        "known": False,
+   244	        "depth": 0,
+   245	        "frames": [],
+
+===== novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:260 =====
+   257	    branch = branch.split("super().mark_failed", 1)[0]
+   258	
+   259	    assert "INSERT INTO tq_session_recoveries" not in branch
+   260	    assert "_record_session_suspected_dead_event(" not in branch
+   261	
+   262	
+   263	def test_recovery_marker_table_has_no_live_references():
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:58 =====
+    55	    return orchestrator, saga_ledger, session_ledger, db, current_time
+    56	
+    57	
+    58	def test_wake_saga_failure_commits_finalize_creation_effect_before_publish(tmp_path):
+    59	    orchestrator, saga_ledger, _session_ledger, db, _clock = _runtime(tmp_path)
+    60	    saga_id = orchestrator.create(
+    61	        "subagent_wake",
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:71 =====
+    68	            "wake_scope_path": "/ro/active/agent-root-main/steps/0001_scope_scope-1",
+    69	            "session_generation": 7,
+    70	            "round_num": 3,
+    71	            "remaining_stack": {"known": True, "depth": 0, "frames": []},
+    72	        },
+    73	    )
+    74	
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:90 =====
+    87	    )
+    88	    assert context["session_generation"] == 7
+    89	    assert context["round_num"] == 3
+    90	    assert context["remaining_stack"] == {"known": True, "depth": 0, "frames": []}
+    91	
+    92	    assert _build_cortex_scope_end_payload(context)["agent_root_scope_id"] == "agent-root-main"
+    93	    assert _build_cortex_scope_end_payload(context)["wake_scope_path"] == (
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:99 =====
+    96	    assert _build_cortex_scope_end_payload(context)["session_generation"] == 7
+    97	    session_payload = _build_session_ended_payload(context)
+    98	    assert session_payload["generation"] == 7
+    99	    assert session_payload["remaining_stack"] == {"known": True, "depth": 0, "frames": []}
+   100	
+   101	    assert orchestrator.drain_pending_effects() == {
+   102	        "published": 1,
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:177 =====
+   174	        "create_wake_finalize_saga",
+   175	    ]
+   176	    context = pending[0]["payload"]["context"]
+   177	    assert context["remaining_stack"] == {"known": False, "depth": 0, "frames": []}
+   178	    assert _build_session_ended_payload(context)["remaining_stack"] == {
+   179	        "known": False,
+   180	        "depth": 0,
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:178 =====
+   175	    ]
+   176	    context = pending[0]["payload"]["context"]
+   177	    assert context["remaining_stack"] == {"known": False, "depth": 0, "frames": []}
+   178	    assert _build_session_ended_payload(context)["remaining_stack"] == {
+   179	        "known": False,
+   180	        "depth": 0,
+   181	        "frames": [],
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:187 =====
+   184	    db.close()
+   185	
+   186	
+   187	def test_wake_finalize_failure_commits_suspected_dead_effect_before_publish(tmp_path):
+   188	    orchestrator, saga_ledger, session_ledger, db, _clock = _runtime(tmp_path)
+   189	    session_key = "agent-1:main"
+   190	    session_ledger.record_active_session(
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:190 =====
+   187	def test_wake_finalize_failure_commits_suspected_dead_effect_before_publish(tmp_path):
+   188	    orchestrator, saga_ledger, session_ledger, db, _clock = _runtime(tmp_path)
+   189	    session_key = "agent-1:main"
+   190	    session_ledger.record_active_session(
+   191	        session_key=session_key,
+   192	        agent_id="agent-1",
+   193	        subagent_id="main",
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:217 =====
+   214	
+   215	    assert [
+   216	        event for event in session_ledger.list_events(session_key)
+   217	        if event["event_type"] == "session_suspected_dead"
+   218	    ] == []
+   219	    pending = saga_ledger.list_pending_outbox(saga_id=finalize_saga_id)
+   220	    assert [effect["effect_type"] for effect in pending] == [
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:221 =====
+   218	    ] == []
+   219	    pending = saga_ledger.list_pending_outbox(saga_id=finalize_saga_id)
+   220	    assert [effect["effect_type"] for effect in pending] == [
+   221	        "record_session_suspected_dead",
+   222	    ]
+   223	
+   224	    assert orchestrator.drain_pending_effects() == {
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:232 =====
+   229	
+   230	    suspected_events = [
+   231	        event for event in session_ledger.list_events(session_key)
+   232	        if event["event_type"] == "session_suspected_dead"
+   233	    ]
+   234	    assert len(suspected_events) == 1
+   235	    assert suspected_events[0]["generation"] == 4
+
+===== novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:288 =====
+   285	    }
+   286	
+   287	    assert "self.create" not in direct_call_names
+   288	    assert "self._record_session_suspected_dead_event" not in direct_call_names
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:87 =====
+    84	    assert decision.action is SessionDispatchAction.ATTACH_INPUT
+    85	
+    86	
+    87	def test_dispatch_decision_starts_wake_when_no_active_session():
+    88	    decision = decide_session_dispatch(SessionDispatchInput(
+    89	        state=SessionRuntimeState(
+    90	            status=SessionRuntimeStatus.NO_ACTIVE,
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:193 =====
+   190	        )
+   191	
+   192	
+   193	def test_wake_finalize_failure_records_suspected_dead_event(tmp_path):
+   194	    repo, orchestrator, db = _repo(tmp_path)
+   195	    first = repo.dispatch(
+   196	        agent_id="agent-1",
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:223 =====
+   220	        "dead_letter": 0,
+   221	    }
+   222	
+   223	    active = repo.get_active_session("agent-1:main")
+   224	    assert active is not None
+   225	    assert active["scope_id"] == first["scope_id"]
+   226	
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:232 =====
+   229	        SELECT payload, idempotency_key
+   230	        FROM tq_session_events
+   231	        WHERE session_key = ?
+   232	          AND event_type = 'session_suspected_dead'
+   233	        """,
+   234	        ("agent-1:main",),
+   235	    )
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:263 =====
+   260	
+   261	    assert recovered["action"] == "wake_start_queued"
+   262	    _drain_wake(repo, all_effects=True)
+   263	    saga = orchestrator.get(repo.get_active_session("agent-1:main")["saga_id"])
+   264	    assert saga["context"]["trigger_type"] == "recovered"
+   265	    assert saga["context"]["message_ids"] == ["m2"]
+   266	    assert saga["context"]["original_trigger_type"] == "user_message"
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:268 =====
+   265	    assert saga["context"]["message_ids"] == ["m2"]
+   266	    assert saga["context"]["original_trigger_type"] == "user_message"
+   267	    assert saga["context"]["recovery_from_scope_id"] == first["scope_id"]
+   268	    assert saga["context"]["recovery_suspected_dead_event_id"]
+   269	    assert saga["context"]["force_archive_required"] is True
+   270	
+   271	    cursor = db.execute(
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:282 =====
+   279	    archive_payload = json.loads(archive_task[1])
+   280	    assert archive_payload["scope_id"] == first["scope_id"]
+   281	    assert archive_payload["finalize_reason"] == "recovery:wake_finalize_failed"
+   282	    assert archive_payload["remaining_stack"] == {
+   283	        "known": False,
+   284	        "depth": 0,
+   285	        "frames": [],
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:326 =====
+   323	        "failed": 0,
+   324	        "dead_letter": 0,
+   325	    }
+   326	    assert repo.get_active_session("agent-1:main") is not None
+   327	
+   328	    recovered = repo.dispatch(
+   329	        agent_id="agent-1",
+
+===== novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:338 =====
+   335	
+   336	    assert recovered["action"] == "wake_start_queued"
+   337	    _drain_wake(repo, all_effects=True)
+   338	    saga = orchestrator.get(repo.get_active_session("agent-1:main")["saga_id"])
+   339	    assert saga["context"]["trigger_type"] == "recovered"
+   340	    assert saga["context"]["message_ids"] == ["m2", "m3"]
+   341	    assert saga["context"]["scheduled"] is True
+
+===== novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:25 =====
+    22	        super().__init__(*args, **kwargs)
+    23	        self.fail_recovery_archive = fail_recovery_archive
+    24	
+    25	    def publish(self, topic, payload, **kwargs):
+    26	        if topic == TaskTopics.CORTEX_SCOPE_END and self.fail_recovery_archive:
+    27	            raise RuntimeError("synthetic recovery archive publish failure")
+    28	        return super().publish(topic, payload, **kwargs)
+
+===== novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:28 =====
+    25	    def publish(self, topic, payload, **kwargs):
+    26	        if topic == TaskTopics.CORTEX_SCOPE_END and self.fail_recovery_archive:
+    27	            raise RuntimeError("synthetic recovery archive publish failure")
+    28	        return super().publish(topic, payload, **kwargs)
+    29	
+    30	
+    31	def _repo_with_dispatcher(tmp_path, *, fail_recovery_archive: bool = False):
+
+===== novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:153 =====
+   150	
+   151	    assert recovered["action"] == "wake_start_queued"
+   152	    _drain_wake(repo, all_effects=True)
+   153	    saga = orchestrator.get(repo.get_active_session(session_key)["saga_id"])
+   154	    assert saga["context"]["recovery_failed_saga_id"] == finalize_saga_id
+   155	
+   156	    outbox = _recovery_outbox(ledger, session_key)
+
+===== novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:172 =====
+   169	    assert archive_payload["scope_id"] == first["scope_id"]
+   170	    assert archive_payload["session_generation"] == 1
+   171	    assert archive_payload["finalize_reason"] == "recovery:wake_finalize_failed"
+   172	    assert archive_payload["remaining_stack"] == {
+   173	        "known": False,
+   174	        "depth": 0,
+   175	        "frames": [],
+
+===== novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:200 =====
+   197	    }
+   198	    if bad_generation is not None:
+   199	        payload["session_generation"] = bad_generation
+   200	    payload["remaining_stack"] = {"known": True, "depth": 0, "frames": []}
+   201	
+   202	    with pytest.raises(ValueError, match="positive session_generation"):
+   203	        dispatcher._publish_recovery_archive({
+
+===== novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:212 =====
+   209	    db.close()
+   210	
+   211	
+   212	def test_recovery_archive_publisher_rejects_missing_remaining_stack(tmp_path):
+   213	    _repo, _ledger, _orchestrator, db, _queue, dispatcher = _repo_with_dispatcher(
+   214	        tmp_path
+   215	    )
+
+===== novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:217 =====
+   214	        tmp_path
+   215	    )
+   216	
+   217	    with pytest.raises(ValueError, match="requires remaining_stack"):
+   218	        dispatcher._publish_recovery_archive({
+   219	            "payload": {
+   220	                "scope_id": "scope-old",
+
+===== novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:270 =====
+   267	    assert archive_tasks[0][1] == f"recovery-cortex-scope-end:{first['scope_id']}"
+   268	    archive_payload = json.loads(archive_tasks[0][0])
+   269	    assert archive_payload["session_generation"] == 1
+   270	    assert archive_payload["remaining_stack"] == {
+   271	        "known": False,
+   272	        "depth": 0,
+   273	        "frames": [],
+
+===== novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:51 =====
+    48	        "user_id": "u1",
+    49	        "session_generation": 1,
+    50	        "finalize_reason": "stack_empty",
+    51	        "remaining_stack": {"known": True, "depth": 0, "frames": []},
+    52	    }
+    53	    payload.update(overrides)
+    54	    return payload
+
+===== novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:84 =====
+    81	    assert bridge.scope_end.call_count == 1
+    82	    assert bridge.scope_end.call_args.kwargs["session_generation"] == 1
+    83	    assert bridge.scope_end.call_args.kwargs["finalize_reason"] == "stack_empty"
+    84	    assert bridge.scope_end.call_args.kwargs["remaining_stack"] == {
+    85	        "known": True,
+    86	        "depth": 0,
+    87	        "frames": [],
+
+===== novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:247 =====
+   244	        scope_path="/ro/active/agent-root/steps/0001_scope_wake-1",
+   245	        session_generation=7,
+   246	        finalize_reason="reply_no_followup",
+   247	        remaining_stack={"known": True, "depth": 0, "frames": []},
+   248	        round_num=3,
+   249	    )
+   250	
+
+===== novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:263 =====
+   260	            "scope_path": "/ro/active/agent-root/steps/0001_scope_wake-1",
+   261	            "session_generation": 7,
+   262	            "finalize_reason": "reply_no_followup",
+   263	            "remaining_stack": {"known": True, "depth": 0, "frames": []},
+   264	            "round_num": 3,
+   265	        },
+   266	        None,
+
+===== novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:284 =====
+   281	            report="",
+   282	            session_generation=True,
+   283	            finalize_reason="reply_no_followup",
+   284	            remaining_stack={"known": True, "depth": 0, "frames": []},
+   285	        )
+

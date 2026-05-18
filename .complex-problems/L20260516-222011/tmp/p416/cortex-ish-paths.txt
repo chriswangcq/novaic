@@ -1,0 +1,5 @@
+# repo cortex-ish paths
+./docs/cortex
+./novaic-cortex
+./novaic-cortex/cortex_tests
+./novaic-cortex/novaic_cortex

@@ -1,0 +1,1018 @@
+README.md:16:├── novaic-blob-service/         # Blob Service
+docs/gateway/README.md:13:| **Gateway** | `:19999` | `novaic-gateway/` | 薄边缘：Auth（JWT）、Blob edge、App WS（push + WebRTC signaling + Entangled endpoint discovery）、TURN |
+docs/gateway/README.md:31:- `POST /api/blobs/upload-config`、`POST /api/blobs/register`（Blob 控制面）
+docs/gateway/README.md:32:- `/blob/*`（Nginx edge 直达 Blob Service 字节数据面）
+docs/architecture/explicit-dependency-testability-report.md:42:| Blob Service | `cd novaic-blob-service && PYTHONPATH=.:../novaic-common python3 -m pytest -q` |
+docs/architecture/explicit-dependency-testability-report.md:53:| Blob Service | 28 passed, 2 skipped |
+docs/architecture/explicit-dependency-testability-report.md:106:- Workspace and scope-state paths are more explicit at construction/entrypoint
+docs/architecture/explicit-dependency-testability-report.md:113:- Large payload content should remain behind Blob/payload refs unless an explicit
+docs/architecture/explicit-dependency-testability-report.md:128:- `common` should stay schema/config/tool-contract authority. It should not grow
+docs/architecture/explicit-dependency-testability-report.md:131:### Blob Service
+docs/architecture/explicit-dependency-testability-report.md:139:- Tests cover backend and blob-service behavior.
+docs/architecture/explicit-dependency-testability-report.md:143:- Blob owns bytes and metadata only. Business meaning belongs to caller services.
+docs/architecture/explicit-dependency-testability-report.md:177:- Blob adapters may read/write disk or S3.
+docs/gateway/app-ws-and-signaling.md:56:- Blob Service 字节基础设施。
+scripts/start.sh:12:#   - Gateway        :19999  Auth, App WS signaling, log broadcast, Blob edge
+scripts/start.sh:16:#   - Blob Service   :19995  Blob upload/download
+scripts/start.sh:18:#   - Cortex         :19996  Scope tree, LLM context assembly, Workspace, Sandbox
+scripts/start.sh:137:    pkill -9 -f "main_blob_service.py" 2>/dev/null || true
+scripts/start.sh:176:BLOB_OSS_ENDPOINT=$(_cfg "['blob_storage']['oss_endpoint']")
+scripts/start.sh:177:BLOB_OSS_REGION=$(_cfg "['blob_storage']['oss_region']")
+scripts/start.sh:178:BLOB_OSS_BUCKET=$(_cfg "['blob_storage']['oss_bucket']")
+scripts/start.sh:194:    --queue-service-url "$QS_URL" --blob-service-url "$BLOB_URL" \
+scripts/start.sh:195:    --blob-upload-url "$BLOB_URL" \
+scripts/start.sh:225:$(py novaic-blob-service) "$BASE/novaic-blob-service/main_blob_service.py" \
+scripts/start.sh:227:    >> "$LOG_DIR/blob-service.log" 2>&1 &
+scripts/start.sh:228:wait_port "$PORT_BLOB_SERVICE" "Blob Service"
+scripts/start.sh:252:	    --blob-service-url "$BLOB_URL" \
+docs/architecture/gateway-decomposition-roadmap.md:15:| App WS push / signaling | Entangled schema authority |
+docs/architecture/gateway-decomposition-roadmap.md:18:| Blob edge | Cortex scope / context / summary |
+docs/architecture/webrtc.md:57:| 统一路由             | `vmcontrol/src/api/routes/webrtc_unified.rs`     |
+scripts/build-all.sh:48:    "novaic-blob-service"
+scripts/build-all.sh:107:echo "  $BUILD_DIR/novaic-blob-service --port 19995"
+scripts/run_all_tests.sh:71:run_pytest "logicalfs" "novaic-logicalfs" ".:../novaic-common:../novaic-blob-service"
+scripts/run_all_tests.sh:77:run_pytest "blob-service" "novaic-blob-service" ".:../novaic-common"
+docs/architecture/entangled-schema-ssot.md:13:Gateway is not a schema authority. Gateway may only tell the App where the direct Entangled WS endpoint is.
+docs/gateway-architecture.md:4:在当前架构下，Gateway 不再承担业务逻辑、设备通信或 Entangled schema/action 权威；它只负责用户接入层的认证、App WS 信令/推送、Entangled sync endpoint discovery、TURN 与 Blob edge。
+docs/gateway-architecture.md:14:- **Blob edge**：Nginx `/blob/` 边缘转发附件/大对象字节到 Blob Service；Gateway app 不承载 Blob 字节代理。
+docs/gateway-architecture.md:15:- **窄下游**：业务/信令编排只指向 **Business Service (`:19998`)**；字节数据面走 Blob edge；Gateway 不访问 Entangled HTTP，不直连 Device，也不调 Worker。
+docs/gateway-architecture.md:30:- **Blob Edge**：通过 Gateway Nginx `/blob/` edge 直达 Blob Service；Gateway Python app 不读取、不缓存、不返回 Blob 原始字节。
+docs/gateway-architecture.md:64:- **最小职责**：只做用户无法绕过 Gateway 的事情——认证、面向用户的 WS、TURN、Blob edge。
+docs/architecture/overview.md:9: ├─ HTTP/WS → Gateway：Auth、Blob edge、App push/signaling、Entangled endpoint discovery
+docs/architecture/overview.md:27: └─ 文件语义 → LogicalFS：实时 `/ro` / `/rw` 文件视图
+docs/architecture/overview.md:29:LogicalFS / Sandboxd / Blob
+docs/architecture/overview.md:30: ├─ LogicalFS：Cortex/shell 实时 RO/RW 权威层
+docs/architecture/overview.md:32: └─ Blob Service：便宜原始字节服务器、BlobRef、对象存储和物理后端
+docs/architecture/overview.md:43:| `novaic-gateway` | 薄边缘：Auth、App WS、TURN、Blob edge、Entangled sync endpoint discovery |
+docs/architecture/overview.md:51:| `novaic-blob-service` | Blob Service：字节与大对象 |
+docs/architecture/overview.md:62:| `gateway` | 19999 | Auth/App WS/Blob edge/TURN |
+docs/architecture/overview.md:67:| `blob_service` | 19995 | Blob Service |
+docs/architecture/overview.md:88:| `novaic-blob-service` | Blob Service |
+docs/architecture/overview.md:101:| LogicalFS RO/RW 实时边界 | [logicalfs-realtime-file-authority.md](logicalfs-realtime-file-authority.md) |
+docs/architecture/overview.md:105:| Blob 附件与语音 | [../reference/blob-audio.md](../reference/blob-audio.md) |
+docs/architecture/logicalfs-realtime-file-authority.md:1:# LogicalFS RO/RW Realtime File Authority
+docs/architecture/logicalfs-realtime-file-authority.md:5:LogicalFS is the semantic authority for Cortex/shell realtime `RO` / `RW`
+docs/architecture/logicalfs-realtime-file-authority.md:6:views. Blob Service is the cheap file server for durable bytes and does not
+docs/architecture/logicalfs-realtime-file-authority.md:9:Blob Service owns durable bytes, object storage primitives, multipart upload,
+docs/architecture/logicalfs-realtime-file-authority.md:10:and blob references. Display and artifacts still use Blob for byte storage and
+docs/architecture/logicalfs-realtime-file-authority.md:13:LogicalFS. Other ordinary files can stay Blob-backed without pretending to be a
+docs/architecture/logicalfs-realtime-file-authority.md:21:- Blob Service exposes base byte/blob APIs and object-tree primitives used by
+docs/architecture/logicalfs-realtime-file-authority.md:23:- LogicalFS owns the live file authority and may use a Blob object adapter below
+docs/architecture/logicalfs-realtime-file-authority.md:25:- Cortex owns Workspace semantics and uses a LogicalFS authority for file-like
+docs/architecture/logicalfs-realtime-file-authority.md:26:  Workspace APIs.
+docs/architecture/logicalfs-realtime-file-authority.md:28:  snapshot into a sandbox mount, then writes RW patches back to Workspace.
+docs/architecture/logicalfs-realtime-file-authority.md:31:This is improved, but LogicalFS is not yet a standalone service boundary. The
+docs/architecture/logicalfs-realtime-file-authority.md:33:Blob object APIs, Cortex-local file authority wrappers, or sandbox scratch state.
+docs/architecture/logicalfs-realtime-file-authority.md:43:LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:44:  realtime RO/RW namespace authority
+docs/architecture/logicalfs-realtime-file-authority.md:49:Blob Service
+docs/architecture/logicalfs-realtime-file-authority.md:50:  cheap file server: blob refs, object primitives, multipart, physical backend
+docs/architecture/logicalfs-realtime-file-authority.md:55:App, CLI, display, and artifact byte delivery can use Blob directly when they
+docs/architecture/logicalfs-realtime-file-authority.md:59:Sandboxd is not a file authority. It receives an executable filesystem view
+docs/architecture/logicalfs-realtime-file-authority.md:60:from LogicalFS, runs a process, and reports process output. It may host the
+docs/architecture/logicalfs-realtime-file-authority.md:62:subagent semantics, display semantics, or blob persistence rules.
+docs/architecture/logicalfs-realtime-file-authority.md:66:### Blob Service
+docs/architecture/logicalfs-realtime-file-authority.md:70:- raw bytes and blob references
+docs/architecture/logicalfs-realtime-file-authority.md:75:- display bytes and artifact bytes, when represented as Blob objects
+docs/architecture/logicalfs-realtime-file-authority.md:79:- `/ro` and `/rw` semantics
+docs/architecture/logicalfs-realtime-file-authority.md:85:### LogicalFS Service
+docs/architecture/logicalfs-realtime-file-authority.md:90:- stable path layout such as `/cortex/ro`, `/cortex/rw`, and subagent RW dirs
+docs/architecture/logicalfs-realtime-file-authority.md:92:- file read/write/list/delete/move semantics above Blob
+docs/architecture/logicalfs-realtime-file-authority.md:95:- mapping between semantic owners and durable Blob object keys
+docs/architecture/logicalfs-realtime-file-authority.md:102:- raw Blob physical backend configuration
+docs/architecture/logicalfs-realtime-file-authority.md:113:Uses LogicalFS for:
+docs/architecture/logicalfs-realtime-file-authority.md:115:- Workspace file persistence and listing
+docs/architecture/logicalfs-realtime-file-authority.md:116:- exposing `/ro` and `/rw` to shell
+docs/architecture/logicalfs-realtime-file-authority.md:127:Uses LogicalFS for:
+docs/architecture/logicalfs-realtime-file-authority.md:135:1. Cortex-related shell/workspace files must not bypass LogicalFS for live
+docs/architecture/logicalfs-realtime-file-authority.md:137:2. Direct Blob access is allowed for cheap file serving, base byte/blob
+docs/architecture/logicalfs-realtime-file-authority.md:138:   functions, attachments, display bytes, artifact bytes, and LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:140:3. Cortex may own semantic names, but LogicalFS must own file operations.
+docs/architecture/logicalfs-realtime-file-authority.md:141:4. Sandboxd may execute over a view, but LogicalFS must own the view contract.
+docs/architecture/logicalfs-realtime-file-authority.md:142:5. Display and artifacts use Blob for bytes. If the source starts as an RO/RW
+docs/architecture/logicalfs-realtime-file-authority.md:143:   file, that file must be copied/exported through Blob before display or
+docs/architecture/logicalfs-realtime-file-authority.md:144:   download. LogicalFS does not provide display/download handles.
+docs/architecture/logicalfs-realtime-file-authority.md:145:6. Tests and CI should reject new direct Blob-object live RO/RW file paths
+docs/architecture/logicalfs-realtime-file-authority.md:146:   outside LogicalFS internals.
+docs/architecture/logicalfs-realtime-file-authority.md:152:- Keep Blob Service as the cheap bytes/object file server.
+docs/architecture/logicalfs-realtime-file-authority.md:153:- Document LogicalFS as the Cortex/shell RO/RW authority.
+docs/architecture/logicalfs-realtime-file-authority.md:154:- Add guardrails that distinguish base Blob use from live RO/RW semantics.
+docs/architecture/logicalfs-realtime-file-authority.md:156:### Phase 2: Promote LogicalFS From Library To Service Boundary
+docs/architecture/logicalfs-realtime-file-authority.md:158:- Define LogicalFS HTTP or RPC contracts focused on RO/RW:
+docs/architecture/logicalfs-realtime-file-authority.md:165:### Phase 3: Move Cortex Workspace Persistence Behind LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:167:- Replace Cortex-local persistence adapters with a LogicalFS-backed workspace
+docs/architecture/logicalfs-realtime-file-authority.md:170:- LogicalFS maps those semantics to durable Blob object keys.
+docs/architecture/logicalfs-realtime-file-authority.md:172:### Phase 4: Move Shell/Sandbox Mounts Behind LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:174:- Sandbox execution requests reference a LogicalFS view id or snapshot id.
+docs/architecture/logicalfs-realtime-file-authority.md:175:- Sandboxd no longer receives Cortex Workspace details.
+docs/architecture/logicalfs-realtime-file-authority.md:176:- Patch application becomes LogicalFS responsibility, not Cortex glue code.
+docs/architecture/logicalfs-realtime-file-authority.md:180:- `display` keeps direct Blob support for base `blob://...` files.
+docs/architecture/logicalfs-realtime-file-authority.md:181:- Artifacts are Blob-backed when they need display/download.
+docs/architecture/logicalfs-realtime-file-authority.md:182:- RO/RW files that need display/download are first exported or copied to Blob.
+docs/architecture/logicalfs-realtime-file-authority.md:183:- LogicalFS remains a live RO/RW layer; it does not become a display/download
+docs/architecture/logicalfs-realtime-file-authority.md:188:- Remove direct live RO/RW file use of Blob object APIs outside LogicalFS.
+docs/architecture/logicalfs-realtime-file-authority.md:191:- Add residue scans for accidental direct Blob object calls in live RO/RW paths.
+docs/architecture/logicalfs-realtime-file-authority.md:195:- There is exactly one Cortex/shell live `RO` / `RW` authority: LogicalFS.
+docs/architecture/logicalfs-realtime-file-authority.md:196:- Blob remains a cheap file server and byte/object infrastructure.
+docs/architecture/logicalfs-realtime-file-authority.md:197:- Cortex no longer directly implements live RO/RW persistence over Blob.
+docs/architecture/logicalfs-realtime-file-authority.md:200:  - base attachments: direct Blob
+docs/architecture/logicalfs-realtime-file-authority.md:201:  - ordinary artifact/display bytes: direct Blob
+docs/architecture/logicalfs-realtime-file-authority.md:202:  - RO/RW file semantics: LogicalFS only
+docs/architecture/logicalfs-realtime-file-authority.md:203:  - RO/RW file display/download: export/copy to Blob, then display/download
+docs/architecture/logicalfs-realtime-file-authority.md:204:- New tests prove Cortex/shell live RO/RW paths cannot bypass LogicalFS.
+docs/architecture/service-topology.md:11:| Gateway 薄边缘 | Auth、App WS push/signaling、Entangled endpoint discovery、TURN、Blob edge |
+docs/architecture/service-topology.md:25:| **Gateway** | `19999` | Auth、App WS、Blob edge、TURN、Entangled sync endpoint discovery |
+docs/architecture/service-topology.md:31:| **LogicalFS** | library/service boundary | Cortex/shell 实时 RO/RW 文件视图权威层 |
+docs/architecture/service-topology.md:32:| **Blob Service** | `19995` | 便宜文件服务器：原始字节、大对象、BlobRef |
+docs/architecture/service-topology.md:47:     Auth/Blob/App WS HTTP│       │Entangled sync WS
+docs/architecture/service-topology.md:78:                           LogicalFS
+docs/architecture/service-topology.md:82:              Sandboxd                    Blob Service
+docs/architecture/service-topology.md:131:| Cortex/Sandbox/Runtime 各自提供实时 RO/RW 文件服务 | LogicalFS 是 Cortex/shell 实时 RO/RW 权威层 |
+docs/architecture/service-topology.md:132:| Sandboxd 拥有 `/ro` / `/rw` 语义 | Sandboxd 只执行进程；文件视图由 LogicalFS 提供 |
+docs/architecture/agent-pipeline.md:10:| Gateway | 薄边缘网关：Auth、App WS、TURN、Blob edge |
+docs/architecture/agent-pipeline.md:12:| Cortex | `:19996`，Workspace + LIFO Scope Tree + ContextEngine（DFS）+ Sandbox |
+docs/architecture/queue-service-durable-fsm-host-plan.md:66:| Machine | Owner | Baseline before this ledger | Target authority |
+docs/architecture/queue-service-durable-fsm-host-plan.md:112:- `docs/roadmap/tickets/PR-303-queue-service-durable-fsm-host-plan.md`
+docs/architecture/queue-service-durable-fsm-host-plan.md:352:  authority.
+docs/architecture/queue-service-durable-fsm-host-plan.md:376:- Make the remaining projection-table lifecycle columns visibly non-authority
+docs/architecture/queue-service-durable-fsm-host-plan.md:403:- PR-316 also removed projection-status CAS authority from task projection
+docs/architecture/queue-service-durable-fsm-host-plan.md:410:- PR-317 also removed projection-status CAS authority from saga projection
+docs/architecture/queue-service-durable-fsm-host-plan.md:414:  authority lives in FSM event/state ledgers.
+docs/architecture/attention-points.md:107:- `main_gateway.py` 从 ~1400 行瘦身至纯网关（Auth + Turn + Blob edge + App WS）
+docs/architecture/attention-points.md:148:单个类持有所有服务的 URL、密钥、Blob 物理后端配置、VM 超时、截断策略、重试、TURN、Cortex 参数等 ~60 个属性。问题：
+docs/architecture/attention-points.md:152:- 不相关配置耦合在一起，修改 Blob 后端配置可能触发 Gateway 的 config 验证失败
+docs/architecture/session-harness-deployment-migration-plan.md:11:- The durable session ledger is the authority for input, state, events, and
+docs/architecture/thin-client-and-topology.md:23:- Gateway：Auth、App WS Push、TURN 凭证、Blob edge、`gateway.db`（仅 auth 实体：users/refresh-tokens）。CloudBridge 和设备管理由 Device Service (`:19993`) 承担。
+docs/architecture/thin-client-and-topology.md:29:- **修复**：macOS 上键盘路径改为 **CGEvent**（`core_graphics`）。关键文件：`vmcontrol/src/input/handler.rs`、`vmcontrol/src/api/routes/hd_tools.rs`。
+docs/architecture/agent-loop-control-plane-consistency.md:393:  "scope_path": "/ro/active/agent-root-main/steps/0001_scope_wake-current",
+docs/architecture/agent-loop-control-plane-consistency.md:521:- active session authority 漂移。
+docs/architecture/agent-loop-control-plane-consistency.md:779:longer the current runtime authority after PR-251..PR-255.
+docs/architecture/agent-loop-control-plane-consistency.md:1012:| Docs/Tickets | phase ticket + archive banners | `docs/roadmap/tickets/*`, architecture docs | docs mention current SSOT |
+docs/architecture/agent-loop-control-plane-consistency.md:1303:  routing authority；当时 `tq_active_sessions` 仅剩临时 cache residue。
+docs/architecture/agent-loop-control-plane-consistency.md:1314:  `tq_session_state` 是唯一在线 active session authority。
+docs/reference/blob-service.md:1:# Blob Service Boundary
+docs/reference/blob-service.md:3:Blob Service is infrastructure for byte and object storage. It owns bytes,
+docs/reference/blob-service.md:7:LogicalFS is the Cortex/shell realtime `RO` / `RW` authority above Blob. Blob
+docs/reference/blob-service.md:8:remains the cheap byte/object file server and direct Blob edge for base
+docs/reference/blob-service.md:16:blob://{namespace}/{blob_id}
+docs/reference/blob-service.md:26:## Blob Service Owns
+docs/reference/blob-service.md:32:- direct Blob edge access
+docs/reference/blob-service.md:33:- blob lifecycle
+docs/reference/blob-service.md:36:## Blob Service Does Not Own
+docs/reference/blob-service.md:44:- realtime Cortex/shell file-view semantics such as `/ro`, `/rw`, subagent RW
+docs/reference/blob-service.md:47:Blob may store display/artifact bytes directly. It does not decide what a live
+docs/reference/blob-service.md:49:appears in `/ro` / `/rw`; those decisions belong to LogicalFS and Cortex.
+docs/reference/blob-service.md:50:If an RO/RW file needs display or download, it must be exported/copied into Blob
+docs/reference/blob-service.md:51:first; LogicalFS does not expose display/download handles directly.
+docs/reference/blob-service.md:62:  "payload_ref": "blob://cortex-payload/abc123"
+docs/reference/blob-service.md:66:Business should store product semantics plus a BlobRef, not storage-private URLs.
+docs/reference/blob-service.md:67:App should resolve BlobRef through authorized Gateway/Blob access paths and must
+docs/reference/blob-service.md:70:## BlobRef Reader Rule
+docs/reference/blob-service.md:72:New hot paths must write `blob://...` references. Historical locator shapes are
+docs/reference/blob-service.md:78:The Cortex object-store bridge can persist logical file bytes through Blob
+docs/reference/blob-service.md:84:key       = agents/{agent_id}/ro/...
+docs/reference/blob-service.md:85:key       = agents/{agent_id}/rw/...
+docs/reference/blob-service.md:88:Cortex does not own physical OSS/S3 credentials or bucket configuration. Blob
+docs/reference/blob-service.md:90:backend. This adapter is not the live `RO` / `RW` authority; live Cortex/shell
+docs/reference/blob-service.md:91:file semantics go through the LogicalFS/Cortex file authority boundary described
+docs/reference/blob-service.md:92:in `docs/architecture/logicalfs-realtime-file-authority.md`.
+docs/reference/blob-service.md:98:- `/v1/blobs/uploads/*` is the Blob Service multipart session API. Parts are raw
+docs/reference/blob-service.md:99:  bytes, sessions are tenant-scoped, and stable Blob metadata appears only after
+docs/reference/blob-service.md:101:- App chat attachments use Gateway `/api/blobs/upload-config` and direct
+docs/reference/blob-service.md:102:  `/blob/v1/blobs/uploads/*` raw part upload, then Gateway `/api/blobs/register`
+docs/reference/blob-service.md:104:- App attachment downloads use the same authenticated `/blob/` edge:
+docs/reference/blob-service.md:105:  `/blob/v1/blobs/{namespace}/{blob_id}`. Gateway app does not handle Blob
+docs/reference/blob-service.md:115:  object-store adapters, not a user-facing resumable upload protocol and not a
+docs/reference/blob-service.md:118:  Blob edge reads. Upload presign/direct-to-object-storage is not exposed yet.
+docs/reference/blob-service.md:123:  bypass Blob Service HTTP entirely.
+docs/reference/blob-service.md:124:- Keep Blob as byte infrastructure; product meaning stays in Business/Cortex/App.
+docs/reference/blob-service.md:128:See `docs/roadmap/blob-large-file-multipart-audio.md` for the detailed work
+docs/architecture/cortex.md:10:它还提供 Workspace、Sandbox 与能力 JWT。当前主路径**没有独立 Recall 模块、wake summary、自动总结、业务代理或从用户可见 reply action / 聊天文本推断记忆**。
+docs/architecture/cortex.md:16:| `/ro/` | Cortex | 只读 | `active/`、`scopes/`、`config/`、`skills/`、`knowledge/` |
+docs/architecture/cortex.md:17:| `/rw/` | Agent | 读写 | `scratch/` |
+docs/architecture/cortex.md:19:Scope 是系统对象；创建、写 step、归档走 `_sys_*` 内部路径，绕过 `/rw/` ACL。
+docs/architecture/cortex.md:62:| `Workspace` | `workspace.py` | `/ro`/`/rw` ACL、scope 创建/结束/归档、step/context CRUD |
+docs/architecture/cortex.md:63:| `WorkspaceRegistry` | `registry.py` | 按 `(user_id, agent_id)` 缓存 `Workspace`，并装配位于 LogicalFS 边界下方的 store adapter |
+docs/architecture/cortex.md:67:| `Sandbox` | `sandbox.py` | 物化 workspace → shell → 回写 `/rw` |
+docs/architecture/cortex.md:83:| Blob Service | `http://127.0.0.1:19995`（以实际配置为准） |
+docs/architecture/cortex.md:84:| 物理存储 | 由 Blob Service 配置 OSS/S3 或本地测试后端 |
+docs/reference/blob-audio.md:1:# Blob 附件与语音录制
+docs/reference/blob-audio.md:5:## Blob Service
+docs/reference/blob-audio.md:7:新的大对象引用统一使用 `blob://{namespace}/{blob_id}`，详见
+docs/reference/blob-audio.md:8:`docs/reference/blob-service.md`。历史文件接口已经物理删除；本页只保留当前附件与语音录制链路。
+docs/reference/blob-audio.md:13:附件上传 → Gateway upload-config → Blob multipart upload → Gateway register
+docs/reference/blob-audio.md:14:附件访问 → Rust cache → /blob/v1/blobs/{namespace}/{blob_id} direct Blob edge
+docs/reference/blob-audio.md:15:消息附件字段 → blob://user-file/{blob_id}
+docs/reference/blob-audio.md:25:音频上传 → Blob multipart → blob://audio-input/{blob_id}
+docs/reference/blob-audio.md:37:Rust recorder → compressed AAC/M4A container → blob://audio-input/{blob_id}
+docs/reference/blob-audio.md:43:- Blob Service 只存储压缩后的字节和元数据，不在保存时隐式转码。
+docs/reference/blob-audio.md:44:- 如果某个 audio tool 需要另一种格式，必须显式调用转码/解释工具，产出新的 BlobRef。
+docs/reference/blob-audio.md:45:- 音频 Blob 元数据应包含 duration、codec、sample rate、channels、size。
+docs/reference/blob-audio.md:47:详细实施计划见 `docs/roadmap/blob-large-file-multipart-audio.md`。
+docs/reference/submodules.md:24:| `novaic-blob-service` | Blob Service：字节与大对象基础设施 |
+docs/roadmap/agent-subject-environment-im.md:41:- audio blob contents
+docs/cortex/context-event-write-cutover-map.md:10:/ro/active/<root_scope_id>/context_events/events.jsonl
+docs/cortex/context-event-write-cutover-map.md:28:| Root scope creation | `Workspace.create_scope`, API/runtime scope creation | `meta.json`, `steps/_index.jsonl`, parent `_index.jsonl` | `RootInitialized` | P024 |
+docs/cortex/context-event-write-cutover-map.md:32:| Context append | `/v1/context/append`, `Workspace.append_context` | `context.jsonl` | `ContextMessageAppended` | P025 |
+docs/cortex/context-event-write-cutover-map.md:33:| Context batch | `/v1/context/batch`, `Workspace.append_context_batch` | `context.jsonl` | ordered `ContextMessageAppended` events | P025 |
+docs/cortex/context-event-write-cutover-map.md:35:| Tool step write | `/v1/steps/write`, `Workspace.append_step` | `steps/*.json`, `steps/_index.jsonl`, `payloads/*.json` | `ToolStepRecorded` | P026 |
+docs/cortex/context-event-write-cutover-map.md:38:| Wake archive/finalize | scope archive paths | archived `meta.json`, `summary.md`, `/ro/scopes/_index.jsonl` | `WakeArchived` | P024/P028 |
+docs/cortex/deployment-and-startup.md:9:  --blob-service-url http://127.0.0.1:19995 \
+docs/cortex/deployment-and-startup.md:18:- `--blob-service-url`：Blob Service base URL。
+docs/cortex/deployment-and-startup.md:29:2. 创建 `WorkspaceRegistry(blob_service_url, operational_store=...)`。
+docs/cortex/deployment-and-startup.md:32:Cortex 不读取 OSS/S3 凭证，不创建 OSS/S3 client，不知道 bucket/endpoint。物理存储后端属于 Blob Service。
+docs/cortex/deployment-and-startup.md:34:## 3. Blob Service 物理后端
+docs/cortex/deployment-and-startup.md:36:Blob Service 由 `scripts/start.sh` 设置：
+docs/cortex/deployment-and-startup.md:46:Blob Service 也可在本地测试中使用 Disk backend，但生产的 object/byte 后端统一在 Blob Service 层配置。
+docs/cortex/hardening-checklist.md:83:| P1-4  | `[x]`  | `_decide_rest_or_continue` 输出结构化 decision log（含 scope_id/round_num/stack_depth/reason） | Arch#6 |
+docs/reference/config-and-environment.md:49:Cortex 的 JWT、internal key、Blob Service URL 等生产值来自 `services.json`，启动时由 `scripts/start.sh` 作为 CLI 参数显式传入 `main_cortex`。OSS/S3 物理后端配置属于 Blob Service，不属于 Cortex。Agent Runtime 访问 Cortex 的 URL/timeout 也来自 `ServiceConfig`，由同一份 `services.json` 派生。Cortex 不再接收 Business URL，也不提供 BusinessProxy。
+docs/cortex/invariants.md:187:- Cortex 按 `WorkspaceRegistry.get(user_id, agent_id)` 拿 scoped store；任何绕过 registry 直接拼 `scope_id` 的地方都会有跨租户泄漏或 UUID 碰撞。
+docs/cortex/satellite-modules.md:12:## 2. Blob storage helpers
+docs/cortex/satellite-modules.md:14:- Cortex active path stores large tool/runtime payload bytes behind `blob://...`
+docs/cortex/satellite-modules.md:16:- Large bytes belong to Blob Service; Cortex owns work-trace semantics,
+docs/cortex/satellite-modules.md:18:- Live `/ro` and `/rw` files go through LogicalFS. The Blob object adapter lives
+docs/cortex/satellite-modules.md:19:  in `novaic-logicalfs`, below that file authority. Cortex does not own S3/OSS
+docs/cortex/satellite-modules.md:20:  credentials or Blob object API details.
+docs/cortex/satellite-modules.md:29:若某条调用链贯穿 Entangled / Blob payload / step result projection，可从这里跳到对应 `.py` 再对照 Blob Service 边界文档。
+docs/architecture/app-ui.md:101:见 [**historical-doc-links.md**](../historical-doc-links.md)；产品级 Skill 商店见 [**roadmap/technical-debt.md**](../roadmap/technical-debt.md)。
+docs/cortex/scope-lifecycle.md:3:> 源码：`novaic_cortex/workspace.py`（`Workspace`）。Cortex 内部写路径一律走 `**_sys_***`，不经过 Agent 的 `/rw` ACL。
+docs/cortex/scope-lifecycle.md:10:| `/ro/active/{scope_id}/`  | **根 scope** 活跃时驻留于此（`phase` 为 `executing` 或 `dormant`）                      |
+docs/cortex/scope-lifecycle.md:11:| `/ro/scopes/{scope_id}/`  | **根 scope 归档后**整树移动到此                                                       |
+docs/cortex/scope-lifecycle.md:12:| `/ro/scopes/_index.jsonl` | **全局**归档 scope 索引（历史兼容/排障用；当前 LLM 主路径从 agent-root 做 DFS，不走独立 Recall） |
+docs/cortex/scope-lifecycle.md:22:- `**parent_path is None**`：在 `**/ro/active/{scope_id}/**` 建**根** scope（新会话根或待机根）。
+docs/cortex/scope-lifecycle.md:28:> [`docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md`](../roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md)）。
+docs/cortex/scope-lifecycle.md:44:- 子 scope **仍嵌在父 `steps/` 下**（未单独移到 `/ro/scopes`）。
+docs/cortex/scope-lifecycle.md:46:- **根 scope 日后归档**时，Cortex 只会调用 archive/debug projection helper 把子树索引进 `**/ro/scopes/_index.jsonl**`。该索引是历史排障投影，不参与运行时查找、唯一性校验或 active stack 决策。
+docs/cortex/scope-lifecycle.md:53:2. 在 `**/ro/active/{scope_id}/**` 写 `**summary.md**`，更新 `**meta.json**`（`phase=archived`、`ended_at`）。
+docs/cortex/scope-lifecycle.md:54:3. `**_build_archive_scope_index_projection(active_path)**`：收集该根下**所有** scope（含嵌套子 scope）的归档索引行（`scope_id`、`path`、`name`、`depth`、`ts`、可选 `**parent`**）。这是 `/ro/scopes/_index.jsonl` 的 archive/debug 投影，不是运行时 lookup authority。
+docs/cortex/scope-lifecycle.md:55:4. `**move_prefix**`：把 `agents/.../ro/active/{scope_id}/` **整体**移到 `.../ro/scopes/{scope_id}/`。
+docs/cortex/scope-lifecycle.md:56:5. 修正索引中的 `**path`** 前缀后，**追加**到 `**/ro/scopes/_index.jsonl`**（历史兼容/排障索引；当前 LLM 主路径不依赖独立 Recall）。
+docs/cortex/state-authority-implementation-plan.md:6:warehouse. The target model is typed state authority:
+docs/cortex/state-authority-implementation-plan.md:9:- LogicalFS/Workspace owns file/document/workspace authority.
+docs/cortex/state-authority-implementation-plan.md:11:- Blob owns raw bytes and artifact bodies only.
+docs/cortex/state-authority-implementation-plan.md:19:- Do not rewrite LogicalFS into a full live filesystem in this chain. That is a
+docs/cortex/state-authority-implementation-plan.md:21:- Do not move raw bytes into Cortex SQLite. Blob remains the byte service.
+docs/cortex/state-authority-implementation-plan.md:24:- Do not introduce local fallback authority if SQLite, LogicalFS, Redis, or Blob
+docs/cortex/state-authority-implementation-plan.md:31:| Scope lifecycle events | SQLite | Workspace trace export | Required for recovery and status. |
+docs/cortex/state-authority-implementation-plan.md:32:| Active stack/status | SQLite projection | Workspace trace export | Runtime should not walk trace files as authority after cutover. |
+docs/cortex/state-authority-implementation-plan.md:33:| LLM context events | Workspace event stream, then optional SQLite mirror | SQLite projection | Current source remains `context_events/events.jsonl` until a separate context-store cutover. |
+docs/cortex/state-authority-implementation-plan.md:34:| RO/RW files | LogicalFS/Workspace | Blob below LogicalFS | File operations should not bypass LogicalFS. |
+docs/cortex/state-authority-implementation-plan.md:36:| Large payload bytes | Blob | SQLite/Workspace manifest | Blob stores bytes; manifest stores meaning. |
+docs/cortex/state-authority-implementation-plan.md:47:- `novaic_cortex/registry.py`: wire store into each `Workspace`.
+docs/cortex/state-authority-implementation-plan.md:52:- `novaic_cortex/blob_payload.py` and `workspace.py`: eventually record payload
+docs/cortex/state-authority-implementation-plan.md:70:  - Semantic manifest for Blob-backed payload bytes.
+docs/cortex/state-authority-implementation-plan.md:84:- No runtime path uses this store as authority yet; that happens in phase 2/3.
+docs/cortex/state-authority-implementation-plan.md:90:Make SQLite the only durable authority for scope lifecycle transition history.
+docs/cortex/state-authority-implementation-plan.md:104:  authority.
+docs/cortex/state-authority-implementation-plan.md:115:Make SQLite projection the runtime authority for active stack and status.
+docs/cortex/state-authority-implementation-plan.md:127:- Workspace `steps/_index.jsonl` and `meta.json` remain trace artifacts.
+docs/cortex/state-authority-implementation-plan.md:132:   authority.
+docs/cortex/state-authority-implementation-plan.md:135:4. Delete or quarantine runtime file-walk authority.
+docs/cortex/state-authority-implementation-plan.md:143:- Workspace trace write failure does not corrupt runtime stack.
+docs/cortex/state-authority-implementation-plan.md:145:## Phase 4: Blob Payload Manifest
+docs/cortex/state-authority-implementation-plan.md:147:Record semantic payload manifests outside Blob.
+docs/cortex/state-authority-implementation-plan.md:156:- `blob_ref`
+docs/cortex/state-authority-implementation-plan.md:167:- Blob stores bytes only.
+docs/cortex/state-authority-implementation-plan.md:170:- Scope-local payloads use `retention_class="scope_local"` with no `blob_ref`.
+docs/cortex/state-authority-implementation-plan.md:171:- External payloads use `retention_class="external_blob"` and point at Blob raw
+docs/cortex/state-authority-implementation-plan.md:172:  bytes through `blob_ref`.
+docs/cortex/state-authority-implementation-plan.md:181:- Local file-based transition authority.
+docs/cortex/state-authority-implementation-plan.md:189:- Tests or grep guards for banned runtime authority paths.
+docs/cortex/state-authority-implementation-plan.md:190:- Startup readiness reports SQLite/Redis/LogicalFS/Blob backend health.
+docs/roadmap/blob-large-file-multipart-audio.md:1:# Blob Large File / Multipart / Audio Compression Plan
+docs/roadmap/blob-large-file-multipart-audio.md:3:Blob is now the byte boundary for Cortex payloads, runtime artifacts, user
+docs/roadmap/blob-large-file-multipart-audio.md:12:- Blob references use `blob://{namespace}/{blob_id}`.
+docs/roadmap/blob-large-file-multipart-audio.md:13:- `novaic-blob-service` stores bytes and metadata behind Disk or S3-compatible
+docs/roadmap/blob-large-file-multipart-audio.md:15:- `/v1/blobs/uploads/*` supports multipart sessions with raw byte parts,
+docs/roadmap/blob-large-file-multipart-audio.md:16:  tenant-scoped status/list/abort/expire, and complete-time Blob metadata.
+docs/roadmap/blob-large-file-multipart-audio.md:20:- App chat attachments use Gateway `/api/blobs/upload-config` for control-plane
+docs/roadmap/blob-large-file-multipart-audio.md:21:  setup, direct Blob Service `/v1/blobs/uploads/*` raw part upload through the
+docs/roadmap/blob-large-file-multipart-audio.md:22:  `/blob/` edge, then Gateway `/api/blobs/register` to preserve Business file
+docs/roadmap/blob-large-file-multipart-audio.md:27:  `blob://audio-input/...`.
+docs/roadmap/blob-large-file-multipart-audio.md:33:- Automatic payload compression by Blob Service.
+docs/roadmap/blob-large-file-multipart-audio.md:39:Blob Service should remain infrastructure:
+docs/roadmap/blob-large-file-multipart-audio.md:47:Compression and multipart are product flows above Blob, using Blob as the byte
+docs/roadmap/blob-large-file-multipart-audio.md:50:- Large file upload: App/Gateway requests an upload session; Blob coordinates
+docs/roadmap/blob-large-file-multipart-audio.md:53:  Blob stores the resulting bytes and metadata.
+docs/roadmap/blob-large-file-multipart-audio.md:55:  or pipeline action that writes a new BlobRef, not a Blob save side effect.
+docs/roadmap/blob-large-file-multipart-audio.md:73:- Metadata is visible as a stable Blob only after `complete_upload`.
+docs/roadmap/blob-large-file-multipart-audio.md:85:Rust recorder → compressed AAC/M4A container → Blob upload → audio tool consumes blob://audio-input/...
+docs/roadmap/blob-large-file-multipart-audio.md:91:2. Store compressed bytes as `blob://audio-input/{blob_id}` with duration,
+docs/roadmap/blob-large-file-multipart-audio.md:94:   different format; output is a new BlobRef.
+docs/roadmap/blob-large-file-multipart-audio.md:96:Blob Service should not decide to transcode by itself.
+docs/roadmap/blob-large-file-multipart-audio.md:100:### PR-212 Blob Multipart Contract and Backend Support
+docs/roadmap/blob-large-file-multipart-audio.md:104:- Store raw byte parts through the configured Blob backend.
+docs/roadmap/blob-large-file-multipart-audio.md:113:- Gateway only returns upload config and registers completed BlobRefs.
+docs/roadmap/blob-large-file-multipart-audio.md:114:- Direct multipart bytes pass through the `/blob/` edge to Blob Service, not the
+docs/roadmap/blob-large-file-multipart-audio.md:130:### PR-215 Blob Payload Limits and Observability
+docs/roadmap/blob-large-file-multipart-audio.md:143:upload, and no Gateway/Blob base64 upload API remains in active code.
+docs/roadmap/blob-large-file-multipart-audio.md:148:- Blob still stores refs and bytes only, with no hidden business interpretation.
+docs/runtime-architecture.md:90:| Queue API | `novaic-agent-runtime/queue_service/routes.py` |
+docs/cortex/extension-points.md:17:**`Workspace._emit`**：对同名 hook 列表的 **async** 友好封装（用于 workspace 内部事件）。
+docs/cortex/session-meta-json.md:5:每个 **scope 目录** 下一份：**`{scope_path}/meta.json`**（逻辑路径），经 **`Workspace._sys_write_json`** 写入。
+docs/cortex-architecture.md:13:| LogicalFS、注册表、对象键 | [cortex/object-keys.md](cortex/object-keys.md) |
+docs/cortex-architecture.md:31:当前 Cortex 还提供 Workspace、Sandbox 与能力 JWT。它不负责用户画像、业务任务系统、记忆推断、自动总结、wake summary、业务代理，也不从用户可见 reply action 或聊天文本猜长期记忆。
+docs/cortex-architecture.md:76:| `registry.py` | `WorkspaceRegistry`：按 user 缓存 LogicalFS Blob object adapter，按 `(user, agent)` 缓存 `Workspace(LogicalFS authority)` |
+docs/cortex-architecture.md:77:| `workspace.py` | `/ro` `/rw` ACL、scope 生命周期、step/context CRUD |
+docs/cortex-architecture.md:81:| `sandbox.py` | 物化 workspace → shell → 回写 `/rw` |
+scripts/ci/lint_httpx.sh:9:  'novaic-llm-factory/factory/routes/config_routes.py'  # factory config API boundary
+docs/cortex/step-index-and-payload-schema.md:39:工具输出的完整 payload 不由 Blob Service 承担语义。当前主路径是：
+docs/cortex/step-index-and-payload-schema.md:41:1. `Workspace.write_step` 规范化 step，并把完整 payload 交给 `Workspace.write_payload`。
+docs/cortex/step-index-and-payload-schema.md:42:2. `Workspace.write_payload` 写 scope-local `payloads/*.json` 记录，并同步写 SQLite `payload_manifest`。
+docs/cortex/step-index-and-payload-schema.md:43:3. 小 payload 的 manifest 使用 `retention_class="scope_local"`，`blob_ref=NULL`。
+docs/cortex/step-index-and-payload-schema.md:44:4. 大 payload 外置到 Blob Service，manifest 使用 `retention_class="external_blob"`，`blob_ref=blob://...`。
+docs/cortex/step-index-and-payload-schema.md:47:Blob Service 只保存外置 payload 的原始字节；payload 的可用性、错误状态、生命周期和归属语义由 Cortex operational SQLite 的 `payload_manifest` 负责。
+docs/cortex/step-index-and-payload-schema.md:49:读取 payload 时，`Workspace.read_payload` 会先读 scope-local payload record，再按 manifest/record 中的 `blob_ref` 获取外置字节。失败不会再表现为裸 `KeyError` / `ValueError`：Cortex 会抛出结构化 `PayloadReadError`，并把 manifest 更新为 `missing`、`corrupt` 或 `unavailable`。
+docs/cortex/step-index-and-payload-schema.md:87:## 6. 与全局 **`/ro/scopes/_index.jsonl`** 的区别
+docs/cortex/step-index-and-payload-schema.md:90:- **`/ro/scopes/_index.jsonl`**：**根 scope 归档索引**，保留作历史兼容/排障索引；当前 LLM 主路径不走独立 Recall。
+docs/cortex/workspace-acl-and-sys-writes.md:1:# Workspace：Agent ACL 与系统写
+docs/cortex/workspace-acl-and-sys-writes.md:7:- **`/ro/**`：Cortex 管理（scopes、config、skills 等）。Agent **可读**（`read` / `list_dir` / `exists`），**不能**通过公开 `write` 写入。
+docs/cortex/workspace-acl-and-sys-writes.md:8:- **`/rw/**`：Agent **可读写**（`write`、`append_line`、`delete` 等）。
+docs/cortex/workspace-acl-and-sys-writes.md:14:- 逻辑路径必须 **`strip()` 后以 `/rw/` 开头**，否则 **`PermissionError`**（`agent cannot write ... (only /rw/)`）。
+docs/cortex/workspace-acl-and-sys-writes.md:16:**读**（`read` / `read_bytes` / `list_dir`）**不**做「仅 `/ro`」限制——可读 `/ro` 与 `/rw`。
+docs/cortex/workspace-acl-and-sys-writes.md:20:Cortex 内部写 **`/ro/...`** 时使用：
+docs/cortex/workspace-acl-and-sys-writes.md:30:Scope 创建、步骤、归档、配置等路径均应走 **`_sys_*`**（或经同一 store 层的内部 API），保证 **`/ro`** 仅由服务写入。
+docs/cortex/workspace-acl-and-sys-writes.md:32:## 4. `Workspace` 内 hooks
+docs/cortex/agent-runtime-cortex-call-chain.md:34:2. `scope_path = /ro/active/{agent_root_scope_id}`
+docs/roadmap/gateway-decomposition.md:18:  sync endpoint discovery, TURN credentials, and Blob/file proxy.
+docs/roadmap/gateway-decomposition.md:19:- Gateway does not own entity schema authority, Agent wake orchestration,
+docs/architecture/data-ownership.md:28:| Workspace / 上下文 | **Cortex + LogicalFS file authority**（HTTP 默认 19996） | scope、steps、payload manifest/status 等语义归 Cortex；实时 `/ro`/`/rw` 文件语义走 LogicalFS/Cortex file authority；Blob 只承担下层字节/对象持久化 |
+docs/cortex/object-keys.md:1:# LogicalFS 与对象键
+docs/cortex/object-keys.md:3:> 当前源码：`novaic_cortex/workspace.py`、`novaic_cortex/workspace_authority.py`、`novaic_cortex/registry.py`、`novaic-logicalfs/logicalfs/authority.py`、`novaic-logicalfs/logicalfs/blob_store.py`。
+docs/cortex/object-keys.md:8:- **LogicalFS** 拥有实时 `/ro` 和 `/rw` 文件语义、路径校验、目录/list/move/read/write 等文件操作。
+docs/cortex/object-keys.md:9:- **Blob Service** 是 LogicalFS 下方的便宜 byte/object 持久化层，也服务 artifact、display、download 等普通字节流。
+docs/cortex/object-keys.md:10:- **sandboxd** 只执行进程；它消费 LogicalFS 提供的可执行文件视图，不拥有 workspace/subagent 文件语义。
+docs/cortex/object-keys.md:16:| `StoreBackedLogicalFileAuthority` | live `/ro` / `/rw` 文件边界 |
+docs/cortex/object-keys.md:17:| `BlobObjectStore` | LogicalFS 下方的 Blob object adapter |
+docs/cortex/object-keys.md:18:| `build_workspace_file_authority(...)` | Cortex 侧用 agent 语义创建 LogicalFS authority |
+docs/cortex/object-keys.md:19:| `Workspace` | Cortex scope/context 语义，依赖 LogicalFS authority 做文件操作 |
+docs/cortex/object-keys.md:20:| `MemoryStore` / `LocalFileStore` | 测试用 object-store adapter |
+docs/cortex/object-keys.md:22:## 2. 注册表：`WorkspaceRegistry`
+docs/cortex/object-keys.md:24:- 每个 `user_id` 缓存一个 LogicalFS object adapter。
+docs/cortex/object-keys.md:25:- 每个 `(user_id, agent_id)` 缓存一个 `Workspace`。
+docs/cortex/object-keys.md:30:  -> BlobObjectStore(base_url, tenant_id=user_id)
+docs/cortex/object-keys.md:32:  -> build_workspace_file_authority(object_store, agent_id)
+docs/cortex/object-keys.md:33:  -> Workspace(authority, agent_id)
+docs/cortex/object-keys.md:38:LogicalFS authority 负责把逻辑路径映射到 object key：
+docs/cortex/object-keys.md:41:/ro/active/... -> agents/{agent_id}/ro/active/...
+docs/cortex/object-keys.md:42:/ro/scopes/... -> agents/{agent_id}/ro/scopes/...
+docs/cortex/object-keys.md:43:/rw/scratch/... -> agents/{agent_id}/rw/scratch/...
+docs/cortex/object-keys.md:46:Blob Service 决定物理后端是本地磁盘、OSS 还是 S3。这个映射是持久化细节，不是 live `/ro` / `/rw` 权威边界。
+docs/cortex/object-keys.md:50:- `archive_root_scope` 使用 LogicalFS authority 的 prefix move，把 `/ro/active/{scope_id}/` 移到 `/ro/scopes/{scope_id}/`。
+docs/cortex/object-keys.md:51:- Sandbox 物化时通过 LogicalFS view 读取 `/ro` 与 `/rw`，执行后只把允许的 `/rw` 变化写回。
+docs/roadmap/claude-code-comparison.md:43:| 路径安全 | ✅ Symlink 检查 + 挂载映射 | ⚠️ `/ro` `/rw` ACL | 🔴 **应补** |
+docs/roadmap/claude-code-comparison.md:77:| 持久记忆目录 | ✅ `memdir/`（文件目录式记忆） | ✅ Cortex `/ro/knowledge/` | 平手 |
+docs/roadmap/claude-code-comparison.md:114:| 1 | **自动记忆提取 (Auto Extract Memories)** | `services/extractMemories/` | 2-3 天 | 每轮对话结束后自动抽取关键决策/要点写入 Cortex `/ro/knowledge/`，让 Recall 越用越聪明。现在我们的 Recall 只靠手动归档 scope summary，太弱了 |
+docs/cortex/builtin-tools-and-skills.md:8:- Cortex `/v1/internal/tools` 只作为服务端转发入口，不再拥有另一套 schema authority。
+docs/cortex/builtin-tools-and-skills.md:51:- **`/ro/config/tools/{name}.json`** — 每个 builtin 一条；
+docs/cortex/builtin-tools-and-skills.md:52:- **`/ro/config/tools/_index.json`** — 内置工具名列表。
+docs/cortex/builtin-tools-and-skills.md:54:存储键仍为 **`agents/{agent_id}/ro/config/tools/...`**（见 [object-keys.md](object-keys.md)）。
+docs/cortex/builtin-tools-and-skills.md:58:1. 扫描 **`/ro/config/tools/*.json`**（排除 `_` 前缀），按目录顺序加载，**同名只保留第一次**（`seen_names`）。
+docs/cortex/builtin-tools-and-skills.md:59:2. 扫描 **`/ro/skills/{skill}/tools/*.json`**，同样按名去重追加。
+docs/cortex/builtin-tools-and-skills.md:67:  - **`agents/{agent_id}/ro/skills/{name}/SKILL.md`**
+docs/cortex/builtin-tools-and-skills.md:69:- **`_rebuild_skill_index()`**：遍历 `.../ro/skills/` 下对象，生成 **`.../ro/skills/_index.md`**（Markdown 列表，含各 `meta.json` 的 `description`）。
+docs/cortex/builtin-tools-and-skills.md:73:返回逻辑路径：**`/ro/skills/{name}/`**。
+docs/cortex/context-event-source.md:51:  "stream_id": "user_id/agent_id/root_scope_id",
+docs/cortex/context-event-source.md:89:  "wake_scope_path": "/ro/active/.../steps/0001_scope_...",
+docs/cortex/context-event-source.md:206:Payload bytes may live in the existing payload/blob layer. The event stores the stable reference and the LLM projection uses the explicit observation/preview contract.
+docs/cortex/context-event-source.md:236:### 5.2 Workspace RO/debug projection
+docs/cortex/context-event-source.md:241:/ro/active/<root>/meta.json
+docs/cortex/context-event-source.md:242:/ro/active/<root>/context_events/*.jsonl
+docs/cortex/context-event-source.md:243:/ro/active/<root>/steps/_index.jsonl
+docs/cortex/context-event-source.md:244:/ro/active/<root>/steps/<scope>/meta.json
+docs/cortex/context-event-source.md:245:/ro/active/<root>/steps/<scope>/summary.md
+docs/cortex/design-doc-links.md:18:| Blob payload / OSS backend | [satellite-modules.md](satellite-modules.md)、[../reference/blob-service.md](../reference/blob-service.md) |
+docs/cortex/architecture-review-2026-04-17.md:50:- Fix: Dedup by `_idempotency_key` in Workspace, or document reliance on task idempotency.
+docs/cortex/compactor-and-gem-fusion.md:31:- `/ro/scopes/__fused__/...` 生成逻辑
+scripts/ci/lint_current_docs_residue.sh:10:    docs/architecture docs/runtime docs/runbooks docs/roadmap/model-entity-refactor.md \
+scripts/ci/lint_subagent_status.sh:149:    echo "    docs/roadmap/tickets/PR-28-subagent-state-machine.md for the RFC."
+scripts/ci/lint_subagent_status.sh:154:    echo "    docs/roadmap/tickets/PR-31-state-transition-log-tables.md."
+docs/roadmap/backend-architecture-optimization-recommendations.md:7:| **Scope** | Backend business and architecture logic after Environment, Cortex, Activity Timeline, and Blob Service cutovers. |
+docs/roadmap/backend-architecture-optimization-recommendations.md:28:`docs/roadmap/tickets/`.
+docs/roadmap/backend-architecture-optimization-recommendations.md:34:| Gateway | Auth, App WS push/signaling, Entangled endpoint discovery, TURN, Blob edge | Agent wake, entity schema authority, tool registry, business orchestration |
+docs/roadmap/backend-architecture-optimization-recommendations.md:39:| Blob Service | Byte/blob storage and retrieval | Business meaning of files, scope semantics, tool interpretation |
+docs/roadmap/backend-architecture-optimization-recommendations.md:86:### 3. Blob / Large Payload UX
+docs/roadmap/backend-architecture-optimization-recommendations.md:88:Blob Service is now the byte/object boundary. Potential future work:
+docs/roadmap/backend-architecture-optimization-recommendations.md:91:- audio compression / streaming rather than large WAV blobs;
+docs/roadmap/backend-architecture-optimization-recommendations.md:95:`blob://...` / payload refs plus product metadata.
+docs/roadmap/backend-architecture-optimization-recommendations.md:125:- Storage-A name/path; Blob Service is the current service boundary.
+docs/cortex/README.md:11:| [scope-lifecycle.md](scope-lifecycle.md) | agent-root / wake / 子 skill scope、`/ro/active` 与 `/ro/scopes`、归档、`meta.json`、统一时间线写入；**§9 Skill scope 生命周期（scope_id 全局唯一、LIFO 严校验、瞬态栈快照）** |
+docs/cortex/README.md:20:| [object-keys.md](object-keys.md) | LogicalFS、`WorkspaceRegistry`、对象键 |
+docs/cortex/README.md:32:| [workspace-acl-and-sys-writes.md](workspace-acl-and-sys-writes.md) | `/ro`/`/rw` ACL、`_sys_*` |
+docs/cortex/README.md:35:| [satellite-modules.md](satellite-modules.md) | Entangled、Blob payload、step result projection 等 |
+docs/cortex/agent-runtime-all-topics.md:25:1. **`write_as_step` + `step`** → **`CortexBridge.write_step`** → **`POST /v1/steps/write`**（`step` dict 透传 **`Workspace.write_step`**）。  
+docs/cortex/agent-runtime-all-topics.md:62:**Dispatch 入口校验**：**`/api/queue/dispatch`**（`queue_service/routes.py:DispatchRequest`）**`user_id` 必填**（空串或缺失返回 400），因为 Cortex scope 创建和上下文拼装都需要 tenant 信息。`scheduler_worker_sync` 扫到没有 `user_id` 的 agent 会跳过并打日志。
+docs/cortex/budget-compact-algorithm.md:97:1. **`engine_cfg = await load_engine_config(ws)`** — 读 **`/ro/config/engine.json`**（缺失或坏 JSON 时同 **`load_engine_config`** 既有规则）。  
+docs/cortex/observability-and-tests.md:21:| `test_workspace*.py` | Workspace、路径、scope |
+docs/cortex/sandbox-shell.md:3:> 源码：`novaic_cortex/sandbox.py`（`Sandbox`）、`novaic_cortex/logical_fs.py`（`MountNamespaceLogicalFS`）、`api.py`（`POST /v1/shell`、`/v1/internal/shell`）。
+docs/cortex/sandbox-shell.md:5:## 1. 模型：一次 `exec` = 一次 LogicalFS 视图 + 一次 sandboxd 执行
+docs/cortex/sandbox-shell.md:9:1. `MountNamespaceLogicalFS` 从 Cortex `Workspace` 构造本次执行需要的 RO/RW snapshot。
+docs/cortex/sandbox-shell.md:10:2. LogicalFS 生成 `/cortex/bin` 能力脚本：`agentctl`、`cortex`、`devicectl`。
+docs/cortex/sandbox-shell.md:11:3. LogicalFS 设置稳定环境变量：`RO=/cortex/ro`、`RW=/cortex/rw`、`CORTEX_RO=/cortex/ro`、`CORTEX_RW=/cortex/rw`，以及 `NOVAIC_API` / `NOVAIC_TOKEN` 等能力上下文。
+docs/cortex/sandbox-shell.md:12:4. `Sandbox` 组装 `SandboxExecSpec`，把本次 LogicalFS view 作为 mount plan 交给 sandboxd；mount point 是 `/cortex`，默认 cwd 是 `/cortex/rw`。
+docs/cortex/sandbox-shell.md:14:6. LogicalFS 观察 `/cortex/rw` 变化，把 RW patch 写回 Cortex `Workspace`，并返回逻辑路径形式的 `files_changed`。
+docs/cortex/sandbox-shell.md:17:返回 `ShellResult`：`stdout`、`stderr`、`exit_code`、`files_changed`（逻辑路径 `/rw/...`）。
+docs/cortex/sandbox-shell.md:23:- `/cortex/ro`：只读 Cortex workspace 视图，对应当前 agent/session/scope 的 RO 工作集。
+docs/cortex/sandbox-shell.md:24:- `/cortex/rw`：可写 workspace 视图，对应当前 agent/subagent 的 RW 工作集。
+docs/cortex/sandbox-shell.md:27:Agent 可以把一次 shell 输出里的 `/cortex/ro/...` 或 `/cortex/rw/...` 路径复制到下一次 shell 调用继续 `cat` / `sed` / `find`。相反，`novaic-cortex-sandbox-*` 是内部 backing 路径，不属于稳定契约；shell 命令中出现这类路径会在执行前被拒绝，并提示改用 `/cortex/ro`、`/cortex/rw`、`$RO` 或 `$RW`。
+docs/cortex/sandbox-shell.md:31:为了避免每次 shell 启动都拉取全部历史 RW，LogicalFS 默认只挂载有明确实时语义的 RW 工作集：
+docs/cortex/sandbox-shell.md:33:- `/rw/` 根目录下的直接文件；
+docs/cortex/sandbox-shell.md:34:- `/rw/public/`；
+docs/cortex/sandbox-shell.md:35:- `/rw/system/`；
+docs/cortex/sandbox-shell.md:36:- 当前 subagent 的 `/rw/subagents/<subagent_id>/`；
+docs/cortex/sandbox-shell.md:39:命令在 `/cortex/rw` 下新建或修改的文件会通过 RW patch 写回 Workspace。其他历史目录不会因为存在于 Workspace 中就被隐式全量挂载；需要大范围历史读取时，应走明确的 Cortex payload 或 Workspace 查询能力。
+docs/cortex/sandbox-shell.md:45:- 若设置 `max_sync_bytes`，LogicalFS snapshot 超过阈值会拒绝执行，避免一次 shell 启动读取过多 workspace 文件。
+docs/cortex/sandbox-shell.md:49:- **Cortex Sandbox**：在 sandboxd 管理的进程环境中执行，看到的是 LogicalFS 投影出的 `/cortex/ro`、`/cortex/rw` 和 `/cortex/bin`。
+docs/cortex/recall.md:15:- 独立 `Recall` 类扫描 `/ro/scopes/_index.jsonl` 注入长期记忆。
+docs/cortex/runtime-facade.md:3:> 源码：`novaic_cortex/runtime.py`（**`Cortex`**）。聚合 **`Workspace`、`Sandbox`、`CortexHooks`**、**`CortexMetrics`**。
+docs/cortex/runtime-facade.md:10:  2. **`_seed_builtin_tools()`**：若不存在则把 **`BUILTIN_TOOL_SCHEMAS`** 写入 **`/ro/config/tools/{name}.json`** 与 **`_index.json`**（键空间见 `store` 前缀 `agents/{agent_id}/ro/...`）。  
+docs/cortex/runtime-facade.md:11:  3. **`load_engine_config(workspace)`** 读 **`/ro/config/engine.json`**，并用新配置 **重建** `Sandbox`。
+docs/cortex/runtime-facade.md:19:| **`tool_read` / `tool_write`** | 校验路径在 `/ro/` 或 `/rw/`，经 `Workspace` 读写 |
+docs/cortex/runtime-facade.md:25:路径校验：**`_validate_agent_tool_path`** — 必须以 **`/ro/`** 或 **`/rw/`** 开头。
+docs/roadmap/technical-debt.md:90:- ~~**`orphans_total` metric 只在 in-memory `HealthWorkerMetrics` 里累加 (TD-5)**：PR-26 落地时只把 `orphans_seen / orphans_warned / orphans_crit / permanent_orphans` 增到 `HealthWorkerMetrics` 的实例字段里（`get_metrics()` 走 HTTP endpoint 返 JSON），没有走 PR-32 的共享 registry。结果 `docs/architecture/message-wake-principles.md` 第五节 / `docs/runbooks/troubleshooting.md` "三条查路径" / `docs/roadmap/message-wake-refactor.md` OBS-3 引用的 `orphans_total{kind}` Prometheus 计数器**实际上并不存在**——写文档的时候默认它会被 PR-32 自动接入，实际 PR-32 只接了 13 条显式 golden signal，没扫 HealthWorker。~~
+docs/roadmap/technical-debt.md:95:  4. **docs**：`docs/architecture/message-wake-principles.md` §五 / `docs/runbooks/troubleshooting.md` "三条查路径" / `docs/roadmap/message-wake-refactor.md` OBS-3 / `PR-32-metrics-prometheus-integration.md` §2.4 全部对齐 `{severity}` label 与新的 19984 / 19983 端口。
+docs/README.md:43:| **[blob-service-architecture.md](blob-service-architecture.md)**                      | 独立 Blob Service 大件存储转存架构总览        |
+docs/README.md:56:| [blob-audio.md](reference/blob-audio.md)                         | Blob 附件、语音 |
+docs/README.md:85:| **[blob-large-file-multipart-audio.md](roadmap/blob-large-file-multipart-audio.md)** | **Blob 大文件 / multipart / 音频压缩计划**：当前实现边界与后续工单 |
+docs/cortex/engine-config-and-metrics.md:5:## 1. `EngineConfig`（`/ro/config/engine.json`）
+docs/cortex/engine-config-and-metrics.md:7:路径常量：**`ENGINE_JSON_PATH = "/ro/config/engine.json"`**（逻辑路径，经 Workspace 读）。
+docs/cortex/engine-config-and-metrics.md:38:- **`POST /v1/context/prepare_for_llm`**（`api.py`）在构造 **`ContextEngine`** 前同样 **`load_engine_config(ws)`**，再 **`engine_config_to_compact_config(engine_cfg)`** 传入 **`config=`**，因此 **修改** **`/ro/config/engine.json`** 中的 **`context_window`、`compact_threshold`、`emergency_threshold`、`micro_*`、`max_skill_depth`** 等**会影响**拼 LLM 上下文时的 **`budget_compact`**。详见 [budget-compact-algorithm.md](budget-compact-algorithm.md) §8.1。  
+docs/entangled/gateway-integration.md:3:Gateway 现在不是 Entangled 的宿主、HTTP client、schema authority 或 action owner。
+docs/roadmap/agent-perception-action-architecture.md:9:| 非目标 | 不把 authority prompt 环境化；不把 Activity Timeline 当事实源；不新增绕过 Cortex 的连续性通路；不让 Runtime 自动总结 payload |
+docs/roadmap/agent-perception-action-architecture.md:44:  ├─ authority prompt
+docs/roadmap/agent-perception-action-architecture.md:73:| Environment | event envelope、IM message、sender/channel/thread、notification queue、claim/read/processed lifecycle、resource ref、subagent communication envelope | device truth、file contents、shell process state、browser state、audio blob、prompt 拼装、Cortex scope、reasoning、`summary.md` |
+docs/roadmap/agent-perception-action-architecture.md:88:不能把 authority prompt 做成可选环境观察项，否则 Agent 可以“忘记读取规则”，安全边界会坏。
+docs/roadmap/agent-perception-action-architecture.md:344:9. 这条路径是否把 authority prompt 环境化了？
+docs/roadmap/tickets/PR-317-sagarepository-state-candidate-cutover.md:51:- Saga projection writes no longer use projection `status` as CAS authority.
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:9:| Dependencies | Blob Service cutover, PR-218 |
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:15:stores large/raw payloads directly instead of using Blob-backed refs.
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:19:### 1. Blob Payload Encoding Review
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:21:- Objective: inspect `blob_payload.py` and classify each base64 use.
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:41:- Expected result: tests make Blob ref boundary explicit.
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:48:- Skill API comments/routes do not advertise retired aliases as current.
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:58:- Replaced Cortex JSON/base64 blob writes with Blob Service multipart upload.
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:59:- Added a guard test to keep `HttpBlobPayloadClient.put_payload()` on
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:60:  `/v1/blobs/uploads` and out of `base64` encoding.
+docs/blob-service-architecture.md:1:# Blob Service 存储架构概览
+docs/blob-service-architecture.md:3:> 路径参考：`novaic-blob-service/`。该目录是当前 Blob Service 的实现目录。
+docs/blob-service-architecture.md:5:Blob Service 是字节与对象存储基础设施。它和 Entangled、Cortex 的边界不同：
+docs/blob-service-architecture.md:9:- Blob Service 只保存字节、对象树、Blob 元数据、租户边界和后端对象存储适配。
+docs/blob-service-architecture.md:18:App / Runtime / Cortex → BlobRef → Blob Service → Disk or S3-compatible backend
+docs/blob-service-architecture.md:24:blob://{namespace}/{blob_id}
+docs/blob-service-architecture.md:27:Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业务控制面混在一起。
+docs/blob-service-architecture.md:33:- `/v1/blobs/{namespace}/{blob_id}`：读取字节。
+docs/blob-service-architecture.md:34:- `/v1/blobs/{namespace}/{blob_id}/info`：读取 Blob 元数据。
+docs/blob-service-architecture.md:35:- `/v1/blobs/uploads/*`：multipart upload session，part 使用 raw bytes，
+docs/blob-service-architecture.md:36:  complete 后才生成稳定 Blob metadata。
+docs/blob-service-architecture.md:39:  Gateway Nginx `/blob/` edge 直达 Blob Service，不经过 Gateway app 代理。
+docs/blob-service-architecture.md:50:- Gateway `/api/blobs/from-base64`
+docs/blob-service-architecture.md:51:- Gateway app Blob download/fetch/presign data-plane routes
+docs/blob-service-architecture.md:53:这些能力的目标方案见 `docs/roadmap/blob-large-file-multipart-audio.md`。
+docs/blob-service-architecture.md:59:`blob://audio-input/...`。WAV 只是编码中间文件，不是上传格式。
+docs/blob-service-architecture.md:64:Rust recorder → compressed AAC/M4A container → Blob upload → audio tool consumes blob://audio-input/...
+docs/blob-service-architecture.md:67:Blob Service 不应在保存字节时偷偷转码。需要转码时，应由显式 tool 或 pipeline 读取一个 BlobRef，产出另一个 BlobRef，并把处理结果作为 observation/payload ref 写回上层。
+docs/runbooks/local-backends.md:3:桌面 **`novaic-app`** 内嵌 VmControl；**Python 后端**（Gateway、Cortex、Agent Runtime、Blob Service 等）通常需**单独启动**。端口约定见 **`novaic-common/config/services.json`** 与 [`../architecture/overview.md`](../architecture/overview.md)。
+docs/runbooks/local-backends.md:16:脚本内端口与 **Tauri 常量**对齐（Gateway 19999、Queue 19997、Business 19998（中枢编排）、Device 19993（设备服务）、Blob 19995 等）。完整逻辑见该文件注释。
+docs/roadmap/tickets/PR-49-subagent-rest-executor.md:154:- `docs/roadmap/tickets/PR-45-...md`：Wave 1.5 checklist 打勾
+docs/runbooks/cloud-production.md:16:./deploy blob-service      # Blob Service（实现目录：novaic-blob-service）
+docs/runbooks/cloud-production.md:53:--blob-service-url http://127.0.0.1:19995
+docs/roadmap/tickets/PR-174-remove-execution-logs-diagnostic-entity-tail.md:40:- Removed Business `execution-logs` entity/action/router/helper and Runtime broadcast utility/calls.
+docs/runbooks/deploy.md:21:| 单个后端（仍会触发**全量**远端重启） | `./deploy runtime` / `./deploy cortex` / `./deploy blob-service` 等 |
+docs/runbooks/deploy.md:35:- **`deploy services`**：对上述及 Runtime、Blob Service、Cortex 等批量 rsync，安装 Blob/Cortex/Runtime 独立 venv 依赖，再统一 `start.sh` 重启。
+scripts/ci/lint_scope_phase.sh:79:    echo "or docs/roadmap/tickets/PR-29-scope-state-machine.md for the RFC."
+docs/runbooks/troubleshooting.md:152:rg "scope_state scope=/ro/active/<scope_id>" cortex-*.log
+docs/runbooks/troubleshooting.md:158:rg "scope_state scope=/ro/scopes/<scope_id> archived -> archived" cortex-*.log
+docs/runbooks/troubleshooting.md:224:  "http://cortex/v1/scope/history?scope_path=/ro/active/<scope_id>"
+scripts/ci/lint_entangled_cache_docs.sh:17:    --glob '!docs/roadmap/tickets/**' \
+docs/runtime/tool-chain-dispatch.md:33:workspace view, such as `/cortex/ro`, `/cortex/rw`, `$RO`, and `$RW`.
+docs/runtime/tool-chain-dispatch.md:37:`blob://runtime-artifact/...` references and concise metadata, but must not
+docs/runtime/tool-chain-dispatch.md:40:`display(blob://...)` is the explicit image perception path. Its public tool
+docs/runtime/tool-chain-dispatch.md:46:Stable Cortex file paths are `/cortex/ro` and `/cortex/rw` (or the matching
+docs/roadmap/tickets/PR-330-task-worker-generic-source.md:15:- Keep Queue Service as Task FSM state authority.
+docs/roadmap/tickets/PR-330-task-worker-generic-source.md:38:state authority.
+docs/roadmap/tickets/PR-126-remove-subagent-report-tool.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:14:Physically delete old file-service naming and hot paths once BlobRef is the only active path.
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:23:- [x] PR-205B — Rename remaining service/package/docs to Blob Service where still active.
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:24:- [x] PR-205C — Remove Cortex `HttpFileFetcher("blob-service")` style path or replace with Blob resolver.
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:30:- New large-object references use Blob refs.
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:42:- Blob Service active API now exposes only `/v1/blobs/*`; the retired facade,
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:44:- Gateway no longer serves the legacy file proxy routes; it only exposes Blob
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:45:  access under `/api/blobs/*`.
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:46:- Runtime `display` and `audio_qa` accept Blob refs and fetch Blob bytes through
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:47:  Blob Service with tenant headers.
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:49:  Blob refs and are projected through Cortex observation/payload paths.
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:50:- Active docs now describe Blob Service and Blob edge semantics; historical
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:57:- `novaic-blob-service`: targeted test suite passed.
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:14:the `blob://user-file/...` attachment contract.
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:21:  completed BlobRefs into the product file registry.
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:22:- Added a direct `/blob/` Nginx edge to Blob Service for multipart raw bytes.
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:24:- Preserved chat attachment product semantics in Business/App, not Blob.
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:30:- Completed upload writes the same BlobRef shape currently used by messages.
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:36:- `cd novaic-app && npm run test:unit -- src/application/blobAttachmentPath.test.ts`
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:38:- `cd novaic-blob-service && PYTHONPATH=.:../novaic-common pytest -q tests/test_blob_service.py`
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:39:- Static guards assert the large-upload path uses `/api/blobs/upload-config`,
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:40:  `/api/blobs/register`, `/v1/blobs/uploads`, and `X-Part-Sha256`.
+docs/runtime/scheduler-and-dedup.md:33:- `tq_session_state` 是唯一在线 session state authority
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:1:# PR-217 Direct Blob Download Edge
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:6:| Type | Blob download data-plane cleanup |
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:8:| Scope | App attachment cache download, Gateway Blob data-plane routes, docs/guards |
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:14:upload config and file registration, while Blob bytes move through the
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:15:authenticated `/blob/` edge instead of the Gateway application process.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:21:- Objective: cached attachment downloads resolve `blob://...` into direct Blob
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:26:  - Rust cache command accepts only `blob://...`.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:27:  - Download path is `/blob/v1/blobs/{namespace}/{blob_id}`.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:33:- Objective: remove Gateway app Blob download/fetch/presign data-plane routes.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:36:  - `/api/blobs/register` remains as product metadata control plane.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:37:  - `/api/blobs/upload-config` remains as upload control plane.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:38:  - Gateway app no longer returns raw Blob bytes.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:42:- Objective: current docs describe direct Blob edge access and reject old
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:44:- Scope: Blob reference docs, architecture docs, roadmap tickets.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:46:  - App upload and download both use `/blob/` data plane.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:47:  - Gateway app is not described as a Blob byte carrier.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:51:- App attachment download uses direct Blob edge.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:52:- Gateway app has no Blob download/fetch/presign data-plane routes.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:58:- `cd novaic-app && npm run test:unit -- src/application/blobAttachmentPath.test.ts`
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:61:- targeted `rg` for the retired Gateway fetch route, Gateway app Blob download, and old data-plane
+docs/roadmap/tickets/PR-42-wake-continuity-inject-handoff.md:6:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-42-wake-continuity-inject-handoff.md:25:排查结论（见 `docs/roadmap/tickets/PR-41-...` 的姊妹 ticket 上下文）：
+docs/roadmap/tickets/PR-48-turn-finalizer-force-rest.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-227-ignored-generated-artifact-hygiene.md:6:| Type | Workspace hygiene |
+docs/roadmap/tickets/PR-85-llm-context-minimal-structure-smoke-guardrails.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-127-remove-subagent-query-cancel-tools.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-163-runtime-environment-tool-integration.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-163-runtime-environment-tool-integration.md:55:- PR-163C completed the hot-path cutover: Environment IM tools are active, prompt/tool descriptions and Agent Monitor semantics are aligned, and superseded communication executors/routes were physically deleted.
+docs/roadmap/tickets/PR-183B-gateway-file-proxy-file-id-boundary.md:9:replaced by the Blob edge boundary.
+docs/roadmap/tickets/PR-183B-gateway-file-proxy-file-id-boundary.md:14:- Preserve only auth-bound Blob edge behavior.
+docs/roadmap/tickets/PR-183B-gateway-file-proxy-file-id-boundary.md:15:- Pass user identity explicitly when Gateway calls Blob Service so the storage
+docs/roadmap/tickets/PR-183B-gateway-file-proxy-file-id-boundary.md:17:- Add source/route guard.
+docs/roadmap/tickets/PR-183B-gateway-file-proxy-file-id-boundary.md:32:- Gateway passes user identity explicitly to Blob Service.
+docs/roadmap/tickets/PR-183B-gateway-file-proxy-file-id-boundary.md:33:- Active product file access now goes through Blob edge semantics.
+docs/roadmap/tickets/PR-03-ci-ban-direct-dispatch.md:34:- [x] 在 `docs/roadmap/tickets/PR-11-*.md` / `PR-12-*.md` / `PR-13-*.md` 的"文档 checklist"里提醒：合并后要删 ALLOWLIST 对应行
+docs/roadmap/tickets/PR-218-retired-tail-residue-cleanup.md:24:### 2. Gateway / Blob Documentation Boundary
+docs/roadmap/tickets/PR-218-retired-tail-residue-cleanup.md:26:- Objective: stop describing Gateway app as a Blob byte carrier.
+docs/roadmap/tickets/PR-218-retired-tail-residue-cleanup.md:28:- Result: docs say `/blob/` is a Nginx edge to Blob Service; Gateway app keeps
+docs/roadmap/tickets/PR-218-retired-tail-residue-cleanup.md:51:- Active Gateway docs no longer say Gateway app proxies Blob bytes.
+docs/roadmap/tickets/PR-218-retired-tail-residue-cleanup.md:59:- targeted `rg` for the retired artifact, Blob edge wording, retired result
+docs/roadmap/tickets/PR-09-trigger-type-enum.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-93-execution-log-user-facing-app-rendering.md:20:2. **Technical details layer**: raw tool name, `tool_call_id`, `result_id`, `factory_log_id`, scope/round ids, available only inside a diagnostic details section.
+docs/roadmap/tickets/reviews/PR-17-preflight-antigravity.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-17-preflight-antigravity.md:123:- 已录入技术债（见 `docs/roadmap/technical-debt.md` PR-17 section）：长周期多 agent 流量下应能看到 `action=deduped`；PR-18 删 inline `_dispatch_trigger` 后该指标自然归 0，届时转为观察 `saga_started / session 建立` 比例。
+docs/roadmap/tickets/PR-162B-environment-persistence-repository.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-45-wake-continuity-text-producer-wiring.md:6:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-254-reliable-evolution-finalize-ownership.md:71:- `python -m py_compile queue_service/session_repo.py queue_service/routes.py task_queue/client.py task_queue/handlers/session_handlers.py task_queue/sagas/wake_finalize.py task_queue/contracts/react_actions.py task_queue/contracts/react_think.py`
+docs/roadmap/tickets/PR-41-agent-reply-not-orphan-eligible.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:13:Confirm and enforce the boundary that Gateway is only a thin edge layer: sync endpoint discovery, Auth, App WS, file proxy, and WebRTC signaling. Gateway must not regrow schema authority, business orchestration, entity semantics, or Entangled fallback paths.
+docs/roadmap/tickets/PR-152-gateway-business-entangled-boundary-review.md:41:- Entangled schema authority.
+docs/roadmap/tickets/PR-167D-environment-backfill-remove-message-backed-repo.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-164-cortex-observation-payload-integration.md:42:- Cortex `Workspace.write_step` persists the whole step JSON under `steps/` and indexes `result_id`.
+docs/roadmap/tickets/PR-164-cortex-observation-payload-integration.md:72:- [x] No raw MCP/HTTP/debug blobs leak into normal Agent Monitor.
+docs/roadmap/tickets/reviews/PR-14-preflight-review.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-14-preflight-review.md:107:**推荐方案 1**，preflight §7 明文改成 "log 实现、2 个 metrics defer 到 PR-32 backlog"，并在 `docs/roadmap/tickets/PR-32-metrics-prometheus-integration.md` 加两条条目。
+docs/roadmap/tickets/PR-108-roadmap-optimization-doc-consolidation.md:25:- [x] Delete `docs/roadmap/llm-call-contract-feature-backlog.md`.
+docs/roadmap/tickets/PR-108-roadmap-optimization-doc-consolidation.md:52:- `git diff --check -- docs/roadmap/backend-architecture-optimization-recommendations.md docs/roadmap/llm-call-contract-feature-backlog.md docs/roadmap/tickets/PR-106-host-desktop-device-status-closure.md docs/roadmap/tickets/PR-107-vmcontrol-webrtc-mdns-closure.md docs/roadmap/tickets/PR-108-roadmap-optimization-doc-consolidation.md docs/roadmap/tickets/README.md`
+docs/roadmap/tickets/PR-108-roadmap-optimization-doc-consolidation.md:53:- `rg -n "llm-call-contract-feature-backlog|LLM Call Contract Feature Backlog|Root-scope continuity finalizer" docs/roadmap -g "*.md" -g "!docs/roadmap/tickets/PR-108-roadmap-optimization-doc-consolidation.md"`
+docs/roadmap/tickets/PR-155-runtime-tool-executor-coverage-review.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-247-reliable-evolution-recovery-outbox-cutover.md:47:- Do not change finalize ownership or `tq_active_sessions` live authority.
+docs/roadmap/tickets/PR-75-remove-cortex-business-proxy-memory-task.md:70:- `./deploy status` healthy: Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex; 8 workers; relay active.
+docs/roadmap/tickets/PR-72-agent-root-prompt-contract-cleanup.md:93:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
+docs/roadmap/tickets/PR-148-remove-llm-factory-model-fallback.md:21:- `novaic-llm-factory/factory/routes/chat_routes.py`
+docs/roadmap/tickets/PR-14-entangled-message-outbox.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-257-reliable-evolution-remove-active-sessions-table.md:8:PR-252..PR-255, `tq_session_state` is already the live session authority; the
+docs/roadmap/tickets/PR-257-reliable-evolution-remove-active-sessions-table.md:15:Subject: active session authority
+docs/roadmap/tickets/PR-257-reliable-evolution-remove-active-sessions-table.md:59:- Core under review: session FSM state authority and dispatch decision inputs.
+docs/roadmap/tickets/reviews/PR-45-review.md:49:- Status flip commit `67a21e2` (2026-04-22) marked these PRs as deployed in `docs/roadmap/tickets/README.md`.
+docs/roadmap/tickets/PR-306-taskqueue-fsm-cutover.md:15:- Preserve existing external behavior while changing the internal authority.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:1:# PR-203 — App / Gateway Blob Attachment Access
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:8:| Repos | `novaic-app`, `novaic-gateway`, `novaic-business`, `novaic-blob-service`, docs |
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:14:Move user attachments and previews onto BlobRef while keeping Gateway as auth
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:19:App attachment upload, preview, and download now use BlobRef semantics. Upload
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:20:uses Gateway control-plane endpoints plus Blob multipart bytes; download uses
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:21:the authenticated `/blob/` edge. Business persists product attachment metadata
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:26:- App sends upload bytes through Blob multipart and receives `blob://...`.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:27:- Gateway remains auth edge and exposes Blob control-plane registration only.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:28:- Business `messages` attachments are product metadata carrying BlobRef, not
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:30:- App preview/download resolves BlobRef through the `/blob/` edge.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:34:- [x] PR-203A — App upload returns and stores BlobRef for user attachments.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:36:  - Verification: App unit tests assert uploaded metadata uses `blob_ref` /
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:37:    `blob://`.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:38:- [x] PR-203B — Gateway exposes only Blob control-plane helpers.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:40:  - Verification: upload/register calls Blob Service `/v1/blobs`; no new
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:42:- [x] PR-203C — Business message attachment fields store BlobRef, not
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:46:  - Verification: message send rejects non-Blob attachment locators and stores
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:47:    attachment metadata with `blob_ref`.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:48:- [x] PR-203D — Agent Monitor and chat rendering resolve BlobRef for display
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:51:  - Verification: preview/download fetches through `/blob/` edge and no
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:56:- Chat attachment upload and preview work with BlobRef.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:59:- Business persists product attachment semantics separately from Blob storage.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:71:  BlobRefs. PR-216 later retired the temporary Gateway base64 upload route.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:72:  The active upload path is Gateway `/api/blobs/upload-config` → Blob multipart
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:73:  upload → Gateway `/api/blobs/register`.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:74:- Uploaded attachment metadata carries `blob_ref` and uses the same
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:75:  `blob://...` value as the display locator.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:76:- App Rust cache commands now fetch `blob://...` refs through
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:77:  `/blob/v1/blobs/{namespace}/{blob_id}` and reject non-Blob file references.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:78:- Gateway exposes upload config/register as control plane. Blob bytes move
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:79:  through the `/blob/` edge with `X-Tenant-ID`; file product metadata stays in
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:82:  `blob://...` and defaults `storage_backend` to `blob-service`.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:83:- Business message attachments now normalize to `blob_ref`/`url =
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:84:  blob://...` and reject non-Blob attachment locators.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:99:facade was physically deleted from Gateway and Blob Service. App chat attachment
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:100:and preview/download paths use Blob refs only.
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:154:- `docs/roadmap/message-wake-refactor.md` — 滚动条目标记 PR-42/PR-45/PR-49 为 **superseded-by-PR-55**；R9 文字层说明只剩 `<PREV_SCOPE_TAIL>`
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:158:- `docs/roadmap/tickets/PR-42-wake-continuity-inject-handoff.md` — 末尾加 `## 2026-04-23 postscript (PR-55)：本票两个注入块均为 dead code，已由 PR-55 删除`
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:159:- `docs/roadmap/tickets/PR-45-wake-continuity-text-producer-wiring.md` — 同上
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:160:- `docs/roadmap/tickets/PR-49-subagent-rest-executor.md` — 同上，且注明 `_exec_subagent_rest` 已删
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:161:- `docs/roadmap/tickets/PR-53-entangled-continuity-allowlist.md` — 末尾加「F1 allowlist 对 `historical_summary` 的扩展已由 PR-55 回收，因为列本身被删」
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:162:- `docs/roadmap/tickets/reviews/PR-45-review.md` — postscript
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:213:- [x] F4 `docs/roadmap/message-wake-refactor.md` — P6-2 / P6-5 / P6-8 标记 `[superseded-by-PR-55]`；P6-15 status 翻 `[x]`
+docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md:223:- [x] `docs/roadmap/message-wake-refactor.md` P6-15 更新为 PR-55 完成
+docs/roadmap/tickets/PR-221-doc-script-drift-cleanup.md:59:- Updated active Gateway, VMControl, Blob, WebRTC, and architecture docs to
+docs/roadmap/tickets/P6-12-chat-messages-read-ui-only.md:92:- [x] `docs/roadmap/message-wake-refactor.md` P6-12 行勾选
+docs/roadmap/tickets/P6-12-chat-messages-read-ui-only.md:93:- [x] `docs/roadmap/tickets/README.md` 索引加一行
+docs/roadmap/tickets/PR-64-purge-legacy-xiaoniu-scope-data.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-64-purge-legacy-xiaoniu-scope-data.md:30:- Cortex `/ro/active/*` for this agent.
+docs/roadmap/tickets/PR-64-purge-legacy-xiaoniu-scope-data.md:31:- Cortex `/ro/scopes/*` and `/ro/scopes/_index.jsonl` for this agent.
+docs/roadmap/tickets/PR-56-llm-prompt-phantom-tools.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-208-current-doc-drift-cleanup.md:36:  `docs/roadmap/gateway-decomposition.md`.
+docs/roadmap/tickets/PR-208-current-doc-drift-cleanup.md:50:- Scope: `docs/roadmap/backend-architecture-optimization-recommendations.md`.
+docs/roadmap/tickets/PR-208-current-doc-drift-cleanup.md:62:  payload interpretation tools, Blob/S3 payload storage, and Gateway thin-edge
+docs/roadmap/tickets/PR-208-current-doc-drift-cleanup.md:69:- `rg` over current architecture/roadmap entry docs for misleading outbox/Gateway
+docs/roadmap/tickets/PR-11-business-trigger-to-assembler.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-123-subagent-im-target-routing.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-16-preflight-review.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-228-business-subagent-state-authority-cleanup.md:6:| Type | Entangled authority boundary |
+docs/roadmap/tickets/PR-228-business-subagent-state-authority-cleanup.md:24:  authority.
+docs/roadmap/tickets/PR-228-business-subagent-state-authority-cleanup.md:45:documented and tested as Entangled authority, while Business tests cover request
+docs/roadmap/tickets/PR-39-context-assembly-dfs-recursion.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-215-blob-payload-limits-observability.md:1:# PR-215 Blob Payload Limits and Observability
+docs/roadmap/tickets/PR-215-blob-payload-limits-observability.md:6:| Type | Blob failure semantics / observability |
+docs/roadmap/tickets/PR-215-blob-payload-limits-observability.md:13:Make Blob large-payload behavior explicit and observable so App/Runtime/Cortex
+docs/roadmap/tickets/PR-215-blob-payload-limits-observability.md:31:- Logs include blob/session ids, namespace, tenant, size class, and outcome, but
+docs/roadmap/tickets/PR-215-blob-payload-limits-observability.md:37:- `cd novaic-blob-service && PYTHONPATH=.:../novaic-common pytest -q tests/test_blob_service.py`
+docs/roadmap/tickets/PR-215-blob-payload-limits-observability.md:38:- `cd novaic-blob-service && python -m compileall -q blob_service`
+docs/roadmap/tickets/reviews/PR-17-preflight-review.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-17-preflight-review.md:201:T1 阶段 commit 结构（6 段）在 `docs/roadmap/tickets/reviews/PR-17-preflight-guidance.md` §G 已列清。严格按那个拆。
+docs/roadmap/tickets/PR-187B-archive-stale-ticket-checklist-residue.md:26:rg -n "\[ \]" docs/roadmap/tickets/PR-90-execution-log-status-and-lifecycle-events.md docs/roadmap/tickets/PR-91-entangled-client-cache-docs-and-guardrails.md
+docs/roadmap/tickets/PR-77-llm-tool-description-child-skill-contract.md:71:- `./deploy status` healthy: Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex; 8 workers; relay active.
+docs/roadmap/tickets/PR-73-folded-scope-rendering-and-empty-summary-policy.md:78:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
+docs/roadmap/tickets/PR-128-remove-subagent-completed-notify-path.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-11-preflight-review.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-11-preflight-review.md:110:在 `docs/roadmap/technical-debt.md` 加一条：
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:1:# PR-204 — Blob Historical Data Migration or Purge
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:8:| Repos | `novaic-blob-service`, `novaic-business`, `novaic-cortex`, scripts, docs |
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:14:Handle historical non-Blob file references once, then delete runtime compatibility.
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:18:Existing file data and references may still use retired non-Blob locator shapes.
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:41:- Historical legacy refs were purged rather than converted because current product paths already write `blob://...`; keeping old attachment refs would require runtime compatibility.
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:42:- `ResourceRef` now accepts only BlobRef-shaped locators.
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:51:  storage directories, and smoke Blob leftovers.
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:58:- Valuable historical refs are converted to BlobRef.
+docs/roadmap/tickets/PR-142-tool-schema-executor-source-residue-scan.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-13-scheduler-worker-to-assembler.md:59:# 预期：仅 queue_service/routes.py（端点定义）
+docs/roadmap/tickets/PR-163C-environment-tool-cutover-cleanup.md:42:- [x] [PR-163C3 — Delete superseded direct communication tools](PR-163C3-delete-superseded-communication-tools.md): physically remove old communication schemas/executors/routes or explicitly document any retained non-overlapping product role.
+docs/roadmap/tickets/PR-124-subagent-spawn-initial-task-im.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-25-message-trace-endpoint.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-129-remove-spawn-completed-message-types.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-05-preflight-antigravity.md:83:  'novaic-llm-factory/factory/routes/config_routes.py'  # KEEP (永久保留：外部调用，请求 OpenAI/Anthropic 验证/拉取可用模型)
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:1:# PR-200 — Blob Service Foundation
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:8:| Repos | `novaic-blob-service`, docs |
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:10:| Theme | Blob Service infrastructure boundary |
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:14:Turn the byte-storage service into a Blob Service infrastructure boundary while keeping existing users untouched until each call path is deliberately migrated.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:18:`novaic-blob-service` is now the Blob Service implementation. It stores bytes on
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:19:disk or OSS behind a product-agnostic Blob API and returns `blob://...` refs.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:23:- [x] PR-200A — Introduce Blob Service naming and internal contract.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:24:- [x] PR-200B — Add `/v1/blobs/*` put/get/stat/presign endpoints backed by the existing storage backend.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:25:- [x] PR-200C — Update health and tests to expose Blob contract version.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:26:- [x] PR-200D — Document Blob API as the only active entrypoint.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:27:- [x] PR-200E — Update contract and smoke scripts so validation exercises `/v1/blobs`.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:28:- [x] PR-200F — Add disk-backend tenant isolation coverage for Blob API.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:29:- [x] PR-200G — Reject path-unsafe tenant ids and malformed upload payloads at the Blob boundary.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:33:- New Blob API exists and passes roundtrip tests.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:35:- New code examples use Blob refs.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:36:- No product semantics are added to Blob Service.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:40:- [x] `novaic-blob-service` tests pass.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:41:- [x] Storage service smoke passes locally against `/v1/blobs`.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:42:- [x] Health check shows Blob Service contract.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:46:- Added the Blob infrastructure facade over the existing byte backend.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:47:- Added Blob create/info/read/presign/delete routes. They return `blob://...`
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:50:  `/v1/blobs/*` and `/v1/objects/*` only. PR-216 later removed the temporary
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:51:  JSON/base64 Blob upload route; uploads now use multipart sessions.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:52:- Health reports `contract_version=blob/v1`.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:53:- Disk backend paths include tenant id under the Blob namespace so local/dev storage also respects tenant isolation.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:57:- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-blob-service .venv/bin/python -m pytest` → `16 passed, 1 skipped`
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:58:- `.venv/bin/python -m compileall -q blob_service tests`
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:60:- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-blob-service bash scripts/verify_contract_version_blob.sh` → `BLOB_SERVICE_CONTRACT_VERSION=PASS`
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:61:- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-blob-service BLOB_SERVICE_PORT=<random> bash scripts/smoke_blob_service.sh` → `BLOB_SERVICE_SMOKE_OK=true`
+docs/roadmap/tickets/PR-250-reliable-evolution-observed-wake-effect-rename.md:45:- Do not change active session authority.
+docs/roadmap/tickets/PR-130-display-runtime-llm-tool.md:12:  - 只解析 BlobRef 文件引用。
+docs/roadmap/tickets/PR-130-display-runtime-llm-tool.md:13:  - 使用 `X-User-ID` 从 Blob Service 拉取文件字节。
+docs/roadmap/tickets/README.md:20:4. 写 PR 时，PR 描述直接引用该工单路径（如 `docs/roadmap/tickets/PR-10-dispatch-assembler.md`）。
+docs/roadmap/tickets/README.md:323:| PR-187 | `[closed]` | [Main Path Guard CI Enforcement and Stale Ticket Archival](PR-187-main-path-guard-ci-and-stale-ticket-archival.md) | PR-186 | CI/docs entropy guard | multi-step | Main-path guards wired into CI/root tests; stale PR-90/91 checklist residue archived |
+docs/roadmap/tickets/README.md:337:| PR-207 | `[closed]` | [Cortex Blob-backed Store Cutover](PR-207-cortex-blob-store-cutover.md) | PR-206 | Storage boundary cleanup | multi-step | Cortex direct S3/OSS store removed; Blob Service owns object storage |
+docs/roadmap/tickets/README.md:341:| PR-211 | `[closed]` | [Blob Large File / Multipart / Audio Compression Review](PR-211-blob-large-file-multipart-audio-review.md) | PR-207 | Blob boundary / roadmap cleanup | 0.25 d | Historical Blob upload state recorded; PR-212..PR-216 closed the multipart/audio/base64-removal follow-up chain |
+docs/roadmap/tickets/README.md:342:| PR-212 | `[closed]` | [Blob Multipart Contract and Backend Support](PR-212-blob-multipart-contract-backend.md) | PR-211 | Blob large-file upload | 0.5 d | Multipart session API, raw part upload, complete/abort/list/expire, and tests |
+docs/roadmap/tickets/README.md:343:| PR-213 | `[closed]` | [App Large Upload Cutover](PR-213-app-large-upload-cutover.md) | PR-212 | App upload data-plane cleanup | 0.5 d | App large attachments use multipart direct Blob upload and Gateway control-plane registration |
+docs/roadmap/tickets/README.md:344:| PR-214 | `[closed]` | [Audio Compression Path](PR-214-audio-compression-path.md) | PR-211, PR-212 | Audio upload efficiency | 0.5 d | Voice recording now produces compressed AAC/M4A bytes and uploads audio through multipart `audio-input` blobs |
+docs/roadmap/tickets/README.md:345:| PR-215 | `[closed]` | [Blob Payload Limits and Observability](PR-215-blob-payload-limits-observability.md) | PR-211 | Blob failure semantics / observability | 0.25 d | Blob Service now has explicit payload limits, 413 errors, and raw-payload-safe lifecycle logs |
+docs/roadmap/tickets/README.md:346:| PR-216 | `[closed]` | [Remove Base64 Blob Upload Path](PR-216-remove-base64-blob-upload.md) | PR-212, PR-213, PR-214, PR-215 | Blob upload old-path deletion | 0.5 d | App/Gateway/Blob Service base64 upload path removed; all chat attachments upload via multipart raw bytes |
+docs/roadmap/tickets/README.md:347:| PR-217 | `[closed]` | [Direct Blob Download Edge](PR-217-direct-blob-download-edge.md) | PR-216 | Blob download data-plane cleanup | 0.25 d | App attachment downloads use `/blob/` edge; Gateway app Blob fetch/download/presign data-plane routes removed |
+docs/roadmap/tickets/README.md:348:| PR-218 | `[closed]` | [Retired Tail Residue Cleanup](PR-218-retired-tail-residue-cleanup.md) | PR-216, PR-217 | Old-path residue cleanup | 0.5 d | Removed retained storage artifact, Blob edge doc wording, retired result-store naming fixtures, and Android JSON-base64 file/app endpoints |
+docs/roadmap/tickets/README.md:350:| PR-220 | `[closed]` | [Cortex Payload / Base64 Residue Review](PR-220-cortex-payload-base64-residue-review.md) | PR-207, PR-218 | Cortex payload boundary | 0.5 d | Cortex payload writes now use Blob multipart uploads; direct JSON/base64 blob write path guarded out |
+docs/roadmap/tickets/README.md:351:| PR-221 | `[closed]` | [Legacy / Compatibility Documentation And Script Drift Cleanup](PR-221-doc-script-drift-cleanup.md) | PR-218 | Docs/scripts drift cleanup | 0.25 d | Retired relay migration script deleted and active Gateway/VMControl/WebRTC/Blob docs aligned to current paths |
+docs/roadmap/tickets/README.md:357:| PR-227 | `[closed]` | [Ignored Generated Artifact Hygiene](PR-227-ignored-generated-artifact-hygiene.md) | PR-225 | Workspace hygiene | 0.25 d | Ignored generated artifacts cleaned and source/resource hygiene guard added |
+docs/roadmap/tickets/README.md:358:| PR-228 | `[closed]` | [Business Subagent State Matrix Authority Cleanup](PR-228-business-subagent-state-authority-cleanup.md) | PR-168E, PR-225 | Entangled authority boundary | 0.25-0.5 d | Business no longer exports or tests a duplicate subagent transition matrix as a truth source |
+docs/roadmap/tickets/PR-27-recovered-redispatch.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-252-reliable-evolution-session-state-ssot.md:15:Subject: active/no_active/recovering session authority
+docs/roadmap/tickets/PR-252-reliable-evolution-session-state-ssot.md:87:Revert PR-252. `tq_active_sessions` becomes routing authority again.
+docs/roadmap/tickets/PR-104-gateway-entangled-endpoint-only.md:13:Gateway AppWS currently pushes `event=schema` with `entities`, `hash`, `syncContractVersion`, and `entangledWsUrl`. That makes Gateway a competing schema authority.
+docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md:54:  - Tickets README current index and current architecture/roadmap docs.
+docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md:84:  - `rg -n "saga_worker_sync|task_worker_sync" novaic-agent-runtime scripts docs/architecture docs/runtime-architecture.md docs/runtime docs/cortex docs/roadmap/technical-debt.md`
+docs/roadmap/tickets/reviews/PR-10-preflight-review.md:7:| Target preflight | `docs/roadmap/tickets/reviews/PR-10-preflight-antigravity.md` |
+docs/roadmap/tickets/reviews/PR-10-preflight-review.md:38:**必做**：在 `docs/roadmap/tickets/` 下**新建**一张 `PR-XX-metrics-prometheus-integration.md`（或者如果就挂在 PR-19 下更合适、就在 PR-19 ticket 里显式写入 "接管以下 `[-]` metric"），**显式列出所有被 `[-]` 的 metric**，至少：
+docs/roadmap/tickets/reviews/PR-10-preflight-review.md:49:`common/wake/assembler.py` 定义 `@dataclass DispatchRequest`，而 `queue_service/routes.py` 已有 Pydantic `DispatchRequest`（现有）。合约测试 `test_assembler_queue_schema.py` 里必须：
+docs/roadmap/tickets/reviews/PR-10-preflight-review.md:62:- **端点已存在**：`novaic-agent-runtime/queue_service/routes.py:510` `@router.post("/dispatch")`，最终路径 `/api/queue/dispatch`（main.py:252 有 alias map）
+docs/roadmap/tickets/reviews/PR-10-preflight-review.md:69:| `novaic-agent-runtime/queue_service/routes.py:510` | 本 PR **不改动**，仅作合约测试目标（`DispatchRequest` Pydantic schema） |
+docs/roadmap/tickets/PR-214-audio-compression-path.md:8:| Scope | Rust recorder output format, audio Blob metadata, audio tool integration |
+docs/roadmap/tickets/PR-214-audio-compression-path.md:21:- Audio messages force multipart Blob upload into `audio-input` and register as
+docs/roadmap/tickets/PR-214-audio-compression-path.md:23:- Blob Service remains byte storage only; no implicit save-time transcode.
+docs/roadmap/tickets/PR-214-audio-compression-path.md:32:- Audio QA can consume the compressed BlobRef or an explicitly produced derived
+docs/roadmap/tickets/PR-214-audio-compression-path.md:33:  BlobRef.
+docs/roadmap/tickets/PR-214-audio-compression-path.md:38:- `cd novaic-app && npm run test:unit -- src/application/blobAttachmentPath.test.ts`
+docs/roadmap/tickets/PR-318-projection-table-quarantine-guard.md:9:Make projection-table lifecycle authority impossible to accidentally reintroduce
+docs/roadmap/tickets/PR-318-projection-table-quarantine-guard.md:20:  state authority.
+docs/roadmap/tickets/PR-318-projection-table-quarantine-guard.md:28:- Schema comments state that FSM state tables are lifecycle authority and
+docs/roadmap/tickets/PR-186-agent-main-path-end-to-end-invariants.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-22-subscriber-transition-claimed.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:1:# PR-201 — Unified ResourceRef Blob URI Cutover
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:14:Make `blob://{namespace}/{blob_id}` the only new large-object reference shape across services.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:18:Current large-object references converge on BlobRef. Cortex payload refs remain
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:20:externalized through Blob Service.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:24:- [x] PR-201A — Add shared ResourceRef helpers for BlobRef adoption.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:25:- [x] PR-201B — Update Business/Environment ResourceRef validation and schema constraints to accept BlobRef only for new refs.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:32:- New large-object refs use `blob://`.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:33:- Historical non-Blob reads are purged or migrated.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:45:- New ResourceRefs must use owner `blob-service` and a `blob://...` locator.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:48:- Business entity schema now includes guard constraints for `environment-resource-refs`: `owner = 'blob-service'` and `locator LIKE 'blob://%'`.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:53:- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common python3 -m pytest tests/test_resource_ref_contract.py tests/test_blob_contract.py tests/test_environment_contract.py`
+docs/roadmap/tickets/PR-125-subagent-parent-im-prompt.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-164A-tool-result-observation-payload-write-path.md:69:- Production smoke: Cortex `Workspace.write_step` stores no `result` or inline `payload`, resolves `payload_ref`, and rejects inline `result` with `ValueError`.
+docs/roadmap/tickets/PR-320-saga-projection-physical-schema-cut.md:10:authority exists only in `tq_saga_state`, `tq_saga_events`, and worker lease
+docs/roadmap/tickets/PR-320-saga-projection-physical-schema-cut.md:27:  authority.
+docs/roadmap/tickets/PR-320-saga-projection-physical-schema-cut.md:37:- Tests prove `tq_sagas` cannot be used as saga lifecycle authority.
+docs/roadmap/tickets/reviews/PR-09-preflight-review.md:7:| Target preflight | `docs/roadmap/tickets/reviews/PR-09-preflight-antigravity.md` |
+docs/roadmap/tickets/reviews/PR-09-preflight-review.md:43:- §5 延后项加一条 TD："LLM tool schema 的 `wake_triggers[].type` 枚举（`timer / event`）与 `TriggerType` 不对齐，另开后续 PR 统一。同步写入 `docs/roadmap/technical-debt.md`。"
+docs/roadmap/tickets/PR-21-message-lifecycle-enum.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-71-no-tool-retry-private-context-cleanup.md:71:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
+docs/roadmap/tickets/PR-54-canary-metrics-bundle.md:120:- [x] 文档：本 ticket 状态翻 `[✓]`；`docs/architecture/message-wake-principles.md` §七 改成 `[CODE]` 承诺；`docs/roadmap/message-wake-refactor.md` P6-14 行添加。
+docs/roadmap/tickets/PR-54-canary-metrics-bundle.md:130:长期修复路径（**新 ticket，不归本 PR**）：给 task-worker 和 saga-worker 各装一个最小 `/metrics` HTTP 端口（参考 business 的 `install_service_logging` + FastAPI `@app.get("/metrics")`），统一 scrape 目标到 Prometheus。已登记在 `docs/roadmap/technical-debt.md` 的 `DEBT-OBS-*` 区（TBD 条目）。
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:1:# PR-199 — Blob Service Contract / Domain Model
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:10:| Theme | Blob infrastructure boundary |
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:14:Define the shared Blob Service contract before changing any runtime path. The contract must make Blob Service a byte/object infrastructure, not a business file service and not a Cortex replacement.
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:19:deployment. The remaining contract is the shared BlobRef boundary in
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:21:large payload bytes only through Blob Service refs.
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:25:- [x] PR-199A — Add common BlobRef contract and parser helpers.
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:27:- [x] PR-199C — Add reference documentation for Blob Service boundaries.
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:31:- Shared contract defines `blob://{namespace}/{blob_id}`.
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:33:- Blob metadata is infrastructure-only: tenant, namespace, blob id, MIME, size, hash, timestamps.
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:45:Added `common.contracts.blob` with `BlobRef`, `make_blob_ref`,
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:46:`parse_blob_ref`, and metadata invariant validation. Added
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:47:`common/contracts/blob.json` as the contract source and
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:48:`docs/reference/blob-service.md` as the product boundary note.
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:52:- `python3 -m pytest tests/test_blob_contract.py tests/test_cortex_observation_contract.py tests/test_environment_contract.py`
+docs/roadmap/tickets/PR-209-agent-monitor-final-product-shape.md:8:| Scope | `docs/roadmap/agent-monitor-final-product-shape.md`, roadmap indexes |
+docs/roadmap/tickets/PR-209-agent-monitor-final-product-shape.md:80:rg -n "agent-monitor-final-product-shape|PR-209" docs/README.md docs/roadmap/agent-activity-timeline.md docs/roadmap/tickets/README.md
+docs/roadmap/tickets/PR-209-agent-monitor-final-product-shape.md:81:rg -n "result id|raw MCP|raw HTTP|stack trace|execution log" docs/roadmap/agent-monitor-final-product-shape.md
+docs/roadmap/tickets/PR-33-env-shrink.md:22:同期 `docs/roadmap/technical-debt.md` 的"内部 Key 未统一"条目被归档为 **✗ 明确不做**（PR-B 作废，见该文件 2026-04-18 复盘），所以 `NOVAIC_INTERNAL_KEY` 这条 env 入口**没有任何功能前景**，应该一并清理。
+docs/roadmap/tickets/PR-33-env-shrink.md:166:- 更新 `docs/roadmap/technical-debt.md`：关闭"env 膨胀"条目（目前还没登记，PR-33 merge 时写进"已还清"）。
+docs/roadmap/tickets/PR-33-env-shrink.md:175:  documented in docs/roadmap/tickets/PR-33-env-shrink.md §C.1:
+docs/roadmap/tickets/PR-38-im-message-rendering.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-136-audio-qa-runtime-executor.md:9:`audio_qa` used to be a real capability in the retired `novaic-tools-server`. The restored Runtime executor now works through Blob Service, resolves the agent audio model config, sends an OpenAI-compatible `input_audio` payload through LLM Factory, and returns the answer/transcription.
+docs/roadmap/tickets/PR-136-audio-qa-runtime-executor.md:21:- Reuse BlobRef parsing rules from `display`.
+docs/roadmap/tickets/PR-136-audio-qa-runtime-executor.md:22:- Fetch audio bytes through Blob Service using the current `user_id`.
+docs/roadmap/tickets/PR-136-audio-qa-runtime-executor.md:39:- Audio executor downloads the Blob bytes with `X-User-ID`.
+docs/roadmap/tickets/PR-136-audio-qa-runtime-executor.md:47:- Invoke `_exec_audio_qa` with fake Blob Service, Business, and Factory clients in test.
+docs/roadmap/tickets/PR-162-environment-domain-storage-foundation.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:1:# PR-206 — Blob End-to-End Smoke and Deployment Closure
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:14:Close the Blob Service migration by proving the real product path works end to end.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:18:The migration spans App, Gateway, Business, Runtime, Cortex, and Blob Service. Unit tests are necessary but not sufficient; a cross-service smoke is required.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:22:- [x] PR-206A — App/Gateway upload path returns a BlobRef.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:23:- [x] PR-206B — Runtime/Cortex payload path was covered by PR-202/PR-205 tests and deployed with Blob refs.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:25:- [x] PR-206D — Local App Entangled cache audit shows no historical non-Blob refs.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:46:  the production `start.sh` label now reports `Blob Service :19995`.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:50:- Updated the local dev start script to use Blob Service labels and logs.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:55:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service,
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:59:  `blob://user-file/1777870667418-ffa72a140a2254f70ec778c1`.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:62:- Production Blob Service health:
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:63:  `{"status":"ok","service":"blob-service","contract_version":"blob/v1"}`.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:65:  Blob Service, Runtime, Common tool definitions, or Cortex.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:73:- Active code now uses `blob_service`, `BLOB_SERVICE_URL`, and
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:74:  `main_blob_service.py`; the old package/entrypoint was physically removed.
+docs/roadmap/tickets/PR-168-environment-notification-queue-cutover.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-74-cortex-delete-compactor-auto-summary.md:25:- Wake/lifecycle/root/meta scopes are structural containers and are not summary producers.
+docs/roadmap/tickets/PR-74-cortex-delete-compactor-auto-summary.md:76:- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
+docs/roadmap/tickets/PR-146-documentation-runbook-archaeology-residue-scan.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-168B-environment-notification-dispatch-lease.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-248-reliable-evolution-attach-outbox-cutover.md:48:- Do not make `tq_session_state` the sole active-session authority yet.
+docs/roadmap/tickets/reviews/PR-19-preflight-guidance.md:11:PR-17 Canary 阶段 1/2 观察期在生产日志里发现两类 HealthWorker 噪声，按 PR-17 `§H 不在本 PR 做的事` 的范围纪律，**不在 PR-17 内修**，独立开 PR-19 处理。相关记录已登记在 `docs/roadmap/technical-debt.md` 的 "HealthWorker 遗留观察项 (PR-19 追踪)"。
+docs/roadmap/tickets/PR-256-reliable-evolution-architecture-ledger-calibration.md:40:- Core under review: documentation describing session harness state authority.
+docs/roadmap/tickets/PR-46-context-read-by-message-ids.md:154:- **不新增**: runtime 端按 unseen delta N-GET（典型 1-3 次/round），现有 `entity_get` 够用；复杂度 0
+docs/roadmap/tickets/PR-233-active-im-delivery-vs-wake-creation.md:98:  Service, Blob Service, Cortex, 8 workers, and Relay healthy.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:1:# PR-202 — Cortex Payload Blob Externalization
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:14:Keep Cortex as the work-trace and scope system, while storing large raw payload bytes in Blob Service and retaining only observation summaries plus `payload_ref`.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:18:Cortex currently writes payload records into its own scope-local payload store through `Workspace.write_payload`. This means Cortex owns large payload storage directly unless it externalizes large bytes to Blob Service.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:22:- [x] PR-202A — Define size thresholds and blob payload policy.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:23:- [x] PR-202B — Write large tool payloads to Blob Service and store `blob://cortex-payload/...` in Cortex.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:24:- [x] PR-202C — Update payload read/search/summarize/qa resolver to support BlobRef through `Workspace.read_payload`.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:25:- [x] PR-202D — Add invariants: default prompt context never includes raw Blob payload.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:26:- [x] PR-202E — Configure production start path to provide Cortex with Blob Service URL.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:31:- Large payloads are externalized to Blob Service.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:32:- Payload tools can resolve BlobRef explicitly.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:40:- [x] Smoke-level unit: large payload produces observation plus `blob://cortex-payload/...`.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:44:- Added `novaic_cortex.blob_payload` as the narrow Cortex ↔ Blob Service adapter.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:45:- `Workspace.write_payload` now serializes payloads to JSON bytes, keeps small payloads in the existing scope-local store, and externalizes payloads larger than `CORTEX_PAYLOAD_BLOB_THRESHOLD_BYTES` to Blob Service.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:46:- Large payload externalization requires `CORTEX_BLOB_SERVICE_URL`; if a payload crosses the threshold and the Blob URL is missing, Cortex fails fast instead of silently falling back.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:47:- `Workspace.write_step` updates both `step.payload_ref` and `step.observation.payload_ref` to the returned `blob://cortex-payload/...` ref when externalized.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:48:- `Workspace.read_payload` resolves external BlobRefs explicitly through Blob Service, so payload read/search/summarize/qa continue to use the same Cortex payload API.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:49:- `scripts/start.sh` exports `CORTEX_BLOB_SERVICE_URL` from the Blob Service URL before starting Cortex.
+docs/roadmap/tickets/PR-172-roadmap-status-index-reconciliation.md:18:The individual ticket files are closed, but `docs/roadmap/tickets/README.md` still lists PR-169, PR-170, and PR-171 as `[open]`. This creates a false gap and can send future work back into already-closed branches.
+docs/roadmap/tickets/PR-328-health-generic-worker.md:15:- Keep Queue Service recovery endpoint as the state authority.
+docs/roadmap/tickets/PR-61-contextual-tool-visibility-subagent-report.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-61-contextual-tool-visibility-subagent-report.md:36:- Tool affordances differ from runtime authority.
+docs/roadmap/tickets/reviews/PR-09-preflight-antigravity.md:35:| **【用】入口 Pydantic 模型** | `novaic-agent-runtime/queue_service/routes.py` (如 `DispatchRequest` 模型) | 凡是 `trigger_type: TriggerType` 字段，均使用 pydantic validator 调用 `from_legacy` 兼容旧字符串入参。 |
+docs/roadmap/tickets/reviews/PR-09-preflight-antigravity.md:54:- **TD 延后（LLM tool schema 错位）**：`definitions.py` 的 LLM schema 中 `wake_triggers[].type` 的取值 (`timer / event`) 与主流程 `TriggerType` 枚举不对齐，不在此 PR 修复。另开后续 PR 统一，并同步写入 `docs/roadmap/technical-debt.md`。
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:1:# PR-216 Remove Base64 Blob Upload Path
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:6:| Type | Blob upload cleanup / old path deletion |
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:8:| Scope | App upload path, Gateway Blob edge, Blob Service upload API, docs/guards |
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:13:Finish the Blob upload migration by physically deleting the remaining base64
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:21:- Objective: all chat attachments upload through direct multipart Blob sessions.
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:27:  - no `/api/blobs/from-base64`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:30:  - `npm run test:unit -- src/application/blobAttachmentPath.test.ts`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:33:### 2. Gateway and Blob Service APIs
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:37:  - Gateway `/api/blobs/from-base64`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:38:  - Blob Service `POST /v1/blobs`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:39:  - Blob storage base64 decoder/storage helper
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:41:  - Blob Service smoke script
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:44:  - Blob Service upload data plane is multipart raw bytes.
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:48:  - Blob Service unit tests
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:49:  - `python -m compileall -q blob_service`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:50:  - Blob Service smoke script uses multipart create/part/complete.
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:55:- Scope: Blob reference docs, architecture docs, roadmap/ticket docs, README.
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:63:  - manual review of current Blob docs
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:68:- Gateway no longer exposes `/api/blobs/from-base64`.
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:69:- Blob Service no longer exposes the base64 JSON upload API.
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:70:- Blob Service no longer contains a base64 decoder path for Blob uploads.
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:77:- `cd novaic-app && npm run test:unit -- src/application/blobAttachmentPath.test.ts`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:80:- `cd novaic-blob-service && PYTHONPATH=.:../novaic-common pytest -q tests/test_blob_service.py`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:81:- `cd novaic-blob-service && python -m compileall -q blob_service`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:82:- `cd novaic-blob-service && bash scripts/smoke_blob_service.sh`
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:86:Closed when the above checks pass and submodule/root commits record the cleanup.
+docs/roadmap/tickets/PR-34-worker-sync.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-34-worker-sync.md:276:- 更新 `docs/roadmap/technical-debt.md`：关闭 37 行 `internal_client` 命名陷阱、42 行 `scheduler_worker_sync.py` 命名条目。
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:1:# PR-212 Blob Multipart Contract and Backend Support
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:6:| Type | Blob large-file upload |
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:8:| Scope | Blob Service upload-session API, backend-backed raw part staging, tests |
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:13:Add a real multipart/resumable upload lifecycle to Blob Service without making
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:20:- Store raw byte parts through the configured Blob backend until completion.
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:23:- Keep stable `blob://...` metadata invisible until complete.
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:34:- Blob Service unit tests.
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:35:- Backend-backed session lifecycle tests through Blob Service API.
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:40:- Added `blob_service.multipart_storage.MultipartStorage`.
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:42:  - `POST /v1/blobs/uploads`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:43:  - `GET /v1/blobs/uploads`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:44:  - `GET /v1/blobs/uploads/{session_id}`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:45:  - `PUT /v1/blobs/uploads/{session_id}/parts/{part_number}`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:46:  - `POST /v1/blobs/uploads/{session_id}/complete`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:47:  - `POST /v1/blobs/uploads/{session_id}/abort`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:48:  - `POST /v1/blobs/uploads/_expire`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:49:- Stable Blob metadata is written only after `complete`.
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:66:- `cd novaic-blob-service && PYTHONPATH=.:../novaic-common pytest -q`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:71:Closed. Blob Service now has a real multipart session API. Direct App upload and
+docs/roadmap/tickets/PR-322-generic-worker-substrate-ledger.md:26:- `ls docs/roadmap/tickets/PR-32*-*.md docs/roadmap/tickets/PR-33*-*.md`
+docs/roadmap/tickets/PR-26-orphan-emitter-metrics.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-05-preflight-brief.md:25:在开 PR 前，先发一段消息（或写一个 `docs/roadmap/tickets/reviews/PR-05-preflight-<你的名字>.md`），包含以下四个部分。**每一项都要有具体证据（文件路径 + 行号 + 命令）**，不要空谈。
+docs/roadmap/tickets/PR-198-global-service-topology-doc-cleanup.md:22:Global topology and Entangled boundary docs now share the same current call graph: App direct Entangled sync/action, Business product authority, Subscriber/Queue/Runtime execution, Cortex work trace, Gateway edge only.
+docs/roadmap/tickets/PR-183-gateway-auth-file-proxy-boundary-cleanup.md:15:- Product file access now goes through the authenticated `/blob/` edge.
+docs/roadmap/tickets/PR-183-gateway-auth-file-proxy-boundary-cleanup.md:23:  storage-path proxying and pass user boundary explicitly to Blob Service.
+docs/roadmap/tickets/PR-168E-remove-message-lifecycle-outbox-compat.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-319-task-projection-physical-schema-cut.md:10:authority exists only in `tq_task_state`, `tq_task_events`, and worker lease
+docs/roadmap/tickets/PR-319-task-projection-physical-schema-cut.md:28:  authority.
+docs/roadmap/tickets/PR-319-task-projection-physical-schema-cut.md:37:- Tests prove `tq_tasks` cannot be used as task lifecycle authority.
+docs/roadmap/tickets/PR-232-roadmap-archaeology-noise-cleanup.md:22:- Scope: `docs/roadmap/tickets/README.md` and current roadmap docs.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:1:# PR-211 Blob Large File / Multipart / Audio Compression Review
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:6:| Type | Blob boundary / roadmap cleanup |
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:8:| Scope | Blob Service docs, attachment/audio reference, future multipart/audio tickets |
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:13:Reconcile Blob Service documentation with the implemented system and record the
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:21:- Blob Service is the byte/object-storage boundary.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:22:- Cortex production store uses Blob Service object APIs instead of direct S3.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:23:- Blob refs use `blob://{namespace}/{blob_id}`.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:24:- App attachments then uploaded through Gateway `/api/blobs/from-base64`.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:37:- `docs/blob-service-architecture.md` described STS, multipart upload, retry,
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:38:  and ffmpeg/transcode behavior as if Blob Service already owned them.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:39:- `docs/reference/blob-audio.md` mentioned compression only as a loose future
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:44:### PR-211A Current Blob Capability Inventory
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:46:- Objective: document what the current Blob implementation actually supports.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:48:  - `docs/reference/blob-service.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:49:  - `docs/reference/blob-audio.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:50:  - `docs/blob-service-architecture.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:52:  - Current base64/blob/object paths are explicit.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:62:  - `docs/roadmap/blob-large-file-multipart-audio.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:63:  - `docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:64:  - `docs/roadmap/tickets/PR-213-app-large-upload-cutover.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:65:  - `docs/roadmap/tickets/PR-214-audio-compression-path.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:66:  - `docs/roadmap/tickets/PR-215-blob-payload-limits-observability.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:67:  - `docs/roadmap/tickets/README.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:70:  - Future work preserves Blob as byte infrastructure, not business logic.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:76:- Objective: make the new Blob plan discoverable and remove old overclaiming.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:79:  - Blob architecture/reference pages.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:81:  - The docs index links the Blob plan.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:91:- [x] Current Blob capabilities are described as implemented, not aspirational.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:95:  Blob Service side effect.
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:102:- `rg -n "STS|MultiPart|multipart|ffmpeg|transcode|压缩|base64|large" docs/blob-service-architecture.md docs/reference/blob-service.md docs/reference/blob-audio.md docs/roadmap/blob-large-file-multipart-audio.md docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md docs/roadmap/tickets/PR-213-app-large-upload-cutover.md docs/roadmap/tickets/PR-214-audio-compression-path.md docs/roadmap/tickets/PR-215-blob-payload-limits-observability.md`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:103:- `cd novaic-blob-service && PYTHONPATH=.:../novaic-common pytest -q`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:106:  - `novaic-blob-service/blob_service/routes.py`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:107:  - `novaic-blob-service/blob_service/backends.py`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:116:shape is documented in `docs/reference/blob-service.md` and
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:117:`docs/roadmap/blob-large-file-multipart-audio.md`.
+docs/roadmap/tickets/PR-158A-tool-product-semantics-contract.md:50:- Deploy: `./deploy runtime` restarted all backend services; `./deploy status` confirmed Entangled, Gateway, Business, Device, Queue Service, Blob Service, Cortex, workers, and Relay running.
+docs/roadmap/tickets/reviews/PR-06-preflight-review.md:160:novaic-blob-service                     ← 需核实
+docs/roadmap/tickets/PR-29-scope-state-machine.md:147:- 全量 cortex 测试集相对 main 没有新增失败（21 个失败均为 main 上已有的 `/rw/active/` ↔ `/ro/active/` 路径漂移问题，与本 PR 无关）
+docs/roadmap/tickets/PR-165B-prompt-tool-wording-notification-only.md:23:3. Keep authority prompt direct; only environment events are notification-only.
+docs/roadmap/tickets/reviews/PR-11-preflight-antigravity.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-11-preflight-antigravity.md:18:| `docs/roadmap/tickets/PR-11-business-trigger-to-assembler.md` | 更新状态。 |
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:1:# PR-207 — Cortex Blob-backed Store Cutover
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:3:> Historical ticket. This records the pre-LogicalFS transition that moved
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:4:> Cortex off direct S3/OSS paths. The current architecture uses LogicalFS as the
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:5:> live `/ro` / `/rw` authority and a LogicalFS Blob object adapter below that
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:13:| Principle | Cortex owns work-trace semantics; Blob Service owns byte/object storage |
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:18:workspace/scope objects only through Blob Service.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:22:### 1. Blob Service Object Store Boundary
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:24:- Add object-tree primitives to Blob Service: `put`, `get`, `list`,
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:26:- Keep Blob Service free of Cortex semantics.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:29:### 2. Cortex Blob-backed Store
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:31:- Add `BlobCortexStore` implementing `CortexStore` over Blob Service object APIs.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:32:- Switch `WorkspaceRegistry` to create `BlobCortexStore` per user.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:39:- Move OSS/S3 physical backend config to Blob Service.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:51:- Cortex package has no direct physical object-store implementation or SDK path.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:52:- `scripts/start.sh` passes OSS/S3 config only to Blob Service.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:53:- Cortex receives only `--blob-service-url` for object storage.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:54:- Blob Service object API supports Cortex `move_prefix` semantics.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:55:- Tests pass for Blob Service and Cortex store paths.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:56:- Production Blob Service object PUT/GET/DELETE works through the OSS backend.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:61:- `novaic-blob-service`: `12 passed, 2 skipped`
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:63:- `novaic-common` targeted config/blob tests: `16 passed`
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:68:  services, Cortex, Blob Service, workers, and Relay running.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:69:- Production smoke: Blob Service `/api/health`, Cortex `/ready`, Blob object
+docs/roadmap/tickets/PR-139-branch-submodule-mainline-residue-scan.md:25:- All tracked first-party submodules are on `main`: `novaic-agent-runtime`, `novaic-app`, `novaic-business`, `novaic-common`, `novaic-cortex`, `novaic-device`, `novaic-gateway`, `novaic-llm-factory`, `novaic-mcp-vmuse`, `novaic-quic-service`, `novaic-blob-service`, plus `Entangled` and website repos.
+docs/roadmap/tickets/PR-16-dispatch-subscriber-full.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-316-taskqueue-state-candidate-cutover.md:17:  status as authority.
+docs/roadmap/tickets/PR-316-taskqueue-state-candidate-cutover.md:49:- Task projection writes no longer use projection `status` as CAS authority.
+docs/roadmap/tickets/PR-43-scope-chain-previous-id.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-43-scope-chain-previous-id.md:217:- [x] `Workspace.create_scope` 形参新增 `previous_scope_id`；**仅 root scope**（`parent_path is None`）才写进 `meta.json`，子 scope 即便带该参数也 silent drop（续链颗粒度在 root 级）
+docs/roadmap/tickets/PR-43-scope-chain-previous-id.md:222:- [x] `Workspace.read_scope_tail(previous_scope_id, *, max_steps=20, max_tokens=8000, token_counter=None)`：
+docs/roadmap/tickets/PR-43-scope-chain-previous-id.md:223:  - [x] 读 `/ro/scopes/{previous_scope_id}/context.jsonl` 作为原始 messages
+docs/roadmap/tickets/PR-43-scope-chain-previous-id.md:272:- [x] log (cortex): `[Workspace] read_scope_tail read_context failed prev=X exc=<ExcType>`（miss 时 warn）
+docs/roadmap/tickets/PR-138-audio-attachment-routing.md:47:    using the attachment's BlobRef.
+docs/roadmap/tickets/PR-67-wake-as-agent-root-child-scope.md:89:    - `pr67-wake-1-20260425_183653` at `/ro/active/agent-root-main-pr67-smoke/steps/0001_scope_pr67-wake-1-20260425_183653`, closed as a lifecycle container.
+docs/roadmap/tickets/PR-67-wake-as-agent-root-child-scope.md:90:    - `pr67-wake-2-20260425_183653` at `/ro/active/agent-root-main-pr67-smoke/steps/0002_scope_pr67-wake-2-20260425_183653`, expanded during prepare, then closed.
+docs/roadmap/tickets/PR-193-agent-monitor-entangled-projection-cutover.md:57:Production smoke: `./deploy status` reported Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex, 8 workers, and Relay healthy. Remote Cortex `POST /v1/trace/project` returns `404`; deployed Business schema contains `agent-activity-records` and `agent-activity-participants`, and no longer registers `activity_timeline`.
+docs/roadmap/tickets/PR-186B-business-environment-notification-hot-path.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/PR-88-log-payload-lazy-fetch-and-app-cache-merge.md:103:{"success":true,"data":{"input":{"tool":"skill_end","args":{"scope_id":"0f1af928-8f85-4ec4-b6c7-5648fbdf2819","report":"用户PR86-91 smoke测试消息，已简短回复\"收到！✅\"完成日志链路验证。"}},"result":{"content":"{\"ok\": true, \"child_path\": \"/ro/active/agent-root-main-415f6cfd/steps/0022_scope_0f1af928-8f85-4ec4-b6c7-5648fbdf2819\", \"scope_id\": \"0f1af928-8f85-4ec4-b6c7-5648fbdf2819\", \"summary\": \"用户PR86-91 smoke测试消息，已简短回复\\\"收到！✅\\\"完成日志链路验证。\", \"stack\": [], \"stack_depth\": 0}"},"error":null}}
+docs/roadmap/tickets/reviews/PR-09-t1-review.md:17:| Pydantic validator 兜底 | `novaic-agent-runtime/queue_service/routes.py:481-488` — `trigger_type: TriggerType` + validator 调 `from_legacy` |
+docs/roadmap/tickets/reviews/PR-09-t1-review.md:31:preflight §5 承诺会同步写入 `docs/roadmap/technical-debt.md`，实际 `technical-debt.md` 只新增了 PR-08 的 `get_resolver()` TD 那一条（line 38），**没有** `timer/event` 的 TD。
+docs/roadmap/tickets/reviews/PR-09-t1-review.md:33:**补一条**到 `docs/roadmap/technical-debt.md`，格式参考 PR-08 那条：
+docs/roadmap/tickets/PR-102-message-lifecycle-enum-ssot.md:70:- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex, workers, and Relay running.
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:19:| RPC log 透传（queue /tasks/publish） | PASS | `novaic-agent-runtime/queue_service/routes.py:189` 打 `task_created id=... caller=... target_topic=...` |
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:52:docs/roadmap/message-wake-refactor.md              |   6 +-
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:53:docs/roadmap/technical-debt.md                     |   3 +
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:54:docs/roadmap/tickets/PR-01-*.md                    |  78 ++++
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:55:docs/roadmap/tickets/PR-02-*.md                    |  69 ++++
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:56:docs/roadmap/tickets/PR-05-*.md                    |  99 +++++
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:57:docs/roadmap/tickets/PR-06-*.md                    |  90 +++++
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:58:docs/roadmap/tickets/PR-07..PR-13*.md              |  ...
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:76:git add docs/roadmap/tickets/PR-06-services-consume-caller-header.md
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:77:git add docs/roadmap/tickets/reviews/PR-06-preflight-antigravity.md
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:78:git add docs/roadmap/tickets/reviews/PR-06-t1-review.md   # 这份 review
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:79:git add docs/roadmap/message-wake-refactor.md             # 仅 P1-2 行
+docs/roadmap/tickets/reviews/PR-06-t1-review.md:98:这不是 bug，但会让日志体积翻倍 + 让 grep 更吵。**这次合并可以留着**（不阻塞），但请在 `docs/roadmap/technical-debt.md` 补一条：
+docs/roadmap/tickets/reviews/PR-14-t1-review.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-17-preflight-guidance.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-17-preflight-guidance.md:8:**状态**：此文件是**任务导航**，不是 preflight 报告本身。你读完后需要写 `docs/roadmap/tickets/reviews/PR-17-preflight-antigravity.md` 回答 §F 的 discovery 问题 + 确认实施方案，拿到批复后才进入 T1。
+docs/roadmap/tickets/reviews/PR-17-preflight-guidance.md:215:把下面每一条的答案**真实查出来**贴到 `docs/roadmap/tickets/reviews/PR-17-preflight-antigravity.md`。**不许猜，要 ssh 到生产实地查**：
+docs/roadmap/tickets/reviews/PR-17-t1-review.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-17-t1-review.md:14:按 `docs/roadmap/tickets/reviews/PR-17-preflight-antigravity.md` 的 B.1–B.5 全量落地。
+docs/roadmap/tickets/reviews/PR-16-t1-review.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-16-t1-review.md:14:`docs/roadmap/tickets/PR-16-dispatch-subscriber-full.md`：
+docs/roadmap/tickets/reviews/PR-16-t1-review.md:34:M docs/roadmap/tickets/reviews/PR-16-preflight-antigravity.md
+docs/roadmap/tickets/reviews/PR-16-t1-review.md:35:?? docs/roadmap/tickets/reviews/PR-16-preflight-review.md  (这是我写的 review，忽略)
+docs/roadmap/tickets/reviews/PR-16-t1-review.md:44:git add docs/roadmap/tickets/reviews/PR-16-preflight-antigravity.md
+docs/roadmap/tickets/reviews/PR-16-t1-review.md:126:**如果决定本 PR 不改**（理由：PR-26 orphan 还没写到），请在 `docs/roadmap/technical-debt.md` 明确登记："PR-16 `mark_failed` 用 999999 哨兵烧毁真实 attempts 计数，PR-26 orphan emitter 依赖 attempts 区分事故类型时必须先返工 outbox schema"。
+docs/roadmap/tickets/reviews/PR-16-t1-review.md:181:3. Ticket 勾选状态截图或 `rg '^- \[[ x/-]\]' docs/roadmap/tickets/PR-16-dispatch-subscriber-full.md` 的输出
+docs/roadmap/tickets/reviews/PR-10-preflight-antigravity.md:15:| `novaic-agent-runtime/queue_service/routes.py:510` | **只读引用**：本 PR **不改动**，仅作合约测试目标（`DispatchRequest` Pydantic schema）。 |
+docs/roadmap/tickets/reviews/PR-10-preflight-antigravity.md:41:> - `[-] 暂缓`：由于指标采集暂无统一设施，我们将 `dispatch_total` 和 `dispatch_latency_seconds` 延后，并已**新建 Backlog 票 `docs/roadmap/tickets/PR-32-metrics-prometheus-integration.md` 进行专门兜底**，显式列出所有被暂缓的指标（包含 PR-06/07/08/10 产生的所有待采集指标）。
+docs/roadmap/tickets/reviews/PR-05-preflight-review.md:168:**同时在 `docs/roadmap/technical-debt.md` 加一笔新技术债**（一两句话即可）：
+docs/roadmap/tickets/reviews/PR-06-preflight-antigravity.md:91:- novaic-blob-service
+docs/roadmap/tickets/reviews/bake-gate-abandonment-2026-04-19.md:43:- [x] `docs/roadmap/tickets/PR-34-worker-sync.md` — §D 表格"状态"列中 34b/34c/34d "等 bake 48h" → "等部署 + smoke"；§D.34b 的"生产观察 gate"节删除 / 改 smoke checklist
+docs/roadmap/tickets/reviews/bake-gate-abandonment-2026-04-19.md:44:- [x] `docs/roadmap/tickets/PR-35-silent-fail-runtime-fill-defaults.md` — "部署观察期"相关段落标"撤销（见 bake-gate-abandonment-2026-04-19.md）"
+docs/roadmap/tickets/reviews/bake-gate-abandonment-2026-04-19.md:45:- [x] `docs/roadmap/tickets/reviews/PR-17-preflight-guidance.md` — 顶部加 bake 撤销批注（不删正文，保留流量回来时恢复路径）
+docs/roadmap/tickets/reviews/PR-16-preflight-antigravity.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+docs/roadmap/tickets/reviews/PR-14-preflight-antigravity.md:3:> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.

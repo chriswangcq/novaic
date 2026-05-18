@@ -1,0 +1,11 @@
+novaic-agent-runtime/tests/unit/task_queue/test_dedup_guard_failure_path.py
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py
+novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py
+novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py

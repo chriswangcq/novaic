@@ -1,0 +1,232 @@
+## BlobObjectStore / object-store adapter terms
+novaic-logicalfs/tests/test_blob_store.py:1:"""BlobObjectStore tests."""
+novaic-logicalfs/tests/test_blob_store.py:11:from logicalfs import BlobObjectStore
+novaic-logicalfs/tests/test_blob_store.py:15:async def test_blob_object_store_roundtrip_and_move_prefix(tmp_path, monkeypatch):
+novaic-logicalfs/tests/test_blob_store.py:33:        store = BlobObjectStore(base_url="http://blob.local", tenant_id="user-1")
+novaic-logicalfs/logicalfs/authority.py:19:class LogicalObjectStore(Protocol):
+novaic-logicalfs/logicalfs/authority.py:36:class LogicalFileAuthorityLayout:
+novaic-logicalfs/logicalfs/authority.py:65:def logical_to_object_key(layout: LogicalFileAuthorityLayout, path: str) -> str:
+novaic-logicalfs/logicalfs/authority.py:80:class StoreBackedLogicalFileAuthority:
+novaic-logicalfs/logicalfs/authority.py:81:    """Live /ro and /rw authority backed by a generic object store."""
+novaic-logicalfs/logicalfs/authority.py:83:    def __init__(self, store: LogicalObjectStore, layout: LogicalFileAuthorityLayout) -> None:
+novaic-logicalfs/logicalfs/authority.py:88:    def layout(self) -> LogicalFileAuthorityLayout:
+novaic-logicalfs/logicalfs/authority.py:95:        key = self.key(path)
+novaic-logicalfs/logicalfs/authority.py:99:        await self._store.put(self.key(path), data, content_type)
+novaic-logicalfs/logicalfs/authority.py:112:        return await self._store.get(self.key(path))
+novaic-logicalfs/logicalfs/authority.py:118:        return await self._store.exists(self.key(path))
+novaic-logicalfs/logicalfs/authority.py:121:        await self._store.delete(self.key(path))
+novaic-logicalfs/logicalfs/authority.py:127:        key = self.key(path)
+novaic-logicalfs/logicalfs/authority.py:188:    async def list_object_keys(self, path: str) -> list[str]:
+novaic-logicalfs/logicalfs/authority.py:198:    "LogicalFileAuthorityLayout",
+novaic-logicalfs/logicalfs/authority.py:199:    "LogicalObjectStore",
+novaic-logicalfs/logicalfs/authority.py:200:    "StoreBackedLogicalFileAuthority",
+novaic-logicalfs/logicalfs/__init__.py:16:    LogicalFileAuthorityLayout,
+novaic-logicalfs/logicalfs/__init__.py:17:    LogicalObjectStore,
+novaic-logicalfs/logicalfs/__init__.py:18:    StoreBackedLogicalFileAuthority,
+novaic-logicalfs/logicalfs/__init__.py:21:from logicalfs.blob_store import BlobObjectStore
+novaic-logicalfs/logicalfs/__init__.py:25:    "BlobObjectStore",
+novaic-logicalfs/logicalfs/__init__.py:28:    "LogicalFileAuthorityLayout",
+novaic-logicalfs/logicalfs/__init__.py:37:    "LogicalObjectStore",
+novaic-logicalfs/logicalfs/__init__.py:39:    "StoreBackedLogicalFileAuthority",
+novaic-logicalfs/logicalfs/blob_store.py:18:class BlobObjectStore:
+novaic-logicalfs/logicalfs/blob_store.py:82:            raise NotImplementedError("BlobObjectStore only supports delimiter='/'")
+novaic-logicalfs/logicalfs/blob_store.py:132:__all__ = ["BlobObjectStore"]
+novaic-logicalfs/tests/test_authority.py:6:    LogicalFileAuthorityLayout,
+novaic-logicalfs/tests/test_authority.py:8:    StoreBackedLogicalFileAuthority,
+novaic-logicalfs/tests/test_authority.py:13:class MemoryObjectStore:
+novaic-logicalfs/tests/test_authority.py:61:def authority() -> StoreBackedLogicalFileAuthority:
+novaic-logicalfs/tests/test_authority.py:62:    return StoreBackedLogicalFileAuthority(
+novaic-logicalfs/tests/test_authority.py:63:        MemoryObjectStore(),
+novaic-logicalfs/tests/test_authority.py:64:        LogicalFileAuthorityLayout(owner_prefix="owners/o1"),
+novaic-logicalfs/tests/test_authority.py:69:    layout = LogicalFileAuthorityLayout(owner_prefix="owners/o1", ro_prefix="readonly", rw_prefix="writeable")
+novaic-cortex/tests/test_paths_adversarial.py:12:from logicalfs import LogicalFileAuthorityLayout, logical_to_object_key
+novaic-cortex/tests/test_paths_adversarial.py:25:    return logical_to_object_key(LogicalFileAuthorityLayout(owner_prefix=f"agents/{agent_id}"), path)
+novaic-cortex/tests/test_workspace_authority.py:16:    assert authority.key("/rw/scratch/a.txt") == "agents/agent-1/rw/scratch/a.txt"
+novaic-cortex/novaic_cortex/workspace.py:823:        prefix = self._files.key("/ro/active/")
+novaic-cortex/novaic_cortex/workspace.py:824:        keys = await self._files.list_object_keys("/ro/active/")
+novaic-cortex/novaic_cortex/registry.py:18:from logicalfs import BlobObjectStore
+novaic-cortex/novaic_cortex/registry.py:51:        self._stores: dict[str, BlobObjectStore] = {}  # user_id -> LogicalFS object adapter
+novaic-cortex/novaic_cortex/registry.py:58:    def _get_store(self, user_id: str) -> BlobObjectStore:
+novaic-cortex/novaic_cortex/registry.py:60:            self._stores[user_id] = BlobObjectStore(
+novaic-cortex/novaic_cortex/registry.py:64:            logger.info("[Registry] LogicalFS object adapter created for user=%s", user_id)
+novaic-cortex/novaic_cortex/registry.py:70:            object_store = self._get_store(user_id)
+novaic-cortex/novaic_cortex/registry.py:71:            authority = build_workspace_file_authority(object_store, agent_id)
+novaic-cortex/novaic_cortex/workspace_authority.py:6:    LogicalFileAuthorityLayout,
+novaic-cortex/novaic_cortex/workspace_authority.py:7:    LogicalObjectStore,
+novaic-cortex/novaic_cortex/workspace_authority.py:8:    StoreBackedLogicalFileAuthority,
+novaic-cortex/novaic_cortex/workspace_authority.py:31:    object_store: LogicalObjectStore,
+novaic-cortex/novaic_cortex/workspace_authority.py:33:) -> StoreBackedLogicalFileAuthority:
+novaic-cortex/novaic_cortex/workspace_authority.py:34:    return StoreBackedLogicalFileAuthority(
+novaic-cortex/novaic_cortex/workspace_authority.py:35:        object_store,
+novaic-cortex/novaic_cortex/workspace_authority.py:36:        LogicalFileAuthorityLayout(owner_prefix=agent_owner_prefix(agent_id)),
+novaic-cortex/novaic_cortex/main_cortex.py:27:        help="Blob Service base URL. Cortex never talks to a physical object store directly.",
+
+## direct blob / namespace references near Cortex and LogicalFS adapters
+novaic-logicalfs/tests/test_blob_store.py:19:        from blob_service.main import create_app
+novaic-logicalfs/tests/test_blob_store.py:33:        store = BlobObjectStore(base_url="http://blob.local", tenant_id="user-1")
+novaic-logicalfs/logicalfs/authority.py:4:business-agnostic: callers provide explicit namespace/layout configuration and
+novaic-logicalfs/logicalfs/authority.py:65:def logical_to_object_key(layout: LogicalFileAuthorityLayout, path: str) -> str:
+novaic-logicalfs/logicalfs/authority.py:92:        return logical_to_object_key(self._layout, path)
+novaic-logicalfs/logicalfs/authority.py:188:    async def list_object_keys(self, path: str) -> list[str]:
+novaic-logicalfs/logicalfs/authority.py:201:    "logical_to_object_key",
+novaic-logicalfs/tests/test_authority.py:9:    logical_to_object_key,
+novaic-logicalfs/tests/test_authority.py:71:    assert logical_to_object_key(layout, "/ro/config/tool.json") == "owners/o1/readonly/config/tool.json"
+novaic-logicalfs/tests/test_authority.py:72:    assert logical_to_object_key(layout, "rw/scratch/a.txt") == "owners/o1/writeable/scratch/a.txt"
+novaic-logicalfs/logicalfs/__init__.py:19:    logical_to_object_key,
+novaic-logicalfs/logicalfs/__init__.py:40:    "logical_to_object_key",
+novaic-logicalfs/logicalfs/blob_store.py:25:        tenant_id: str,
+novaic-logicalfs/logicalfs/blob_store.py:26:        namespace: str = "cortex-store",
+novaic-logicalfs/logicalfs/blob_store.py:32:        if not tenant_id or not tenant_id.strip():
+novaic-logicalfs/logicalfs/blob_store.py:33:            raise ValueError("tenant_id is required")
+novaic-logicalfs/logicalfs/blob_store.py:35:        self._tenant_id = tenant_id
+novaic-logicalfs/logicalfs/blob_store.py:36:        self._namespace = namespace
+novaic-logicalfs/logicalfs/blob_store.py:41:        return {"X-Tenant-ID": self._tenant_id}
+novaic-logicalfs/logicalfs/blob_store.py:44:        return f"{self._base_url}/v1/objects/{quote(self._namespace)}/{quote(key, safe='/')}"
+novaic-logicalfs/logicalfs/blob_store.py:99:            "namespace": self._namespace,
+novaic-logicalfs/logicalfs/blob_store.py:120:            "tenant_id": self._tenant_id,
+novaic-logicalfs/logicalfs/blob_store.py:121:            "namespace": self._namespace,
+novaic-cortex/novaic_cortex/workspace.py:158:            blob_ref=manifest.get("blob_ref"),
+novaic-cortex/novaic_cortex/workspace.py:583:                tenant_id=self._agent_id,
+novaic-cortex/novaic_cortex/workspace.py:592:                "blob_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:614:            blob_ref=actual_payload_ref if externalize else None,
+novaic-cortex/novaic_cortex/workspace.py:651:        if record.get("blob_ref"):
+novaic-cortex/novaic_cortex/workspace.py:661:                    tenant_id=self._agent_id,
+novaic-cortex/novaic_cortex/workspace.py:662:                    blob_ref=str(record["blob_ref"]),
+novaic-cortex/novaic_cortex/workspace.py:824:        keys = await self._files.list_object_keys("/ro/active/")
+novaic-cortex/tests/test_step_index_outcome.py:20:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_step_index_outcome.py:21:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:22:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_step_index_outcome.py:23:        return blob_ref
+novaic-cortex/tests/test_step_index_outcome.py:25:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_step_index_outcome.py:26:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_step_index_outcome.py:30:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_step_index_outcome.py:31:        raise KeyError(blob_ref)
+novaic-cortex/tests/test_step_index_outcome.py:65:        "artifacts": [{"url": "blob://user-file/img.png", "filename": "img.png"}],
+novaic-cortex/tests/test_step_index_outcome.py:110:    assert manifest["blob_ref"] is None
+novaic-cortex/tests/test_step_index_outcome.py:150:async def test_write_step_externalizes_large_payload_to_blob_ref():
+novaic-cortex/tests/test_step_index_outcome.py:176:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:181:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:182:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:184:    assert await ws.read_payload(path, "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_step_index_outcome.py:185:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:187:    assert manifest["blob_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:301:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:303:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:332:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:334:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:458:            "artifacts": [{"uri": "blob://runtime-artifact/img"}],
+novaic-cortex/tests/test_operational_store.py:82:                blob_ref TEXT NOT NULL,
+novaic-cortex/tests/test_operational_store.py:97:                payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/tests/test_operational_store.py:101:            VALUES('payload-1', 'root', 'scope-a', 'step-1', 'blob://cortex-payload/1',
+novaic-cortex/tests/test_operational_store.py:124:        blob_ref=None,
+novaic-cortex/tests/test_operational_store.py:133:    assert columns["blob_ref"][3] == 0
+novaic-cortex/tests/test_operational_store.py:135:    assert local["blob_ref"] is None
+novaic-cortex/tests/test_operational_store.py:347:        blob_ref="blob://cortex-payload/1",
+novaic-cortex/tests/test_operational_store.py:360:        blob_ref="blob://cortex-payload/1",
+novaic-cortex/tests/test_operational_store.py:374:    assert store.get_payload_manifest(payload_ref="payload-1")["blob_ref"] == "blob://cortex-payload/1"
+novaic-cortex/tests/test_operational_store.py:377:def test_payload_manifest_supports_local_payload_without_blob_ref(tmp_path):
+novaic-cortex/tests/test_operational_store.py:386:        blob_ref=None,
+novaic-cortex/tests/test_operational_store.py:394:    assert manifest["blob_ref"] is None
+novaic-cortex/novaic_cortex/sandbox.py:6:  private ``/cortex`` mount namespace.
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:113:                            "blob_ref": f"blob://runtime-artifact/{blob_id}",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:114:                            "namespace": "runtime-artifact",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:151:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:155:    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:180:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:184:    assert state["uploads"][0]["namespace"] == "runtime-artifact"
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:204:    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+novaic-cortex/tests/test_tool_output_projection.py:19:                "uri": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_tool_output_projection.py:28:                        "args": {"file_url": "blob://runtime-artifact/screen-1"},
+novaic-cortex/tests/test_tool_output_projection.py:52:    assert parsed["artifacts"][0]["uri"] == "blob://runtime-artifact/screen-1"
+novaic-cortex/tests/test_tool_output_projection.py:55:    assert 'display(file_url="blob://runtime-artifact/screen-1")' in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:65:    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_tool_output_projection.py:197:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:207:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/novaic_cortex/api.py:2410:            blob_url = getattr(_registry, "_blob_service_url", "")
+novaic-cortex/novaic_cortex/api.py:2412:                checks["blob_service"] = "missing-url"
+novaic-cortex/novaic_cortex/api.py:2419:                    checks["blob_service"] = "ok"
+novaic-cortex/novaic_cortex/api.py:2421:                    checks["blob_service"] = f"error: {type(exc).__name__}: {str(exc)[:120]}"
+novaic-cortex/novaic_cortex/api.py:2424:            checks["blob_service"] = f"probe-failed: {type(exc).__name__}"
+novaic-cortex/tests/test_paths_adversarial.py:12:from logicalfs import LogicalFileAuthorityLayout, logical_to_object_key
+novaic-cortex/tests/test_paths_adversarial.py:25:    return logical_to_object_key(LogicalFileAuthorityLayout(owner_prefix=f"agents/{agent_id}"), path)
+novaic-cortex/tests/test_context_event_api_steps_write.py:42:    async def put_payload(self, *, tenant_id, scope_path, source_payload_ref, payload, payload_bytes):
+novaic-cortex/tests/test_context_event_api_steps_write.py:43:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:44:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_context_event_api_steps_write.py:45:        return blob_ref
+novaic-cortex/tests/test_context_event_api_steps_write.py:47:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_context_event_api_steps_write.py:48:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_context_event_api_steps_write.py:123:                    "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:139:            "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:233:            "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:236:        "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:240:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:242:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:243:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:244:    assert await reopened_ws.read_payload(child["child_path"], "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_context_event_api_steps_write.py:245:    manifest = reopened_ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/novaic_cortex/operational_store.py:147:                    blob_ref TEXT,
+novaic-cortex/novaic_cortex/operational_store.py:174:        blob_ref = columns.get("blob_ref")
+novaic-cortex/novaic_cortex/operational_store.py:177:            and blob_ref is not None
+novaic-cortex/novaic_cortex/operational_store.py:178:            and int(blob_ref["notnull"]) == 0
+novaic-cortex/novaic_cortex/operational_store.py:192:                blob_ref TEXT,
+novaic-cortex/novaic_cortex/operational_store.py:487:        blob_ref: str | None,
+novaic-cortex/novaic_cortex/operational_store.py:503:                    payload_ref, source_payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/novaic_cortex/operational_store.py:513:                    blob_ref=excluded.blob_ref,
+novaic-cortex/novaic_cortex/operational_store.py:528:                    blob_ref,
+novaic-cortex/tests/test_context_event_projection.py:708:                    "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_projection.py:717:    assert tool_message["_metadata"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/novaic_cortex/blob_payload.py:5:payloads in Blob Service and returns ``blob://cortex-payload/...`` refs.
+novaic-cortex/novaic_cortex/blob_payload.py:27:        tenant_id: str,
+novaic-cortex/novaic_cortex/blob_payload.py:35:    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+novaic-cortex/novaic_cortex/blob_payload.py:73:        tenant_id: str,
+novaic-cortex/novaic_cortex/blob_payload.py:79:        blob_id = _payload_blob_id(tenant_id, scope_path, source_payload_ref)
+novaic-cortex/novaic_cortex/blob_payload.py:82:            "tenant_id": tenant_id,
+novaic-cortex/novaic_cortex/blob_payload.py:83:            "namespace": "cortex-payload",
+novaic-cortex/novaic_cortex/blob_payload.py:103:                    headers={"X-Tenant-ID": tenant_id},
+novaic-cortex/novaic_cortex/blob_payload.py:111:                headers={"X-Tenant-ID": tenant_id},
+novaic-cortex/novaic_cortex/blob_payload.py:115:        blob_ref = data.get("blob_ref")
+novaic-cortex/novaic_cortex/blob_payload.py:116:        if not isinstance(blob_ref, str) or not blob_ref.startswith("blob://cortex-payload/"):
+novaic-cortex/novaic_cortex/blob_payload.py:117:            raise ValueError("Blob Service did not return a cortex-payload BlobRef")
+novaic-cortex/novaic_cortex/blob_payload.py:118:        return blob_ref
+novaic-cortex/novaic_cortex/blob_payload.py:120:    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+novaic-cortex/novaic_cortex/blob_payload.py:121:        namespace, blob_id = _parse_blob_ref(blob_ref)
+novaic-cortex/novaic_cortex/blob_payload.py:124:                f"{self._base_url}/v1/blobs/{quote(namespace)}/{quote(blob_id)}",
+novaic-cortex/novaic_cortex/blob_payload.py:125:                headers={"X-Tenant-ID": tenant_id},
+novaic-cortex/novaic_cortex/blob_payload.py:136:def _payload_blob_id(tenant_id: str, scope_path: str, source_payload_ref: str) -> str:
+novaic-cortex/novaic_cortex/blob_payload.py:137:    digest = hashlib.sha256(f"{tenant_id}:{scope_path}:{source_payload_ref}".encode("utf-8")).hexdigest()
+novaic-cortex/novaic_cortex/blob_payload.py:141:def _parse_blob_ref(blob_ref: str) -> tuple[str, str]:
+novaic-cortex/novaic_cortex/blob_payload.py:142:    prefix = "blob://"
+novaic-cortex/novaic_cortex/blob_payload.py:143:    if not isinstance(blob_ref, str) or not blob_ref.startswith(prefix):
+novaic-cortex/novaic_cortex/blob_payload.py:144:        raise ValueError("payload blob_ref must start with blob://")
+novaic-cortex/novaic_cortex/blob_payload.py:145:    rest = blob_ref[len(prefix):]
+novaic-cortex/novaic_cortex/blob_payload.py:148:        raise ValueError("payload blob_ref must be blob://{namespace}/{blob_id}")
+novaic-cortex/novaic_cortex/main_cortex.py:93:            cli_args.blob_service_url,
+novaic-cortex/novaic_cortex/shell_capabilities.py:66:  agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT]
+novaic-cortex/novaic_cortex/shell_capabilities.py:67:  agentctl media audio-qa --file-url blob://namespace/id --prompt-file PATH
+novaic-cortex/novaic_cortex/shell_capabilities.py:87:Media/file outputs are stored as blob:// artifacts in tool-output.v1
+novaic-cortex/novaic_cortex/shell_capabilities.py:223:    if not file_url.startswith("blob://"):
+novaic-cortex/novaic_cortex/shell_capabilities.py:224:        print(f"{{COMMAND}}: audio-qa only supports blob:// file_url", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:226:    rest = file_url.removeprefix("blob://")
+novaic-cortex/novaic_cortex/shell_capabilities.py:230:    namespace, blob_id = rest.split("/", 1)
+novaic-cortex/novaic_cortex/shell_capabilities.py:237:        f"{{urllib.parse.quote(namespace, safe='')}}/"
+novaic-cortex/novaic_cortex/shell_capabilities.py:272:        "namespace": "runtime-artifact",
+novaic-cortex/novaic_cortex/shell_capabilities.py:313:    if not isinstance(blob, dict) or not blob.get("blob_ref"):
+novaic-cortex/novaic_cortex/shell_capabilities.py:314:        print(f"{{COMMAND}}: Blob Service complete did not return blob_ref", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:388:    blob_ref = str(blob["blob_ref"])
+novaic-cortex/novaic_cortex/shell_capabilities.py:394:        uri=blob_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:407:        access={{"display": {{"tool": "display", "args": {{"file_url": blob_ref}}}}}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:412:        text=f"Captured host desktop screenshot: {{width}}x{{height}}, stored as {{blob_ref}}.",
+novaic-cortex/novaic_cortex/shell_capabilities.py:434:    blob_ref = str(blob["blob_ref"])
+novaic-cortex/novaic_cortex/shell_capabilities.py:438:        uri=blob_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:450:        text=f"Pulled host desktop file {{path or name}} into runtime artifact {{blob_ref}}.",
+novaic-cortex/novaic_cortex/shell_capabilities.py:838:        print("Usage: agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT|--prompt-file PATH]")
+novaic-cortex/novaic_cortex/registry.py:1:"""WorkspaceRegistry — multi-tenant Workspace client/cache wiring.
+novaic-cortex/novaic_cortex/registry.py:33:        blob_service_url: str,
+novaic-cortex/novaic_cortex/registry.py:40:        if not blob_service_url or not blob_service_url.strip():
+novaic-cortex/novaic_cortex/registry.py:41:            raise ValueError("blob_service_url is required")
+novaic-cortex/novaic_cortex/registry.py:42:        self._blob_service_url = blob_service_url.rstrip("/")
+novaic-cortex/novaic_cortex/registry.py:46:            else HttpBlobPayloadClient(self._blob_service_url)
+novaic-cortex/novaic_cortex/registry.py:61:                base_url=self._blob_service_url,
+novaic-cortex/novaic_cortex/registry.py:62:                tenant_id=user_id,
+novaic-cortex/novaic_cortex/registry.py:86:    blob_service_url: str,
+novaic-cortex/novaic_cortex/registry.py:109:        blob_service_url,

@@ -1,0 +1,41 @@
+    async def wake_started(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        wake_scope_id: str,
+        scope_name: str,
+    ) -> ContextEvent:
+        return await self._append(
+            ctx,
+            type="WakeStarted",
+            payload={"wake_scope_id": wake_scope_id, "scope_name": scope_name},
+            idempotency_key=f"context-wake:start:{ctx.stream_id}:{wake_scope_id}",
+        )
+
+    async def wake_archived(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        wake_scope_id: str,
+        reason: str,
+        remaining_stack: list[str],
+        archive_diagnostics: dict[str, Any] | None = None,
+    ) -> ContextEvent:
+        payload: dict[str, Any] = {
+            "wake_scope_id": wake_scope_id,
+            "reason": reason,
+            "remaining_stack": remaining_stack,
+        }
+        if archive_diagnostics is not None:
+            payload["archive_diagnostics"] = dict(archive_diagnostics)
+        return await self._append(
+            ctx,
+            type="WakeArchived",
+            payload=payload,
+            idempotency_key=f"context-wake:archive:{ctx.stream_id}:{wake_scope_id}",
+        )
+
+    async def system_prompt_added(
+        self,
+        ctx: ContextEventWriteContext,
+        *,

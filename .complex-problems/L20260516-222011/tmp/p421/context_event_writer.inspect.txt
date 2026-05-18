@@ -1,0 +1,261 @@
+"""Explicit write boundary for appending Cortex ContextEvents."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from novaic_cortex.context_event_store import ContextEventStore
+from novaic_cortex.context_events import ContextEvent, build_stream_id
+
+
+@dataclass(frozen=True)
+class ContextEventWriteContext:
+    """Explicit identity for one root-scope event stream."""
+
+    user_id: str
+    agent_id: str
+    root_scope_id: str
+    root_scope_path: str
+    actor: str = "cortex"
+
+    @property
+    def stream_id(self) -> str:
+        return build_stream_id(
+            user_id=self.user_id,
+            agent_id=self.agent_id,
+            root_scope_id=self.root_scope_id,
+        )
+
+
+class ContextEventWriter:
+    """Small endpoint-facing adapter around ``ContextEventStore``.
+
+    The writer intentionally does not own clocks, ids, env, or request-global
+    state. Those dependencies belong to the store construction boundary, while
+    per-request identity is passed through ``ContextEventWriteContext``.
+    """
+
+    def __init__(self, store: ContextEventStore) -> None:
+        self._store = store
+
+    async def root_initialized(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        subagent_id: str,
+        scope_name: str,
+    ) -> ContextEvent:
+        return await self._append(
+            ctx,
+            type="RootInitialized",
+            payload={
+                "root_scope_id": ctx.root_scope_id,
+                "subagent_id": subagent_id,
+                "scope_name": scope_name,
+            },
+            idempotency_key=f"context-root:init:{ctx.stream_id}",
+        )
+
+    async def wake_started(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        wake_scope_id: str,
+        scope_name: str,
+    ) -> ContextEvent:
+        return await self._append(
+            ctx,
+            type="WakeStarted",
+            payload={"wake_scope_id": wake_scope_id, "scope_name": scope_name},
+            idempotency_key=f"context-wake:start:{ctx.stream_id}:{wake_scope_id}",
+        )
+
+    async def wake_archived(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        wake_scope_id: str,
+        reason: str,
+        remaining_stack: list[str],
+        archive_diagnostics: dict[str, Any] | None = None,
+    ) -> ContextEvent:
+        payload: dict[str, Any] = {
+            "wake_scope_id": wake_scope_id,
+            "reason": reason,
+            "remaining_stack": remaining_stack,
+        }
+        if archive_diagnostics is not None:
+            payload["archive_diagnostics"] = dict(archive_diagnostics)
+        return await self._append(
+            ctx,
+            type="WakeArchived",
+            payload=payload,
+            idempotency_key=f"context-wake:archive:{ctx.stream_id}:{wake_scope_id}",
+        )
+
+    async def system_prompt_added(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        message: dict[str, Any],
+        idempotency_key: str | None = None,
+    ) -> ContextEvent:
+        return await self._append(
+            ctx,
+            type="SystemPromptAdded",
+            payload={"message": message},
+            idempotency_key=idempotency_key,
+        )
+
+    async def context_message_appended(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        message: dict[str, Any],
+        scope_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> ContextEvent:
+        payload: dict[str, Any] = {"message": message}
+        if scope_id is not None:
+            payload["scope_id"] = scope_id
+        return await self._append(
+            ctx,
+            type="ContextMessageAppended",
+            payload=payload,
+            idempotency_key=idempotency_key,
+        )
+
+    async def input_notification_attached(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        notification_id: str,
+        source_kind: str,
+        scope_id: str | None = None,
+    ) -> ContextEvent:
+        payload: dict[str, Any] = {
+            "notification_id": notification_id,
+            "source_kind": source_kind,
+        }
+        if scope_id is not None:
+            payload["scope_id"] = scope_id
+        return await self._append(
+            ctx,
+            type="InputNotificationAttached",
+            payload=payload,
+            idempotency_key=f"context-input:attach:{ctx.stream_id}:{notification_id}",
+        )
+
+    async def skill_scope_opened(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        scope_id: str,
+        parent_scope_id: str,
+        skill_name: str,
+        name: str | None = None,
+    ) -> ContextEvent:
+        payload = {
+            "scope_id": scope_id,
+            "parent_scope_id": parent_scope_id,
+            "skill_name": skill_name,
+        }
+        if name is not None:
+            payload["name"] = name
+        return await self._append(
+            ctx,
+            type="SkillScopeOpened",
+            payload=payload,
+            idempotency_key=f"context-skill:open:{ctx.stream_id}:{scope_id}",
+        )
+
+    async def skill_scope_closed(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        scope_id: str,
+        report: str,
+    ) -> ContextEvent:
+        return await self._append(
+            ctx,
+            type="SkillScopeClosed",
+            payload={"scope_id": scope_id, "report": report},
+            idempotency_key=f"context-skill:close:{ctx.stream_id}:{scope_id}",
+        )
+
+    async def assistant_tool_call_recorded(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        message: dict[str, Any],
+        scope_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> ContextEvent:
+        payload: dict[str, Any] = {"message": message}
+        if scope_id is not None:
+            payload["scope_id"] = scope_id
+        return await self._append(
+            ctx,
+            type="AssistantToolCallRecorded",
+            payload=payload,
+            idempotency_key=idempotency_key,
+        )
+
+    async def tool_step_recorded(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        call_id: str,
+        tool: str,
+        status: str,
+        observation: dict[str, Any],
+        step_ref: str | None = None,
+        payload_ref: str | None = None,
+        scope_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> ContextEvent:
+        payload: dict[str, Any] = {
+            "call_id": call_id,
+            "tool": tool,
+            "status": status,
+            "observation": observation,
+        }
+        if step_ref is not None:
+            payload["step_ref"] = step_ref
+        if payload_ref is not None:
+            payload["payload_ref"] = payload_ref
+        if scope_id is not None:
+            payload["scope_id"] = scope_id
+        return await self._append(
+            ctx,
+            type="ToolStepRecorded",
+            payload=payload,
+            idempotency_key=(
+                idempotency_key
+                if idempotency_key is not None
+                else (
+                    f"context-tool:step:{ctx.stream_id}:{scope_id or '_root'}:{step_ref or payload_ref or call_id}"
+                    if call_id != "unknown"
+                    else None
+                )
+            ),
+        )
+
+    async def _append(
+        self,
+        ctx: ContextEventWriteContext,
+        *,
+        type: str,
+        payload: dict[str, Any],
+        idempotency_key: str | None,
+    ) -> ContextEvent:
+        return await self._store.append_event(
+            ctx.root_scope_path,
+            stream_id=ctx.stream_id,
+            root_scope_id=ctx.root_scope_id,
+            actor=ctx.actor,
+            type=type,
+            payload=payload,
+            idempotency_key=idempotency_key,
+        )

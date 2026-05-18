@@ -1,0 +1,236 @@
+.github/workflows/lint.yml:40:    - name: Run Blob workspace boundary lint
+docs/reference/blob-audio.md:7:新的大对象引用统一使用 `blob://{namespace}/{blob_id}`，详见
+docs/reference/blob-audio.md:14:附件访问 → Rust cache → /blob/v1/blobs/{namespace}/{blob_id} direct Blob edge
+docs/reference/blob-audio.md:15:消息附件字段 → blob://user-file/{blob_id}
+docs/reference/blob-audio.md:25:音频上传 → Blob multipart → blob://audio-input/{blob_id}
+docs/reference/blob-audio.md:37:Rust recorder → compressed AAC/M4A container → blob://audio-input/{blob_id}
+scripts/ci/lint_blob_workspace_boundary.py:4:Blob is the byte store. LogicalFS is the live workspace authority. This guard
+scripts/ci/lint_blob_workspace_boundary.py:99:        print("Blob workspace boundary violations:")
+scripts/ci/lint_blob_workspace_boundary.py:104:    print("Blob workspace boundary OK")
+docs/architecture/logicalfs-realtime-file-authority.md:180:- `display` keeps direct Blob support for base `blob://...` files.
+novaic-logicalfs/logicalfs/blob_store.py:44:        return f"{self._base_url}/v1/objects/{quote(self._namespace)}/{quote(key, safe='/')}"
+novaic-logicalfs/logicalfs/blob_store.py:106:                f"{self._base_url}/v1/objects/_list",
+novaic-logicalfs/logicalfs/blob_store.py:126:            resp = await client.post(f"{self._base_url}/v1/objects/_move-prefix", json=body)
+docs/reference/blob-service.md:16:blob://{namespace}/{blob_id}
+docs/reference/blob-service.md:62:  "payload_ref": "blob://cortex-payload/abc123"
+docs/reference/blob-service.md:72:New hot paths must write `blob://...` references. Historical locator shapes are
+docs/reference/blob-service.md:98:- `/v1/blobs/uploads/*` is the Blob Service multipart session API. Parts are raw
+docs/reference/blob-service.md:102:  `/blob/v1/blobs/uploads/*` raw part upload, then Gateway `/api/blobs/register`
+docs/reference/blob-service.md:105:  `/blob/v1/blobs/{namespace}/{blob_id}`. Gateway app does not handle Blob
+docs/reference/blob-service.md:114:- `/v1/objects` writes a whole request body. It is for transitional/internal
+novaic-cortex/novaic_cortex/step_result_projection.py:250:                if url.startswith("blob://") and (modality == "image" or mime.startswith("image/")):
+novaic-sandbox-service/tests/test_sandbox_boundary.py:40:        "BlobCortexStore",
+novaic-cortex/novaic_cortex/shell_capabilities.py:66:  agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT]
+novaic-cortex/novaic_cortex/shell_capabilities.py:67:  agentctl media audio-qa --file-url blob://namespace/id --prompt-file PATH
+novaic-cortex/novaic_cortex/shell_capabilities.py:87:Media/file outputs are stored as blob:// artifacts in tool-output.v1
+novaic-cortex/novaic_cortex/shell_capabilities.py:179:    if not file_url.startswith("blob://"):
+novaic-cortex/novaic_cortex/shell_capabilities.py:180:        print(f"{{COMMAND}}: audio-qa only supports blob:// file_url", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:182:    rest = file_url.removeprefix("blob://")
+novaic-cortex/novaic_cortex/shell_capabilities.py:192:        f"{{base}}/v1/blobs/"
+novaic-cortex/novaic_cortex/shell_capabilities.py:238:    created = _post_json(base, "/v1/blobs/uploads", create_body, headers)
+novaic-cortex/novaic_cortex/shell_capabilities.py:246:            f"{{base}}/v1/blobs/uploads/{{urllib.parse.quote(session_id, safe='')}}/parts/1",
+novaic-cortex/novaic_cortex/shell_capabilities.py:264:        f"/v1/blobs/uploads/{{urllib.parse.quote(session_id, safe='')}}/complete",
+novaic-cortex/novaic_cortex/shell_capabilities.py:798:        print("Usage: agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT|--prompt-file PATH]")
+novaic-common/common/contracts/resource_ref.py:33:    raise ValueError("resource locator must be a blob:// reference")
+novaic-common/common/contracts/blob.py:18:_BLOB_PREFIX = "blob://"
+novaic-common/common/contracts/blob.py:81:        raise ValueError(f"blob ref must be blob://{{namespace}}/{{blob_id}}: {ref!r}")
+docs/blob-service-architecture.md:24:blob://{namespace}/{blob_id}
+docs/blob-service-architecture.md:33:- `/v1/blobs/{namespace}/{blob_id}`：读取字节。
+docs/blob-service-architecture.md:34:- `/v1/blobs/{namespace}/{blob_id}/info`：读取 Blob 元数据。
+docs/blob-service-architecture.md:35:- `/v1/blobs/uploads/*`：multipart upload session，part 使用 raw bytes，
+docs/blob-service-architecture.md:37:- `/v1/objects/*`：Cortex object-tree 的 `put/get/list/move/delete` 原语。
+docs/blob-service-architecture.md:59:`blob://audio-input/...`。WAV 只是编码中间文件，不是上传格式。
+docs/blob-service-architecture.md:64:Rust recorder → compressed AAC/M4A container → Blob upload → audio tool consumes blob://audio-input/...
+novaic-cortex/novaic_cortex/blob_payload.py:5:payloads in Blob Service and returns ``blob://cortex-payload/...`` refs.
+novaic-cortex/novaic_cortex/blob_payload.py:92:            create_resp = await client.post(f"{self._base_url}/v1/blobs/uploads", json=create_body)
+novaic-cortex/novaic_cortex/blob_payload.py:101:                    f"{self._base_url}/v1/blobs/uploads/{quote(session_id)}/parts/1",
+novaic-cortex/novaic_cortex/blob_payload.py:109:                f"{self._base_url}/v1/blobs/uploads/{quote(session_id)}/complete",
+novaic-cortex/novaic_cortex/blob_payload.py:116:        if not isinstance(blob_ref, str) or not blob_ref.startswith("blob://cortex-payload/"):
+novaic-cortex/novaic_cortex/blob_payload.py:124:                f"{self._base_url}/v1/blobs/{quote(namespace)}/{quote(blob_id)}",
+novaic-cortex/novaic_cortex/blob_payload.py:142:    prefix = "blob://"
+novaic-cortex/novaic_cortex/blob_payload.py:144:        raise ValueError("payload blob_ref must start with blob://")
+novaic-cortex/novaic_cortex/blob_payload.py:148:        raise ValueError("payload blob_ref must be blob://{namespace}/{blob_id}")
+docs/roadmap/blob-large-file-multipart-audio.md:12:- Blob references use `blob://{namespace}/{blob_id}`.
+docs/roadmap/blob-large-file-multipart-audio.md:15:- `/v1/blobs/uploads/*` supports multipart sessions with raw byte parts,
+docs/roadmap/blob-large-file-multipart-audio.md:17:- `/v1/objects` supports raw body object-tree `put/get/list/move/delete` for
+docs/roadmap/blob-large-file-multipart-audio.md:21:  setup, direct Blob Service `/v1/blobs/uploads/*` raw part upload through the
+docs/roadmap/blob-large-file-multipart-audio.md:27:  `blob://audio-input/...`.
+docs/roadmap/blob-large-file-multipart-audio.md:85:Rust recorder → compressed AAC/M4A container → Blob upload → audio tool consumes blob://audio-input/...
+docs/roadmap/blob-large-file-multipart-audio.md:91:2. Store compressed bytes as `blob://audio-input/{blob_id}` with duration,
+novaic-cortex/tests/test_operational_store.py:101:            VALUES('payload-1', 'root', 'scope-a', 'step-1', 'blob://cortex-payload/1',
+novaic-cortex/tests/test_operational_store.py:347:        blob_ref="blob://cortex-payload/1",
+novaic-cortex/tests/test_operational_store.py:360:        blob_ref="blob://cortex-payload/1",
+novaic-cortex/tests/test_operational_store.py:374:    assert store.get_payload_manifest(payload_ref="payload-1")["blob_ref"] == "blob://cortex-payload/1"
+novaic-common/common/tools/llm_builtin.py:178:            "Blob refs only, shaped as blob://{namespace}/{blob_id}. "
+novaic-common/common/tools/llm_builtin.py:188:                    "description": "Blob reference, e.g. blob://user-file/attachment-1.",
+docs/cortex/satellite-modules.md:14:- Cortex active path stores large tool/runtime payload bytes behind `blob://...`
+novaic-common/common/tools/definitions.py:70:        "description": "Take a screenshot of the current browser page. Returns a blob:// file_url. Use display(file_url) to show it to the LLM for analysis.",
+novaic-common/common/tools/definitions.py:160:        "description": "Take a desktop screenshot of the VM with optional coordinate grid overlay. Grid displays pixel coordinates for precise positioning. Returns a blob:// file_url. Use display(file_url) to show it to the LLM for analysis.",
+novaic-common/common/tools/definitions.py:258:        "description": "Pull a file from VM to Blob Service. Specify path on VM. A blob:// file_url is returned for use with file_push. Use to download files from VM.",
+novaic-common/common/tools/definitions.py:272:        "description": "Push a Blob Service file to VM. Specify a blob:// file_url (from file_pull or other tool) and target path on VM. Use to upload files to VM.",
+novaic-common/common/tools/definitions.py:278:                    "description": "Blob reference (e.g. blob://runtime-artifact/file-1)"
+novaic-common/common/tools/definitions.py:448:        "description": "Capture Android device screen. Returns a blob:// file_url. Use display(file_url) to show it to the LLM for analysis.",
+novaic-common/common/tools/definitions.py:586:        "description": "Install an APK on Android device. The APK must come from Blob Service (blob:// file_url from mobile_file_pull or other tool). Returns success status and package name. Use for app deployment or testing.",
+novaic-common/common/tools/definitions.py:592:                    "description": "Blob reference of the APK (e.g. blob://runtime-artifact/app-apk-1 from mobile_file_pull)"
+novaic-common/common/tools/definitions.py:692:        "description": "Push a file to Android device. The file must come from Blob Service (blob:// file_url from a previous mobile_file_pull or other tool). Returns success status. Use for deploying test data or configuration files.",
+novaic-common/common/tools/definitions.py:698:                    "description": "Blob reference (e.g. blob://runtime-artifact/pulled-file-1 from previous mobile_file_pull result)"
+novaic-common/common/tools/definitions.py:713:        "description": "Pull a file from Android device. File is stored in Blob Service and a blob:// file_url is returned for LLM context. Use file_url from the result when pushing back with mobile_file_push.",
+docs/cortex/step-index-and-payload-schema.md:44:4. 大 payload 外置到 Blob Service，manifest 使用 `retention_class="external_blob"`，`blob_ref=blob://...`。
+docs/runtime/tool-chain-dispatch.md:37:`blob://runtime-artifact/...` references and concise metadata, but must not
+docs/runtime/tool-chain-dispatch.md:40:`display(blob://...)` is the explicit image perception path. Its public tool
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:100:            if self.path == "/v1/blobs/uploads":
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:113:                            "blob_ref": f"blob://runtime-artifact/{blob_id}",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:151:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:180:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:224:    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+docs/roadmap/backend-architecture-optimization-recommendations.md:95:`blob://...` / payload refs plus product metadata.
+novaic-common/tests/test_resource_ref_contract.py:15:        "locator": "blob://user-file/file-1",
+novaic-common/tests/test_resource_ref_contract.py:26:    with pytest.raises(ValueError, match="blob://"):
+novaic-common/tests/test_resource_ref_contract.py:34:            "locator": "blob://user-file/file-1",
+novaic-common/tests/test_resource_ref_contract.py:41:        with pytest.raises(ValueError, match="blob://"):
+novaic-cortex/tests/test_blob_payload_client.py:9:    assert "/v1/blobs/uploads" in source
+novaic-cortex/tests/test_blob_payload_client.py:10:    assert "/v1/blobs\"" not in source
+novaic-common/tests/test_blob_contract.py:31:        parse_blob_ref("blob://user-file/a/b")
+novaic-common/tests/test_blob_contract.py:57:        "blob_ref": "blob://cortex-payload/payload-1",
+novaic-common/tests/test_blob_contract.py:74:        "blob_ref": "blob://runtime-artifact/other",
+novaic-common/tests/test_blob_contract.py:86:            "blob_ref": "blob://runtime-artifact/artifact-1",
+novaic-cortex/tests/test_context_event_projection.py:708:                    "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_projection.py:717:    assert tool_message["_metadata"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:43:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:123:                    "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:139:            "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:233:            "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:236:        "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:240:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:242:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:243:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:244:    assert await reopened_ws.read_payload(child["child_path"], "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_context_event_api_steps_write.py:245:    manifest = reopened_ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:386:        raise ValueError("display only supports Blob refs: blob://{namespace}/{blob_id}") from exc
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:449:    url = f"{base_url}/v1/blobs/{quote(namespace, safe='')}/{quote(blob_id, safe='')}"
+novaic-cortex/tests/test_tool_output_projection.py:19:                "uri": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_tool_output_projection.py:28:                        "args": {"file_url": "blob://runtime-artifact/screen-1"},
+novaic-cortex/tests/test_tool_output_projection.py:52:    assert parsed["artifacts"][0]["uri"] == "blob://runtime-artifact/screen-1"
+novaic-cortex/tests/test_tool_output_projection.py:55:    assert 'display(file_url="blob://runtime-artifact/screen-1")' in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:65:    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_tool_output_projection.py:197:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:207:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:231:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:238:                    "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:246:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:257:        "url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:266:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:265:                        "file_url": "blob://runtime-artifact/screen-1",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:314:    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen-1")
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:334:                        "file_url": "blob://runtime-artifact/old-screen",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:378:                        "file_url": "blob://runtime-artifact/missing",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:427:        "text": "[Image ref not resolved: blob://runtime-artifact/missing — Blob Service returned 404: not found]",
+novaic-cortex/cortex_tests/blob_boundary_policy.py:56:    "BlobCortexStore",
+novaic-cortex/cortex_tests/blob_boundary_policy.py:57:    "/v1/objects",
+novaic-cortex/cortex_tests/blob_boundary_policy.py:61:    "blob://",
+novaic-cortex/cortex_tests/blob_boundary_policy.py:62:    "/v1/blobs",
+novaic-cortex/cortex_tests/blob_boundary_policy.py:63:    "/v1/blobs/uploads",
+novaic-cortex/cortex_tests/blob_boundary_policy.py:70:        text='return f"blob://cortex-payload/{blob_id}"',
+novaic-cortex/cortex_tests/blob_boundary_policy.py:75:        text='f"{base}/v1/blobs/{namespace}/{blob_id}"',
+novaic-cortex/cortex_tests/blob_boundary_policy.py:85:        text='return f"{self._base_url}/v1/objects/{quote(self._namespace)}/{quote(key, safe=\'/\')}"',
+novaic-cortex/cortex_tests/blob_boundary_policy.py:93:        text='resp = await client.put(f"{blob}/v1/objects/cortex-store/{key}")',
+novaic-cortex/cortex_tests/blob_boundary_policy.py:98:        text='await client.put(f"{blob}/v1/objects/agents/{agent_id}/rw")',
+novaic-cortex/cortex_tests/blob_boundary_policy.py:103:        text='requests.get(f"{blob}/v1/objects/cortex-store/agents/{agent_id}/rw")',
+novaic-cortex/tests/test_step_result_projection.py:54:                "file_url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:65:        "url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:131:                "url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:145:        "file_url": "blob://runtime-artifact/screen-1",
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:21:- Objective: cached attachment downloads resolve `blob://...` into direct Blob
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:26:  - Rust cache command accepts only `blob://...`.
+docs/roadmap/tickets/PR-217-direct-blob-download-edge.md:27:  - Download path is `/blob/v1/blobs/{namespace}/{blob_id}`.
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:14:            "blob_ref": "blob://audio-input/voice.mp3",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:20:    assert 'agentctl media audio-qa --file-url "blob://audio-input/voice.mp3"' in rendered
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:29:            "blob_ref": "blob://audio-input/voice.m4a",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:41:            "blob_ref": "blob://user-file/screen.png",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:45:    assert 'display(file_url="blob://user-file/screen.png")' in rendered
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:54:            "blob_ref": "blob://user-file/report.pdf",
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:14:the `blob://user-file/...` attachment contract.
+docs/roadmap/tickets/PR-213-app-large-upload-cutover.md:40:  `/api/blobs/register`, `/v1/blobs/uploads`, and `X-Part-Sha256`.
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:54:    assert _blob_ref_path("blob://user-file/blob-1") == ("user-file", "blob-1")
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:84:    result = _exec_display({"file_url": "blob://user-file/image-1"}, _deps())
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:88:    assert calls[0]["url"].endswith("/v1/blobs/user-file/image-1")
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:104:    assert durable["file_url"] == "blob://user-file/image-1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:109:        "file_url": "blob://user-file/image-1",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:114:        "url": "blob://user-file/image-1",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:140:    result = _exec_display({"file_url": "blob://runtime-artifact/screen-1"}, _deps())
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:151:        "file_url": "blob://runtime-artifact/screen-1",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:155:    assert durable["display_files"][0]["url"] == "blob://runtime-artifact/screen-1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:160:    assert _exec_display({"file_url": "blob://user-file/x"}, _deps(user_id=""))["success"] is False
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:176:    result = _exec_display({"file_url": "blob://user-file/missing"}, _deps())
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:145:                "function": {"name": "display", "arguments": '{"file_url":"blob://x/y"}'},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:171:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:192:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:227:                        "file_url": "blob://runtime-artifact/screen",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:277:                            "arguments": '{"file_url":"blob://runtime-artifact/screen"}',
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:306:    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:333:        '"artifacts":[{"uri":"blob://runtime-artifact/screen-1",'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:335:        '"access":{"display":{"args":{"file_url":"blob://runtime-artifact/screen-1"}}}}]}\n'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:337:        'Access: display(file_url="blob://runtime-artifact/screen-1")'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:353:                            "file_url": "blob://runtime-artifact/screen-1",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:417:                    "arguments": '{"file_url":"blob://runtime-artifact/screen-1","modality":"image"}',
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:456:    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen-1")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:461:        'display(file_url="blob://runtime-artifact/screen-1")'
+docs/roadmap/tickets/PR-220-cortex-payload-base64-residue-review.md:60:  `/v1/blobs/uploads` and out of `base64` encoding.
+novaic-cortex/tests/test_step_index_outcome.py:21:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:65:        "artifacts": [{"url": "blob://user-file/img.png", "filename": "img.png"}],
+novaic-cortex/tests/test_step_index_outcome.py:176:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:181:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:182:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:184:    assert await ws.read_payload(path, "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_step_index_outcome.py:185:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:187:    assert manifest["blob_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:301:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:303:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:332:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:334:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:458:            "artifacts": [{"uri": "blob://runtime-artifact/img"}],
+docs/roadmap/tickets/PR-205-delete-file-service-legacy-paths-and-guards.md:42:- Blob Service active API now exposes only `/v1/blobs/*`; the retired facade,
+novaic-agent-runtime/task_queue/utils/step_result_client.py:33:    url = f"{base_url}/v1/blobs/{quote(parsed.namespace, safe='')}/{quote(parsed.blob_id, safe='')}"
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:26:- App sends upload bytes through Blob multipart and receives `blob://...`.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:37:    `blob://`.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:40:  - Verification: upload/register calls Blob Service `/v1/blobs`; no new
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:75:  `blob://...` value as the display locator.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:76:- App Rust cache commands now fetch `blob://...` refs through
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:77:  `/blob/v1/blobs/{namespace}/{blob_id}` and reject non-Blob file references.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:82:  `blob://...` and defaults `storage_backend` to `blob-service`.
+docs/roadmap/tickets/PR-203-app-gateway-blob-attachment-access.md:84:  blob://...` and reject non-Blob attachment locators.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:18:workspace/scope objects only through Blob Service.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:31:- Add `BlobCortexStore` implementing `CortexStore` over Blob Service object APIs.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:32:- Switch `WorkspaceRegistry` to create `BlobCortexStore` per user.
+docs/roadmap/tickets/PR-204-blob-historical-data-migration-or-purge.md:41:- Historical legacy refs were purged rather than converted because current product paths already write `blob://...`; keeping old attachment refs would require runtime compatibility.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:19:disk or OSS behind a product-agnostic Blob API and returns `blob://...` refs.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:24:- [x] PR-200B — Add `/v1/blobs/*` put/get/stat/presign endpoints backed by the existing storage backend.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:27:- [x] PR-200E — Update contract and smoke scripts so validation exercises `/v1/blobs`.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:41:- [x] Storage service smoke passes locally against `/v1/blobs`.
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:47:- Added Blob create/info/read/presign/delete routes. They return `blob://...`
+docs/roadmap/tickets/PR-200-blob-service-foundation.md:50:  `/v1/blobs/*` and `/v1/objects/*` only. PR-216 later removed the temporary
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:14:Make `blob://{namespace}/{blob_id}` the only new large-object reference shape across services.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:32:- New large-object refs use `blob://`.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:45:- New ResourceRefs must use owner `blob-service` and a `blob://...` locator.
+docs/roadmap/tickets/PR-201-unified-resource-ref-blob-uri.md:48:- Business entity schema now includes guard constraints for `environment-resource-refs`: `owner = 'blob-service'` and `locator LIKE 'blob://%'`.
+docs/roadmap/tickets/PR-206-blob-e2e-smoke-and-deployment.md:59:  `blob://user-file/1777870667418-ffa72a140a2254f70ec778c1`.
+docs/roadmap/tickets/PR-216-remove-base64-blob-upload.md:38:  - Blob Service `POST /v1/blobs`
+docs/roadmap/tickets/PR-211-blob-large-file-multipart-audio-review.md:23:- Blob refs use `blob://{namespace}/{blob_id}`.
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:23:- Keep stable `blob://...` metadata invisible until complete.
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:42:  - `POST /v1/blobs/uploads`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:43:  - `GET /v1/blobs/uploads`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:44:  - `GET /v1/blobs/uploads/{session_id}`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:45:  - `PUT /v1/blobs/uploads/{session_id}/parts/{part_number}`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:46:  - `POST /v1/blobs/uploads/{session_id}/complete`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:47:  - `POST /v1/blobs/uploads/{session_id}/abort`
+docs/roadmap/tickets/PR-212-blob-multipart-contract-backend.md:48:  - `POST /v1/blobs/uploads/_expire`
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:19:                uri="blob://runtime-artifact/abc",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:26:                access={"display": {"tool": "display", "args": {"file_url": "blob://runtime-artifact/abc"}}},
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:37:    assert result["artifacts"][0]["uri"] == "blob://runtime-artifact/abc"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:64:        ({"uri": "blob://x/y", "modality": "unknown"}, "invalid artifact modality"),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:65:        ({"uri": "blob://x/y", "modality": "image", "size_bytes": -1}, "size_bytes"),
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:6:> may be externalized to Blob Service behind explicit `blob://cortex-payload/...`
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:29:- [x] PR-202B — Write large tool payloads to Blob Service and store `blob://cortex-payload/...` in Cortex.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:46:- [x] Smoke-level unit: large payload produces observation plus `blob://cortex-payload/...`.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:53:- `Workspace.write_step` updates both `step.payload_ref` and `step.observation.payload_ref` to the returned `blob://cortex-payload/...` ref when externalized.
+docs/roadmap/tickets/PR-199-blob-service-contract-domain-model.md:31:- Shared contract defines `blob://{namespace}/{blob_id}`.

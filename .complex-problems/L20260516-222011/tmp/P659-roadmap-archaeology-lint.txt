@@ -1,0 +1,1 @@
+lint_roadmap_ticket_archaeology: historical retired-path tickets are fenced

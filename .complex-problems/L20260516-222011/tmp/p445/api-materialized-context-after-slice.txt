@@ -1,0 +1,66 @@
+        scope_id=target_scope_id,
+        message=message,
+        idempotency_key=idempotency_key,
+    )
+
+
+@app.post("/v1/context/read")
+async def context_read(req: ContextScopeRequest):
+    """Read the materialized context.jsonl projection for diagnostics/idempotency.
+
+    This endpoint is not the LLM prepare source. LLM requests use
+    ``/v1/context/prepare_for_llm`` and the ContextEvent read model.
+    """
+    ws = _get_workspace(req.user_id, req.agent_id)
+    scope_path = await _resolve_scope_path(
+        ws,
+        req.scope_id,
+        scope_path=req.scope_path,
+        include_archived=True,
+    )
+    messages = await ws.read_context(scope_path)
+    return {"messages": messages}
+
+
+@app.post("/v1/context/append")
+async def context_append(req: ContextAppendRequest):
+    """Append a ContextEvent and materialize its context.jsonl projection."""
+    # The materialized context projection uses append-line writes; serialize per
+    # root scope to prevent concurrent projection updates losing lines.
+    async with _scope_lock_cm(req.user_id, req.agent_id, req.scope_id, op="context_append"):
+        ws = _get_workspace(req.user_id, req.agent_id)
+        scope_path = await _resolve_scope_path(
+            ws,
+            req.scope_id,
+            scope_path=req.scope_path,
+            include_archived=False,
+        )
+        await _append_context_message_event(
+            req,
+            ws,
+            scope_path=scope_path,
+            message=req.message,
+            idempotency_key=req.event_idempotency_key,
+        )
+        await ws.append_context_projection(scope_path, req.message)
+    return {"ok": True}
+
+
+@app.post("/v1/context/batch")
+async def context_batch(req: ContextBatchRequest):
+    """Batch append ContextEvents and materialize their context.jsonl projection."""
+    async with _scope_lock_cm(req.user_id, req.agent_id, req.scope_id, op="context_batch"):
+        ws = _get_workspace(req.user_id, req.agent_id)
+        scope_path = await _resolve_scope_path(
+            ws,
+            req.scope_id,
+            scope_path=req.scope_path,
+            include_archived=False,
+        )
+        keys = req.event_idempotency_keys or [None] * len(req.messages)
+        for message, idempotency_key in zip(req.messages, keys):
+            await _append_context_message_event(
+                req,
+                ws,
+                scope_path=scope_path,
+                message=message,

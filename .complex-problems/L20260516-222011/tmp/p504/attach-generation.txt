@@ -1,0 +1,314 @@
+# attach-generation
+pattern: SESSION_ATTACH_INPUT|expected_session_generation|session_generation|generation_checked|without generation|no generation
+command: rg -n --hidden --glob '!*.pyc' --glob '!__pycache__/**' --glob '!.venv/**' --glob '!.git/**' -S 'SESSION_ATTACH_INPUT|expected_session_generation|session_generation|generation_checked|without generation|no generation' novaic-agent-runtime/queue_service novaic-agent-runtime/task_queue novaic-agent-runtime/tests novaic-agent-runtime/main_novaic.py novaic-agent-runtime/scripts
+
+novaic-agent-runtime/queue_service/session_outbox.py:8:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/queue_service/session_outbox.py:9:    require_positive_session_generation_value,
+novaic-agent-runtime/queue_service/session_outbox.py:203:        session_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_outbox.py:204:            payload.get("session_generation"),
+novaic-agent-runtime/queue_service/session_outbox.py:220:                "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_outbox.py:242:        expected_generation = payload.get("expected_session_generation")
+novaic-agent-runtime/queue_service/session_outbox.py:245:                "attach input outbox payload requires expected_session_generation"
+novaic-agent-runtime/queue_service/session_outbox.py:247:        expected_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_outbox.py:256:            TaskTopics.SESSION_ATTACH_INPUT,
+novaic-agent-runtime/queue_service/session_outbox.py:263:                "expected_session_generation": expected_generation,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:17:from ..contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:128:        session_generation: int | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:141:        if session_generation is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:142:            payload["session_generation"] = require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:143:                session_generation,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:26:from task_queue.contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:79:    session_generation = require_positive_session_generation(payload, "cortex.scope_end")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:105:        scope_id, session_generation, finalize_reason, round_num,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:114:            session_generation=session_generation,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:170:        "session_generation": session_generation,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:14:from ..contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:26:def _positive_session_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:28:        return require_positive_session_generation_value(value, owner)
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:65:    session_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:66:        payload.get("session_generation"),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:110:        current_session_generation=session_generation,
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:238:@register_handler(TaskTopics.SESSION_ATTACH_INPUT)
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:253:    expected_generation = payload.get("expected_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:266:        raise ValidationError("Missing required field: expected_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:267:    expected_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:269:        "session.attach_input.expected_session_generation",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:288:    current_generation = root_meta.get("current_session_generation")
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:289:    current_generation = _positive_session_generation(
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:291:        "session.attach_input.current_session_generation",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:295:            "Stale session.attach_input: current_session_generation does not match expected"
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:322:        "session_generation": expected_generation,
+novaic-agent-runtime/tests/test_pr260_session_harness_generic_fsm_cutover.py:41:    assert "def _session_generation" not in repo_source
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:12:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:66:        require_positive_session_generation(payload, owner)
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:79:        session_generation: int
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:123:        session_generation: int
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:46:def test_attach_input_requires_generation_checked_contract():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:51:    assert "Missing required field: expected_session_generation" in runtime_handlers
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:52:    assert "current_session_generation does not match expected" in runtime_handlers
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:53:    assert "requires expected_session_generation" in session_outbox
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:32:        session_generation=2,
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:42:        "session_generation": 2,
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:59:        session_generation=2,
+novaic-agent-runtime/task_queue/contracts/session_generation.py:8:def require_positive_session_generation_value(raw: Any, owner: str) -> int:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:12:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:20:                f"positive session_generation is required for {owner}"
+novaic-agent-runtime/task_queue/contracts/session_generation.py:23:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:26:        raise ValueError(f"positive session_generation is required for {owner}")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:30:def require_positive_session_generation(ctx: dict[str, Any], owner: str) -> int:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:33:    if "session_generation" not in ctx or ctx.get("session_generation") is None:
+novaic-agent-runtime/task_queue/contracts/session_generation.py:34:        raise ValueError(f"{owner}.session_generation is required")
+novaic-agent-runtime/task_queue/contracts/session_generation.py:35:    return require_positive_session_generation_value(ctx["session_generation"], owner)
+novaic-agent-runtime/task_queue/contracts/react_think.py:15:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/task_queue/contracts/react_think.py:16:    require_positive_session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:17:    require_positive_session_generation_value,
+novaic-agent-runtime/task_queue/contracts/react_think.py:26:    session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_think.py:42:            "session_generation",
+novaic-agent-runtime/task_queue/contracts/react_think.py:43:            require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/contracts/react_think.py:44:                self.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:61:            session_generation=require_positive_session_generation(ctx, "ReactThinkInput"),
+novaic-agent-runtime/task_queue/contracts/react_think.py:108:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:128:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:184:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:220:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:333:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:358:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:386:            "session_generation": source.session_generation,
+novaic-agent-runtime/queue_service/session_recovery.py:19:def _positive_session_generation(raw: Any) -> int | None:
+novaic-agent-runtime/queue_service/session_recovery.py:93:    session_generation = _positive_session_generation(event.get("generation"))
+novaic-agent-runtime/queue_service/session_recovery.py:94:    if session_generation is not None:
+novaic-agent-runtime/queue_service/session_recovery.py:95:        marker["session_generation"] = session_generation
+novaic-agent-runtime/queue_service/session_recovery.py:153:    session_generation = _positive_session_generation(
+novaic-agent-runtime/queue_service/session_recovery.py:154:        recovery_marker.get("session_generation")
+novaic-agent-runtime/queue_service/session_recovery.py:156:    if not failed_scope_id or session_generation is None:
+novaic-agent-runtime/queue_service/session_recovery.py:175:            "session_generation": session_generation,
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:65:        "session_generation": 1,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:12:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/task_queue/contracts/react_actions.py:13:    require_positive_session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:14:    require_positive_session_generation_value,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:22:    session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_actions.py:39:            "session_generation",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:40:            require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/contracts/react_actions.py:41:                self.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:58:            session_generation=require_positive_session_generation(ctx, "ReactActionsInput"),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:373:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:417:            "session_generation": source.session_generation,
+novaic-agent-runtime/queue_service/session_effects.py:8:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/queue_service/session_effects.py:9:    require_positive_session_generation_value,
+novaic-agent-runtime/queue_service/session_effects.py:21:    session_generation: int,
+novaic-agent-runtime/queue_service/session_effects.py:36:            "generation": session_generation,
+novaic-agent-runtime/queue_service/session_effects.py:60:    expected_session_generation: int,
+novaic-agent-runtime/queue_service/session_effects.py:64:    expected_generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/session_effects.py:65:        expected_session_generation,
+novaic-agent-runtime/queue_service/session_effects.py:80:            "expected_session_generation": expected_generation,
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:64:            "session_generation": 1,
+novaic-agent-runtime/queue_service/session_wake_plan.py:43:    session_generation: int,
+novaic-agent-runtime/queue_service/session_wake_plan.py:66:        "session_generation": session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:83:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:98:    session_generation: int,
+novaic-agent-runtime/queue_service/session_wake_plan.py:105:        session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_wake_plan.py:120:            session_generation=session_generation,
+novaic-agent-runtime/task_queue/topics.py:22:    SESSION_ATTACH_INPUT = "session.attach_input"
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:12:        "session_generation": 1,
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:17:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:36:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:72:def _session_generation(ctx) -> int:
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:73:    return require_positive_session_generation(ctx, "wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:93:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:112:        "generation": _session_generation(ctx),
+novaic-agent-runtime/queue_service/saga_repo.py:38:from task_queue.contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/queue_service/saga_repo.py:1124:def _positive_session_generation_from_context(context: Dict[str, Any]) -> int | None:
+novaic-agent-runtime/queue_service/saga_repo.py:1125:    raw = context.get("session_generation")
+novaic-agent-runtime/queue_service/saga_repo.py:1288:        session_generation = _positive_session_generation_from_context(context)
+novaic-agent-runtime/queue_service/saga_repo.py:1289:        if not scope_id or not agent_id or session_generation is None:
+novaic-agent-runtime/queue_service/saga_repo.py:1296:            "session_generation": session_generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1383:            generation = require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:13:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:56:    payload["session_generation"] = require_positive_session_generation(
+novaic-agent-runtime/queue_service/session_rebuild.py:30:            session_generation = _positive_session_generation(
+novaic-agent-runtime/queue_service/session_rebuild.py:31:                context.get("session_generation")
+novaic-agent-runtime/queue_service/session_rebuild.py:33:            if not agent_id or not subagent_id or session_generation is None:
+novaic-agent-runtime/queue_service/session_rebuild.py:38:                generation=session_generation,
+novaic-agent-runtime/queue_service/session_rebuild.py:50:def _positive_session_generation(raw: Any) -> int | None:
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:55:    assert marker["session_generation"] == 4
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:118:            "session_generation": 4,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:148:        recovery_marker={**marker, "session_generation": 0},
+novaic-agent-runtime/queue_service/session_ledger.py:205:        generation = self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:280:        generation = self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:326:            generation=self.session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:458:    def session_generation(
+novaic-agent-runtime/queue_service/session_ledger.py:568:        generation = self.session_generation(
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:131:    assert outbox[0]["payload"]["expected_session_generation"] == 7
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:149:    assert json.loads(row[1])["expected_session_generation"] == 7
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:164:            "session_generation": 5,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:43:        "session_generation": 2,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:57:        "session_generation": 2,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:67:    assert call_payload["session_generation"] == 2
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:72:def test_react_think_requires_positive_session_generation():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:73:    with pytest.raises(ValueError, match="ReactThinkInput.session_generation is required"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:76:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:77:        ReactThinkInput.from_context({"scope_id": "wake-1", "session_generation": 0})
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:79:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:80:        ReactThinkInput(scope_id="wake-1", session_generation=0)
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:86:        "session_generation": 1,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:117:        "session_generation": 1,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:202:        "session_generation": 1,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:220:        "session_generation": 1,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:265:def test_react_actions_requires_positive_session_generation():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:266:    with pytest.raises(ValueError, match="ReactActionsInput.session_generation is required"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:269:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:270:        ReactActionsInput.from_context({"scope_id": "wake-1", "session_generation": 0})
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:272:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:273:        ReactActionsInput(scope_id="wake-1", session_generation=0)
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:279:        "session_generation": 4,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:302:    assert payload["context"]["session_generation"] == 4
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:305:def test_react_contracts_do_not_default_session_generation_to_zero():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:309:    assert "session_generation: int = 0" not in think_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:310:    assert "session_generation: int = 0" not in actions_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:311:    assert 'ctx.get("session_generation") or 0' not in think_source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:312:    assert 'ctx.get("session_generation") or 0' not in actions_source
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:24:        session_generation=2,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:64:        expected_session_generation=3,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:75:            "expected_session_generation": 3,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:99:            expected_session_generation=1,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:107:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:119:            expected_session_generation=bad_generation,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:135:        expected_session_generation="3",
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:138:    assert effect["payload"]["expected_session_generation"] == 3
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:145:    with pytest.raises(ValueError, match="requires expected_session_generation"):
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:161:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:169:                "expected_session_generation": True,
+novaic-agent-runtime/queue_service/session_repo.py:328:                session_generation = self.session_ledger.next_generation(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:343:                    session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:376:        session_generation = self._next_session_generation_after_transaction(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:388:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:407:        session_generation: int,
+novaic-agent-runtime/queue_service/session_repo.py:434:            session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:626:            session_generation = self.session_ledger.next_generation(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:631:                session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:925:            session_generation = _require_positive_generation(
+novaic-agent-runtime/queue_service/session_repo.py:942:                expected_session_generation=session_generation,
+novaic-agent-runtime/queue_service/session_repo.py:1068:    def _next_session_generation_after_transaction(self, session_key: str) -> int:
+novaic-agent-runtime/tests/test_pr234_tool_logical_failure.py:54:        ReactActionsInput(scope_id="wake-1", session_generation=1, round_num=2),
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:12:def test_session_init_persists_current_session_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:35:            "session_generation": 7,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:43:    assert first_meta_call.kwargs["current_session_generation"] == 7
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:46:def test_session_init_rejects_bool_session_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:55:    with pytest.raises(ValidationError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:63:                "session_generation": True,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:77:        "current_session_generation": 2,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:90:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:111:    with pytest.raises(ValidationError, match="expected_session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:138:    with pytest.raises(ValidationError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:144:                "expected_session_generation": True,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:171:                "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:190:        "current_session_generation": 2,
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:197:    with pytest.raises(ValidationError, match="current_session_generation"):
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:203:                "expected_session_generation": 1,
+novaic-agent-runtime/queue_service/session_projection.py:110:    session_generation: int,
+novaic-agent-runtime/queue_service/session_projection.py:121:        "session_generation": session_generation,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:49:        "session_generation": 1,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:82:    assert bridge.scope_end.call_args.kwargs["session_generation"] == 1
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:200:def test_scope_end_requires_positive_session_generation_before_archive(mock_get_bridge, _rm):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:204:    with pytest.raises(ValueError, match="cortex.scope_end.session_generation is required"):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:210:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:216:                "session_generation": 0,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:245:        session_generation=7,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:261:            "session_generation": 7,
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:270:def test_cortex_bridge_scope_end_rejects_bool_session_generation():
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:278:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:282:            session_generation=True,
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:44:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:80:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:116:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:127:        session_generation=1,
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:20:        session_generation=2,
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:58:        session_generation=3,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:42:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:60:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:80:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:89:def test_saga_payload_requires_positive_session_generation(bad_generation):
+novaic-agent-runtime/tests/test_session_init_message_ids.py:97:        ctx["session_generation"] = bad_generation
+novaic-agent-runtime/tests/test_session_init_message_ids.py:99:    with pytest.raises(ValueError, match="session_generation"):
+novaic-agent-runtime/tests/test_session_init_message_ids.py:150:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:178:        "session_generation": 1,
+novaic-agent-runtime/tests/test_session_init_message_ids.py:198:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:70:        session_generation=1,
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:97:        session_generation=1,
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:101:        "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:77:            "session_generation": 1,
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:222:            lambda: ledger.session_generation(
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:33:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:155:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:170:        session_generation=1,
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:25:        if topic == TaskTopics.SESSION_ATTACH_INPUT and self.fail_attach:
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:120:    assert outbox[0]["payload"]["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:144:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:148:    assert task[0] == TaskTopics.SESSION_ATTACH_INPUT
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:153:    assert task_payload["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:203:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:219:        (TaskTopics.SESSION_ATTACH_INPUT,),
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:306:    assert "TaskTopics.SESSION_ATTACH_INPUT" not in source
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:131:        "current_session_generation": 1,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:150:            "expected_session_generation": 1,
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:199:            "session_generation": 1,
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:69:            "session_generation": 7,
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:88:    assert context["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:96:    assert _build_cortex_scope_end_payload(context)["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:113:    assert finalize["context"]["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:138:        context["session_generation"] = bad_generation
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:165:            "session_generation": 7,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:24:        "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:31:        "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:42:        "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:49:        "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:67:            assert "wake_finalize.session_generation is required" in str(exc)
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:69:            raise AssertionError("builder accepted missing session_generation")
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:72:            builder({**base, "session_generation": 0})
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:74:            assert "positive session_generation" in str(exc)
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:76:            raise AssertionError("builder accepted non-positive session_generation")
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:90:            "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:101:    assert "session_generation" not in updates
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:111:            "session_generation": 3,
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:124:    assert "session_generation" not in updates
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:144:        ({"scope_id": "scope-current"}, "session_generation is required"),
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:145:        ({"scope_id": "scope-current", "session_generation": 0}, "positive session_generation"),
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:147:            {"scope_id": "scope-current", "session_generation": "not-an-int"},
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:148:            "positive session_generation",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:280:        "session_generation": 7,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:292:    assert scope_end_payload["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:300:    assert sleeping_payload["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:309:    assert completed_payload["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:324:    with pytest.raises(ValueError, match="session_generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:326:    with pytest.raises(ValueError, match="session_generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:328:    with pytest.raises(ValueError, match="session_generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:330:    with pytest.raises(ValueError, match="session_generation is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:333:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:336:            "session_generation": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:345:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:365:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:368:            "session_generation": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:370:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:373:            "session_generation": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:375:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:378:            "session_generation": 0,
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:29:        "session_generation": 1,
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:44:        "session_generation": 1,
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:62:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:170:    assert archive_payload["session_generation"] == 1
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:199:        payload["session_generation"] = bad_generation
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:202:    with pytest.raises(ValueError, match="positive session_generation"):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:223:                "session_generation": 1,
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:269:    assert archive_payload["session_generation"] == 1
+novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py:16:    def session_generation(self, *, session_key: str, active_scope_id: str | None):
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:56:def test_session_rebuild_skips_missing_session_generation(tmp_path):
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:79:def test_session_rebuild_skips_invalid_session_generation(
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:91:            "session_generation": bad_generation,
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:105:def test_session_rebuild_projects_only_positive_explicit_session_generation(tmp_path):
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:114:            "session_generation": 3,
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:124:            "session_generation": "4",
+novaic-agent-runtime/tests/test_no_tool_warning.py:51:        "session_generation": 1,
+novaic-agent-runtime/tests/test_no_tool_warning.py:66:        "session_generation": 1,
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:106:    assert task_payload["expected_session_generation"] == 1
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:110:    assert effect["payload"]["context"]["session_generation"] == 1
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:37:        "session_generation": 1,

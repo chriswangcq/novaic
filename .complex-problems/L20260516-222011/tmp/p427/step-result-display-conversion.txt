@@ -1,0 +1,46 @@
+        # 把 files_created 的 URL 写入文本
+        files_created = raw.get("files_created") or []
+        if files_created and isinstance(files_created, list):
+            urls = [f.get("url") for f in files_created if isinstance(f, dict) and f.get("url")]
+            if urls:
+                text_parts.append(f"file_url: {urls[0]}" if len(urls) == 1 else f"file_urls: {', '.join(urls)}")
+        return {
+            "text": "\n".join(text_parts),
+            "files_created": files_created,
+            "display_files": raw.get("display_files") or [],
+        }
+
+    # 2. MCP 格式 content 数组
+    content = raw.get("content") or raw.get("_mcp_content")
+    if isinstance(content, list):
+        text_parts = []
+        display_files = []
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+            t = item.get("type", "")
+            if t == "text":
+                text_parts.append(item.get("text", ""))
+            elif t == "image":
+                # 支持 URL 形式或直接的 data(base64) 形式
+                if item.get("url"):
+                    display_files.append({
+                        "url": item["url"],
+                        "filename": "",
+                        "modality": "image",
+                    })
+                elif item.get("data"):
+                    mime = item.get("mimeType", "image/png")
+                    display_files.append({
+                        "url": f"data:{mime};base64,{item['data']}",
+                        "filename": "",
+                        "modality": "image",
+                    })
+            elif t == "resource":
+                if item.get("url"):
+                    display_files.append({
+                        "url": item["url"],
+                        "filename": "",
+                        "modality": "resource",
+                    })
+        return {

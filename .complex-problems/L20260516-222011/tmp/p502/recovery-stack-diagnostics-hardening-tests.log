@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.7, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/wangchaoqun/new-build-novaic/novaic-agent-runtime
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-4.1.0, asyncio-1.3.0, mock-3.12.0, langsmith-0.3.42
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 37 items
+
+tests/test_pr245_suspected_dead_recovery.py .....                        [ 13%]
+tests/test_pr247_recovery_outbox_cutover.py .........                    [ 37%]
+tests/test_pr254_finalize_ownership.py ...........                       [ 67%]
+tests/test_pr255_legacy_compat_cleanup.py .....                          [ 81%]
+tests/test_pr266_session_recovery_boundary.py .......                    [100%]
+
+============================== 37 passed in 0.35s ==============================

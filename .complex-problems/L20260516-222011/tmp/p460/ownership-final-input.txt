@@ -1,0 +1,181 @@
+--- P458 R447 ---
+# T451 Result: Session outbox effect inventory
+
+## Summary
+
+Mapped the current session outbox side-effect model. `tq_session_outbox` is the durable row store, `SessionOutboxDispatcher` owns supported effect delivery, and the active effect set is `create_wake_saga`, `recovery_archive_scope`, and `publish_attach_input`. Raw guard output is saved for downstream bypass classification.
+
+## Artifacts
+
+- Guard output: `.complex-problems/L20260516-222011/tmp/p458/session-outbox-inventory-guards.txt` (`2061` lines).
+
+## Durable Store
+
+- `novaic-agent-runtime/queue_service/db/schema.py:384` documents `tq_session_outbox` as the durable side-effect ledger.
+- `novaic-agent-runtime/queue_service/db/schema.py:386` defines `tq_session_outbox`.
+- Identity and dispatch fields:
+  - `session_key`, `agent_id`, `subagent_id`, `user_id`: `schema.py:388-391`.
+  - `generation`: `schema.py:392`.
+  - `effect_type`, `payload`, `idempotency_key`, `status`, attempts/errors, timestamps: `schema.py:393-402`.
+  - pending/session/idempotency indexes: `schema.py:405-410`.
+
+## Effect Types
+
+| Effect | Owner/Builder | Delivery Handler | Boundary |
+| --- | --- | --- | --- |
+| `create_wake_saga` | `session_wake_plan.py:76-89` and `session_wake_plan.py:113-126` build durable effects through `build_create_wake_saga_effect`. | `session_outbox.py:140-141` dispatches to `_publish_create_wake_saga`; `session_outbox.py:149+` validates payload and calls saga creation. | Creates a wake saga, then applies wake-created observation through `SessionObservedEventHandler`. |
+| `recovery_archive_scope` | `session_repo.py:451-458` appends a recovery archive effect when a recovery marker is present. | `session_outbox.py:142-144` dispatches to `_publish_recovery_archive`; `session_outbox.py:190+` publishes `TaskTopics.CORTEX_SCOPE_END`. | Archives recovered/old scope with explicit `session_generation`, reason, and remaining stack. |
+| `publish_attach_input` | `session_repo.py:929-943` builds attach input effects through `build_attach_input_effect`. | `session_outbox.py:145-146` dispatches to `_publish_attach_input`; `session_outbox.py:224+` publishes `TaskTopics.SESSION_ATTACH_INPUT`. | Attaches new input to active wake with `expected_session_generation`. |
+
+## Dispatcher / Worker Flow
+
+- `SessionOutboxDispatcher` states that the outbox row is durable authority and publish is idempotent through row idempotency key: `session_outbox.py:21-27`.
+- Supported effect list is explicit: `session_outbox.py:29-37`.
+- `drain_pending(...)` lists pending rows via ledger and marks publish/failure/dead-letter: `session_outbox.py:59-90`.
+- `publish_effect(...)` can publish a single row but still reads the durable row first and acks through the ledger: `session_outbox.py:92-118`.
+- `_publish_and_ack(...)` publishes then marks row published: `session_outbox.py:120-127`.
+- `SessionOutboxHandler` exposes the generic worker job `session_outbox_drain` and delegates to dispatcher: `session_outbox_worker.py:13-58`.
+
+## Observed Wake-Created Boundary
+
+- `SessionObservedEventHandler.apply_wake_created(...)` applies the saga creation result back into session state.
+- It validates `session_key`, `agent_id`, `subagent_id`, positive `generation`, and starting state before recording active session.
+- It cancels race-loser/stale sagas instead of silently activating them.
+- This is an observed-result handler below `create_wake_saga` delivery, not a separate supported outbox effect in the current active list.
+
+## Initial Flags for P459
+
+- `SessionOutboxDispatcher.OBSERVE_CREATE_WAKE_SAGA` constant still exists but is not included in `SUPPORTED_EFFECT_TYPES`; tests mention it as removed/unsupported behavior. P459 should classify whether this constant is harmless test guard residue or removable source residue.
+- `_publish_create_wake_saga` contains a direct `saga_orchestrator.create(...)` call inside the outbox dispatcher. P459 should classify it as a safe implementation detail below the durable row or a bypass risk.
+- `_publish_recovery_archive` and `_publish_attach_input` contain direct `queue.publish(...)` calls inside the outbox dispatcher. P459 should classify them as safe implementation details below the durable row or bypass risks.
+
+## Changes
+
+No source changes were made. This was a read-only inventory.
+
+--- P459 R452 ---
+# T452 Result: Session direct side-effect bypass classification
+
+## Summary
+
+Completed session direct side-effect bypass classification. Dispatcher-internal direct calls are safe below durable outbox ownership, obsolete observed-wake production residue was removed, and the final side-effect bypass guard found no dangerous live bypass in checked scope.
+
+## Child Results
+
+- P461 / R448 / C474: dispatcher direct calls classified as safe implementation details below durable outbox rows.
+- P462 / R449+R450 / C477: observed-wake outbox residue found, removed through P464, and rechecked successful.
+- P463 / R451 / C478: final side-effect bypass guard passed; focused tests `33 passed`.
+
+## Changes
+
+- Removed `SessionOutboxDispatcher.OBSERVE_CREATE_WAKE_SAGA` from production source.
+- Updated observed-wake negative tests to use test-local `OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT`.
+
+## Evidence
+
+- P461 guard: `.complex-problems/L20260516-222011/tmp/p461/dispatcher-direct-call-guard.txt`.
+- P464 after guard: `.complex-problems/L20260516-222011/tmp/p464/observe-wake-after.txt`.
+- P463 final guard: `.complex-problems/L20260516-222011/tmp/p463/side-effect-bypass-final-guard.txt`.
+- P463 focused tests: `33 passed in 0.24s`.
+- P464 focused tests: `13 passed in 0.18s`.
+
+## Classification
+
+- Direct calls inside `SessionOutboxDispatcher`: safe below durable row ownership.
+- Old observed-wake effect constant in production: removed residue.
+- Generic routes/handlers caught by broad guard: safe non-session APIs with policy validation, not session side-effect bypasses.
+- Saga outbox internals: separate durable saga outbox model, not session outbox bypass.
+
+## Residual Risk
+
+No P459 direct side-effect bypass gap remains in checked scope.
+
+--- P463 R451 ---
+# T456 Result: Side-effect bypass final guard
+
+## Summary
+
+Ran final session side-effect bypass guards and focused outbox tests after observed-wake cleanup. No dangerous live bypass remains in the checked session side-effect ownership scope. Focused tests passed with `33 passed`.
+
+## Artifacts
+
+- Guard output: `.complex-problems/L20260516-222011/tmp/p463/side-effect-bypass-final-guard.txt` (`92` lines).
+- Focused test log: `.complex-problems/L20260516-222011/tmp/p463/side-effect-bypass-focused-tests.log`.
+- Focused test exit: `.complex-problems/L20260516-222011/tmp/p463/side-effect-bypass-focused-tests.exit` = `0`.
+
+## Test Evidence
+
+```text
+33 passed in 0.24s
+```
+
+Covered tests:
+
+- `tests/test_pr251_wake_creation_outbox_cutover.py`
+- `tests/test_pr248_attach_outbox_cutover.py`
+- `tests/test_pr247_recovery_outbox_cutover.py`
+- `tests/test_pr249_observed_wake_outbox_cleanup.py`
+- `tests/test_pr250_observed_wake_effect_rename.py`
+- `tests/test_pr267_session_outbox_effect_boundary.py`
+
+## Retained Hit Classification
+
+| Hit Category | Representative References | Classification |
+| --- | --- | --- |
+| Generic task publish route | `queue_service/routes.py:216-227` | Generic task queue API, not session side-effect ownership. |
+| Generic saga create route | `queue_service/routes.py:365-377` | Safe generic API with `reject_session_owned_saga_type(...)`; session-owned wake saga creation cannot bypass session outbox through this route. |
+| Generic saga trigger handler | `task_queue/handlers/saga_handlers.py:59-75` | Generic handler with `validate_saga_trigger_type(...)`; not a session-specific bypass. |
+| Session dispatcher direct calls | `session_outbox.py:185`, `session_outbox.py:212`, `session_outbox.py:255` | Already classified in P461 as safe implementation details below durable session outbox rows. |
+| Wake finalize saga definition | `task_queue/sagas/wake_finalize.py:131-141` | Saga step declaration, not a direct publish bypass. |
+| Saga outbox internal effect | `queue_service/saga_repo.py:1260-1265` | Saga outbox-owned internal effect, not session outbox bypass; separate saga outbox model. |
+| Worker assembly/main construction | `queue_service/main.py`, `task_queue/workers/assembly_factories.py` | Dependency assembly only. |
+| Observed-wake obsolete production string | final guard section empty | Removed by P464/P462. |
+
+## Conclusion
+
+Wake saga creation, attach input publishing, and recovery archive publishing are owned by `tq_session_outbox` rows plus `SessionOutboxDispatcher`. Retained direct calls are either below the dispatcher, generic non-session APIs with policy guards, saga-outbox internals, or assembly/test code.
+
+## Changes
+
+No source changes were made by P463. It verified the cleanup performed in P464 and classified retained guard hits.
+
+## Residual Risk
+
+No P463 side-effect bypass gap remains in the checked scope.
+
+--- P464 R450 ---
+# T455 Result: Remove observed wake outbox residue
+
+## Summary
+
+Removed the obsolete production `OBSERVE_CREATE_WAKE_SAGA` constant from `SessionOutboxDispatcher` and updated negative guard tests to use a test-local obsolete effect string. Focused observed-wake/wake-creation tests passed.
+
+## Changes
+
+- `novaic-agent-runtime/queue_service/session_outbox.py`
+  - Removed `OBSERVE_CREATE_WAKE_SAGA = "observe_create_wake_saga"`.
+- `novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py`
+  - Added test-local `OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT`.
+  - Updated negative assertions to use the test-local constant.
+- `novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py`
+  - Added test-local `OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT`.
+  - Updated negative assertions to use the test-local constant.
+- `novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py`
+  - Added test-local `OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT`.
+  - Updated negative assertion to use the test-local constant.
+
+## Evidence
+
+- After-cleanup guard: `.complex-problems/L20260516-222011/tmp/p464/observe-wake-after.txt`
+- Focused test log: `.complex-problems/L20260516-222011/tmp/p464/observe-wake-focused-tests.log`
+- Focused test exit: `.complex-problems/L20260516-222011/tmp/p464/observe-wake-focused-tests.exit` = `0`
+- Pytest summary: `13 passed in 0.18s`
+
+## Classification After Cleanup
+
+- Production hits for `OBSERVE_CREATE_WAKE_SAGA` / `observe_create_wake_saga`: none in `novaic-agent-runtime/queue_service`.
+- Remaining hits are test-local negative guards in three test files.
+
+## Residual Risk
+
+None for P464. P462 can now be rechecked after this follow-up closes.

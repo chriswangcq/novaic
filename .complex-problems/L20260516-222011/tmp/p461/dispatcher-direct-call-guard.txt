@@ -1,0 +1,66 @@
+--- dispatcher direct external calls ---
+59:    def drain_pending(
+66:        effects = self.ledger.list_pending_outbox(
+74:                self._publish_and_ack(effect)
+92:    def publish_effect(self, outbox_id: str) -> dict[str, Any]:
+100:        effect = self.ledger.get_outbox(outbox_id)
+111:            publish_result = self._publish_and_ack(effect)
+120:    def _publish_and_ack(self, effect: dict[str, Any]) -> dict[str, Any]:
+123:        self.ledger.mark_outbox_published(
+131:        return self.ledger.mark_outbox_failed(
+186:        saga_id = self.saga_orchestrator.create(
+213:        self.queue.publish(
+256:        task_id = self.queue.publish(
+
+--- focused tests for dispatcher delivery ---
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:15:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:59:    dispatcher = SessionOutboxDispatcher(
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:78:        return repo.outbox_dispatcher.drain_pending(session_key=session_key)
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:79:    return repo.outbox_dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:80:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:108:    assert orchestrator.drain_pending_effects() == {
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:134:        if effect["effect_type"] == SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:250:    drain_failed = dispatcher.drain_pending(session_key=session_key)
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:260:    drain_result = dispatcher.drain_pending(session_key=session_key)
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:13:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:18:        effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:33:        "effect_type": SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:54:        effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:68:        "effect_type": SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:89:            effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:104:    dispatcher = SessionOutboxDispatcher.__new__(SessionOutboxDispatcher)
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:120:    dispatcher = SessionOutboxDispatcher.__new__(SessionOutboxDispatcher)
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:14:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:59:    dispatcher = SessionOutboxDispatcher(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:101:    assert effect["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:112:    result = dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:113:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:128:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:133:        if row["effect_type"] == SessionOutboxDispatcher.OBSERVE_CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:150:    dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:151:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:180:        if effect["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:191:    dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:192:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:245:        if effect["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:249:    dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:250:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:287:    assert outbox[0]["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:293:    failed = dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:294:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:304:    result = dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:305:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:330:        effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:344:    result = dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:345:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:14:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:57:    dispatcher = SessionOutboxDispatcher(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:74:    return repo.outbox_dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:75:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:83:        if effect["effect_type"] == SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:122:    drain = dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:123:        effect_types=[SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:191:    failed_drain = dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:192:        effect_types=[SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:209:    drain = dispatcher.drain_pending(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:210:        effect_types=[SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT],

@@ -1,0 +1,12 @@
+novaic-cortex/novaic_cortex/sandbox.py:31:_EPHEMERAL_SANDBOX_MARKER = "novaic-cortex-sandbox-"
+novaic-cortex/novaic_cortex/sandbox.py:45:            "Cortex shell paths under novaic-cortex-sandbox-* are ephemeral. "
+docs/runtime/tool-chain-dispatch.md:47:environment variables). `novaic-cortex-sandbox-*` backing paths are internal
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:36:        "cat /tmp/novaic-cortex-sandbox-old/ro/active/scope/context.jsonl",
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:43:    assert "novaic-cortex-sandbox-*" in result.stderr
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:56:        'printf %s "/tmp/novaic-cortex-sandbox-old/rw/reply.md"',
+novaic-cortex/tests/test_sandbox_requires_mount_namespace.py:63:    assert "novaic-cortex-sandbox-*" in result.stderr
+novaic-cortex/tests/test_tool_schemas_limits.py:102:    assert "novaic-cortex-sandbox-*" in desc
+novaic-common/common/tools/llm_builtin.py:21:            "do not copy or reuse `novaic-cortex-sandbox-*` backing paths from "
+docs/cortex/state-authority-implementation-plan.md:184:- Temp backing-path language implying `/tmp/novaic-cortex-sandbox-*` stability.
+docs/cortex/sandbox-shell.md:27:Agent 可以把一次 shell 输出里的 `/cortex/ro/...` 或 `/cortex/rw/...` 路径复制到下一次 shell 调用继续 `cat` / `sed` / `find`。相反，`novaic-cortex-sandbox-*` 是内部 backing 路径，不属于稳定契约；shell 命令中出现这类路径会在执行前被拒绝，并提示改用 `/cortex/ro`、`/cortex/rw`、`$RO` 或 `$RW`。
+novaic-common/tests/test_tool_definitions_contract.py:34:    assert "do not copy or reuse `novaic-cortex-sandbox-*`" in description

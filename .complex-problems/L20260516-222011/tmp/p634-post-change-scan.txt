@@ -1,0 +1,46 @@
+=== command: rg -n "Workspace\.materialize|def materialize|\.materialize\(" novaic-cortex || true ===
+novaic-cortex/novaic_cortex/logical_fs.py:320:        substrate = self._provider.materialize(
+
+=== command: rg -n "/rw/scratch|test_workspace_materialize" novaic-cortex || true ===
+novaic-cortex/novaic_cortex/workspace.py:985:                "/rw/scratch",
+novaic-cortex/tests/test_wave4_metrics.py:29:    await cortex.tool_write("/rw/scratch/wave4.txt", "wave4")
+novaic-cortex/tests/test_wave4_metrics.py:30:    assert await cortex.tool_read("/rw/scratch/wave4.txt") == "wave4"
+novaic-cortex/tests/test_workspace_authority.py:16:    assert authority.key("/rw/scratch/a.txt") == "agents/agent-1/rw/scratch/a.txt"
+novaic-cortex/tests/test_cortex_chaos.py:76:            scratch_path = f"/rw/scratch/{sid}/chunk.txt"
+novaic-cortex/tests/test_hooks_limits.py:115:    await cortex.tool_write("/rw/scratch/mono_probe.txt", "x")
+novaic-cortex/tests/test_workspace.py:32:    log_path = "/rw/scratch/run.log"
+novaic-cortex/tests/test_paths_adversarial.py:33:    assert _key("agent-z", "/rw//scratch//a.txt") == _key("agent-z", "/rw/scratch/a.txt")
+novaic-cortex/tests/test_paths_adversarial.py:48:        _key("a1", "/rw/scratch/../other.txt")
+novaic-cortex/tests/test_paths_adversarial.py:64:        await ws.read("/rw/scratch/..")
+novaic-cortex/tests/test_paths_adversarial.py:91:        await cortex.tool_read("../rw/scratch/x.txt")
+novaic-cortex/tests/test_paths_adversarial.py:131:    same = await cortex.tool_read("/rw/scratch/dslash.txt")
+novaic-cortex/tests/test_paths_adversarial.py:148:    path = f"/rw/scratch/{name}"
+novaic-cortex/tests/test_workspace_limits.py:17:    missing = "/rw/scratch/no-such-file.txt"
+novaic-cortex/tests/test_workspace_limits.py:62:    path = "/rw/scratch/payload.bin"
+novaic-cortex/tests/test_workspace_limits.py:71:    await ws.write_bytes("/rw/scratch/a.txt", b"a")
+novaic-cortex/tests/test_workspace_limits.py:72:    await ws.write_bytes("/rw/scratch/nested/b.txt", b"b")
+novaic-cortex/tests/test_workspace_limits.py:74:    rows = await ws.read_tree_bytes("/rw/scratch/")
+novaic-cortex/tests/test_runtime_path_abuse.py:32:        "../rw/scratch/x",
+novaic-cortex/tests/test_runtime_path_abuse.py:33:        "./rw/scratch/x",
+novaic-cortex/tests/test_runtime_path_abuse.py:56:        "/rw/scratch/n.txt",
+novaic-cortex/tests/test_tool_metrics.py:29:    await cortex.tool_write("/rw/scratch/metrics_probe.txt", "ok")
+novaic-cortex/tests/test_runtime.py:43:        f"agents/{agent_id}/rw/scratch/big.txt",
+novaic-cortex/tests/test_runtime.py:49:    out = await cortex.tool_read("/rw/scratch/big.txt")
+
+=== command: rg -n "materialize" novaic-cortex/novaic_cortex novaic-cortex/tests || true ===
+novaic-cortex/novaic_cortex/workspace.py:839:        """Read the materialized context projection for inspection/debug.
+novaic-cortex/novaic_cortex/workspace.py:862:        """Append a single message to the materialized context projection."""
+novaic-cortex/novaic_cortex/workspace.py:873:        """Append multiple messages to the materialized context projection."""
+novaic-cortex/tests/test_sandboxd_wiring.py:98:async def test_sandbox_materializes_scoped_ro_working_set_only() -> None:
+novaic-cortex/tests/test_sandboxd_wiring.py:134:async def test_sandbox_materializes_scoped_rw_working_set_only() -> None:
+novaic-cortex/novaic_cortex/api.py:888:    """Read the materialized context.jsonl projection for diagnostics/idempotency.
+novaic-cortex/novaic_cortex/api.py:906:    """Append a ContextEvent and materialize its context.jsonl projection."""
+novaic-cortex/novaic_cortex/api.py:907:    # The materialized context projection uses append-line writes; serialize per
+novaic-cortex/novaic_cortex/api.py:930:    """Batch append ContextEvents and materialize their context.jsonl projection."""
+novaic-cortex/novaic_cortex/api.py:1322:    stack read from the materialized scope projection. Runtime calls it every
+novaic-cortex/novaic_cortex/api.py:2264:    # Best archive label: first user message from the materialized context projection.
+novaic-cortex/novaic_cortex/logical_fs.py:105:            "bind-mount the materialized view at /cortex. Cortex does not "
+novaic-cortex/novaic_cortex/logical_fs.py:225:        # materialized all of /ro, which made every shell call proportional to
+novaic-cortex/novaic_cortex/logical_fs.py:320:        substrate = self._provider.materialize(
+novaic-cortex/tests/test_context_event_api_context_writes.py:60:async def test_context_append_emits_event_and_materializes_projection() -> None:
+novaic-cortex/tests/test_context_event_api_context_writes.py:86:async def test_context_batch_emits_ordered_events_and_materializes_projection() -> None:

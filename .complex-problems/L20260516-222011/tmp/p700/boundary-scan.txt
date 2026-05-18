@@ -1,0 +1,421 @@
+scripts/run_all_tests.sh:9:ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+scripts/run_all_tests.sh:18:    find "$ROOT" \
+scripts/run_all_tests.sh:20:            -path "$ROOT/.git" -o -path "$ROOT/*/.git" -o \
+scripts/run_all_tests.sh:21:            -path "$ROOT/node_modules" -o -path "$ROOT/*/node_modules" -o \
+scripts/run_all_tests.sh:22:            -path "$ROOT/target" -o -path "$ROOT/*/target" -o \
+scripts/run_all_tests.sh:23:            -path "$ROOT/.venv" -o -path "$ROOT/*/.venv" -o \
+scripts/run_all_tests.sh:24:            -path "$ROOT/thirdparty" -o -path "$ROOT/*/target" -o \
+scripts/run_all_tests.sh:25:            -path "$ROOT/novaic-app/src-tauri/gen/apple/build" \
+scripts/run_all_tests.sh:39:    if (cd "$ROOT" && "$@"); then
+scripts/run_all_tests.sh:56:    if (cd "$ROOT/$dir" && PYTHONPATH="$pythonpath" "$PYTHON_BIN" -m pytest -q "$@"); then
+scripts/run_all_tests.sh:71:run_pytest "logicalfs" "novaic-logicalfs" ".:../novaic-common:../novaic-blob-service"
+scripts/run_all_tests.sh:76:run_pytest "cortex" "novaic-cortex" ".:../novaic-logicalfs:../novaic-sandbox-sdk:../novaic-common"
+docs/reference/blob-service.md:7:LogicalFS is the Cortex/shell realtime `RO` / `RW` authority above Blob. Blob
+docs/reference/blob-service.md:44:- realtime Cortex/shell file-view semantics such as `/ro`, `/rw`, subagent RW
+docs/reference/blob-service.md:45:  layout, shell cwd/env rules, or RO/RW diff streams
+docs/reference/blob-service.md:48:RO/RW file means, who can see it as part of a Cortex workspace, or how it
+docs/reference/blob-service.md:49:appears in `/ro` / `/rw`; those decisions belong to LogicalFS and Cortex.
+docs/reference/blob-service.md:50:If an RO/RW file needs display or download, it must be exported/copied into Blob
+docs/reference/blob-service.md:51:first; LogicalFS does not expose display/download handles directly.
+docs/reference/blob-service.md:90:backend. This adapter is not the live `RO` / `RW` authority; live Cortex/shell
+docs/reference/blob-service.md:91:file semantics go through the LogicalFS/Cortex file authority boundary described
+docs/reference/blob-service.md:92:in `docs/architecture/logicalfs-realtime-file-authority.md`.
+docs/reference/blob-service.md:116:  live `RO` / `RW` filesystem API.
+docs/architecture/logicalfs-realtime-file-authority.md:1:# LogicalFS RO/RW Realtime File Authority
+docs/architecture/logicalfs-realtime-file-authority.md:5:LogicalFS is the semantic authority for Cortex/shell realtime `RO` / `RW`
+docs/architecture/logicalfs-realtime-file-authority.md:12:file operation that depends on live `RO` / `RW` semantics must go through
+docs/architecture/logicalfs-realtime-file-authority.md:13:LogicalFS. Other ordinary files can stay Blob-backed without pretending to be a
+docs/architecture/logicalfs-realtime-file-authority.md:23:- LogicalFS owns the live file authority and may use a Blob object adapter below
+docs/architecture/logicalfs-realtime-file-authority.md:25:- Cortex owns Workspace semantics and uses a LogicalFS authority for file-like
+docs/architecture/logicalfs-realtime-file-authority.md:27:- Cortex uses the `novaic-logicalfs` substrate as a library to materialize a
+docs/architecture/logicalfs-realtime-file-authority.md:28:  snapshot into a sandbox mount, then writes RW patches back to Workspace.
+docs/architecture/logicalfs-realtime-file-authority.md:29:- Sandboxd only executes a process over the materialized view.
+docs/architecture/logicalfs-realtime-file-authority.md:31:This is improved, but LogicalFS is not yet a standalone service boundary. The
+docs/architecture/logicalfs-realtime-file-authority.md:41:        | live RO/RW file intents
+docs/architecture/logicalfs-realtime-file-authority.md:43:LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:44:  realtime RO/RW namespace authority
+docs/architecture/logicalfs-realtime-file-authority.md:45:  RO/RW layout, subagent RW layout, snapshots, patches, stable shell paths
+docs/architecture/logicalfs-realtime-file-authority.md:47:        | store/load RO/RW bytes
+docs/architecture/logicalfs-realtime-file-authority.md:56:do not need live Cortex/shell RO/RW semantics.
+docs/architecture/logicalfs-realtime-file-authority.md:59:Sandboxd is not a file authority. It receives an executable filesystem view
+docs/architecture/logicalfs-realtime-file-authority.md:60:from LogicalFS, runs a process, and reports process output. It may host the
+docs/architecture/logicalfs-realtime-file-authority.md:82:- realtime RO/RW diffs or file-view authorization
+docs/architecture/logicalfs-realtime-file-authority.md:85:### LogicalFS Service
+docs/architecture/logicalfs-realtime-file-authority.md:89:- realtime `RO` / `RW` namespace APIs
+docs/architecture/logicalfs-realtime-file-authority.md:90:- stable path layout such as `/cortex/ro`, `/cortex/rw`, and subagent RW dirs
+docs/architecture/logicalfs-realtime-file-authority.md:91:- RO/RW projection rules
+docs/architecture/logicalfs-realtime-file-authority.md:93:- snapshot and patch semantics for shell execution
+docs/architecture/logicalfs-realtime-file-authority.md:94:- live update propagation for RO/RW state when needed
+docs/architecture/logicalfs-realtime-file-authority.md:110:- which files belong in RO vs RW for a given agent/session/subagent
+docs/architecture/logicalfs-realtime-file-authority.md:113:Uses LogicalFS for:
+docs/architecture/logicalfs-realtime-file-authority.md:119:### Sandboxd
+docs/architecture/logicalfs-realtime-file-authority.md:127:Uses LogicalFS for:
+docs/architecture/logicalfs-realtime-file-authority.md:131:- post-run patch collection, if the local implementation stays colocated
+docs/architecture/logicalfs-realtime-file-authority.md:135:1. Cortex-related shell/workspace files must not bypass LogicalFS for live
+docs/architecture/logicalfs-realtime-file-authority.md:136:   `RO` / `RW` semantics.
+docs/architecture/logicalfs-realtime-file-authority.md:138:   functions, attachments, display bytes, artifact bytes, and LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:140:3. Cortex may own semantic names, but LogicalFS must own file operations.
+docs/architecture/logicalfs-realtime-file-authority.md:141:4. Sandboxd may execute over a view, but LogicalFS must own the view contract.
+docs/architecture/logicalfs-realtime-file-authority.md:142:5. Display and artifacts use Blob for bytes. If the source starts as an RO/RW
+docs/architecture/logicalfs-realtime-file-authority.md:144:   download. LogicalFS does not provide display/download handles.
+docs/architecture/logicalfs-realtime-file-authority.md:145:6. Tests and CI should reject new direct Blob-object live RO/RW file paths
+docs/architecture/logicalfs-realtime-file-authority.md:146:   outside LogicalFS internals.
+docs/architecture/logicalfs-realtime-file-authority.md:153:- Document LogicalFS as the Cortex/shell RO/RW authority.
+docs/architecture/logicalfs-realtime-file-authority.md:154:- Add guardrails that distinguish base Blob use from live RO/RW semantics.
+docs/architecture/logicalfs-realtime-file-authority.md:156:### Phase 2: Promote LogicalFS From Library To Service Boundary
+docs/architecture/logicalfs-realtime-file-authority.md:158:- Define LogicalFS HTTP or RPC contracts focused on RO/RW:
+docs/architecture/logicalfs-realtime-file-authority.md:160:  - `snapshot`
+docs/architecture/logicalfs-realtime-file-authority.md:161:  - `apply_patch`
+docs/architecture/logicalfs-realtime-file-authority.md:162:- Keep the existing local substrate as an implementation detail behind the
+docs/architecture/logicalfs-realtime-file-authority.md:163:  service boundary.
+docs/architecture/logicalfs-realtime-file-authority.md:165:### Phase 3: Move Cortex Workspace Persistence Behind LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:167:- Replace Cortex-local persistence adapters with a LogicalFS-backed workspace
+docs/architecture/logicalfs-realtime-file-authority.md:170:- LogicalFS maps those semantics to durable Blob object keys.
+docs/architecture/logicalfs-realtime-file-authority.md:172:### Phase 4: Move Shell/Sandbox Mounts Behind LogicalFS
+docs/architecture/logicalfs-realtime-file-authority.md:174:- Sandbox execution requests reference a LogicalFS view id or snapshot id.
+docs/architecture/logicalfs-realtime-file-authority.md:175:- Sandboxd no longer receives Cortex Workspace details.
+docs/architecture/logicalfs-realtime-file-authority.md:176:- Patch application becomes LogicalFS responsibility, not Cortex glue code.
+docs/architecture/logicalfs-realtime-file-authority.md:182:- RO/RW files that need display/download are first exported or copied to Blob.
+docs/architecture/logicalfs-realtime-file-authority.md:183:- LogicalFS remains a live RO/RW layer; it does not become a display/download
+docs/architecture/logicalfs-realtime-file-authority.md:188:- Remove direct live RO/RW file use of Blob object APIs outside LogicalFS.
+docs/architecture/logicalfs-realtime-file-authority.md:189:- Remove Cortex-local live RO/RW file service wrappers.
+docs/architecture/logicalfs-realtime-file-authority.md:191:- Add residue scans for accidental direct Blob object calls in live RO/RW paths.
+docs/architecture/logicalfs-realtime-file-authority.md:195:- There is exactly one Cortex/shell live `RO` / `RW` authority: LogicalFS.
+docs/architecture/logicalfs-realtime-file-authority.md:197:- Cortex no longer directly implements live RO/RW persistence over Blob.
+docs/architecture/logicalfs-realtime-file-authority.md:198:- Sandboxd no longer owns workspace or subagent file semantics.
+docs/architecture/logicalfs-realtime-file-authority.md:202:  - RO/RW file semantics: LogicalFS only
+docs/architecture/logicalfs-realtime-file-authority.md:203:  - RO/RW file display/download: export/copy to Blob, then display/download
+docs/architecture/logicalfs-realtime-file-authority.md:204:- New tests prove Cortex/shell live RO/RW paths cannot bypass LogicalFS.
+scripts/start.sh:17:#   - Sandboxd       :19994  Generic sandbox process execution
+scripts/start.sh:106:        echo "  ERROR: $label expected $expected process(es), got $actual"
+scripts/start.sh:234:wait_port "$PORT_SANDBOXD" "Sandboxd"
+scripts/start.sh:247:PYTHONPATH="$BASE/novaic-cortex:$BASE/novaic-logicalfs:$BASE/novaic-sandbox-sdk:$BASE/novaic-common:${PYTHONPATH:-}" \
+novaic-cortex/novaic_cortex/blob_payload.py:3:Cortex owns work trace semantics. Blob Service owns large raw bytes. This
+novaic-cortex/novaic_cortex/main_cortex.py:10:from sandbox_sdk import SandboxdClient
+novaic-cortex/novaic_cortex/main_cortex.py:32:        help="Sandboxd base URL. Cortex server shell execution must go through sandboxd.",
+novaic-cortex/novaic_cortex/main_cortex.py:103:        lambda: SandboxdClient(cli_args.sandboxd_url)
+novaic-cortex/novaic_cortex/sandbox.py:3:The public ``Sandbox`` facade composes two explicit substrates:
+novaic-cortex/novaic_cortex/sandbox.py:5:* ``MountNamespaceLogicalFS`` owns Cortex filesystem semantics and the stable
+novaic-cortex/novaic_cortex/sandbox.py:10:the sandboxd service boundary, shell execution fails explicitly instead of
+novaic-cortex/novaic_cortex/sandbox.py:23:    STABLE_CORTEX_RO,
+novaic-cortex/novaic_cortex/sandbox.py:24:    STABLE_CORTEX_RW,
+novaic-cortex/novaic_cortex/sandbox.py:25:    LogicalFSCapabilities,
+novaic-cortex/novaic_cortex/sandbox.py:26:    MountNamespaceLogicalFS,
+novaic-cortex/novaic_cortex/sandbox.py:46:            f"Use {STABLE_CORTEX_RO}, {STABLE_CORTEX_RW}, $RO, or $RW instead."
+novaic-cortex/novaic_cortex/sandbox.py:54:    """Acquire LogicalFS view, run a process, release view, assemble ShellResult."""
+novaic-cortex/novaic_cortex/sandbox.py:58:        logical_fs: MountNamespaceLogicalFS,
+novaic-cortex/novaic_cortex/sandbox.py:92:        with tempfile.TemporaryDirectory(prefix="novaic-cortex-logicalfs-") as tmp:
+novaic-cortex/novaic_cortex/sandbox.py:156:    """Public shell facade backed by explicit LogicalFS and sandboxd SDK client."""
+novaic-cortex/novaic_cortex/sandbox.py:168:        self.logical_fs = MountNamespaceLogicalFS(
+novaic-cortex/novaic_cortex/sandbox.py:182:    def logical_fs_capabilities(self) -> LogicalFSCapabilities:
+novaic-cortex/novaic_cortex/context_stack/types.py:55:    """Read-only status snapshot (§4.1 status())."""
+novaic-cortex/novaic_cortex/context_stack/types.py:73:    {"skill_stack_snapshot", "skill_fold", "origin"}
+novaic-cortex/novaic_cortex/cli.py:5:Config is read from $RW/.novaic_env.json (written by sandbox at startup).
+novaic-cortex/novaic_cortex/cli.py:20:    """Load explicit api/token from env or the stable RW config file."""
+novaic-cortex/novaic_cortex/cli.py:22:    rw = os.environ.get("RW") or os.environ.get("CORTEX_RW") or os.environ.get("HOME") or ""
+novaic-cortex/novaic_cortex/cli.py:54:        _die("NOVAIC_API is not configured; expected $RW/.novaic_env.json or NOVAIC_API")
+novaic-cortex/novaic_cortex/logical_fs.py:1:"""Cortex adapter for the business-agnostic LogicalFS substrate.
+novaic-cortex/novaic_cortex/logical_fs.py:3:Cortex owns Workspace semantics, shell capability injection, and applying RW
+novaic-cortex/novaic_cortex/logical_fs.py:4:patches back to the Workspace. The generic snapshot/view/patch mechanics live
+novaic-cortex/novaic_cortex/logical_fs.py:5:in ``novaic-logicalfs``.
+novaic-cortex/novaic_cortex/logical_fs.py:16:from logicalfs import (
+novaic-cortex/novaic_cortex/logical_fs.py:17:    LocalLogicalFSProvider,
+novaic-cortex/novaic_cortex/logical_fs.py:18:    LogicalFSEnv,
+novaic-cortex/novaic_cortex/logical_fs.py:19:    LogicalFSFile,
+novaic-cortex/novaic_cortex/logical_fs.py:20:    LogicalFSLayout,
+novaic-cortex/novaic_cortex/logical_fs.py:21:    LogicalFSPatch,
+novaic-cortex/novaic_cortex/logical_fs.py:22:    LogicalFSSnapshot,
+novaic-cortex/novaic_cortex/logical_fs.py:23:    LogicalFSView as SubstrateLogicalFSView,
+novaic-cortex/novaic_cortex/logical_fs.py:31:STABLE_CORTEX_ROOT = "/cortex"
+novaic-cortex/novaic_cortex/logical_fs.py:32:STABLE_CORTEX_RO = f"{STABLE_CORTEX_ROOT}/ro"
+novaic-cortex/novaic_cortex/logical_fs.py:33:STABLE_CORTEX_RW = f"{STABLE_CORTEX_ROOT}/rw"
+novaic-cortex/novaic_cortex/logical_fs.py:34:STABLE_CORTEX_BIN = f"{STABLE_CORTEX_ROOT}/bin"
+novaic-cortex/novaic_cortex/logical_fs.py:49:    if path == STABLE_CORTEX_RW:
+novaic-cortex/novaic_cortex/logical_fs.py:51:    if not path.startswith(STABLE_CORTEX_RW + "/"):
+novaic-cortex/novaic_cortex/logical_fs.py:52:        raise ValueError(f"LogicalFS patch path must be under {STABLE_CORTEX_RW}: {path!r}")
+novaic-cortex/novaic_cortex/logical_fs.py:53:    return "/rw/" + path.removeprefix(STABLE_CORTEX_RW + "/")
+novaic-cortex/novaic_cortex/logical_fs.py:57:class LogicalFSCapabilities:
+novaic-cortex/novaic_cortex/logical_fs.py:65:class LogicalFSView:
+novaic-cortex/novaic_cortex/logical_fs.py:66:    substrate: SubstrateLogicalFSView
+novaic-cortex/novaic_cortex/logical_fs.py:67:    capabilities: LogicalFSCapabilities
+novaic-cortex/novaic_cortex/logical_fs.py:71:        return self.substrate.root
+novaic-cortex/novaic_cortex/logical_fs.py:75:        return self.substrate.ro
+novaic-cortex/novaic_cortex/logical_fs.py:79:        return self.substrate.rw
+novaic-cortex/novaic_cortex/logical_fs.py:83:        return self.substrate.bin
+novaic-cortex/novaic_cortex/logical_fs.py:87:        return self.substrate.cwd
+novaic-cortex/novaic_cortex/logical_fs.py:91:        return self.substrate.stable_cwd
+novaic-cortex/novaic_cortex/logical_fs.py:95:        return self.substrate.env
+novaic-cortex/novaic_cortex/logical_fs.py:98:def _detect_logicalfs_capabilities() -> LogicalFSCapabilities:
+novaic-cortex/novaic_cortex/logical_fs.py:99:    return LogicalFSCapabilities(
+novaic-cortex/novaic_cortex/logical_fs.py:100:        provider="sandboxd-logicalfs",
+novaic-cortex/novaic_cortex/logical_fs.py:104:            "Cortex projects Workspace data into LogicalFS and asks sandboxd to "
+novaic-cortex/novaic_cortex/logical_fs.py:111:class MountNamespaceLogicalFS:
+novaic-cortex/novaic_cortex/logical_fs.py:112:    """Cortex Workspace adapter over the generic LogicalFS substrate."""
+novaic-cortex/novaic_cortex/logical_fs.py:122:        provider: LocalLogicalFSProvider | None = None,
+novaic-cortex/novaic_cortex/logical_fs.py:128:        self._provider = provider or LocalLogicalFSProvider()
+novaic-cortex/novaic_cortex/logical_fs.py:129:        self.capabilities = _detect_logicalfs_capabilities()
+novaic-cortex/novaic_cortex/logical_fs.py:132:    def _snapshot_path(logical_path: str) -> tuple[str, bool]:
+novaic-cortex/novaic_cortex/logical_fs.py:142:        raise ValueError(f"snapshot path must be under /ro or /rw: {logical_path!r}")
+novaic-cortex/novaic_cortex/logical_fs.py:146:        files: dict[tuple[bool, str], LogicalFSFile],
+novaic-cortex/novaic_cortex/logical_fs.py:153:        relpath, writable = self._snapshot_path(logical_path)
+novaic-cortex/novaic_cortex/logical_fs.py:155:            files[(writable, relpath)] = LogicalFSFile(path=relpath, data=data, writable=writable)
+novaic-cortex/novaic_cortex/logical_fs.py:159:        files: dict[tuple[bool, str], LogicalFSFile],
+novaic-cortex/novaic_cortex/logical_fs.py:163:        base_rel, writable = self._snapshot_path(prefix)
+novaic-cortex/novaic_cortex/logical_fs.py:172:                files[(writable, target)] = LogicalFSFile(path=target, data=data, writable=writable)
+novaic-cortex/novaic_cortex/logical_fs.py:176:        files: dict[tuple[bool, str], LogicalFSFile],
+novaic-cortex/novaic_cortex/logical_fs.py:193:        files: dict[tuple[bool, str], LogicalFSFile],
+novaic-cortex/novaic_cortex/logical_fs.py:200:        must not become proportional to all historical RW files, so only direct
+novaic-cortex/novaic_cortex/logical_fs.py:216:    async def _workspace_snapshot(
+novaic-cortex/novaic_cortex/logical_fs.py:221:    ) -> LogicalFSSnapshot:
+novaic-cortex/novaic_cortex/logical_fs.py:222:        files: dict[tuple[bool, str], LogicalFSFile] = {}
+novaic-cortex/novaic_cortex/logical_fs.py:248:            files[(True, relpath.lstrip("/"))] = LogicalFSFile(
+novaic-cortex/novaic_cortex/logical_fs.py:253:        return LogicalFSSnapshot(files=tuple(files.values()))
+novaic-cortex/novaic_cortex/logical_fs.py:256:    def _snapshot_bytes(snapshot: LogicalFSSnapshot) -> int:
+novaic-cortex/novaic_cortex/logical_fs.py:257:        return sum(len(item.data) for item in snapshot.files)
+novaic-cortex/novaic_cortex/logical_fs.py:259:    def _rw_layout(self, extra_env: Mapping[str, str] | None) -> LogicalFSLayout:
+novaic-cortex/novaic_cortex/logical_fs.py:262:            "RW_PUBLIC": f"{STABLE_CORTEX_RW}/public",
+novaic-cortex/novaic_cortex/logical_fs.py:263:            "RW_SELF": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}",
+novaic-cortex/novaic_cortex/logical_fs.py:264:            "RW_TMP": f"{STABLE_CORTEX_RW}/tmp",
+novaic-cortex/novaic_cortex/logical_fs.py:265:            "RW_ARTIFACTS": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/artifacts",
+novaic-cortex/novaic_cortex/logical_fs.py:266:            "RW_SCRATCH": f"{STABLE_CORTEX_RW}/subagents/{subagent_id}/scratch",
+novaic-cortex/novaic_cortex/logical_fs.py:268:        return LogicalFSLayout(
+novaic-cortex/novaic_cortex/logical_fs.py:270:                root=STABLE_CORTEX_ROOT,
+novaic-cortex/novaic_cortex/logical_fs.py:271:                ro=STABLE_CORTEX_RO,
+novaic-cortex/novaic_cortex/logical_fs.py:272:                rw=STABLE_CORTEX_RW,
+novaic-cortex/novaic_cortex/logical_fs.py:276:            writable_dirs=(f"{STABLE_CORTEX_RW}/system",),
+novaic-cortex/novaic_cortex/logical_fs.py:279:    def _execution_env(self, extra_env: Mapping[str, str] | None, token: str | None) -> LogicalFSEnv:
+novaic-cortex/novaic_cortex/logical_fs.py:282:            "CORTEX_FS_PROVIDER": self.capabilities.provider,
+novaic-cortex/novaic_cortex/logical_fs.py:288:        return LogicalFSEnv(values)
+novaic-cortex/novaic_cortex/logical_fs.py:305:    ) -> LogicalFSView:
+novaic-cortex/novaic_cortex/logical_fs.py:307:        snapshot = await self._workspace_snapshot(
+novaic-cortex/novaic_cortex/logical_fs.py:313:            total = self._snapshot_bytes(snapshot)
+novaic-cortex/novaic_cortex/logical_fs.py:316:                    f"logicalfs sync would read {total} bytes from workspace files, "
+novaic-cortex/novaic_cortex/logical_fs.py:320:        substrate = self._provider.materialize(
+novaic-cortex/novaic_cortex/logical_fs.py:321:            snapshot=snapshot,
+novaic-cortex/novaic_cortex/logical_fs.py:327:        _write_capability_scripts(substrate.bin)
+novaic-cortex/novaic_cortex/logical_fs.py:328:        return LogicalFSView(substrate=substrate, capabilities=self.capabilities)
+novaic-cortex/novaic_cortex/logical_fs.py:330:    def process_mount_plan(self, view: LogicalFSView) -> SandboxBindMount:
+novaic-cortex/novaic_cortex/logical_fs.py:335:            mount_point=STABLE_CORTEX_ROOT,
+novaic-cortex/novaic_cortex/logical_fs.py:339:    def process_cwd(self, view: LogicalFSView) -> Path:
+novaic-cortex/novaic_cortex/logical_fs.py:342:    def sanitize_output(self, text: str, view: LogicalFSView) -> str:
+novaic-cortex/novaic_cortex/logical_fs.py:343:        return self._provider.sanitize_output(text, view.substrate)
+novaic-cortex/novaic_cortex/logical_fs.py:345:    async def _apply_patch(self, patch: LogicalFSPatch) -> None:
+novaic-cortex/novaic_cortex/logical_fs.py:346:        for path in patch.deletes:
+novaic-cortex/novaic_cortex/logical_fs.py:348:        for item in patch.upserts:
+novaic-cortex/novaic_cortex/logical_fs.py:351:    async def release_view(self, view: LogicalFSView) -> list[str]:
+novaic-cortex/novaic_cortex/logical_fs.py:352:        patch = self._provider.observe_patch(view.substrate)
+novaic-cortex/novaic_cortex/logical_fs.py:353:        await self._apply_patch(patch)
+novaic-cortex/novaic_cortex/logical_fs.py:354:        return [_workspace_path_from_stable_rw(path) for path in patch.changed_paths()]
+novaic-cortex/novaic_cortex/logical_fs.py:358:    "STABLE_CORTEX_ROOT",
+novaic-cortex/novaic_cortex/logical_fs.py:359:    "STABLE_CORTEX_RO",
+novaic-cortex/novaic_cortex/logical_fs.py:360:    "STABLE_CORTEX_RW",
+novaic-cortex/novaic_cortex/logical_fs.py:362:    "LogicalFSCapabilities",
+novaic-cortex/novaic_cortex/logical_fs.py:363:    "LogicalFSView",
+novaic-cortex/novaic_cortex/logical_fs.py:364:    "MountNamespaceLogicalFS",
+novaic-cortex/novaic_cortex/logical_fs.py:365:    "_detect_logicalfs_capabilities",
+novaic-cortex/novaic_cortex/operational_store.py:3:This module is the durable control-plane substrate for state that is not a
+novaic-cortex/novaic_cortex/operational_store.py:183:        conn.execute("DROP TABLE payload_manifest")
+novaic-cortex/novaic_cortex/operational_store.py:230:                conn.execute("ROLLBACK")
+novaic-cortex/novaic_cortex/operational_store.py:266:                    "SELECT * FROM scope_events WHERE idempotency_key = ?",
+novaic-cortex/novaic_cortex/operational_store.py:309:            row = conn.execute("SELECT * FROM scope_events WHERE id = ?", (event_id,)).fetchone()
+novaic-cortex/novaic_cortex/operational_store.py:327:        sql = "SELECT * FROM scope_events"
+novaic-cortex/novaic_cortex/operational_store.py:399:                "SELECT * FROM scope_projection WHERE root_scope_id = ? AND scope_id = ?",
+novaic-cortex/novaic_cortex/operational_store.py:407:                "SELECT * FROM scope_projection WHERE root_scope_id = ? AND scope_id = ?",
+novaic-cortex/novaic_cortex/operational_store.py:426:        sql = "SELECT * FROM scope_projection"
+novaic-cortex/novaic_cortex/operational_store.py:460:                "SELECT * FROM active_stack_projection WHERE root_scope_id = ?",
+novaic-cortex/novaic_cortex/operational_store.py:468:                "SELECT * FROM active_stack_projection WHERE root_scope_id = ?",
+novaic-cortex/novaic_cortex/operational_store.py:540:                "SELECT * FROM payload_manifest WHERE payload_ref = ?",
+novaic-cortex/novaic_cortex/operational_store.py:548:                "SELECT * FROM payload_manifest WHERE payload_ref = ?",
+novaic-cortex/novaic_cortex/context_stack/budget.py:86:        and not (m.get("_metadata") or {}).get("skill_stack_snapshot")
+novaic-cortex/novaic_cortex/workspace.py:218:        LogicalFS: callers work in logical workspace paths, while Workspace
+novaic-cortex/novaic_cortex/workspace.py:933:        buffered dispatches on the same session don't clobber each
+novaic-cortex/novaic_cortex/workspace_authority.py:1:"""Cortex semantic factory for LogicalFS workspace authorities."""
+novaic-cortex/novaic_cortex/workspace_authority.py:5:from logicalfs import (
+novaic-cortex/novaic_cortex/shell_capabilities.py:4:LogicalFS view (agentctl, cortex, devicectl) and the explicit environment keys
+novaic-cortex/novaic_cortex/shell_capabilities.py:868:_HD_PROXY_PATHS = {{
+novaic-cortex/novaic_cortex/shell_capabilities.py:886:    proxy_path = _HD_PROXY_PATHS.get(subcmd)
+novaic-cortex/novaic_cortex/context_event_projection.py:1:"""Pure ContextEvent projection to LLM-facing snapshot state."""
+novaic-cortex/novaic_cortex/context_event_projection.py:47:    snapshot: ContextProjectionSnapshot = field(default_factory=ContextProjectionSnapshot)
+novaic-cortex/novaic_cortex/context_event_projection.py:60:        state.snapshot.applied_seq = event.seq
+novaic-cortex/novaic_cortex/context_event_projection.py:61:    snapshot = state.snapshot
+novaic-cortex/novaic_cortex/context_event_projection.py:62:    snapshot.estimated_tokens = sum(
+novaic-cortex/novaic_cortex/context_event_projection.py:63:        estimate_tokens(str(message.get("content", ""))) for message in snapshot.messages
+novaic-cortex/novaic_cortex/context_event_projection.py:65:    return snapshot
+novaic-cortex/novaic_cortex/context_event_projection.py:69:    snapshot = state.snapshot
+novaic-cortex/novaic_cortex/context_event_projection.py:70:    if snapshot.stream_id is None:
+novaic-cortex/novaic_cortex/context_event_projection.py:75:        snapshot.stream_id = event.stream_id
+novaic-cortex/novaic_cortex/context_event_projection.py:76:        snapshot.root_scope_id = event.root_scope_id
+novaic-cortex/novaic_cortex/context_event_projection.py:77:        snapshot.first_seq = event.seq
+novaic-cortex/novaic_cortex/context_event_projection.py:80:    if event.stream_id != snapshot.stream_id:
+novaic-cortex/novaic_cortex/context_event_projection.py:82:    if event.root_scope_id != snapshot.root_scope_id:
+novaic-cortex/novaic_cortex/context_event_projection.py:85:    expected_seq = snapshot.applied_seq + 1
+novaic-cortex/novaic_cortex/context_event_projection.py:93:    snapshot = state.snapshot
+novaic-cortex/novaic_cortex/context_event_projection.py:94:    if snapshot.root_scope_id is None:
+novaic-cortex/novaic_cortex/context_event_projection.py:95:        snapshot.root_scope_id = event.root_scope_id
+novaic-cortex/novaic_cortex/context_event_projection.py:96:    elif snapshot.root_scope_id != event.root_scope_id:
+novaic-cortex/novaic_cortex/context_event_projection.py:100:        snapshot.root_scope_id = event.payload.get("root_scope_id", event.root_scope_id)
+novaic-cortex/novaic_cortex/context_event_projection.py:105:        state.active_wake_message_start_idx = len(snapshot.messages)
+novaic-cortex/novaic_cortex/context_event_projection.py:106:        snapshot.stack.append(
+novaic-cortex/novaic_cortex/context_event_projection.py:116:            snapshot.stack = [
+novaic-cortex/novaic_cortex/context_event_projection.py:123:                snapshot.stack = [
+novaic-cortex/novaic_cortex/context_event_projection.py:124:                    frame for frame in snapshot.stack if frame.get("scope_id") != wake_scope_id
+novaic-cortex/novaic_cortex/context_event_projection.py:129:        _append_projected_message(snapshot.messages, _required_message(event))
+novaic-cortex/novaic_cortex/context_event_projection.py:148:        snapshot.stack.append(frame)
+novaic-cortex/novaic_cortex/context_event_projection.py:155:        if not snapshot.stack or snapshot.stack[-1].get("scope_id") != scope_id:
+novaic-cortex/novaic_cortex/context_event_projection.py:159:        frame = snapshot.stack.pop()
+novaic-cortex/novaic_cortex/context_event_projection.py:211:            return state.snapshot.messages
+novaic-cortex/novaic_cortex/context_event_projection.py:218:    return state.snapshot.messages
+novaic-cortex/novaic_cortex/context_event_projection.py:250:        del state.snapshot.messages[state.active_wake_message_start_idx :]
+novaic-cortex/novaic_cortex/context_event_projection.py:252:            state.snapshot.messages.append(
+novaic-cortex/novaic_cortex/context_event_projection.py:264:        state.active_wake_message_start_idx = len(state.snapshot.messages)
+novaic-cortex/novaic_cortex/context_event_projection.py:268:        state.snapshot.messages.append(
+novaic-cortex/novaic_cortex/context_event_projection.py:285:    del state.snapshot.messages[state.active_wake_message_start_idx :]
+novaic-cortex/novaic_cortex/context_event_projection.py:286:    state.snapshot.stack = [
+novaic-cortex/novaic_cortex/context_event_projection.py:288:        for frame in state.snapshot.stack
+novaic-cortex/novaic_cortex/context_event_projection.py:296:        for frame in state.snapshot.stack
+novaic-cortex/novaic_cortex/context_event_projection.py:302:    state.snapshot.stack = [
+novaic-cortex/novaic_cortex/context_event_projection.py:304:        for frame in state.snapshot.stack
+novaic-cortex/novaic_cortex/context_event_projection.py:310:    return any(frame.get("scope_id") == scope_id for frame in state.snapshot.stack)
+novaic-cortex/novaic_cortex/context_event_projection.py:341:        "_message_type": "ENVIRONMENT_NOTIFICATION",
+novaic-cortex/novaic_cortex/active_stack_projection.py:13:ACTIVE_STACK_PROJECTED = "active_stack_projected"
+novaic-cortex/novaic_cortex/active_stack_projection.py:110:            event_type=ACTIVE_STACK_PROJECTED,
+novaic-cortex/novaic_cortex/active_stack_projection.py:223:    "ACTIVE_STACK_PROJECTED",
+novaic-cortex/novaic_cortex/registry.py:6:LogicalFS/Blob authority boundary. Multiple Cortex processes may each hold
+novaic-cortex/novaic_cortex/registry.py:18:from logicalfs import BlobObjectStore
+novaic-cortex/novaic_cortex/registry.py:51:        self._stores: dict[str, BlobObjectStore] = {}  # user_id -> LogicalFS object adapter
+novaic-cortex/novaic_cortex/registry.py:58:    def _get_store(self, user_id: str) -> BlobObjectStore:
+novaic-cortex/novaic_cortex/registry.py:60:            self._stores[user_id] = BlobObjectStore(
+novaic-cortex/novaic_cortex/registry.py:64:            logger.info("[Registry] LogicalFS object adapter created for user=%s", user_id)
+novaic-cortex/novaic_cortex/store.py:5:files are owned by LogicalFS authority adapters; Blob object storage is a
+novaic-cortex/novaic_cortex/store.py:124:    enter through LogicalFS authority with an explicit object-store adapter.
+novaic-logicalfs/README.md:1:# NovaIC LogicalFS
+novaic-logicalfs/README.md:3:Business-agnostic LogicalFS substrate.
+novaic-logicalfs/README.md:5:LogicalFS turns an explicit snapshot into a local filesystem view and turns RW
+novaic-logicalfs/README.md:6:view changes back into an explicit patch. It does not know Cortex, agents,
+novaic-logicalfs/README.md:11:- `LogicalFSSnapshot`
+novaic-logicalfs/README.md:12:- `LogicalFSLayout`
+novaic-logicalfs/README.md:17:- `LogicalFSView`
+novaic-logicalfs/README.md:18:- `LogicalFSPatch`
+novaic-cortex/novaic_cortex/api.py:194:ROOT_SCOPE_PREFIX = "/ro/active"
+novaic-cortex/novaic_cortex/api.py:198:    return f"{ROOT_SCOPE_PREFIX}/{scope_id}"
+novaic-cortex/novaic_cortex/api.py:261:    current dispatch shapes on the same scope lookup path.
+novaic-cortex/novaic_cortex/api.py:1441:      having to special-case "I buffered 0 messages this dispatch" on
+novaic-cortex/novaic_cortex/api.py:1462:      from the dispatch envelope at saga-start time (one call per scope
+novaic-cortex/novaic_cortex/api.py:1466:    * DispatchSubscriber does not write this endpoint. Buffered messages
+novaic-logicalfs/pyproject.toml:2:name = "novaic-logicalfs"
+novaic-logicalfs/pyproject.toml:4:description = "Snapshot/view/patch LogicalFS substrate for NovaIC"
+novaic-logicalfs/tests/test_logicalfs.py:5:from logicalfs import (
+novaic-logicalfs/tests/test_logicalfs.py:6:    LocalLogicalFSProvider,
+novaic-logicalfs/tests/test_logicalfs.py:7:    LogicalFSEnv,
+novaic-logicalfs/tests/test_logicalfs.py:8:    LogicalFSFile,
+novaic-logicalfs/tests/test_logicalfs.py:9:    LogicalFSLayout,
+novaic-logicalfs/tests/test_logicalfs.py:10:    LogicalFSSnapshot,
+novaic-logicalfs/tests/test_logicalfs.py:15:def test_materializes_snapshot_and_explicit_env_layout(tmp_path) -> None:
+novaic-logicalfs/tests/test_logicalfs.py:16:    provider = LocalLogicalFSProvider()
+novaic-logicalfs/tests/test_logicalfs.py:18:        snapshot=LogicalFSSnapshot(
+novaic-logicalfs/tests/test_logicalfs.py:20:                LogicalFSFile(path="config/tool.json", data=b"ro"),
+novaic-logicalfs/tests/test_logicalfs.py:21:                LogicalFSFile(path="scratch/existing.txt", data=b"rw", writable=True),
+novaic-logicalfs/tests/test_logicalfs.py:25:        layout=LogicalFSLayout(
+novaic-logicalfs/tests/test_logicalfs.py:28:                "RW_SELF": "/cortex/rw/subagents/sub-1",
+novaic-logicalfs/tests/test_logicalfs.py:29:                "RW_TMP": "/cortex/rw/tmp",
+novaic-logicalfs/tests/test_logicalfs.py:33:        env=LogicalFSEnv({"NOVAIC_TOKEN": "token-1", "NOVAIC_API": "http://cortex"}),
+novaic-logicalfs/tests/test_logicalfs.py:43:    assert view.env["RW_SELF"] == "/cortex/rw/subagents/sub-1"
+novaic-logicalfs/tests/test_logicalfs.py:47:def test_observe_patch_reports_upserts_and_deletes(tmp_path) -> None:
+novaic-logicalfs/tests/test_logicalfs.py:48:    provider = LocalLogicalFSProvider()
+novaic-logicalfs/tests/test_logicalfs.py:50:        snapshot=LogicalFSSnapshot(
+novaic-logicalfs/tests/test_logicalfs.py:52:                LogicalFSFile(path="keep.txt", data=b"old", writable=True),
+novaic-logicalfs/tests/test_logicalfs.py:53:                LogicalFSFile(path="delete.txt", data=b"bye", writable=True),
+novaic-logicalfs/tests/test_logicalfs.py:57:        layout=LogicalFSLayout(),
+novaic-logicalfs/tests/test_logicalfs.py:58:        env=LogicalFSEnv(),
+novaic-logicalfs/tests/test_logicalfs.py:65:    patch = provider.observe_patch(view)
+novaic-logicalfs/tests/test_logicalfs.py:67:    assert patch.deletes == ("/cortex/rw/delete.txt",)
+novaic-logicalfs/tests/test_logicalfs.py:68:    assert {item.path: item.data for item in patch.upserts} == {
+novaic-logicalfs/tests/test_logicalfs.py:72:    assert patch.changed_paths() == [
+novaic-logicalfs/tests/test_logicalfs.py:80:    provider = LocalLogicalFSProvider()
+novaic-logicalfs/tests/test_logicalfs.py:83:            snapshot=LogicalFSSnapshot(files=()),
+novaic-logicalfs/tests/test_logicalfs.py:85:            layout=LogicalFSLayout(),
+novaic-logicalfs/tests/test_logicalfs.py:86:            env=LogicalFSEnv(),
+novaic-logicalfs/tests/test_logicalfs.py:92:    provider = LocalLogicalFSProvider()
+novaic-logicalfs/tests/test_logicalfs.py:94:        snapshot=LogicalFSSnapshot(files=(LogicalFSFile(path="a.txt", data=b"a"),)),
+novaic-logicalfs/tests/test_logicalfs.py:96:        layout=LogicalFSLayout(),
+novaic-logicalfs/tests/test_logicalfs.py:97:        env=LogicalFSEnv(),
+novaic-logicalfs/tests/test_blob_store.py:1:"""BlobObjectStore tests."""
+novaic-logicalfs/tests/test_blob_store.py:11:from logicalfs import BlobObjectStore
+novaic-logicalfs/tests/test_blob_store.py:15:async def test_blob_object_store_roundtrip_and_move_prefix(tmp_path, monkeypatch):
+novaic-logicalfs/tests/test_blob_store.py:24:        def patched_async_client(*args, **kwargs):
+novaic-logicalfs/tests/test_blob_store.py:32:        monkeypatch.setattr(httpx, "AsyncClient", patched_async_client)
+novaic-logicalfs/tests/test_blob_store.py:33:        store = BlobObjectStore(base_url="http://blob.local", tenant_id="user-1")
+novaic-logicalfs/logicalfs/contracts.py:1:"""LogicalFS snapshot/view/patch contracts."""
+novaic-logicalfs/logicalfs/contracts.py:11:class LogicalFSFile:
+novaic-logicalfs/logicalfs/contracts.py:18:class LogicalFSSnapshot:
+novaic-logicalfs/logicalfs/contracts.py:19:    files: tuple[LogicalFSFile, ...]
+novaic-logicalfs/logicalfs/contracts.py:31:class LogicalFSLayout:
+novaic-logicalfs/logicalfs/contracts.py:38:class LogicalFSEnv:
+novaic-logicalfs/logicalfs/contracts.py:43:class LogicalFSView:
+novaic-logicalfs/logicalfs/contracts.py:56:class LogicalFSPatchFile:
+novaic-logicalfs/logicalfs/contracts.py:62:class LogicalFSPatch:
+novaic-logicalfs/logicalfs/contracts.py:63:    upserts: tuple[LogicalFSPatchFile, ...] = ()
+novaic-logicalfs/logicalfs/contracts.py:71:class LogicalFSDirectoryEntry:
+novaic-logicalfs/tests/test_authority.py:5:from logicalfs import (
+novaic-logicalfs/logicalfs/authority.py:1:"""Generic live LogicalFS file authority.
+novaic-logicalfs/logicalfs/authority.py:16:from logicalfs.contracts import LogicalFSDirectoryEntry, LogicalObjectInfo
+novaic-logicalfs/logicalfs/authority.py:163:    async def list_dir(self, path: str) -> list[LogicalFSDirectoryEntry]:
+novaic-logicalfs/logicalfs/authority.py:169:        entries: list[LogicalFSDirectoryEntry] = []
+novaic-logicalfs/logicalfs/authority.py:176:                LogicalFSDirectoryEntry(
+novaic-logicalfs/logicalfs/__init__.py:1:"""Business-agnostic LogicalFS snapshot/view/patch substrate."""
+novaic-logicalfs/logicalfs/__init__.py:3:from logicalfs.contracts import (
+novaic-logicalfs/logicalfs/__init__.py:4:    LogicalFSDirectoryEntry,
+novaic-logicalfs/logicalfs/__init__.py:5:    LogicalFSEnv,
+novaic-logicalfs/logicalfs/__init__.py:6:    LogicalFSFile,
+novaic-logicalfs/logicalfs/__init__.py:7:    LogicalFSLayout,
+novaic-logicalfs/logicalfs/__init__.py:8:    LogicalFSPatch,
+novaic-logicalfs/logicalfs/__init__.py:9:    LogicalFSPatchFile,
+novaic-logicalfs/logicalfs/__init__.py:10:    LogicalFSSnapshot,
+novaic-logicalfs/logicalfs/__init__.py:11:    LogicalFSView,
+novaic-logicalfs/logicalfs/__init__.py:15:from logicalfs.authority import (
+novaic-logicalfs/logicalfs/__init__.py:21:from logicalfs.blob_store import BlobObjectStore
+novaic-logicalfs/logicalfs/__init__.py:22:from logicalfs.local import LocalLogicalFSProvider
+novaic-logicalfs/logicalfs/__init__.py:25:    "BlobObjectStore",
+novaic-logicalfs/logicalfs/__init__.py:26:    "LogicalFSDirectoryEntry",
+novaic-logicalfs/logicalfs/__init__.py:27:    "LocalLogicalFSProvider",
+novaic-logicalfs/logicalfs/__init__.py:29:    "LogicalFSEnv",
+novaic-logicalfs/logicalfs/__init__.py:30:    "LogicalFSFile",
+novaic-logicalfs/logicalfs/__init__.py:31:    "LogicalFSLayout",
+novaic-logicalfs/logicalfs/__init__.py:32:    "LogicalFSPatch",
+novaic-logicalfs/logicalfs/__init__.py:33:    "LogicalFSPatchFile",
+novaic-logicalfs/logicalfs/__init__.py:34:    "LogicalFSSnapshot",
+novaic-logicalfs/logicalfs/__init__.py:35:    "LogicalFSView",
+novaic-logicalfs/logicalfs/local.py:1:"""Local LogicalFS materialization/diff provider."""
+novaic-logicalfs/logicalfs/local.py:8:from logicalfs.contracts import (
+novaic-logicalfs/logicalfs/local.py:9:    LogicalFSEnv,
+novaic-logicalfs/logicalfs/local.py:10:    LogicalFSLayout,
+novaic-logicalfs/logicalfs/local.py:11:    LogicalFSPatch,
+novaic-logicalfs/logicalfs/local.py:12:    LogicalFSPatchFile,
+novaic-logicalfs/logicalfs/local.py:13:    LogicalFSSnapshot,
+novaic-logicalfs/logicalfs/local.py:14:    LogicalFSView,
+novaic-logicalfs/logicalfs/local.py:86:class LocalLogicalFSProvider:
+novaic-logicalfs/logicalfs/local.py:87:    """Materialize explicit snapshots into local RO/RW views and observe patches."""
+novaic-logicalfs/logicalfs/local.py:92:        snapshot: LogicalFSSnapshot,
+novaic-logicalfs/logicalfs/local.py:94:        layout: LogicalFSLayout,
+novaic-logicalfs/logicalfs/local.py:95:        env: LogicalFSEnv,
+novaic-logicalfs/logicalfs/local.py:97:    ) -> LogicalFSView:
+novaic-logicalfs/logicalfs/local.py:105:        for item in snapshot.files:
+novaic-logicalfs/logicalfs/local.py:122:            "RO": layout.paths.ro,
+novaic-logicalfs/logicalfs/local.py:123:            "RW": layout.paths.rw,
+novaic-logicalfs/logicalfs/local.py:124:            "CORTEX_RO": layout.paths.ro,
+novaic-logicalfs/logicalfs/local.py:125:            "CORTEX_RW": layout.paths.rw,
+novaic-logicalfs/logicalfs/local.py:126:            "CORTEX_ROOT": layout.paths.root,
+novaic-logicalfs/logicalfs/local.py:127:            "CORTEX_FS_PROVIDER": "logicalfs",
+novaic-logicalfs/logicalfs/local.py:133:        return LogicalFSView(
+novaic-logicalfs/logicalfs/local.py:151:    def observe_patch(self, view: LogicalFSView) -> LogicalFSPatch:
+novaic-logicalfs/logicalfs/local.py:153:        upserts: list[LogicalFSPatchFile] = []
+novaic-logicalfs/logicalfs/local.py:160:                upserts.append(LogicalFSPatchFile(path=logical, data=(view.rw / rel).read_bytes()))
+novaic-logicalfs/logicalfs/local.py:161:        return LogicalFSPatch(upserts=tuple(upserts), deletes=tuple(sorted(deletes)))
+novaic-logicalfs/logicalfs/local.py:163:    def sanitize_output(self, text: str, view: LogicalFSView) -> str:
+novaic-logicalfs/logicalfs/blob_store.py:1:"""Blob Service object-store adapter below LogicalFS.
+novaic-logicalfs/logicalfs/blob_store.py:3:Blob Service is a cheap byte/object server. LogicalFS owns realtime /ro and /rw
+novaic-logicalfs/logicalfs/blob_store.py:15:from logicalfs.contracts import LogicalObjectInfo
+novaic-logicalfs/logicalfs/blob_store.py:18:class BlobObjectStore:
+novaic-logicalfs/logicalfs/blob_store.py:28:        client_service_name: str = "logicalfs",
+novaic-logicalfs/logicalfs/blob_store.py:82:            raise NotImplementedError("BlobObjectStore only supports delimiter='/'")
+novaic-logicalfs/logicalfs/blob_store.py:132:__all__ = ["BlobObjectStore"]

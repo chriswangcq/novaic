@@ -1,0 +1,108 @@
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:66:def _start_active_session(repo):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:81:def _remaining_stack(depth: int = 0):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:94:    first = _start_active_session(repo)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:102:            remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:111:            remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:121:            remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:131:            remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:134:    with pytest.raises(TypeError, match="missing .*remaining_stack"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:148:    first = _start_active_session(repo)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:153:        "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:163:        remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:176:    assert repo.get_active_session(session_key) is None
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:184:    first = _start_active_session(repo)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:186:    stale_stack = _remaining_stack(2)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:194:        remaining_stack=stale_stack,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:204:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:219:        "remaining_stack": stale_stack,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:229:    first = _start_active_session(repo)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:231:    stale_stack = _remaining_stack(3)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:239:        remaining_stack=stale_stack,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:249:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:264:        "remaining_stack": stale_stack,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:273:    remaining_stack = {"known": True, "depth": 2, "frames": []}
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:282:        "remaining_stack": remaining_stack,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:289:    assert payload["remaining_stack"] == remaining_stack
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:294:    assert scope_end_payload["remaining_stack"] == remaining_stack
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:321:        "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:349:    with pytest.raises(ValueError, match="remaining_stack"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:351:    with pytest.raises(ValueError, match="remaining_stack"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:353:    with pytest.raises(ValueError, match="remaining_stack"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:356:            "remaining_stack": True,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:362:            "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:410:            "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:422:        "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:432:                "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:445:                "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:461:                "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:484:            remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:494:        remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:506:            "remaining_stack": _remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:519:            remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:528:        remaining_stack=_remaining_stack(),
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:15:    recovery_marker_from_suspected_dead_event,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:38:def test_recovery_marker_from_suspected_dead_event_is_explicit_and_stable():
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:39:    marker = recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:62:    marker = recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:90:    assert recovery.metadata["recovery_suspected_dead_event_id"] == "suspected-1"
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:95:    marker = recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:121:            "remaining_stack": {"known": False, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:132:    marker = recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:155:def test_build_recovery_archive_effect_preserves_explicit_remaining_stack():
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:157:    remaining_stack = {"known": True, "depth": 2, "frames": [{"scope_id": "child"}]}
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:158:    event["payload"]["remaining_stack"] = remaining_stack
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:159:    marker = recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:174:    assert effect["payload"]["remaining_stack"] == remaining_stack
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:177:def test_build_recovery_archive_effect_rejects_bool_round_and_bad_remaining_stack():
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:180:    marker = recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:198:    event["payload"]["remaining_stack"] = True
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:199:    marker = recovery_marker_from_suspected_dead_event(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:207:    with pytest.raises(ValueError, match="remaining_stack"):
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:222:    assert "recovery_marker_from_suspected_dead_event(" in repo_source
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:226:    assert "_recovery_marker_from_suspected_dead_event" not in repo_source
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:75:def test_wake_finalize_failure_only_records_suspected_dead_event(tmp_path):
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:97:            "remaining_stack": {"known": True, "depth": 2, "frames": []},
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:110:    assert repo.get_active_session(session_key)["scope_id"] == first["scope_id"]
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:115:        if event["event_type"] == "session_suspected_dead"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:123:    assert payload["remaining_stack"] == {"known": True, "depth": 2, "frames": []}
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:156:        if event["event_type"] == "session_suspected_dead"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:162:def test_next_dispatch_recovers_from_suspected_dead_event_and_preserves_inbox(tmp_path):
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:212:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:223:    assert saga["context"]["recovery_suspected_dead_event_id"].startswith(
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:231:        if event["event_type"] == "session_suspected_dead_observed"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:242:    assert archive_payload["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:260:    assert "_record_session_suspected_dead_event(" not in branch
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:58:def test_wake_saga_failure_commits_finalize_creation_effect_before_publish(tmp_path):
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:71:            "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:90:    assert context["remaining_stack"] == {"known": True, "depth": 0, "frames": []}
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:99:    assert session_payload["remaining_stack"] == {"known": True, "depth": 0, "frames": []}
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:177:    assert context["remaining_stack"] == {"known": False, "depth": 0, "frames": []}
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:178:    assert _build_session_ended_payload(context)["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:187:def test_wake_finalize_failure_commits_suspected_dead_effect_before_publish(tmp_path):
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:190:    session_ledger.record_active_session(
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:217:        if event["event_type"] == "session_suspected_dead"
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:221:        "record_session_suspected_dead",
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:232:        if event["event_type"] == "session_suspected_dead"
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:288:    assert "self._record_session_suspected_dead_event" not in direct_call_names
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:87:def test_dispatch_decision_starts_wake_when_no_active_session():
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:193:def test_wake_finalize_failure_records_suspected_dead_event(tmp_path):
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:223:    active = repo.get_active_session("agent-1:main")
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:232:          AND event_type = 'session_suspected_dead'
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:263:    saga = orchestrator.get(repo.get_active_session("agent-1:main")["saga_id"])
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:268:    assert saga["context"]["recovery_suspected_dead_event_id"]
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:282:    assert archive_payload["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:326:    assert repo.get_active_session("agent-1:main") is not None
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:338:    saga = orchestrator.get(repo.get_active_session("agent-1:main")["saga_id"])
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:25:    def publish(self, topic, payload, **kwargs):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:28:        return super().publish(topic, payload, **kwargs)
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:153:    saga = orchestrator.get(repo.get_active_session(session_key)["saga_id"])
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:172:    assert archive_payload["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:200:    payload["remaining_stack"] = {"known": True, "depth": 0, "frames": []}
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:212:def test_recovery_archive_publisher_rejects_missing_remaining_stack(tmp_path):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:217:    with pytest.raises(ValueError, match="requires remaining_stack"):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:270:    assert archive_payload["remaining_stack"] == {
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:51:        "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:84:    assert bridge.scope_end.call_args.kwargs["remaining_stack"] == {
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:247:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:263:            "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:284:            remaining_stack={"known": True, "depth": 0, "frames": []},

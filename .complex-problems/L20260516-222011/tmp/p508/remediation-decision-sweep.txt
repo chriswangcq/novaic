@@ -1,0 +1,109 @@
+# P508 targeted remediation decision sweep
+created: 2026-05-17T12:42:37Z
+
+## direct cortex archive / scope-end from queue service outside session_outbox
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:40:@register_handler(TaskTopics.CORTEX_SCOPE_END)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:41:def handle_cortex_scope_end(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:109:        archive_path = bridge.scope_end(
+novaic-agent-runtime/task_queue/topics.py:38:    CORTEX_SCOPE_END = "cortex.scope_end"
+novaic-agent-runtime/queue_service/session_outbox.py:30:    RECOVERY_ARCHIVE_SCOPE = "recovery_archive_scope"
+novaic-agent-runtime/queue_service/session_outbox.py:34:        RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/queue_service/session_outbox.py:141:        if effect_type == self.RECOVERY_ARCHIVE_SCOPE:
+novaic-agent-runtime/queue_service/session_outbox.py:213:            TaskTopics.CORTEX_SCOPE_END,
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:122:    topic=TaskTopics.CORTEX_SCOPE_END,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:121:    def scope_end(
+novaic-agent-runtime/queue_service/session_repo.py:455:                effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+
+## direct recovery wake saga creation outside session_outbox/saga compensation
+novaic-agent-runtime/queue_service/session_outbox.py:29:    CREATE_WAKE_SAGA = "create_wake_saga"
+novaic-agent-runtime/queue_service/session_outbox.py:140:            return self._publish_create_wake_saga(effect)
+novaic-agent-runtime/queue_service/session_outbox.py:148:    def _publish_create_wake_saga(self, effect: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_outbox.py:154:            "create_wake_saga outbox payload requires scope_id",
+novaic-agent-runtime/queue_service/session_outbox.py:159:            "create_wake_saga outbox payload requires session_key",
+novaic-agent-runtime/queue_service/session_outbox.py:164:            "create_wake_saga outbox payload requires agent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:169:            "create_wake_saga outbox payload requires subagent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:174:            "create_wake_saga outbox payload requires saga_idempotency_key",
+novaic-agent-runtime/queue_service/session_outbox.py:179:            "create_wake_saga outbox payload requires saga_type",
+novaic-agent-runtime/queue_service/session_outbox.py:183:            surface="session outbox create_wake_saga",
+novaic-agent-runtime/queue_service/session_outbox.py:185:        saga_id = self.saga_orchestrator.create(
+novaic-agent-runtime/queue_service/session_effects.py:13:def build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:11:from queue_service.session_effects import build_create_wake_saga_effect
+novaic-agent-runtime/queue_service/session_wake_plan.py:76:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:113:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_observed_events.py:77:                        reason="create_wake_saga outbox race loser",
+novaic-agent-runtime/queue_service/session_observed_events.py:93:                    reason="stale create_wake_saga observation",
+novaic-agent-runtime/queue_service/saga_repo.py:1226:            "create_wake_finalize_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:1267:        if effect_type == "create_wake_finalize_saga":
+novaic-agent-runtime/queue_service/saga_repo.py:1309:            "effect_type": "create_wake_finalize_saga",
+
+## suspected-dead/session-ended event writes
+novaic-agent-runtime/queue_service/routes.py:549:    remaining_stack: Dict[str, Any]
+novaic-agent-runtime/queue_service/routes.py:584:    def session_ended(req: SessionEndedRequest):
+novaic-agent-runtime/queue_service/routes.py:586:        result = session_repo.session_ended(
+novaic-agent-runtime/queue_service/routes.py:592:            remaining_stack=req.remaining_stack,
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:30:@register_handler(TaskTopics.SESSION_ENDED)
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:31:def handle_session_ended(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:44:        remaining_stack: dict
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:51:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:62:    if remaining_stack is None:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:63:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:64:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:65:        raise ValidationError("remaining_stack must be an object")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:71:    result = saga_client.session_ended(
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:77:        remaining_stack=remaining_stack,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:70:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:80:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:81:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:116:            remaining_stack=dict(remaining_stack),
+novaic-agent-runtime/queue_service/session_outbox.py:207:        remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/queue_service/session_outbox.py:208:        if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/queue_service/session_outbox.py:210:                "recovery archive outbox payload requires remaining_stack"
+novaic-agent-runtime/queue_service/session_outbox.py:223:                "remaining_stack": dict(remaining_stack),
+novaic-agent-runtime/queue_service/session_recovery.py:15:def _unknown_remaining_stack() -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_recovery.py:84:        "reason": payload.get("reason") or "wake_finalize_failed",
+novaic-agent-runtime/queue_service/session_recovery.py:160:    raw_remaining_stack = recovery_metadata.get("remaining_stack", _MISSING)
+novaic-agent-runtime/queue_service/session_recovery.py:161:    if raw_remaining_stack is _MISSING:
+novaic-agent-runtime/queue_service/session_recovery.py:162:        remaining_stack = _unknown_remaining_stack()
+novaic-agent-runtime/queue_service/session_recovery.py:163:    elif isinstance(raw_remaining_stack, dict):
+novaic-agent-runtime/queue_service/session_recovery.py:164:        remaining_stack = dict(raw_remaining_stack)
+novaic-agent-runtime/queue_service/session_recovery.py:166:        raise ValueError("remaining_stack must be an object")
+novaic-agent-runtime/queue_service/session_recovery.py:180:            "remaining_stack": remaining_stack,
+novaic-agent-runtime/queue_service/session_events.py:18:    SESSION_SUSPECTED_DEAD = "session_suspected_dead"
+novaic-agent-runtime/queue_service/session_events.py:19:    SESSION_SUSPECTED_DEAD_OBSERVED = "session_suspected_dead_observed"
+novaic-agent-runtime/queue_service/session_events.py:31:    SESSION_SUSPECTED_DEAD_OBSERVED = "session:session_suspected_dead_observed:"
+novaic-agent-runtime/queue_service/saga_repo.py:1140:def _explicit_or_unknown_remaining_stack(context: Dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/saga_repo.py:1141:    remaining_stack = context.get("remaining_stack")
+novaic-agent-runtime/queue_service/saga_repo.py:1142:    if isinstance(remaining_stack, dict):
+novaic-agent-runtime/queue_service/saga_repo.py:1143:        return dict(remaining_stack)
+novaic-agent-runtime/queue_service/saga_repo.py:1298:            "remaining_stack": _explicit_or_unknown_remaining_stack(context),
+novaic-agent-runtime/queue_service/saga_repo.py:1362:            "reason": "wake_finalize_failed",
+novaic-agent-runtime/queue_service/saga_repo.py:1368:                "wake_finalize_failed",
+novaic-agent-runtime/queue_service/saga_repo.py:1374:            "remaining_stack": _explicit_or_unknown_remaining_stack(saga_context),
+novaic-agent-runtime/queue_service/saga_repo.py:1393:                event_type=SessionEventType.SESSION_SUSPECTED_DEAD.value,
+novaic-agent-runtime/task_queue/topics.py:25:    SESSION_ENDED = "session.ended"
+novaic-agent-runtime/queue_service/session_repo.py:11:- session_ended():  Clean up session, optionally restart from pending inbox
+novaic-agent-runtime/queue_service/session_repo.py:186:                            SessionEventType.SESSION_SUSPECTED_DEAD_OBSERVED.value
+novaic-agent-runtime/queue_service/session_repo.py:189:                            SessionEventKeyPrefix.SESSION_SUSPECTED_DEAD_OBSERVED,
+novaic-agent-runtime/queue_service/session_repo.py:502:    def session_ended(
+novaic-agent-runtime/queue_service/session_repo.py:510:        remaining_stack: Dict[str, Any],
+novaic-agent-runtime/queue_service/session_repo.py:522:        if remaining_stack is None:
+novaic-agent-runtime/queue_service/session_repo.py:523:            raise ValueError("remaining_stack is required for session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:528:            "remaining_stack": dict(remaining_stack),
+novaic-agent-runtime/queue_service/session_repo.py:725:            SessionEventType.SESSION_SUSPECTED_DEAD.value,
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:39:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:97:def _remaining_stack_snapshot(ctx):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:98:    remaining_stack = ctx.get("remaining_stack")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:99:    if isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:100:        return dict(remaining_stack)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:101:    raise ValueError("remaining_stack is required for wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:113:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:129:    topic=TaskTopics.SESSION_ENDED,
+novaic-agent-runtime/task_queue/client.py:476:    def session_ended(
+novaic-agent-runtime/task_queue/client.py:484:        remaining_stack: Dict[str, Any],
+novaic-agent-runtime/task_queue/client.py:499:            "remaining_stack": remaining_stack,
+novaic-agent-runtime/task_queue/contracts/react_think.py:389:            "remaining_stack": {
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:130:        remaining_stack: dict[str, Any] | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:148:        if remaining_stack is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:149:            payload["remaining_stack"] = dict(remaining_stack)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:392:def _remaining_stack_snapshot(decision: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:420:            "remaining_stack": _remaining_stack_snapshot(decision),

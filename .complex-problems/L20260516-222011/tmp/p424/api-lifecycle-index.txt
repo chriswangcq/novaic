@@ -1,0 +1,33 @@
+# P424 API lifecycle endpoint index
+41:    ContextEventReadModel,
+42:    ContextEventReadModelResetRequired,
+45:from novaic_cortex.context_event_writer import ContextEventWriteContext, ContextEventWriter
+194:def _context_event_writer(ws: Any) -> ContextEventWriter:
+195:    return ContextEventWriter(
+886:@app.post("/v1/context/read")
+899:@app.post("/v1/context/append")
+922:@app.post("/v1/context/batch")
+971:@app.post("/v1/context/prepare_for_llm")
+972:async def context_prepare_for_llm(req: PrepareForLLMRequest):
+980:        prepared = await ContextEventReadModel(
+985:    except ContextEventReadModelResetRequired as exc:
+1061:@app.post("/v1/context/skill_begin")
+1199:@app.post("/v1/context/skill_end")
+1310:@app.post("/v1/context/status")
+1344:        prepared = await ContextEventReadModel(
+1349:    except ContextEventReadModelResetRequired as exc:
+1363:def _context_event_reset_required(exc: ContextEventReadModelResetRequired) -> HTTPException:
+1572:@app.post("/v1/steps/write")
+1612:            path = await ws.write_step_projection(active_path, normalized_step)
+1619:@app.post("/v1/steps/list")
+1626:@app.post("/v1/steps/read")
+1637:@app.post("/v1/steps/index")
+1822:@app.post("/v1/steps/read_formatted")
+1823:async def steps_read_formatted(req: StepFormattedRequest):
+1827:        format_for_current_tool_result_llm,
+1828:        format_for_display_perception_llm,
+1829:        format_for_history_llm,
+1844:        content = format_for_display_perception_llm(parsed, req.provider)
+1846:        content = format_for_current_tool_result_llm(parsed, req.provider)
+1848:        content = format_for_history_llm(parsed, req.provider)
+1861:@app.post("/v1/steps/read_preview")

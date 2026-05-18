@@ -1,0 +1,214 @@
+# P415 final task/handler guard
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:14:def _positive_generation(value: Any) -> int:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:16:        raise ValidationError("Missing required field: generation")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:18:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:20:        generation = value
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:22:        generation = int(value.strip())
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:24:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:25:    if generation < 1:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:26:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:27:    return generation
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:42:        finalize_reason: str
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:43:        generation: int
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:44:        remaining_stack: dict
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:49:    finalize_reason = payload.get("finalize_reason")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:50:    generation = payload.get("generation")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:51:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:59:    if not finalize_reason:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:60:        raise ValidationError("Missing required field: finalize_reason")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:61:    generation = _positive_generation(generation)
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:62:    if remaining_stack is None:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:63:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:64:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:65:        raise ValidationError("remaining_stack must be an object")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:75:        finalize_reason=str(finalize_reason),
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:76:        generation=generation,
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:77:        remaining_stack=remaining_stack,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:26:from task_queue.contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:69:    finalize_reason = payload.get("finalize_reason", "stack_empty")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:70:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:71:    round_num = payload.get("round_num", 0)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:79:    session_generation = require_positive_session_generation(payload, "cortex.scope_end")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:80:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:81:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:104:        "[cortex.scope_end] scope=%s generation=%s reason=%s round=%s report_len=%d inputs=%d",
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:105:        scope_id, session_generation, finalize_reason, round_num,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:114:            session_generation=session_generation,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:115:            finalize_reason=str(finalize_reason or "stack_empty"),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:116:            remaining_stack=dict(remaining_stack),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:117:            round_num=int(round_num or 0),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:122:            scope_id, finalize_reason, round_num, e,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:147:                processed_ok = int(resp.get("ok_count", 0))
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:148:                processed_noop = int(resp.get("noop_count", 0))
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:149:                processed_err = int(resp.get("error_count", 0))
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:169:        "finalize_reason": finalize_reason,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:170:        "session_generation": session_generation,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:171:        "round_num": round_num,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:276:            "stack_depth": status.get("stack_depth", 0),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:286:            "stack_depth": 1,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:350:    no_tool_retry = prepare_input.no_tool_retry_count
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:354:            "(no_tool_retry_count=%d, scope=%s)",
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:13:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:56:    payload["session_generation"] = require_positive_session_generation(
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:87:            "round_num": 1,
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:6:2. Notify Session Coordinator with the expected session generation
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:17:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:26:    """Feed finalize_reason + round_num into archival for audit logs.
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:36:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:38:        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:39:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:40:        "round_num": _non_negative_int(ctx.get("round_num"), "round_num"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:72:def _session_generation(ctx) -> int:
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:73:    return require_positive_session_generation(ctx, "wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:76:def _non_negative_int(value, owner: str) -> int:
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:82:        parsed = int(value)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:93:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:97:def _remaining_stack_snapshot(ctx):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:98:    remaining_stack = ctx.get("remaining_stack")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:99:    if isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:100:        return dict(remaining_stack)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:105:    stack_depth = _non_negative_int(
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:106:        ctx.get("stack_depth_at_finalize"), "stack_depth_at_finalize"
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:110:        "depth": stack_depth,
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:122:        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:123:        "generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:124:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:125:        "round_num": _non_negative_int(ctx.get("round_num"), "round_num"),
+novaic-agent-runtime/task_queue/contracts/react_think.py:15:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/task_queue/contracts/react_think.py:16:    require_positive_session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:17:    require_positive_session_generation_value,
+novaic-agent-runtime/task_queue/contracts/react_think.py:26:    session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_think.py:32:    round_num: int = 1
+novaic-agent-runtime/task_queue/contracts/react_think.py:35:    no_tool_retry_count: int = 0
+novaic-agent-runtime/task_queue/contracts/react_think.py:36:    stack_hold_retry_count: int = 0
+novaic-agent-runtime/task_queue/contracts/react_think.py:42:            "session_generation",
+novaic-agent-runtime/task_queue/contracts/react_think.py:43:            require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/contracts/react_think.py:44:                self.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:61:            session_generation=require_positive_session_generation(ctx, "ReactThinkInput"),
+novaic-agent-runtime/task_queue/contracts/react_think.py:62:            round_num=int(ctx.get("round_num") or 1),
+novaic-agent-runtime/task_queue/contracts/react_think.py:65:            no_tool_retry_count=int(ctx.get("no_tool_retry_count") or 0),
+novaic-agent-runtime/task_queue/contracts/react_think.py:66:            stack_hold_retry_count=int(ctx.get("stack_hold_retry_count") or 0),
+novaic-agent-runtime/task_queue/contracts/react_think.py:108:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:109:        "no_tool_retry_count": source.no_tool_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:121:        "round_id": f"round-{source.round_num}",
+novaic-agent-runtime/task_queue/contracts/react_think.py:128:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:184:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:187:        "round_id": f"round-{source.round_num}",
+novaic-agent-runtime/task_queue/contracts/react_think.py:188:        "idempotency_key": f"{source.scope_id}-round{source.round_num}-response",
+novaic-agent-runtime/task_queue/contracts/react_think.py:220:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:243:            "no_tool_retry_count": 0,
+novaic-agent-runtime/task_queue/contracts/react_think.py:244:            "stack_hold_retry_count": 0,
+novaic-agent-runtime/task_queue/contracts/react_think.py:246:            "round_num": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_think.py:249:    if source.no_tool_retry_count < 1:
+novaic-agent-runtime/task_queue/contracts/react_think.py:255:            "no_tool_retry_count": 1,
+novaic-agent-runtime/task_queue/contracts/react_think.py:256:            "stack_hold_retry_count": source.stack_hold_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:258:            "round_num": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_think.py:263:    stack_depth = int(stack_info.get("stack_depth") or 0)
+novaic-agent-runtime/task_queue/contracts/react_think.py:266:    if source.round_num >= decision_input.max_rounds_before_force_finalize:
+novaic-agent-runtime/task_queue/contracts/react_think.py:272:            "no_tool_retry_count": source.no_tool_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:273:            "stack_hold_retry_count": source.stack_hold_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:275:            "round_num": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_think.py:276:            "finalize_reason": "round_cap",
+novaic-agent-runtime/task_queue/contracts/react_think.py:277:            "stack_depth": stack_depth,
+novaic-agent-runtime/task_queue/contracts/react_think.py:281:    if (not stack_known) or stack_depth > 0:
+novaic-agent-runtime/task_queue/contracts/react_think.py:282:        if source.stack_hold_retry_count < decision_input.max_stack_hold_retries:
+novaic-agent-runtime/task_queue/contracts/react_think.py:288:                "no_tool_retry_count": source.no_tool_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:289:                "stack_hold_retry_count": source.stack_hold_retry_count + 1,
+novaic-agent-runtime/task_queue/contracts/react_think.py:291:                "round_num": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_think.py:292:                "stack_depth": stack_depth,
+novaic-agent-runtime/task_queue/contracts/react_think.py:301:            "no_tool_retry_count": source.no_tool_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:302:            "stack_hold_retry_count": source.stack_hold_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:304:            "round_num": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_think.py:305:            "finalize_reason": "stack_nonempty_after_retry",
+novaic-agent-runtime/task_queue/contracts/react_think.py:306:            "stack_depth": stack_depth,
+novaic-agent-runtime/task_queue/contracts/react_think.py:315:        "no_tool_retry_count": source.no_tool_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:316:        "stack_hold_retry_count": source.stack_hold_retry_count,
+novaic-agent-runtime/task_queue/contracts/react_think.py:318:        "round_num": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_think.py:319:        "finalize_reason": "no_tool_exhausted",
+novaic-agent-runtime/task_queue/contracts/react_think.py:320:        "stack_depth": 0,
+novaic-agent-runtime/task_queue/contracts/react_think.py:333:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:334:        "round_num": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_think.py:338:        "no_tool_retry_count": 0,
+novaic-agent-runtime/task_queue/contracts/react_think.py:343:        "idempotency_key": f"react-actions-{source.scope_id}-round{source.round_num}",
+novaic-agent-runtime/task_queue/contracts/react_think.py:348:    next_round = source.round_num + 1
+novaic-agent-runtime/task_queue/contracts/react_think.py:358:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:359:            "round_num": next_round,
+novaic-agent-runtime/task_queue/contracts/react_think.py:360:            "no_tool_retry_count": decision.get("no_tool_retry_count", 1),
+novaic-agent-runtime/task_queue/contracts/react_think.py:361:            "stack_hold_retry_count": decision.get("stack_hold_retry_count", 0),
+novaic-agent-runtime/task_queue/contracts/react_think.py:367:            f"-sh{decision.get('stack_hold_retry_count', 0)}"
+novaic-agent-runtime/task_queue/contracts/react_think.py:373:    round_num = int(decision.get("round_num") or source.round_num)
+novaic-agent-runtime/task_queue/contracts/react_think.py:374:    finalize_reason = decision.get("finalize_reason", "no_tool_exhausted")
+novaic-agent-runtime/task_queue/contracts/react_think.py:376:    stack_depth = int(decision.get("stack_depth") or 0)
+novaic-agent-runtime/task_queue/contracts/react_think.py:386:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_think.py:387:            "finalize_reason": finalize_reason,
+novaic-agent-runtime/task_queue/contracts/react_think.py:388:            "round_num": round_num,
+novaic-agent-runtime/task_queue/contracts/react_think.py:389:            "stack_depth_at_finalize": stack_depth,
+novaic-agent-runtime/task_queue/contracts/react_think.py:391:            "remaining_stack": {
+novaic-agent-runtime/task_queue/contracts/react_think.py:393:                "depth": stack_depth,
+novaic-agent-runtime/task_queue/contracts/react_think.py:397:        "idempotency_key": f"wake-finalize-{source.scope_id}-r{round_num}-{finalize_reason}",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:12:from task_queue.contracts.session_generation import (
+novaic-agent-runtime/task_queue/contracts/react_actions.py:13:    require_positive_session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:14:    require_positive_session_generation_value,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:22:    session_generation: int
+novaic-agent-runtime/task_queue/contracts/react_actions.py:28:    round_num: int = 1
+novaic-agent-runtime/task_queue/contracts/react_actions.py:32:    no_tool_retry_count: int | None = None
+novaic-agent-runtime/task_queue/contracts/react_actions.py:39:            "session_generation",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:40:            require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/contracts/react_actions.py:41:                self.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:58:            session_generation=require_positive_session_generation(ctx, "ReactActionsInput"),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:59:            round_num=int(ctx.get("round_num") or 1),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:63:            no_tool_retry_count=(
+novaic-agent-runtime/task_queue/contracts/react_actions.py:64:                int(ctx["no_tool_retry_count"]) if "no_tool_retry_count" in ctx else None
+novaic-agent-runtime/task_queue/contracts/react_actions.py:70:            repeated_tool_error_count=int(ctx.get("repeated_tool_error_count") or 0),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:134:                "round_id": f"round-{source.round_num}",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:177:def logical_tool_error_fingerprint(prev_results: Any) -> str | None:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:266:                    "round": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:270:                "idempotency_key": f"{source.scope_id}-round{source.round_num}-{tool_call_id}",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:294:    stack_depth = int(check.get("stack_depth") or 0)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:296:    tool_error_fingerprint = logical_tool_error_fingerprint(tool_results)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:307:        "stack_depth": stack_depth,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:309:        "round_num": source.round_num,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:316:    if is_reply_no_followup(source.tool_calls) and stack_known and stack_depth == 0:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:321:            "force_finalize_reason": "reply_no_followup",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:331:            "stack_empty": stack_known and stack_depth == 0,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:333:            "force_finalize_reason": "repeated_scope_mismatch",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:336:    if source.round_num >= max_rounds_before_force_finalize:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:339:            "stack_empty": stack_known and stack_depth == 0,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:341:            "force_finalize_reason": "round_cap",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:349:            "force_finalize_reason": None,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:352:    stack_empty = stack_depth == 0
+novaic-agent-runtime/task_queue/contracts/react_actions.py:357:        "force_finalize_reason": None,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:365:    next_round = source.round_num + 1
+novaic-agent-runtime/task_queue/contracts/react_actions.py:373:        "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:374:        "round_num": next_round,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:378:    if source.no_tool_retry_count is not None:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:379:        context["no_tool_retry_count"] = source.no_tool_retry_count
+novaic-agent-runtime/task_queue/contracts/react_actions.py:381:    repeated_count = int(decision.get("repeated_tool_error_count") or 0)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:392:def _remaining_stack_snapshot(decision: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:394:    stack_depth = int(decision.get("stack_depth") or 0)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:397:        "depth": stack_depth,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:406:    reason = decision.get("force_finalize_reason") or "stack_empty"
+novaic-agent-runtime/task_queue/contracts/react_actions.py:407:    round_num = int(decision.get("round_num") or source.round_num)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:417:            "session_generation": source.session_generation,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:418:            "finalize_reason": reason,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:419:            "round_num": round_num,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:420:            "stack_depth_at_finalize": decision.get("stack_depth", 0),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:422:            "remaining_stack": _remaining_stack_snapshot(decision),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:425:        "idempotency_key": f"wake-finalize-{source.scope_id}-r{round_num}",
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:17:from ..contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:128:        session_generation: int | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:129:        finalize_reason: str | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:130:        remaining_stack: dict[str, Any] | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:131:        round_num: int | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:141:        if session_generation is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:142:            payload["session_generation"] = require_positive_session_generation_value(
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:143:                session_generation,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:146:        if finalize_reason is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:147:            payload["finalize_reason"] = finalize_reason
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:148:        if remaining_stack is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:149:            payload["remaining_stack"] = dict(remaining_stack)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:150:        if round_num is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:151:            payload["round_num"] = int(round_num)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:307:        return int(result.get("value", 0) or 0)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:310:        """Atomically increment round_num on the server and return the new value.
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:318:        return int(result.get("round_num", 0) or 0)

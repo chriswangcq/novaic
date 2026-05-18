@@ -1,0 +1,147 @@
+=== endpoint decorators ===
+320:@app.post("/v1/shell")
+339:@app.get("/v1/read")
+352:@app.post("/v1/write")
+360:@app.get("/v1/ls")
+367:@app.get("/v1/skill/list")
+374:@app.get("/v1/tools")
+545:@app.post("/v1/scope/create")
+672:@app.post("/v1/scope/end")
+791:@app.get("/v1/scope/history")
+811:@app.post("/v1/scope/write_assistant")
+886:@app.post("/v1/context/read")
+899:@app.post("/v1/context/append")
+922:@app.post("/v1/context/batch")
+971:@app.post("/v1/context/prepare_for_llm")
+1061:@app.post("/v1/context/skill_begin")
+1199:@app.post("/v1/context/skill_end")
+1310:@app.post("/v1/context/status")
+1387:@app.post("/v1/meta/read")
+1400:@app.post("/v1/meta/update")
+1434:@app.post("/v1/scope/append_input")
+1501:@app.post("/v1/meta/counter_inc")
+1533:@app.post("/v1/meta/advance_round")
+1572:@app.post("/v1/steps/write")
+1619:@app.post("/v1/steps/list")
+1626:@app.post("/v1/steps/read")
+1637:@app.post("/v1/steps/index")
+1822:@app.post("/v1/steps/read_formatted")
+1861:@app.post("/v1/steps/read_preview")
+1931:@app.post("/v1/payload/read")
+1958:@app.post("/v1/payload/search")
+2167:@app.post("/v1/payload/summarize")
+2176:@app.post("/v1/payload/qa")
+2196:@app.post("/v1/internal/tools")
+2207:@app.post("/v1/internal/reindex")
+2307:@app.post("/v1/internal/shell")
+2345:@app.post("/v1/token")
+2356:@app.get("/health")
+2362:@app.get("/metrics")
+2379:@app.get("/ready")
+=== suspicious API direct paths ===
+34:from novaic_cortex.active_stack_projection import (
+35:    finalize_active_stack_projection,
+36:    read_active_stack_projection,
+37:    write_active_stack_projection,
+248:    projections: list[dict[str, Any]]
+251:        row = ws.operational_store.get_scope_projection(
+255:        projections = [row] if row is not None else []
+257:        projections = ws.operational_store.list_scope_projections(scope_id=scope_id)
+259:    for row in projections:
+424:            raise ValueError("positive session_generation is required for archive diagnostics")
+437:            raise ValueError("session_generation is required for archive diagnostics")
+439:            raise ValueError("positive session_generation is required for archive diagnostics")
+441:            raise ValueError("finalize_reason is required for archive diagnostics")
+443:            raise ValueError("remaining_stack is required for archive diagnostics")
+503:    events use this post-archive stack so LLM context projection does not keep
+531:    return finalize_active_stack_projection(
+569:            _write_active_stack_projection(
+600:                _write_active_stack_projection(
+621:    path = await ws.create_scope_projection(
+637:        _write_active_stack_projection(
+654:        _write_active_stack_projection(
+672:@app.post("/v1/scope/end")
+704:        active_stack = read_active_stack_projection(
+727:        archive_path = await ws.archive_root_scope_projection(req.scope_id, "")
+745:        active_stack = read_active_stack_projection(
+776:        await ws.complete_child_scope_projection(scope_path, "")
+816:    active_path = read_active_stack_projection(
+886:@app.post("/v1/context/read")
+895:    messages = await ws.read_context(scope_path)
+901:    # The materialized context projection uses append-line writes; serialize per
+902:    # root scope to prevent concurrent projection updates losing lines.
+918:        await ws.append_context_projection(scope_path, req.message)
+941:        await ws.append_context_batch_projection(scope_path, req.messages)
+986:        raise _context_event_reset_required(exc) from exc
+1039:        raise RuntimeError("Workspace clock is required for active stack projection writes")
+1043:def _write_active_stack_projection(
+1051:    return write_active_stack_projection(
+1076:    active_stack = read_active_stack_projection(
+1086:            "error": "child_scope_id is required",
+1099:        existing_scope = ws.operational_store.get_scope_projection(
+1136:        child_path = await ws.create_scope_projection(
+1165:        _write_active_stack_projection(
+1213:    active_stack = read_active_stack_projection(
+1224:            "error": "child_scope_id is required",
+1273:        await ws.complete_child_scope_projection(active_path, req.report)
+1275:        _write_active_stack_projection(
+1310:@app.post("/v1/context/status")
+1315:    stack read from the materialized scope projection. Runtime calls it every
+1318:    token/message estimates; that usage path is event-projection backed and
+1325:        active_stack = read_active_stack_projection(
+1350:        raise _context_event_reset_required(exc) from exc
+1363:def _context_event_reset_required(exc: ContextEventReadModelResetRequired) -> HTTPException:
+1367:            "error_code": "context_event_reset_required",
+1487:        merged = await ws.append_input_message_ids_projection(
+1588:            active_path = read_active_stack_projection(
+1610:                payload_ref=normalized_step.get("payload_ref"),
+1612:            path = await ws.write_step_projection(active_path, normalized_step)
+1651:    projection: str = "history"
+1663:    payload_ref: str
+1671:    payload_ref: str
+1679:    payload_ref: str
+1690:    payload_ref: str
+1710:async def _find_step_by_payload_ref(ws, scope_id: str, payload_ref: str) -> Optional[dict]:
+1712:    return await _find_step_by_payload_ref_in_path(ws, scope_path, payload_ref)
+1715:async def _find_step_by_payload_ref_in_path(
+1718:    payload_ref: str,
+1728:            found = await _find_step_by_payload_ref_in_path(
+1731:                payload_ref,
+1737:        if entry.get("payload_ref") != payload_ref:
+1778:                or entry.get("payload_ref") == step_ref
+1796:    payload_ref = step.get("payload_ref")
+1798:    if not payload_ref or not scope_path:
+1801:        return await ws.read_payload(scope_path, payload_ref)
+1805:            "payload_ref_mismatch": 409,
+1815:                "payload_ref": exc.payload_ref,
+1822:@app.post("/v1/steps/read_formatted")
+1823:async def steps_read_formatted(req: StepFormattedRequest):
+1825:    from novaic_cortex.step_result_projection import (
+1842:    projection = (req.projection or "").strip()
+1843:    if projection == "display_perception":
+1845:    elif projection == "current_tool_result":
+1847:    elif projection == "history":
+1853:                "error_code": "unsupported_step_projection",
+1854:                "projection": projection,
+1864:    from novaic_cortex.step_result_projection import parse_tool_result, preview_for_text
+1919:async def _payload_text_by_ref(ws, scope_id: str, payload_ref: str) -> tuple[dict, str]:
+1920:    if not payload_ref or not payload_ref.strip():
+1921:        raise HTTPException(status_code=400, detail="payload_ref is required")
+1922:    step = await _find_step_by_payload_ref(ws, scope_id, payload_ref.strip())
+1924:        raise HTTPException(status_code=404, detail="payload_ref not found")
+1940:    step, text = await _payload_text_by_ref(ws, req.scope_id, req.payload_ref)
+1944:        "payload_ref": req.payload_ref,
+1962:        raise HTTPException(status_code=400, detail="query is required")
+1967:    step, text = await _payload_text_by_ref(ws, req.scope_id, req.payload_ref)
+1995:        "payload_ref": req.payload_ref,
+2070:        raise HTTPException(status_code=400, detail="factory_url is required")
+2072:        raise HTTPException(status_code=400, detail="model_id is required")
+2074:        raise HTTPException(status_code=400, detail="factory_user_id is required")
+2111:    step, raw_text = await _payload_text_by_ref(ws, req.scope_id, req.payload_ref)
+2122:            f"Payload ref: {req.payload_ref}\n"
+2134:            f"Payload ref: {req.payload_ref}\n"
+2155:        "payload_ref": req.payload_ref,
+2180:        raise HTTPException(status_code=400, detail="question is required")
+2196:@app.post("/v1/internal/tools")
+2257:    # Best archive label: first user message from the materialized context projection.
+2276:    # Secondary archive label source: summary projection — skip format headers and [Think] prefixes.

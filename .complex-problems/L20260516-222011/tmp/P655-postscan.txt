@@ -1,0 +1,7 @@
+.github/workflows/lint.yml:40:    - name: Run Blob workspace boundary lint
+.github/workflows/lint.yml:41:      run: python3 scripts/ci/lint_blob_workspace_boundary.py
+scripts/ci/lint_blob_workspace_boundary.py:18:POLICY_PATH = REPO_ROOT / "novaic-cortex" / "cortex_tests" / "blob_boundary_policy.py"
+scripts/ci/lint_blob_workspace_boundary.py:27:    spec = importlib.util.spec_from_file_location("blob_boundary_policy", POLICY_PATH)
+scripts/ci/lint_blob_workspace_boundary.py:99:        print("Blob workspace boundary violations:")
+scripts/ci/lint_blob_workspace_boundary.py:104:    print("Blob workspace boundary OK")
+novaic-cortex/tests/test_blob_boundary_guard.py:5:from cortex_tests.blob_boundary_policy import (

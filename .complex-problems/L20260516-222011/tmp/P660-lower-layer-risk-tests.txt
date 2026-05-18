@@ -1,0 +1,42 @@
+=== common selected ===
+.......................                                                  [100%]
+23 passed in 0.03s
+=== logicalfs selected ===
+
+==================================== ERRORS ====================================
+___________________ ERROR collecting tests/test_logicalfs.py ___________________
+ImportError while importing test module '/Users/wangchaoqun/new-build-novaic/novaic-logicalfs/tests/test_logicalfs.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/anaconda3/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_logicalfs.py:5: in <module>
+    from logicalfs import (
+logicalfs/__init__.py:21: in <module>
+    from logicalfs.blob_store import BlobObjectStore
+logicalfs/blob_store.py:13: in <module>
+    from common.http.clients import internal_async_client
+E   ModuleNotFoundError: No module named 'common'
+___________________ ERROR collecting tests/test_authority.py ___________________
+ImportError while importing test module '/Users/wangchaoqun/new-build-novaic/novaic-logicalfs/tests/test_authority.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/anaconda3/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_authority.py:5: in <module>
+    from logicalfs import (
+logicalfs/__init__.py:21: in <module>
+    from logicalfs.blob_store import BlobObjectStore
+logicalfs/blob_store.py:13: in <module>
+    from common.http.clients import internal_async_client
+E   ModuleNotFoundError: No module named 'common'
+=========================== short test summary info ============================
+ERROR tests/test_logicalfs.py
+ERROR tests/test_authority.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!!
+2 errors in 0.08s
+=== sandbox service selected ===
+..                                                                       [100%]
+2 passed in 0.01s

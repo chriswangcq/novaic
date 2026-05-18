@@ -1,0 +1,1220 @@
+novaic-common/config/services.json:12:    "queue_service_internal_key": "queue-internal-dev",
+novaic-common/config/services.json:24:    "queue_service":      { "url": "http://127.0.0.1:19997" },
+novaic-common/config/services.json:81:    "scheduler_poll_interval_seconds": 1.0
+novaic-agent-runtime/queue_service/routes.py:5:队列数据库集中在 Queue Service 进程，Worker 只能通过本 API 访问。
+novaic-agent-runtime/queue_service/routes.py:14:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/queue_service/routes.py:15:from queue_service.saga_repo import SagaRepository, SagaOrchestrator
+novaic-agent-runtime/queue_service/routes.py:16:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/queue_service/routes.py:17:from queue_service.exceptions import TaskNotFoundError, SagaError
+novaic-agent-runtime/queue_service/routes.py:356:        """获取所有已知的 topics (Task Worker 启动时调用)"""
+novaic-agent-runtime/queue_service/routes.py:415:            """Saga Worker 建完 DAG 后调用，标记 launched 并释放 claim"""
+novaic-agent-runtime/queue_service/routes.py:421:            """标记 Saga 完成 (Saga Worker 调用)"""
+novaic-agent-runtime/queue_service/routes.py:427:            """标记 Saga 失败 (Saga Worker 调用)"""
+novaic-agent-runtime/queue_service/routes.py:435:# Handler Execution API - 不属于 Queue Service
+novaic-agent-runtime/queue_service/routes.py:438:# Queue Service 是纯调度中间件，不执行业务逻辑；handler/tool
+novaic-agent-runtime/queue_service/routes.py:444:# Business Entry API - 不属于 Queue Service
+novaic-agent-runtime/queue_service/routes.py:448:# Queue Service 只接收已归一化的 dispatch / task / saga 请求。
+scripts/build-all.sh:108:echo "  $BUILD_DIR/novaic-agent-runtime scheduler --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997"
+novaic-agent-runtime/README.md:3:Task / Saga workers、队列消费、LLM 调用与工具分发（`task_queue/`、`queue_service/`）。与 Queue Service、Business、Cortex、LLM Factory 通过 HTTP 协作；Gateway 只在边缘广播/信令场景作为配置存在。
+novaic-agent-runtime/main_novaic.py:8:  - Queue Service: Task/Saga 队列管理
+novaic-agent-runtime/main_novaic.py:9:  - Task Worker: 通用任务执行器
+novaic-agent-runtime/main_novaic.py:10:  - Saga Worker: Saga 流程编排
+novaic-agent-runtime/main_novaic.py:11:  - Session Outbox Worker: durable session side-effect 投递
+novaic-agent-runtime/main_novaic.py:12:  - Saga Outbox Worker: durable saga compensation effect 投递
+novaic-agent-runtime/main_novaic.py:14:  - Scheduler Worker: 唯一的定时唤醒 sleeping agents 轮询者
+novaic-agent-runtime/main_novaic.py:17:Worker 主要通过 Queue Service、Business、Cortex 和 LLM Factory 通信；Gateway
+novaic-agent-runtime/main_novaic.py:21:    novaic-backend gateway --host HOST --port PORT --data-dir PATH --queue-service-url URL --vmcontrol-url URL --blob-service-url URL
+novaic-agent-runtime/main_novaic.py:22:    novaic-backend queue-service --host HOST --port PORT --data-dir PATH
+novaic-agent-runtime/main_novaic.py:23:    novaic-backend task-worker --queue-service-url URL --num-workers N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:24:    novaic-backend saga-worker --queue-service-url URL --max-concurrent N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:25:    novaic-backend session-outbox-worker --data-dir PATH
+novaic-agent-runtime/main_novaic.py:26:    novaic-backend saga-outbox-worker --data-dir PATH
+novaic-agent-runtime/main_novaic.py:27:    novaic-backend health --queue-service-url URL --task-timeout N --saga-timeout N --data-dir PATH
+novaic-agent-runtime/main_novaic.py:28:    novaic-backend scheduler --business-url URL --queue-service-url URL --data-dir PATH
+novaic-agent-runtime/main_novaic.py:38:# (task/saga/health/scheduler + queue_service when launched here) pick
+novaic-agent-runtime/main_novaic.py:55:    novaic-backend queue-service [options] Queue Service (Task/Saga 队列)
+novaic-agent-runtime/main_novaic.py:56:    novaic-backend task-worker [options]   Task Worker (任务执行)
+novaic-agent-runtime/main_novaic.py:57:    novaic-backend saga-worker [options]   Saga Worker (流程编排)
+novaic-agent-runtime/main_novaic.py:58:    novaic-backend session-outbox-worker [options] Session Outbox Worker (session durable side effects)
+novaic-agent-runtime/main_novaic.py:59:    novaic-backend saga-outbox-worker [options] Saga Outbox Worker (saga durable compensation effects)
+novaic-agent-runtime/main_novaic.py:61:    novaic-backend scheduler [options]     Scheduler Worker (定时唤醒)
+novaic-agent-runtime/main_novaic.py:65:    novaic-backend queue-service --host 127.0.0.1 --port 19997 --data-dir /Users/me/.novaic
+novaic-agent-runtime/main_novaic.py:66:    novaic-backend gateway --host 127.0.0.1 --port 19999 --data-dir /Users/me/.novaic --queue-service-url http://127.0.0.1:19997 --vmcontrol-url http://127.0.0.1:19996 --blob-service-url http://127.0.0.1:19995
+novaic-agent-runtime/main_novaic.py:67:    novaic-backend task-worker --queue-service-url http://127.0.0.1:19997 --num-workers 5 --data-dir /Users/me/.novaic
+novaic-agent-runtime/main_novaic.py:80:    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+novaic-agent-runtime/main_novaic.py:91:    ServiceConfig.QUEUE_SERVICE_URL = args.queue_service_url
+novaic-agent-runtime/main_novaic.py:103:def run_queue_service():
+novaic-agent-runtime/main_novaic.py:104:    """Run the Queue Service (Task/Saga queue management)."""
+novaic-agent-runtime/main_novaic.py:107:    parser = argparse.ArgumentParser(description="NovAIC Queue Service")
+novaic-agent-runtime/main_novaic.py:108:    parser.add_argument("--host", required=True, help="Queue Service host")
+novaic-agent-runtime/main_novaic.py:109:    parser.add_argument("--port", required=True, type=int, help="Queue Service port")
+novaic-agent-runtime/main_novaic.py:114:    ServiceConfig.QUEUE_SERVICE_HOST = args.host
+novaic-agent-runtime/main_novaic.py:115:    ServiceConfig.QUEUE_SERVICE_PORT = args.port
+novaic-agent-runtime/main_novaic.py:116:    ServiceConfig.QUEUE_SERVICE_URL = f"http://{args.host}:{args.port}"
+novaic-agent-runtime/main_novaic.py:118:    from queue_service.main import app
+novaic-agent-runtime/main_novaic.py:121:    print(f"[Queue Service] Starting on {args.host}:{args.port}")
+novaic-agent-runtime/main_novaic.py:339:    elif mode == "queue-service":
+novaic-agent-runtime/main_novaic.py:340:        run_queue_service()
+novaic-agent-runtime/queue_service/task_ledger.py:13:from queue_service.fsm.runner import FsmTransitionRecord, FsmTransitionRunner
+novaic-agent-runtime/queue_service/task_ledger.py:14:from queue_service.fsm.sqlite_store import FsmSqliteStore, FsmSqliteStoreConfig
+scripts/start.sh:15:#   - Queue Service  :19997  Task/Saga queue management
+scripts/start.sh:45:PORT_QUEUE_SERVICE=19997
+scripts/start.sh:56:QS_URL="http://$HOST:$PORT_QUEUE_SERVICE"
+scripts/start.sh:140:    for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_BLOB_SERVICE $PORT_SANDBOXD $PORT_CORTEX; do
+scripts/start.sh:151:for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_BLOB_SERVICE $PORT_SANDBOXD $PORT_CORTEX; do
+scripts/start.sh:194:    --queue-service-url "$QS_URL" --blob-service-url "$BLOB_URL" \
+scripts/start.sh:212:$(py novaic-agent-runtime) "$BASE/novaic-agent-runtime/main_novaic.py" queue-service \
+scripts/start.sh:213:    --host "$HOST" --port "$PORT_QUEUE_SERVICE" --data-dir "$DATA_DIR" \
+scripts/start.sh:214:    >> "$LOG_DIR/queue-service.log" 2>&1 &
+scripts/start.sh:215:wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
+scripts/start.sh:265:TASK_WORKER_ARGS="--business-url $BIZ_URL --queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
+scripts/start.sh:266:SAGA_WORKER_ARGS="--queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
+scripts/start.sh:267:SCHEDULER_ARGS="--business-url $BIZ_URL --queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
+novaic-agent-runtime/queue_service/dependencies.py:1:"""Explicit dependency bundle for Queue Service domain objects."""
+novaic-agent-runtime/queue_service/dependencies.py:19:    session_outbox_id_provider: Callable[[], str]
+novaic-agent-runtime/queue_service/dependencies.py:29:            session_outbox_id_provider=lambda: f"seff-{uuid.uuid4().hex[:12]}",
+novaic-agent-runtime/tests/test_pr334_worker_process_runner.py:75:    assert main_novaic.run_worker_mode_if_registered("task-worker", ["--help"]) is True
+novaic-agent-runtime/tests/test_pr334_worker_process_runner.py:76:    assert calls == [(registry, "task-worker", ["--help"], deps)]
+novaic-agent-runtime/queue_service/session_ledger.py:13:from queue_service.fsm.runner import (
+novaic-agent-runtime/queue_service/session_ledger.py:18:from queue_service.fsm.sqlite_store import FsmSqliteStore, FsmSqliteStoreConfig
+novaic-agent-runtime/queue_service/session_ledger.py:19:from queue_service.session_events import (
+novaic-agent-runtime/queue_service/session_ledger.py:24:from queue_service.session_fsm import SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_ledger.py:25:from queue_service.session_projection import build_pending_input_projection
+novaic-agent-runtime/queue_service/session_ledger.py:31:    outbox_table="tq_session_outbox",
+novaic-agent-runtime/queue_service/session_ledger.py:162:            raise ValueError(f"unsupported initial session outbox status: {status}")
+novaic-agent-runtime/tests/test_pr325_worker_policies_and_metrics.py:7:from queue_service.worker import (
+novaic-agent-runtime/queue_service/session_fsm.py:15:from queue_service.fsm import FsmDecision, FsmEvent, FsmStateSnapshot, decide_transition
+novaic-agent-runtime/queue_service/saga_repo.py:2:Saga repository/orchestrator (Queue Service DB implementation).
+novaic-agent-runtime/queue_service/saga_repo.py:13:from queue_service.session_events import SessionEventType
+novaic-agent-runtime/queue_service/saga_repo.py:14:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/saga_repo.py:15:from queue_service.lease_fsm import (
+novaic-agent-runtime/queue_service/saga_repo.py:24:from queue_service.lease_ledger import (
+novaic-agent-runtime/queue_service/saga_repo.py:29:from queue_service.fsm.runner import FsmOutboxRecord
+novaic-agent-runtime/queue_service/saga_repo.py:30:from queue_service.saga_fsm import (
+novaic-agent-runtime/queue_service/saga_repo.py:37:from queue_service.saga_ledger import SagaLedgerRepository, SagaStateRecord
+novaic-agent-runtime/queue_service/saga_repo.py:61:    Saga 仓库 - Queue Service 端
+novaic-agent-runtime/queue_service/saga_repo.py:92:            outbox_id_provider=_missing_saga_outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:390:        Saga Worker 建完 DAG 后调用：设置 status=launched，释放 claim。
+novaic-agent-runtime/queue_service/saga_repo.py:1149:    Saga lifecycle coordinator for queue-service-owned failure handling.
+novaic-agent-runtime/queue_service/saga_repo.py:1176:            outbox_id_provider=_missing_session_outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1181:        """Mark failed and persist compensation intent as saga outbox effects.
+novaic-agent-runtime/queue_service/saga_repo.py:1224:        """Publish committed saga outbox effects through boundary adapters."""
+novaic-agent-runtime/queue_service/saga_repo.py:1238:                self._publish_saga_outbox_effect(effect)
+novaic-agent-runtime/queue_service/saga_repo.py:1251:                    "[SagaOrchestrator] saga outbox effect failed: id=%s type=%s error=%s",
+novaic-agent-runtime/queue_service/saga_repo.py:1264:    def _publish_saga_outbox_effect(self, effect: dict[str, Any]) -> None:
+novaic-agent-runtime/queue_service/saga_repo.py:1277:        raise ValueError(f"unsupported saga outbox effect_type: {effect_type}")
+novaic-agent-runtime/queue_service/saga_repo.py:1408:def _missing_saga_outbox_id() -> str:
+novaic-agent-runtime/queue_service/saga_repo.py:1421:    raise RuntimeError("SagaOrchestrator saga outbox publisher must pass session event ids")
+novaic-agent-runtime/queue_service/saga_repo.py:1424:def _missing_session_outbox_id() -> str:
+novaic-agent-runtime/queue_service/saga_repo.py:1425:    raise RuntimeError("SagaOrchestrator saga outbox publisher must pass session outbox ids")
+novaic-agent-runtime/queue_service/lease_ledger.py:1:"""Worker lease ledger adapter for Queue Service.
+novaic-agent-runtime/queue_service/lease_ledger.py:13:from queue_service.fsm.sqlite_store import FsmSqliteStore, FsmSqliteStoreConfig
+novaic-agent-runtime/tests/test_pr276_session_repository_required_ledger.py:5:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/queue_service/saga_ledger.py:14:from queue_service.fsm.runner import (
+novaic-agent-runtime/queue_service/saga_ledger.py:19:from queue_service.fsm.sqlite_store import FsmSqliteStore, FsmSqliteStoreConfig
+novaic-agent-runtime/queue_service/saga_ledger.py:25:    outbox_table="tq_saga_outbox",
+novaic-agent-runtime/queue_service/saga_ledger.py:135:            raise ValueError(f"unsupported initial saga outbox status: {status}")
+novaic-agent-runtime/queue_service/__init__.py:2:Queue Service - 独立的任务队列服务
+novaic-agent-runtime/queue_service/session_outbox.py:1:"""Durable session outbox dispatcher."""
+novaic-agent-runtime/queue_service/session_outbox.py:15:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/session_outbox.py:16:from queue_service.session_observed_events import SessionObservedEventHandler
+novaic-agent-runtime/queue_service/session_outbox.py:101:            raise KeyError(f"session outbox row not found: {outbox_id}")
+novaic-agent-runtime/queue_service/session_outbox.py:146:        raise ValueError(f"unsupported session outbox effect_type: {effect_type}")
+novaic-agent-runtime/queue_service/session_outbox.py:154:            "create_wake_saga outbox payload requires scope_id",
+novaic-agent-runtime/queue_service/session_outbox.py:159:            "create_wake_saga outbox payload requires session_key",
+novaic-agent-runtime/queue_service/session_outbox.py:164:            "create_wake_saga outbox payload requires agent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:169:            "create_wake_saga outbox payload requires subagent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:174:            "create_wake_saga outbox payload requires saga_idempotency_key",
+novaic-agent-runtime/queue_service/session_outbox.py:179:            "create_wake_saga outbox payload requires saga_type",
+novaic-agent-runtime/queue_service/session_outbox.py:183:            surface="session outbox create_wake_saga",
+novaic-agent-runtime/queue_service/session_outbox_worker.py:1:"""Session outbox handler for the generic worker substrate."""
+novaic-agent-runtime/queue_service/session_outbox_worker.py:8:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_outbox_worker.py:9:from queue_service.worker import (
+novaic-agent-runtime/queue_service/session_outbox_worker.py:18:SESSION_OUTBOX_DRAIN_JOB = WorkerJobSpec(kind="session_outbox_drain")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:28:            raise ValueError("session outbox worker batch_size must be positive")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:32:    """Drain durable session outbox rows through an explicit dispatcher port."""
+novaic-agent-runtime/queue_service/session_outbox_worker.py:45:            decode_worker_job(job, (SESSION_OUTBOX_DRAIN_JOB,))
+novaic-agent-runtime/queue_service/session_outbox_worker.py:50:            return WorkerResult.success(result, reason="session_outbox_drained")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:51:        return WorkerResult.noop(result, reason="session_outbox_empty")
+novaic-agent-runtime/queue_service/session_rebuild.py:8:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:9:from queue_service.session_ledger import (
+novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py:143:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:7:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:9:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:10:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:11:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:5:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:7:    assert "_append_session_outbox_after_transaction" not in source
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:8:    assert "_publish_session_outbox_effect" not in source
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:25:def test_session_outbox_dispatcher_has_no_unused_wake_sync_wrappers():
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:26:    source = Path("queue_service/session_outbox.py").read_text(encoding="utf-8")
+novaic-agent-runtime/queue_service/main.py:2:Queue Service - 独立的任务队列服务
+novaic-agent-runtime/queue_service/main.py:18:# 添加父目录到 Python 路径（确保可以导入 common 和 queue_service）
+novaic-agent-runtime/queue_service/main.py:26:    print("[Queue Service] ERROR: paths.data_dir is required in config/services.json")
+novaic-agent-runtime/queue_service/main.py:28:print(f"[Queue Service] Data directory (strict config): {NOVAIC_DATA_DIR}")
+novaic-agent-runtime/queue_service/main.py:34:LOG_FILE = os.path.join(LOG_DIR, f"queue-service-{datetime.utcnow().strftime('%Y%m%d')}.log")
+novaic-agent-runtime/queue_service/main.py:37:# so ``rg scope_id=$SID queue-service*.log`` works cross-service.
+novaic-agent-runtime/queue_service/main.py:46:logger.info("Queue Service Starting")
+novaic-agent-runtime/queue_service/main.py:63:    Startup: rebuild active sessions from running sagas so Queue Service
+novaic-agent-runtime/queue_service/main.py:68:    logger.info("[Queue Service] Session rebuild: %d active sessions", rebuilt)
+novaic-agent-runtime/queue_service/main.py:69:    logger.info("[Queue Service] Startup complete")
+novaic-agent-runtime/queue_service/main.py:70:    logger.info(f"[Queue Service] Database: {DB_PATH}")
+novaic-agent-runtime/queue_service/main.py:71:    logger.info("[Queue Service] Ready to accept requests")
+novaic-agent-runtime/queue_service/main.py:75:        logger.info("[Queue Service] Shutting down...")
+novaic-agent-runtime/queue_service/main.py:79:            logger.exception("[Queue Service] db.close() failed during shutdown")
+novaic-agent-runtime/queue_service/main.py:80:        logger.info("[Queue Service] Shutdown complete")
+novaic-agent-runtime/queue_service/main.py:84:    title="Queue Service",
+novaic-agent-runtime/queue_service/main.py:104:# Queue Service binds to 127.0.0.1 in production (scripts/start.sh,
+novaic-agent-runtime/queue_service/main.py:109:_QUEUE_INTERNAL_KEY = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/queue_service/main.py:126:    logger.info("[Queue Service] Internal-key auth enabled (X-Internal-Key required).")
+novaic-agent-runtime/queue_service/main.py:128:    logger.warning("[Queue Service] Internal-key auth DISABLED — rely on loopback binding only.")
+novaic-agent-runtime/queue_service/main.py:132:from queue_service.db import init_schema
+novaic-agent-runtime/queue_service/main.py:136:logger.info(f"[Queue Service] Database path: {DB_PATH}")
+novaic-agent-runtime/queue_service/main.py:141:logger.info("[Queue Service] Database initialized")
+novaic-agent-runtime/queue_service/main.py:144:from queue_service.dependencies import QueueServiceDependencies
+novaic-agent-runtime/queue_service/main.py:145:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/queue_service/main.py:146:from queue_service.saga_repo import SagaRepository, SagaOrchestrator
+novaic-agent-runtime/queue_service/main.py:147:from queue_service.routes import (
+novaic-agent-runtime/queue_service/main.py:161:logger.info("[Queue Service] TaskQueue created")
+novaic-agent-runtime/queue_service/main.py:170:logger.info("[Queue Service] SagaRepository created")
+novaic-agent-runtime/queue_service/main.py:179:logger.info("[Queue Service] SagaOrchestrator created")
+novaic-agent-runtime/queue_service/main.py:182:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/main.py:183:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/main.py:184:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/queue_service/main.py:189:    outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/queue_service/main.py:191:session_outbox_dispatcher = SessionOutboxDispatcher(
+novaic-agent-runtime/queue_service/main.py:202:    outbox_dispatcher=session_outbox_dispatcher,
+novaic-agent-runtime/queue_service/main.py:204:logger.info("[Queue Service] SessionRepository created")
+novaic-agent-runtime/queue_service/main.py:220:logger.info("[Queue Service] API routes registered")
+novaic-agent-runtime/queue_service/main.py:229:        "service": "queue-service",
+novaic-agent-runtime/queue_service/main.py:258:    for table in ("tq_tasks", "tq_sagas", "tq_session_state", "tq_session_outbox"):
+novaic-agent-runtime/queue_service/main.py:266:    session_outbox: dict = {}
+novaic-agent-runtime/queue_service/main.py:271:            FROM tq_session_outbox
+novaic-agent-runtime/queue_service/main.py:276:        session_outbox["pending_count"] = pending_count
+novaic-agent-runtime/queue_service/main.py:277:        session_outbox["oldest_pending_created_at"] = (
+novaic-agent-runtime/queue_service/main.py:281:            "SELECT COUNT(*) AS count FROM tq_session_outbox WHERE status = 'dead_letter'"
+novaic-agent-runtime/queue_service/main.py:283:        session_outbox["dead_letter_count"] = int(dead_row["count"] if dead_row else 0)
+novaic-agent-runtime/queue_service/main.py:284:        checks["session_outbox"] = "ok"
+novaic-agent-runtime/queue_service/main.py:286:        checks["session_outbox"] = f"error: {type(exc).__name__}: {str(exc)[:120]}"
+novaic-agent-runtime/queue_service/main.py:309:        "service": "queue-service",
+novaic-agent-runtime/queue_service/main.py:311:        "session_outbox": session_outbox,
+novaic-agent-runtime/queue_service/main.py:322:        "service": "Queue Service",
+novaic-agent-runtime/queue_service/main.py:341:    PORT = ServiceConfig.QUEUE_SERVICE_PORT
+novaic-agent-runtime/queue_service/main.py:343:    logger.info(f"[Queue Service] Starting server on port {PORT}")
+novaic-agent-runtime/queue_service/lease_fsm.py:1:"""Pure worker lease FSM decisions for Queue Service."""
+novaic-agent-runtime/queue_service/lease_fsm.py:10:from queue_service.fsm import (
+novaic-agent-runtime/tests/test_pr260_session_harness_generic_fsm_cutover.py:9:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr260_session_harness_generic_fsm_cutover.py:18:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr260_session_harness_generic_fsm_cutover.py:28:    source = Path("queue_service/session_ledger.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr260_session_harness_generic_fsm_cutover.py:37:    repo_source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr260_session_harness_generic_fsm_cutover.py:38:    ledger_source = Path("queue_service/session_ledger.py").read_text(encoding="utf-8")
+novaic-agent-runtime/queue_service/session_repo.py:2:Session Coordinator — dispatch + session lifecycle for Queue Service
+novaic-agent-runtime/queue_service/session_repo.py:22:from queue_service.session_effects import build_attach_input_effect
+novaic-agent-runtime/queue_service/session_repo.py:23:from queue_service.session_events import (
+novaic-agent-runtime/queue_service/session_repo.py:28:from queue_service.session_fsm import (
+novaic-agent-runtime/queue_service/session_repo.py:41:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/session_repo.py:42:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_repo.py:43:from queue_service.session_projection import (
+novaic-agent-runtime/queue_service/session_repo.py:47:from queue_service.session_rebuild import rebuild_session_state_from_running_sagas
+novaic-agent-runtime/queue_service/session_repo.py:48:from queue_service.session_recovery import (
+novaic-agent-runtime/queue_service/session_repo.py:52:from queue_service.session_wake_plan import (
+novaic-agent-runtime/queue_service/session_repo.py:101:    """Session coordination layer on top of Queue Service SQLite."""
+novaic-agent-runtime/queue_service/session_repo.py:225:                        # session outbox worker owns external delivery.
+novaic-agent-runtime/queue_service/session_repo.py:374:        # Step 2: persist wake intent; the session outbox worker creates the saga.
+novaic-agent-runtime/queue_service/session_repo.py:683:        Called once at Queue Service boot.
+novaic-agent-runtime/queue_service/queue_audit.py:1:"""Read-only audit helpers for Queue Service FSM machines."""
+novaic-agent-runtime/tests/test_pr275_session_repository_required_outbox_dispatcher.py:5:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:1:"""PR-331 - task worker handler cutover to the generic worker substrate."""
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:8:from queue_service.worker import WorkerJob, WorkerResultStatus
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:12:from task_queue.workers.task_worker import TaskExecutionHandler
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:20:        worker_id_provider=lambda: "task-worker-test",
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:29:        worker_id="task-worker-test",
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:35:def test_task_worker_handle_executes_ready_task_once():
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:63:def test_task_worker_handle_dependency_release_is_noop_with_explicit_sleep():
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:80:def test_task_worker_rejects_invalid_job_contracts():
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:98:def test_task_worker_no_longer_owns_bespoke_running_loop():
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:99:    handler_source = Path("task_queue/workers/task_worker.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:119:    assert 'mode="task-worker", build_process=_assemble_task_worker' in assembly_registry_source
+novaic-agent-runtime/tests/test_pr331_task_worker_handler_cutover.py:120:    assert 'assemble_worker_process("task-worker", args, deps)' in assembly_registry_source
+novaic-agent-runtime/queue_service/session_wake_plan.py:11:from queue_service.session_effects import build_create_wake_saga_effect
+novaic-agent-runtime/queue_service/session_wake_plan.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_wake_plan.py:13:from queue_service.session_projection import build_pending_restart_saga
+novaic-agent-runtime/queue_service/session_wake_plan.py:14:from queue_service.session_recovery import build_recovery_dispatch
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:9:from queue_service.session_ledger import (
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:164:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/queue_service/queue_db.py:18:from queue_service.exceptions import TaskNotFoundError
+novaic-agent-runtime/queue_service/queue_db.py:19:from queue_service.lease_fsm import (
+novaic-agent-runtime/queue_service/queue_db.py:28:from queue_service.lease_ledger import (
+novaic-agent-runtime/queue_service/queue_db.py:33:from queue_service.task_fsm import (
+novaic-agent-runtime/queue_service/queue_db.py:40:from queue_service.task_ledger import TaskLedgerRepository, TaskStateRecord
+scripts/ci/check_no_internal_async.py:67:    # why: SchedulerWorker due-scan + dispatch.
+scripts/ci/check_no_internal_async.py:68:    "novaic-agent-runtime/task_queue/workers/scheduler_worker.py",
+scripts/ci/check_no_internal_async.py:70:    "novaic-agent-runtime/task_queue/workers/saga_worker.py",
+scripts/ci/check_no_internal_async.py:72:    "novaic-agent-runtime/task_queue/workers/task_worker.py",
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:20:def test_scheduler_wake_metadata_does_not_promote_last_scope_id():
+novaic-agent-runtime/queue_service/worker/contracts.py:181:    Reporters translate worker results into the owning boundary: Queue Service
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:16:    assert not (ROOT / "queue_service/session_decisions.py").exists()
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:18:    session_repo = _read("queue_service/session_repo.py")
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:26:    session_repo = _read("queue_service/session_repo.py")
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:37:        for dirname in ("queue_service", "task_queue")
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:48:    session_outbox = _read("queue_service/session_outbox.py")
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:53:    assert "requires expected_session_generation" in session_outbox
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:57:    routes = _read("queue_service/routes.py")
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:9:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:11:from queue_service.session_audit import build_session_audit_timeline, summarize_session_audit
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:12:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:13:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:14:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:9:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:11:from queue_service.session_ledger import SessionLedgerRepository, SessionStateRecord
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:13:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/queue_service/fsm/__init__.py:3:from queue_service.fsm.core import (
+novaic-agent-runtime/queue_service/fsm/__init__.py:10:from queue_service.fsm.runner import (
+novaic-agent-runtime/queue_service/saga_fsm.py:1:"""Pure saga lifecycle FSM decisions for Queue Service.
+novaic-agent-runtime/queue_service/saga_fsm.py:15:from queue_service.fsm import (
+novaic-agent-runtime/queue_service/db/__init__.py:1:"""Queue Service Database Module"""
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:8:from queue_service.session_projection import build_pending_restart_saga
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:69:    repo_source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:70:    wake_plan_source = Path("queue_service/session_wake_plan.py").read_text(
+novaic-agent-runtime/queue_service/db/schema.py:2:Queue Service Database Schema
+novaic-agent-runtime/queue_service/db/schema.py:223:CREATE TABLE IF NOT EXISTS tq_saga_outbox (
+novaic-agent-runtime/queue_service/db/schema.py:239:CREATE INDEX IF NOT EXISTS idx_tq_saga_outbox_pending
+novaic-agent-runtime/queue_service/db/schema.py:240:    ON tq_saga_outbox(status, created_at)
+novaic-agent-runtime/queue_service/db/schema.py:242:CREATE INDEX IF NOT EXISTS idx_tq_saga_outbox_saga
+novaic-agent-runtime/queue_service/db/schema.py:243:    ON tq_saga_outbox(saga_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:244:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_saga_outbox_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:245:    ON tq_saga_outbox(idempotency_key);
+novaic-agent-runtime/queue_service/db/schema.py:386:CREATE TABLE IF NOT EXISTS tq_session_outbox (
+novaic-agent-runtime/queue_service/db/schema.py:405:CREATE INDEX IF NOT EXISTS idx_tq_session_outbox_pending
+novaic-agent-runtime/queue_service/db/schema.py:406:    ON tq_session_outbox(status, created_at)
+novaic-agent-runtime/queue_service/db/schema.py:408:CREATE INDEX IF NOT EXISTS idx_tq_session_outbox_session
+novaic-agent-runtime/queue_service/db/schema.py:409:    ON tq_session_outbox(session_key, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:410:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_session_outbox_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:411:    ON tq_session_outbox(idempotency_key);
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:11:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:67:        root / "queue_service" / "session_repo.py",
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:68:        root / "queue_service" / "routes.py",
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:69:        root / "queue_service" / "main.py",
+novaic-agent-runtime/tests/test_pr244_remove_pending_triggers.py:70:        root / "queue_service" / "dependencies.py",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:336:        "NOVAIC_QUEUE_SERVICE_URL": ServiceConfig.QUEUE_SERVICE_URL,
+novaic-agent-runtime/queue_service/fsm/runner.py:14:from queue_service.fsm.sqlite_store import FsmSqliteStore
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:7:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:9:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:10:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:11:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:1:"""PR-286A — session outbox worker substrate."""
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:7:from queue_service.session_outbox_worker import (
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:8:    SESSION_OUTBOX_DRAIN_JOB,
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:12:from queue_service.worker import WorkerJob, WorkerResultStatus
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:76:    result = handler.handle(SESSION_OUTBOX_DRAIN_JOB.build(id="session-drain"))
+novaic-agent-runtime/queue_service/worker/generic_worker.py:4:is a task, saga, outbox effect, scheduler tick, or health tick.
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:1:"""Saga outbox handler for the generic worker substrate."""
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:9:from queue_service.worker import (
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:18:SAGA_OUTBOX_DRAIN_JOB = WorkerJobSpec(kind="saga_outbox_drain")
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:28:            raise ValueError("saga outbox worker batch_size must be positive")
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:32:    """Drain durable saga outbox rows through an explicit orchestrator port."""
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:45:            decode_worker_job(job, (SAGA_OUTBOX_DRAIN_JOB,))
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:50:            return WorkerResult.success(result, reason="saga_outbox_drained")
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:51:        return WorkerResult.noop(result, reason="saga_outbox_empty")
+novaic-agent-runtime/queue_service/task_fsm.py:1:"""Pure task lifecycle FSM decisions for Queue Service.
+novaic-agent-runtime/queue_service/task_fsm.py:15:from queue_service.fsm import FsmDecision, FsmEvent, FsmStateSnapshot, decide_transition
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:1:"""PR-302 — session outbox worker is wired into production startup."""
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:22:def test_main_entrypoint_exposes_session_outbox_worker_mode():
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:29:    assert "def run_session_outbox_worker(" not in main_source
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:30:    assert 'mode="session-outbox-worker"' in registry_source
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:31:    assert "assemble_session_outbox_worker" in registry_source
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:40:def test_start_script_launches_visible_session_outbox_worker_process():
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:45:    assert any("$MAIN session-outbox-worker" in command for command in runtime_launch_commands())
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:46:    assert "session-outbox-worker.log" in runtime_log_files()
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:48:        role.label == "session-outbox-worker"
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:49:        and role.pattern == "main_novaic.py session-outbox-worker"
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:55:def test_queue_ready_exposes_session_outbox_backlog_diagnostics():
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:56:    source = _read(RUNTIME / "queue_service" / "main.py")
+novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py:58:    assert '"tq_session_outbox"' in source
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:9:    Path("queue_service/session_repo.py"),
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:10:    Path("queue_service/session_outbox.py"),
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:11:    Path("queue_service/session_projection.py"),
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:12:    Path("queue_service/session_effects.py"),
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:13:    Path("queue_service/session_recovery.py"),
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:14:    Path("queue_service/session_rebuild.py"),
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:15:    Path("queue_service/session_fsm.py"),
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:30:        _source(Path("queue_service/session_repo.py"))
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:31:        + _source(Path("queue_service/session_outbox.py"))
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:36:    source = _source(Path("queue_service/session_repo.py"))
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:51:    repo_source = _source(Path("queue_service/session_repo.py"))
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:52:    outbox_source = _source(Path("queue_service/session_outbox.py"))
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:59:    repo_source = _source(Path("queue_service/session_repo.py"))
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:60:    outbox_source = _source(Path("queue_service/session_outbox.py"))
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:61:    observed_source = _source(Path("queue_service/session_observed_events.py"))
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:62:    rebuild_source = _source(Path("queue_service/session_rebuild.py"))
+novaic-agent-runtime/queue_service/session_observed_events.py:1:"""Observed event handlers for Queue session outbox publications."""
+novaic-agent-runtime/queue_service/session_observed_events.py:7:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/session_observed_events.py:77:                        reason="create_wake_saga outbox race loser",
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:7:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:9:from queue_service.session_fsm import (
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:18:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:19:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:20:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/task_queue/handlers/saga_handlers.py:26:    raise ConfigurationError("saga.decision is handled inline by Task Worker; this should not be reached")
+novaic-agent-runtime/task_queue/handlers/saga_handlers.py:35:    raise ConfigurationError("saga.parallel is handled inline by Task Worker; this should not be reached")
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:1:"""PR-333 - saga worker cutover to the concurrent generic worker."""
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:8:from queue_service.worker import WorkerJob, WorkerResultStatus
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:15:from task_queue.workers.saga_worker import SagaLaunchHandler
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:23:        worker_id_provider=lambda: "saga-worker-test",
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:38:        worker_id="saga-worker-test",
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:45:        worker_id="saga-worker-test",
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:80:def test_saga_worker_handle_launches_saga_job():
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:108:        worker_id="saga-worker-test",
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:131:def test_saga_worker_rejects_invalid_job_contracts():
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:149:def test_saga_worker_no_longer_owns_thread_bookkeeping_loop():
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:150:    handler_source = Path("task_queue/workers/saga_worker.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py:171:    assert "build_process=assemble_saga_worker" in registry_source
+novaic-agent-runtime/tests/test_saga_creation_policy_boundary.py:10:from queue_service.routes import create_task_queue_router
+novaic-agent-runtime/tests/test_saga_creation_policy_boundary.py:11:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_saga_creation_policy_boundary.py:148:def test_session_outbox_rejects_non_session_owned_saga_type() -> None:
+scripts/ci/lint_deploy_fresh_smoke.py:40:        "queue-service.log",
+scripts/ci/lint_retired_runtime_vocabulary.py:13:    REPO / "novaic-agent-runtime" / "queue_service",
+novaic-agent-runtime/tests/test_health_dispatch.py:6:- ``_get_client`` injects ``X-Internal-Key`` (Queue Service middleware
+novaic-agent-runtime/tests/test_health_dispatch.py:17:from queue_service.worker import EffectExecutor
+novaic-agent-runtime/tests/test_health_dispatch.py:38:        queue_service_url="http://queue.test",
+novaic-agent-runtime/tests/test_health_dispatch.py:61:    """Every Queue Service request must carry ``X-Internal-Key``.
+novaic-agent-runtime/tests/test_health_dispatch.py:77:        queue_service_url="http://queue.test",
+novaic-agent-runtime/tests/test_health_dispatch.py:102:        queue_service_url="http://queue.test",
+novaic-agent-runtime/tests/test_health_dispatch.py:134:    """``_perform_check`` must only hit Queue Service recover-all."""
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:11:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:12:from queue_service.session_recovery import (
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:217:    repo_source = (RUNTIME_ROOT / "queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:218:    wake_plan_source = (RUNTIME_ROOT / "queue_service/session_wake_plan.py").read_text(
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:7:import queue_service.saga_fsm as saga_fsm_module
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:8:from queue_service.saga_fsm import (
+novaic-agent-runtime/tests/test_pr284_session_event_vocabulary.py:8:from queue_service import session_events, session_ledger, session_repo
+novaic-agent-runtime/tests/test_pr284_session_event_vocabulary.py:9:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr284_session_event_vocabulary.py:10:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr284_session_event_vocabulary.py:11:from queue_service.session_events import (
+novaic-agent-runtime/tests/test_pr332_concurrent_generic_worker.py:7:from queue_service.worker import (
+novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py:17:        "novaic-agent-runtime/queue_service/fsm/",
+novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py:18:        "novaic-agent-runtime/queue_service/worker/",
+novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py:23:        "novaic-agent-runtime/queue_service/worker/effects.py",
+novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py:26:        "novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py",
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:1:"""PR-267 - session outbox effect payloads use pure builders."""
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:9:from queue_service.session_effects import (
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:13:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:175:    repo_source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:176:    wake_plan_source = Path("queue_service/session_wake_plan.py").read_text(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:184:    assert "del saga_id" not in Path("queue_service/session_effects.py").read_text(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:187:    assert "_create_wake_saga_outbox_effect" not in repo_source
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:194:    outbox_source = Path("queue_service/session_outbox.py").read_text(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:197:    observed_source = Path("queue_service/session_observed_events.py").read_text(
+scripts/ci/lint_dispatch.sh:6:  'novaic-agent-runtime/queue_service/main.py'  # 端点定义
+novaic-agent-runtime/tests/test_pr344_queue_claim_busy_handling.py:10:from queue_service.routes import create_task_queue_router
+scripts/ci/lint_runtime_worker_supervision.py:50:        'check_role "task-worker control"',
+scripts/ci/lint_runtime_worker_supervision.py:51:        'check_role "task-worker execution"',
+scripts/ci/lint_runtime_worker_supervision.py:52:        'check_role "saga-worker"',
+scripts/ci/lint_runtime_worker_supervision.py:53:        'check_role "session-outbox-worker"',
+scripts/ci/lint_runtime_worker_supervision.py:54:        'check_role "saga-outbox-worker"',
+scripts/ci/lint_runtime_worker_supervision.py:56:        'check_role "scheduler"',
+scripts/ci/lint_runtime_worker_supervision.py:79:        "task-worker control",
+scripts/ci/lint_runtime_worker_supervision.py:80:        "session-outbox-worker",
+scripts/ci/lint_runtime_worker_supervision.py:88:        "$PY $MAIN session-outbox-worker",
+scripts/ci/lint_runtime_worker_supervision.py:89:        "$PY $MAIN saga-outbox-worker",
+scripts/ci/lint_runtime_worker_supervision.py:91:        "$PY $MAIN scheduler",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:9:from queue_service import session_fsm as session_fsm_module
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:10:from queue_service.fsm import FsmDecision, FsmStateSnapshot
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:11:from queue_service.session_fsm import (
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:132:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:9:SAGA_REPO = Path("queue_service/saga_repo.py")
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:96:def test_no_other_queue_service_module_updates_tq_sagas_directly():
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:97:    for path in Path("queue_service").rglob("*.py"):
+scripts/ci/check_start_config_contract.py:21:    "scheduler_poll_interval_seconds",
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:9:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:10:from queue_service.fsm.runner import (
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:15:from queue_service.fsm.sqlite_store import FsmSqliteStore
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:16:from queue_service.session_ledger import SESSION_FSM_STORE_CONFIG
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:17:from queue_service.task_ledger import TaskLedgerRepository, TaskStateRecord
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:39:    source = Path("queue_service/fsm/runner.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:168:    task_queue_source = Path("queue_service/queue_db.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:169:    saga_repo_source = Path("queue_service/saga_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py:170:    session_source = Path("queue_service/session_ledger.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr261_generic_fsm_residue_cleanup.py:9:    source = Path("queue_service/session_ledger.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:9:from queue_service.session_ledger import (
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:148:    repo_source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py:149:    outbox_source = Path("queue_service/session_outbox.py").read_text(encoding="utf-8")
+novaic-agent-runtime/task_queue/saga_creation_policy.py:32:            "use the durable session outbox wake-creation effect"
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:6:from queue_service.session_fsm import (
+novaic-agent-runtime/config/services.schema.json:39:        "queue_service",
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:7:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:9:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:10:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:11:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:9:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:11:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:13:from queue_service.session_repo import SessionRepository
+scripts/ci/lint_lifecycle_loop_ownership.sh:20:if ! rg -q 'merge_pending_metadata' novaic-agent-runtime/queue_service/session_projection.py ||
+scripts/ci/lint_lifecycle_loop_ownership.sh:21:   ! rg -q 'build_pending_input_projection' novaic-agent-runtime/queue_service/session_repo.py; then
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:11:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:12:from queue_service.dependencies import QueueServiceDependencies
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:13:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:14:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:15:from queue_service.session_fsm import (
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:24:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:25:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:26:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:44:        outbox_id_provider=deps.session_outbox_id_provider,
+novaic-agent-runtime/task_queue/workers/saga_launch.py:9:from queue_service.worker import EffectExecutor, EffectPlanRunner
+novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py:24:from task_queue.workers.task_worker import TaskExecutionHandler
+novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py:58:        queue_service_url="http://queue.local",
+novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py:165:        w = _make_worker("task-worker", client=client)
+novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py:9:from task_queue.workers.task_worker import TaskExecutionHandler
+novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py:31:        queue_service_url="http://queue.local",
+novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py:76:def test_task_worker_uses_idempotency_guard_for_duplicates():
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:5:from queue_service.worker import EffectExecutor
+novaic-agent-runtime/tests/test_pr328_health_generic_worker.py:9:from queue_service.worker import WorkerJob, WorkerResultStatus
+novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py:7:from queue_service.saga_ledger import SagaLedgerRepository
+novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py:8:from queue_service.saga_repo import SagaRepository
+novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py:9:from queue_service.task_ledger import TaskLedgerRepository
+novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py:10:from queue_service.queue_db import TaskQueue
+novaic-app/package-lock.json:6519:        "scheduler": "^0.23.2"
+novaic-app/package-lock.json:6857:    "node_modules/scheduler": {
+novaic-app/package-lock.json:6859:      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.23.2.tgz",
+novaic-agent-runtime/tests/unit/task_queue/test_dedup_guard_failure_path.py:26:from task_queue.workers.task_worker import TaskExecutionHandler
+novaic-agent-runtime/tests/unit/task_queue/test_dedup_guard_failure_path.py:59:            queue_service_url="http://queue.local",
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py:2:Unit tests for saga worker split-repo boundary.
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py:10:from task_queue.workers.saga_worker import SagaLaunchHandler
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py:52:def test_saga_worker_initialises_with_split_imports():
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py:54:    assert worker.name == "saga-worker"
+novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py:68:def test_saga_worker_registers_definition():
+novaic-agent-runtime/tests/test_pr340_worker_effect_plan.py:10:from queue_service.worker import (
+novaic-agent-runtime/tests/test_pr340_worker_effect_plan.py:77:    source = Path("queue_service/worker/effects.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr339_worker_startup_db_retry.py:38:        label="saga-outbox-worker",
+novaic-agent-runtime/tests/test_pr339_worker_startup_db_retry.py:50:        "[saga-outbox-worker] Queue DB locked during startup; retry 1/5",
+novaic-agent-runtime/tests/test_pr339_worker_startup_db_retry.py:51:        "[saga-outbox-worker] Queue DB locked during startup; retry 2/5",
+novaic-agent-runtime/tests/test_pr339_worker_startup_db_retry.py:62:            label="session-outbox-worker",
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:25:    from queue_service.dependencies import QueueServiceDependencies
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:31:    from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:38:    from queue_service.saga_repo import SagaRepository
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:46:    from queue_service.db import init_schema
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:138:    from queue_service.db import init_schema
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:167:    from queue_service.db import init_schema
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:168:    from queue_service.routes import create_task_queue_router
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:9:from queue_service.saga_repo import SagaRepository
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:10:from queue_service.session_ledger import SessionLedgerRepository, SessionStateRecord
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:11:from queue_service.session_observed_events import SessionObservedEventHandler
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:9:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:64:    repo_source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:65:    outbox_source = Path("queue_service/session_outbox.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:66:    observed_source = Path("queue_service/session_observed_events.py").read_text(
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:69:    rebuild_source = Path("queue_service/session_rebuild.py").read_text(
+novaic-agent-runtime/tests/test_pr340_assembly_helpers.py:8:from queue_service.worker import WorkerJobSpec, WorkerResult, WorkerRuntime
+novaic-agent-runtime/tests/test_pr340_assembly_helpers.py:130:        "queue_service.session_outbox_worker",
+novaic-agent-runtime/tests/test_pr340_assembly_helpers.py:131:        "queue_service.saga_outbox_worker",
+novaic-agent-runtime/tests/test_pr323_generic_worker_contracts.py:10:from queue_service.worker import (
+novaic-agent-runtime/tests/test_pr323_generic_worker_contracts.py:59:    source = Path("queue_service/worker/contracts.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/threshold_policy.py:23:# INTEGRATION tier  (real queue service, subprocess workers)
+novaic-agent-runtime/task_queue/workers/scheduled_wake.py:9:from queue_service.worker import EffectExecutor, EffectPlanRunner
+novaic-agent-runtime/task_queue/workers/scheduled_wake.py:12:from task_queue.workers.scheduler_action_specs import (
+novaic-agent-runtime/task_queue/workers/scheduled_wake.py:13:    SchedulerDispatchDecision,
+novaic-agent-runtime/task_queue/workers/scheduled_wake.py:26:class SchedulerMetrics:
+novaic-agent-runtime/task_queue/workers/scheduled_wake.py:56:        metrics: SchedulerMetrics,
+novaic-agent-runtime/task_queue/workers/scheduled_wake.py:65:            raise ValueError("ScheduledWakeEngine requires explicit SchedulerMetrics")
+novaic-agent-runtime/task_queue/workers/scheduled_wake.py:150:    def _apply_dispatch_decision(self, decision: SchedulerDispatchDecision) -> None:
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:1:"""Scheduler and health action specs are explicit pure helpers."""
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:12:from task_queue.workers.scheduler_action_specs import (
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:22:def test_scheduler_scan_effect_is_explicit():
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:25:    assert effect.kind == "scheduler.get_due_for_wake"
+novaic-agent-runtime/tests/test_pr340_scheduler_health_action_specs.py:39:    assert effect.kind == "scheduler.dispatch_wake"
+novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py:9:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:17:from task_queue.workers.scheduler_effects import ScheduledWakeEffectAdapter
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:18:from task_queue.workers.scheduled_wake import ScheduledWakeEngine, SchedulerMetrics
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:19:from task_queue.workers.scheduler_worker import ScheduledWakeHandler
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:35:    metrics = SchedulerMetrics()
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:43:        worker_id="scheduler-test",
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:48:        worker_id="scheduler-test",
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:68:def test_scheduler_worker_sync_dispatch(mock_assembler):
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:100:def test_scheduler_worker_counts_pending_wake_as_queued_success():
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:142:    import task_queue.workers.scheduler_worker as mod
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:144:        "scheduler_worker.py must not import asyncio after PR-34 34e "
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:7:from queue_service.saga_ledger import SagaLedgerRepository
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:8:from queue_service.saga_repo import SagaRepository
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:95:def test_saga_repository_mark_failed_records_effects_in_saga_outbox(tmp_path):
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:8:from queue_service.fsm import (
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:15:from queue_service.session_fsm import (
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:26:    source = Path("queue_service/fsm/core.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:102:    source = Path("queue_service/session_fsm.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:103:    assert "from queue_service.fsm import" in source
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:1:"""PR-311 - saga compensation is published from durable saga outbox."""
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:11:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:12:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:13:from queue_service.saga_ledger import SagaLedgerRepository
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:14:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:15:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:242:def test_saga_outbox_failure_remains_retryable_then_dead_letters(tmp_path):
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:271:    source = Path("queue_service/saga_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:7:    Path("task_queue/workers/task_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:8:    Path("task_queue/workers/saga_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:10:    Path("task_queue/workers/scheduler_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:49:    "SchedulerWorker" + "Sync",
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:53:    "scheduler-" + "sync",
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:92:        "queue_service" + "_url",
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:99:        Path("task_queue/workers/task_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:100:        Path("task_queue/workers/saga_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:107:def test_health_and_scheduler_handlers_do_not_construct_action_clients_or_engines():
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:115:        "queue_service" + "_url",
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:128:        Path("task_queue/workers/scheduler_worker.py"),
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:136:    task_source = Path("task_queue/workers/task_worker.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:137:    saga_source = Path("task_queue/workers/saga_worker.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:164:    assert "build_process=assemble_task_worker" in source
+novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py:165:    assert "build_process=assemble_saga_worker" in source
+novaic-agent-runtime/task_queue/workers/saga_metrics.py:1:"""Saga worker metrics contract."""
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:28:    from queue_service.db import init_schema
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:29:    from queue_service.dependencies import QueueServiceDependencies
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:30:    from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:31:    from queue_service.saga_repo import SagaRepository
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:43:        claimed_saga = saga_repo.claim(["test_saga"], "saga-worker")
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:8:from queue_service.db import schema
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:9:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:10:from queue_service.lease_ledger import LeaseLedgerRepository, LeaseStateRecord, lease_id
+novaic-agent-runtime/tests/test_pr313_worker_lease_ledger.py:56:    source = Path("queue_service/lease_ledger.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py:70:        "$PY $MAIN session-outbox-worker",
+novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py:71:        "$PY $MAIN saga-outbox-worker",
+novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py:73:        "$PY $MAIN scheduler",
+novaic-agent-runtime/tests/test_pr340_handler_registry_metadata.py:75:        "queue_service.db",
+novaic-agent-runtime/tests/test_pr340_handler_registry_metadata.py:76:        "queue_service.database",
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:12:    RUNTIME_ROOT / "task_queue/workers/task_worker.py",
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:13:    RUNTIME_ROOT / "task_queue/workers/saga_worker.py",
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:15:    RUNTIME_ROOT / "task_queue/workers/scheduler_worker.py",
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:65:    assert "session-outbox-worker" in source
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:66:    assert "saga-outbox-worker" in source
+novaic-agent-runtime/tests/test_pr335_worker_residue_guards.py:74:    assert "scheduler_worker_sync" not in source
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:7:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:9:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:10:from queue_service.session_rebuild import rebuild_session_state_from_running_sagas
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:40:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:48:    source = Path("queue_service/session_rebuild.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:8:from queue_service.db import schema
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:9:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:10:from queue_service.saga_ledger import SagaLedgerRepository, SagaStateRecord
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:39:          AND name IN ('tq_saga_events', 'tq_saga_state', 'tq_saga_outbox')
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:45:        "tq_saga_outbox",
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:52:    source = Path("queue_service/saga_ledger.py").read_text()
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:106:        idempotency_key="saga-outbox:saga-1:1",
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:113:        idempotency_key="saga-outbox:saga-1:1",
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:4:def test_session_outbox_requires_saga_orchestrator_boundary():
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:5:    source = Path("queue_service/session_outbox.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:12:def test_session_owned_queue_publish_effects_stay_in_session_outbox_dispatcher():
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:13:    outbox_source = Path("queue_service/session_outbox.py").read_text(
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:16:    repo_source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:17:    wake_plan_source = Path("queue_service/session_wake_plan.py").read_text(
+novaic-agent-runtime/task_queue/workers/task_execution.py:18:from queue_service.worker import EffectExecutor, EffectPlanRunner
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:1:"""PR-251 - wake saga creation is owned by the durable session outbox."""
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:10:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:11:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:12:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:13:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:14:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:15:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:209:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:356:        "create_wake_saga outbox payload requires agent_id"
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:365:        .Path("queue_service/session_repo.py")
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:372:    assert "_create_wake_saga_outbox_effect" not in source
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:20:    QUEUE_SERVICE_URL = "http://queue"
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:29:    SCHEDULER_POLL_INTERVAL_SECONDS = 7
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:55:        "task-worker": ["--business-url", "--queue-service-url", "--pool"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:56:        "saga-worker": ["--queue-service-url", "--max-concurrent"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:57:        "session-outbox-worker": ["--data-dir", "--poll-interval", "--batch-size"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:58:        "saga-outbox-worker": ["--data-dir", "--poll-interval", "--batch-size"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:59:        "health": ["--queue-service-url", "--task-timeout", "--saga-timeout"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:60:        "scheduler": ["--business-url", "--queue-service-url", "--cortex-url"],
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:86:        "def run_task_worker",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:87:        "def run_saga_worker",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:88:        "def run_session_outbox_worker",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:89:        "def run_saga_outbox_worker",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:91:        "def run_scheduler",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:92:        'elif mode == "task-worker"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:93:        'elif mode == "saga-worker"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:94:        'elif mode == "session-outbox-worker"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:95:        'elif mode == "saga-outbox-worker"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:97:        'elif mode == "scheduler"',
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:111:    for function_name in ("assemble_session_outbox_worker", "assemble_saga_outbox_worker"):
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:114:        "_run_session_outbox" + "_worker",
+novaic-agent-runtime/tests/test_pr337_worker_command_registry.py:115:        "_run_saga_outbox" + "_worker",
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:11:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:12:from queue_service.lease_ledger import LeaseLedgerRepository, lease_id
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:13:from queue_service.queue_audit import build_queue_fsm_audit_report
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:14:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:15:from queue_service.saga_repo import SagaRepository
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:16:from queue_service.task_ledger import TaskLedgerRepository
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:224:    source = Path("queue_service/queue_audit.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:7:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:9:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:10:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:11:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr345_recovery_background_defer.py:11:from queue_service.routes import create_recovery_router
+novaic-agent-runtime/tests/test_pr345_recovery_background_defer.py:45:    queue_db_source = Path("queue_service/queue_db.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr345_recovery_background_defer.py:46:    saga_repo_source = Path("queue_service/saga_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:1:"""PR-327 - saga outbox worker uses generic worker substrate."""
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:8:from queue_service.saga_outbox_worker import (
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:9:    SAGA_OUTBOX_DRAIN_JOB,
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:13:from queue_service.worker import WorkerJob, WorkerResultStatus
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:30:def test_saga_outbox_handler_delegates_to_orchestrator_with_explicit_config():
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:50:def test_saga_outbox_handler_returns_worker_result_for_generic_substrate():
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:53:    result = handler.handle(SAGA_OUTBOX_DRAIN_JOB.build(id="saga-drain"))
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:59:def test_saga_outbox_handler_rejects_wrong_job_kind():
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:68:def test_saga_outbox_config_rejects_non_positive_batch_size():
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:73:def test_saga_outbox_entrypoint_has_no_bespoke_drain_loop():
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:76:        r"def assemble_saga_outbox_worker\(.*?def assemble_health_worker\(",
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:82:        r"def assemble_saga_outbox_worker\(.*?def assemble_health_worker\(",
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:87:    assert 'assemble_worker_process("saga-outbox-worker", args, deps)' in wrapper_section
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:1:"""PR-313 - task and saga worker heartbeat/recovery use lease FSM events."""
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:9:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:10:from queue_service.lease_ledger import LeaseLedgerRepository, lease_id
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:11:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:12:from queue_service.saga_repo import SagaRepository
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:156:    task_path = Path("queue_service/queue_db.py")
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:157:    saga_path = Path("queue_service/saga_repo.py")
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:23:    "task-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:24:    "saga-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:25:    "session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:26:    "saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:28:    "scheduler",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:34:        label="task-worker control",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:35:        pattern="main_novaic.py task-worker .*--pool control",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:37:        log_files=("task-worker-control-1.log", "task-worker-control-2.log"),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:39:            '$PY $MAIN task-worker $TASK_WORKER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:41:            '>> "$LOG_DIR/task-worker-control-1.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:42:            '$PY $MAIN task-worker $TASK_WORKER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:44:            '>> "$LOG_DIR/task-worker-control-2.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:48:        label="task-worker execution",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:49:        pattern="main_novaic.py task-worker .*--pool execution",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:51:        log_files=("task-worker-execution-1.log", "task-worker-execution-2.log"),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:53:            '$PY $MAIN task-worker $TASK_WORKER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:55:            '>> "$LOG_DIR/task-worker-execution-1.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:56:            '$PY $MAIN task-worker $TASK_WORKER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:58:            '>> "$LOG_DIR/task-worker-execution-2.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:62:        label="saga-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:63:        pattern="main_novaic.py saga-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:65:        log_files=("saga-worker-1.log", "saga-worker-2.log"),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:67:            '$PY $MAIN saga-worker $SAGA_WORKER_ARGS --max-concurrent 4 '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:68:            '>> "$LOG_DIR/saga-worker-1.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:69:            '$PY $MAIN saga-worker $SAGA_WORKER_ARGS --max-concurrent 4 '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:70:            '>> "$LOG_DIR/saga-worker-2.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:74:        label="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:75:        pattern="main_novaic.py session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:77:        log_files=("session-outbox-worker.log",),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:79:            '$PY $MAIN session-outbox-worker --data-dir "$DATA_DIR" '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:80:            '>> "$LOG_DIR/session-outbox-worker.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:84:        label="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:85:        pattern="main_novaic.py saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:87:        log_files=("saga-outbox-worker.log",),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:89:            '$PY $MAIN saga-outbox-worker --data-dir "$DATA_DIR" '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:90:            '>> "$LOG_DIR/saga-outbox-worker.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:99:            '$PY $MAIN health --queue-service-url "$QS_URL" --data-dir "$DATA_DIR" '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:104:        label="scheduler",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:105:        pattern="main_novaic.py scheduler",
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:107:        log_files=("scheduler.log",),
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:109:            '$PY $MAIN scheduler $SCHEDULER_ARGS '
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:110:            '>> "$LOG_DIR/scheduler.log" 2>&1 &',
+novaic-agent-runtime/task_queue/workers/runtime_roster.py:127:            '--queue-service-url "$QS_URL" '
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:8:from queue_service.session_fsm import (
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:16:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:9:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:11:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:13:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:119:def test_retryable_session_outbox_effects_still_default_to_pending(tmp_path):
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:145:    with pytest.raises(ValueError, match="unsupported initial session outbox status"):
+novaic-agent-runtime/tests/test_pr321_physical_projection_residue_guard.py:9:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr321_physical_projection_residue_guard.py:12:QUEUE_DB = Path("queue_service/queue_db.py")
+novaic-agent-runtime/tests/test_pr321_physical_projection_residue_guard.py:13:SAGA_REPO = Path("queue_service/saga_repo.py")
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:9:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:11:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:13:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:63:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:7:from queue_service.lease_ledger import lease_id
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:8:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:9:from queue_service.task_ledger import TaskLedgerRepository
+novaic-agent-runtime/tests/test_queue_explicit_dependencies.py:2:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_queue_explicit_dependencies.py:3:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_queue_explicit_dependencies.py:4:from queue_service.saga_repo import SagaRepository
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:8:from queue_service.session_projection import (
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:88:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:9:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:11:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:13:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:108:        for dirname in ("queue_service", "task_queue")
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:6:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:7:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:8:from queue_service.task_ledger import TaskLedgerRepository
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:10:from queue_service.task_fsm import (
+novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py:201:    source_path = Path("queue_service/task_fsm.py")
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:10:from queue_service.db.schema import SCHEMA_VERSION, init_schema
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:11:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:12:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:13:from queue_service.session_ledger import (
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:17:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:18:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:99:    assert "tq_session_outbox" in tables
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:10:from queue_service.routes import SessionEndedRequest
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:11:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:12:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:13:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:14:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:15:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:16:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:13:SCHEDULER_ENGINE = Path("task_queue/workers/scheduled_wake.py")
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:21:SCHEDULER_EFFECTS = Path("task_queue/workers/scheduler_effects.py")
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:99:        "queue_service_url",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:150:    assert "scheduler_effects.executor()" in source
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:203:        "queue_service.session_outbox_worker",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:204:        "queue_service.saga_outbox_worker",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:219:        "queue_service.session_outbox_worker",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:220:        "queue_service.saga_outbox_worker",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:230:        SCHEDULER_ENGINE: {"task_queue.client", "httpx", "common.http.clients"},
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:238:    assert _init_arg_names(_tree(SCHEDULER_EFFECTS), "ScheduledWakeEffectAdapter").issuperset({
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:245:    for engine_path in (TASK_ENGINE, SAGA_ENGINE, HEALTH_ENGINE, SCHEDULER_ENGINE):
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:262:        "queue_service_url",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:267:        "queue_service_url",
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:275:def test_scheduler_engine_owns_no_concrete_scan_or_dispatch_collaborators():
+novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py:276:    tree = _tree(SCHEDULER_ENGINE)
+novaic-agent-runtime/task_queue/workers/task_sources.py:1:"""Task worker source adapters for the generic worker substrate."""
+novaic-agent-runtime/task_queue/workers/task_sources.py:8:from queue_service.worker import WorkerJob
+novaic-agent-runtime/task_queue/workers/task_sources.py:10:from task_queue.workers.task_worker import QUEUE_TASK_DEPENDENCY_RELEASED_JOB, QUEUE_TASK_JOB
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:8:from queue_service.db.schema import SCHEMA_VERSION, init_schema
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:9:from queue_service.task_ledger import TaskLedgerRepository, TaskStateRecord
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:48:    source = Path("queue_service/task_ledger.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py:49:    store_source = Path("queue_service/fsm/sqlite_store.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:1:"""PR-248 / FSM-06D - active attach publishes from session outbox."""
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:9:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:10:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:11:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:12:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:13:from queue_service.session_events import SessionEventKeyPrefix, SessionEventType
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:14:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:15:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:304:    source = Path("queue_service/session_repo.py").read_text()
+novaic-agent-runtime/tests/test_pr318_projection_table_quarantine_guard.py:9:QUEUE_DB = Path("queue_service/queue_db.py")
+novaic-agent-runtime/tests/test_pr318_projection_table_quarantine_guard.py:10:SAGA_REPO = Path("queue_service/saga_repo.py")
+novaic-agent-runtime/tests/test_pr318_projection_table_quarantine_guard.py:11:SESSION_REBUILD = Path("queue_service/session_rebuild.py")
+novaic-agent-runtime/tests/test_pr318_projection_table_quarantine_guard.py:12:SCHEMA = Path("queue_service/db/schema.py")
+novaic-agent-runtime/tests/test_pr307_taskqueue_old_sql_residue_cleanup.py:8:import queue_service.queue_db as queue_db_module
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:8:import queue_service.lease_fsm as lease_fsm_module
+novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py:9:from queue_service.lease_fsm import (
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:9:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:11:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:13:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr330_task_worker_generic_source.py:1:"""PR-330 - task worker claim source for the generic worker substrate."""
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:4:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:5:from queue_service.session_wake_plan import (
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:72:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr324_generic_worker_loop.py:7:from queue_service.worker import (
+novaic-agent-runtime/task_queue/workers/saga_effects.py:7:from queue_service.worker import EffectExecutor, WorkerEffect
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:30:        "queue-service",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:31:        "task-worker",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:32:        "saga-worker",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:33:        "session-outbox-worker",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:34:        "saga-outbox-worker",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:36:        "scheduler",
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:12:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:13:from queue_service.dependencies import QueueServiceDependencies
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:14:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:15:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:16:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:17:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:18:from queue_service.session_projection import merge_pending_metadata
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:19:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:50:        outbox_id_provider=deps.session_outbox_id_provider,
+novaic-agent-runtime/tests/test_pr282_session_decision_trace_boundary.py:4:from queue_service.session_fsm import build_session_dispatch_decision_trace
+novaic-agent-runtime/tests/test_pr282_session_decision_trace_boundary.py:26:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/task_queue/workers/assembly_helpers.py:8:from queue_service.worker import (
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:1:"""PR-247 / FSM-06C - recovery archive is dispatched from session outbox."""
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:11:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:12:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:13:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:14:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:15:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:16:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:282:    saga_repo_source = Path("queue_service/saga_repo.py").read_text()
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:283:    session_repo_source = Path("queue_service/session_repo.py").read_text()
+novaic-agent-runtime/task_queue/retry_policy.py:2:Unified retry policy for Task/Saga workers.
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:11:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:12:from queue_service.fsm.sqlite_store import FsmSqliteStore, FsmSqliteStoreConfig
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:13:from queue_service.session_ledger import SessionLedgerRepository, SessionStateRecord
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:35:    source = Path("queue_service/session_ledger.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:36:    store_source = Path("queue_service/fsm/sqlite_store.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:1:"""PR-326 - session outbox worker uses generic worker substrate."""
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:7:def test_session_outbox_entrypoint_has_no_bespoke_drain_loop():
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:10:        r"def assemble_session_outbox_worker\(.*?def assemble_saga_outbox_worker\(",
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:16:        r"def assemble_session_outbox_worker\(.*?def assemble_saga_outbox_worker\(",
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:21:    assert 'assemble_worker_process("session-outbox-worker", args, deps)' in wrapper_section
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:30:def test_session_outbox_handler_is_business_thin():
+novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py:31:    source = Path("queue_service/session_outbox_worker.py").read_text(encoding="utf-8")
+novaic-agent-runtime/task_queue/workers/registry.py:18:    assemble_saga_outbox_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:19:    assemble_saga_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:20:    assemble_scheduler_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:21:    assemble_session_outbox_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:22:    assemble_task_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:34:        "task-worker": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:35:            mode="task-worker",
+novaic-agent-runtime/task_queue/workers/registry.py:36:            description="NovAIC Task Worker Service",
+novaic-agent-runtime/task_queue/workers/registry.py:39:                WorkerOption(("--queue-service-url",), default=config_default("QUEUE_SERVICE_URL"), help="Queue Service URL"),
+novaic-agent-runtime/task_queue/workers/registry.py:50:            build_process=assemble_task_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:52:        "saga-worker": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:53:            mode="saga-worker",
+novaic-agent-runtime/task_queue/workers/registry.py:54:            description="NovAIC Saga Worker Service",
+novaic-agent-runtime/task_queue/workers/registry.py:56:                WorkerOption(("--queue-service-url",), default=config_default("QUEUE_SERVICE_URL"), help="Queue Service URL"),
+novaic-agent-runtime/task_queue/workers/registry.py:61:            build_process=assemble_saga_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:63:        "session-outbox-worker": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:64:            mode="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/registry.py:65:            description="NovAIC Session Outbox Worker",
+novaic-agent-runtime/task_queue/workers/registry.py:69:                WorkerOption(("--batch-size",), default=50, value_type=int, help="Maximum session outbox rows to drain per batch"),
+novaic-agent-runtime/task_queue/workers/registry.py:71:            build_process=assemble_session_outbox_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:73:        "saga-outbox-worker": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:74:            mode="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/registry.py:75:            description="NovAIC Saga Outbox Worker",
+novaic-agent-runtime/task_queue/workers/registry.py:79:                WorkerOption(("--batch-size",), default=50, value_type=int, help="Maximum saga outbox rows to drain per batch"),
+novaic-agent-runtime/task_queue/workers/registry.py:81:            build_process=assemble_saga_outbox_worker,
+novaic-agent-runtime/task_queue/workers/registry.py:87:                WorkerOption(("--queue-service-url",), default=config_default("QUEUE_SERVICE_URL"), help="Queue Service URL"),
+novaic-agent-runtime/task_queue/workers/registry.py:96:        "scheduler": WorkerSpec(
+novaic-agent-runtime/task_queue/workers/registry.py:97:            mode="scheduler",
+novaic-agent-runtime/task_queue/workers/registry.py:98:            description="NovAIC Scheduler Worker Service",
+novaic-agent-runtime/task_queue/workers/registry.py:101:                WorkerOption(("--queue-service-url",), default=config_default("QUEUE_SERVICE_URL"), help="Queue Service URL"),
+novaic-agent-runtime/task_queue/workers/registry.py:107:            build_process=assemble_scheduler_worker,
+novaic-agent-runtime/task_queue/workers/health_worker.py:3:from queue_service.worker import WorkerJob, WorkerJobDecodeError, WorkerJobSpec, WorkerResult, decode_worker_job
+novaic-agent-runtime/task_queue/workers/saga_launch_plans.py:9:from queue_service.worker import EffectPlan, WorkerEffect
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:10:    Path("queue_service/session_fsm.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:11:    Path("queue_service/task_fsm.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:12:    Path("queue_service/saga_fsm.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:13:    Path("queue_service/lease_fsm.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:17:    Path("queue_service/session_repo.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:18:    Path("queue_service/session_outbox.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:19:    Path("queue_service/session_projection.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:20:    Path("queue_service/session_effects.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:21:    Path("queue_service/session_recovery.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:22:    Path("queue_service/session_rebuild.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:23:    Path("queue_service/queue_db.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:24:    Path("queue_service/saga_repo.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:65:    task_source = _source(Path("queue_service/queue_db.py"))
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:66:    saga_source = _source(Path("queue_service/saga_repo.py"))
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:70:        Path("queue_service/queue_db.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:76:        Path("queue_service/saga_repo.py"),
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:101:    queue_source = _source(Path("queue_service/queue_db.py"))
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:102:    saga_source = _source(Path("queue_service/saga_repo.py"))
+novaic-agent-runtime/task_queue/workers/saga_worker.py:7:from queue_service.worker import (
+novaic-agent-runtime/task_queue/workers/saga_worker.py:30:    name = "saga-worker"
+novaic-agent-runtime/task_queue/workers/health_recovery.py:8:from queue_service.worker import EffectExecutor, EffectPlanRunner, WorkerResult
+novaic-agent-runtime/task_queue/workers/scheduler_effects.py:7:from queue_service.worker import EffectExecutor, WorkerEffect
+novaic-agent-runtime/task_queue/workers/scheduler_effects.py:23:            "scheduler.get_due_for_wake": self._get_due_for_wake,
+novaic-agent-runtime/task_queue/workers/scheduler_effects.py:24:            "scheduler.dispatch_wake": self._dispatch_wake,
+novaic-agent-runtime/task_queue/topics.py:65:    # must enter through durable session outbox, not this generic topic.
+novaic-agent-runtime/task_queue/topics.py:67:    # Saga Decision - DAG 决策节点（由 Task Worker 内联处理）
+novaic-agent-runtime/task_queue/topics.py:69:    # Saga Parallel - DAG 并行节点（由 Task Worker 内联处理）
+novaic-agent-runtime/task_queue/workers/task_effects.py:7:from queue_service.worker import EffectExecutor, WorkerEffect
+novaic-agent-runtime/task_queue/workers/task_effects.py:21:        queue_service_url: str,
+novaic-agent-runtime/task_queue/workers/task_effects.py:27:        self.queue_service_url = queue_service_url
+novaic-agent-runtime/task_queue/workers/task_effects.py:103:                "queue_service_url": self.queue_service_url,
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:1:"""PR-329 - scheduler worker uses generic tick substrate."""
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:6:from queue_service.worker import WorkerJob, WorkerResultStatus
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:8:from task_queue.workers.scheduler_effects import ScheduledWakeEffectAdapter
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:9:from task_queue.workers.scheduled_wake import ScheduledWakeEngine, SchedulerMetrics
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:10:from task_queue.workers.scheduler_worker import SCHEDULED_WAKE_TICK_JOB, ScheduledWakeHandler
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:25:    metrics = SchedulerMetrics()
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:33:        worker_id="scheduler-test",
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:38:        worker_id="scheduler-test",
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:44:def test_scheduler_worker_lifecycle_is_component_assembly_owned():
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:45:    handler_source = Path("task_queue/workers/scheduler_worker.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:59:    assert "build_process=assemble_scheduler_worker" in registry_source
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:67:def test_scheduler_handler_returns_tick_delta(monkeypatch):
+novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py:87:def test_scheduler_handler_rejects_wrong_job_kind():
+novaic-agent-runtime/tests/test_session_init_message_ids.py:8:   reader — the assembler stuffed them into metadata, the Queue Service
+novaic-agent-runtime/task_queue/workers/task_metrics.py:1:"""Task worker metrics contract."""
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:8:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:9:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:11:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:13:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/task_queue/workers/__init__.py:9:from .saga_worker import SagaLaunchHandler
+novaic-agent-runtime/task_queue/workers/__init__.py:10:from .task_worker import TaskExecutionHandler
+novaic-agent-runtime/task_queue/workers/__init__.py:12:from .scheduler_worker import ScheduledWakeHandler
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:53:def assemble_task_worker(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:61:    cfg.QUEUE_SERVICE_URL = args.queue_service_url
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:63:    deps.setup_worker_logging("task-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:72:    from task_queue.workers.task_worker import TaskExecutionHandler
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:75:    deps.printer(f"[task-worker] Pool={args.pool}, subscribed to {len(topics)} topics: {sorted(topics)}")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:77:    bundle = WorkerRuntimeBundle.system("task-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:81:    task_client = TaskQueueClient(args.queue_service_url, service_name="runtime-task", timeout=cfg.TASK_TIMEOUT)
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:82:    saga_client = SagaClient(args.queue_service_url, service_name="runtime-task", timeout=cfg.TASK_TIMEOUT)
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:93:        queue_service_url=args.queue_service_url,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:134:        label="task-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:137:            "[task-worker] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:138:            f"[task-worker] Worker ID: {worker_id}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:139:            f"[task-worker] Pool: {args.pool}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:140:            f"[task-worker] Business URL: {args.business_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:141:            f"[task-worker] Queue Service URL: {args.queue_service_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:142:            f"[task-worker] Num workers: {args.num_workers} (reserved)",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:149:def assemble_saga_worker(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:156:    cfg.QUEUE_SERVICE_URL = args.queue_service_url
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:158:    deps.setup_worker_logging("saga-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:170:    from task_queue.workers.saga_worker import SagaLaunchHandler
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:174:    bundle = WorkerRuntimeBundle.system("saga-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:178:    saga_client = SagaClient(args.queue_service_url, service_name="runtime-saga", timeout=cfg.SAGA_STEP_TIMEOUT)
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:179:    task_client = TaskQueueClient(args.queue_service_url, service_name="runtime-saga", timeout=cfg.SAGA_STEP_TIMEOUT)
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:203:        deps.printer(f"[saga-worker] Registered: {saga_def.name} ({len(saga_def.steps)} steps)")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:223:        label="saga-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:226:            "[saga-worker] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:227:            f"[saga-worker] Worker ID: {worker_id}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:228:            f"[saga-worker] Queue Service URL: {args.queue_service_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:229:            f"[saga-worker] Saga types: {saga_types}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:230:            f"[saga-worker] Max concurrent: {args.max_concurrent}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:237:def assemble_session_outbox_worker(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:242:        raise ValueError("session outbox worker poll interval must be positive")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:246:    deps.setup_worker_logging("session-outbox-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:249:    from queue_service.db import init_schema
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:250:    from queue_service.dependencies import QueueServiceDependencies
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:251:    from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:252:    from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:253:    from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:254:    from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:255:    from queue_service.session_outbox_worker import (
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:256:        SESSION_OUTBOX_DRAIN_JOB,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:267:        label="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:285:        outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:300:        log_error=lambda message: logging.getLogger("session-outbox-worker").error(message),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:303:        job=SESSION_OUTBOX_DRAIN_JOB,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:307:        reporter=result_logging_reporter(runtime=runtime, label="session-outbox-worker"),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:308:        name="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:311:        label="session-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:314:            "[session-outbox-worker] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:315:            f"[session-outbox-worker] Database: {db_path}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:316:            f"[session-outbox-worker] Batch size: {args.batch_size}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:317:            f"[session-outbox-worker] Poll interval: {args.poll_interval}s",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:324:def assemble_saga_outbox_worker(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:329:        raise ValueError("saga outbox worker poll interval must be positive")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:333:    deps.setup_worker_logging("saga-outbox-worker")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:336:    from queue_service.db import init_schema
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:337:    from queue_service.dependencies import QueueServiceDependencies
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:338:    from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:339:    from queue_service.saga_outbox_worker import (
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:340:        SAGA_OUTBOX_DRAIN_JOB,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:344:    from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:345:    from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:353:        label="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:365:        outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:381:        log_error=lambda message: logging.getLogger("saga-outbox-worker").error(message),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:384:        job=SAGA_OUTBOX_DRAIN_JOB,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:388:        reporter=result_logging_reporter(runtime=runtime, label="saga-outbox-worker"),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:389:        name="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:392:        label="saga-outbox-worker",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:395:            "[saga-outbox-worker] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:396:            f"[saga-outbox-worker] Database: {db_path}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:397:            f"[saga-outbox-worker] Batch size: {args.batch_size}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:398:            f"[saga-outbox-worker] Poll interval: {args.poll_interval}s",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:411:    cfg.QUEUE_SERVICE_URL = args.queue_service_url
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:427:        queue_service_url=args.queue_service_url,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:428:        queue_internal_key=cfg.QUEUE_SERVICE_INTERNAL_KEY or "",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:472:            f"[health] Queue Service URL: {args.queue_service_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:479:def assemble_scheduler_worker(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:487:    cfg.QUEUE_SERVICE_URL = args.queue_service_url
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:488:    deps.setup_worker_logging("scheduler")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:489:    cfg.log_startup_snapshot(logging.getLogger("scheduler"))
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:493:    from task_queue.workers.scheduler_effects import ScheduledWakeEffectAdapter
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:494:    from task_queue.workers.scheduled_wake import ScheduledWakeEngine, SchedulerMetrics
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:495:    from task_queue.workers.scheduler_worker import SCHEDULED_WAKE_TICK_JOB, ScheduledWakeHandler
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:498:    bundle = WorkerRuntimeBundle.system("scheduler")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:503:        service_name="runtime-scheduler",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:508:        queue_service_url=args.queue_service_url,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:510:    scheduler_effects = ScheduledWakeEffectAdapter(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:514:    metrics = SchedulerMetrics()
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:516:        effect_executor=scheduler_effects.executor(),
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:522:        check_interval=cfg.SCHEDULER_POLL_INTERVAL_SECONDS,
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:539:        deps.printer(f"[scheduler] /metrics listening on http://{args.metrics_host}:{args.metrics_port}")
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:550:        label="scheduler",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:553:            "[scheduler] Starting...",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:554:            f"[scheduler] Worker ID: {worker_id}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:555:            f"[scheduler] Business URL: {args.business_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:556:            f"[scheduler] Queue Service URL: {args.queue_service_url}",
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:557:            f"[scheduler] Check interval: {cfg.SCHEDULER_POLL_INTERVAL_SECONDS}s",
+novaic-agent-runtime/task_queue/workers/health_effects.py:10:from queue_service.worker import EffectExecutor, WorkerEffect
+novaic-agent-runtime/task_queue/workers/health_effects.py:14:    """Own Queue Service recover-all HTTP effects."""
+novaic-agent-runtime/task_queue/workers/health_effects.py:16:    def __init__(self, *, queue_service_url: str, queue_internal_key: str) -> None:
+novaic-agent-runtime/task_queue/workers/health_effects.py:17:        if not queue_service_url:
+novaic-agent-runtime/task_queue/workers/health_effects.py:18:            raise ValueError("HealthRecoveryEffectAdapter requires explicit queue_service_url")
+novaic-agent-runtime/task_queue/workers/health_effects.py:19:        self.queue_service_url = queue_service_url.rstrip("/")
+novaic-agent-runtime/task_queue/workers/health_effects.py:41:                base_url=self.queue_service_url,
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:1:"""Process-wide DispatchAssembler factory for the runtime scheduler worker."""
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:11:def get_assembler(*, business_url: str, queue_service_url: str) -> DispatchAssembler:
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:15:    if not queue_service_url:
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:16:        raise ValueError("get_assembler requires explicit queue_service_url")
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:18:    key = (business_url.rstrip("/"), queue_service_url.rstrip("/"))
+novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:28:        service_name="runtime-scheduler",
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:10:from queue_service.worker import WorkerEffect
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:14:class SchedulerDispatchDecision:
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:25:    return WorkerEffect("scheduler.get_due_for_wake")
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:47:        "scheduler.dispatch_wake",
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:64:) -> SchedulerDispatchDecision:
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:68:        return SchedulerDispatchDecision(
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:79:        return SchedulerDispatchDecision(
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:89:        return SchedulerDispatchDecision(
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:99:    return SchedulerDispatchDecision(
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:113:) -> SchedulerDispatchDecision:
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:115:        return SchedulerDispatchDecision(
+novaic-agent-runtime/task_queue/workers/scheduler_action_specs.py:123:    return SchedulerDispatchDecision(
+novaic-agent-runtime/task_queue/workers/saga_sources.py:1:"""Saga worker source adapters for the generic worker substrate."""
+novaic-agent-runtime/task_queue/workers/saga_sources.py:7:from queue_service.worker import WorkerJob
+novaic-agent-runtime/task_queue/workers/saga_sources.py:9:from task_queue.workers.saga_worker import SAGA_CLAIMED_JOB
+novaic-agent-runtime/task_queue/workers/health_action_specs.py:8:from queue_service.worker import WorkerEffect
+novaic-agent-runtime/tests/test_pr274_session_repository_orchestrator_residue_removal.py:5:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/tests/test_pr274_session_repository_orchestrator_residue_removal.py:11:def test_session_outbox_remains_the_single_saga_creation_boundary():
+novaic-agent-runtime/tests/test_pr274_session_repository_orchestrator_residue_removal.py:12:    outbox_source = Path("queue_service/session_outbox.py").read_text(
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:17:    assemble_saga_outbox_worker as _assemble_saga_outbox_worker,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:18:    assemble_saga_worker as _assemble_saga_worker,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:19:    assemble_scheduler_worker as _assemble_scheduler_worker,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:20:    assemble_session_outbox_worker as _assemble_session_outbox_worker,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:21:    assemble_task_worker as _assemble_task_worker,
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:36:    WorkerAssemblySpec(mode="task-worker", build_process=_assemble_task_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:37:    WorkerAssemblySpec(mode="saga-worker", build_process=_assemble_saga_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:38:    WorkerAssemblySpec(mode="session-outbox-worker", build_process=_assemble_session_outbox_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:39:    WorkerAssemblySpec(mode="saga-outbox-worker", build_process=_assemble_saga_outbox_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:41:    WorkerAssemblySpec(mode="scheduler", build_process=_assemble_scheduler_worker),
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:63:def assemble_task_worker(
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:67:    return assemble_worker_process("task-worker", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:70:def assemble_saga_worker(
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:74:    return assemble_worker_process("saga-worker", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:77:def assemble_session_outbox_worker(
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:81:    return assemble_worker_process("session-outbox-worker", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:84:def assemble_saga_outbox_worker(
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:88:    return assemble_worker_process("saga-outbox-worker", args, deps)
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:98:def assemble_scheduler_worker(
+novaic-agent-runtime/task_queue/workers/worker_assemblies.py:102:    return assemble_worker_process("scheduler", args, deps)
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:34:def test_queue_service_entrypoint_disables_uvicorn_access_log():
+novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py:35:    assert _uvicorn_run_kwargs("run_queue_service") == [{
+novaic-agent-runtime/task_queue/workers/scheduler_worker.py:3:from queue_service.worker import WorkerJob, WorkerJobDecodeError, WorkerJobSpec, WorkerResult, decode_worker_job
+novaic-agent-runtime/task_queue/workers/scheduler_worker.py:4:from task_queue.workers.scheduled_wake import ScheduledWakeEngine, SchedulerMetrics
+novaic-agent-runtime/task_queue/workers/scheduler_worker.py:17:    name = "scheduler"
+novaic-agent-runtime/task_queue/workers/scheduler_worker.py:24:        metrics: SchedulerMetrics,
+novaic-agent-runtime/task_queue/workers/scheduler_worker.py:33:            raise ValueError("ScheduledWakeHandler requires explicit SchedulerMetrics")
+novaic-agent-runtime/task_queue/workers/task_execution_policies.py:8:from queue_service.worker import EffectPlan, WorkerEffect
+novaic-agent-runtime/task_queue/workers/task_worker.py:1:"""Task worker business handler for the generic worker substrate."""
+novaic-agent-runtime/task_queue/workers/task_worker.py:7:from queue_service.worker import (
+novaic-agent-runtime/task_queue/workers/task_worker.py:34:    name = "task-worker"
+novaic-agent-runtime/task_queue/__init__.py:10:- Queue Service 进程: TaskQueue + SagaRepository (直接操作 queue.db)
+novaic-agent-runtime/task_queue/__init__.py:11:- Worker 进程: 通用 Worker 基建 + 业务 handler/source (通过 HTTP 访问 Queue Service)
+novaic-agent-runtime/task_queue/__init__.py:44:    # Core (Queue Service side)
+novaic-agent-runtime/task_queue/__init__.py:49:    # API Routes (Queue Service side)
+novaic-agent-runtime/task_queue/client.py:2:TaskQueueClient - 通过 HTTP API 访问 Queue Service
+novaic-agent-runtime/task_queue/client.py:4:提供和 TaskQueue 相同的接口，但通过 HTTP 调用 Queue Service API。
+novaic-agent-runtime/task_queue/client.py:43:        queue_service_url: str,
+novaic-agent-runtime/task_queue/client.py:51:            queue_service_url: Queue Service 地址，如 "http://localhost:19997"
+novaic-agent-runtime/task_queue/client.py:54:        self.base_url = queue_service_url.rstrip("/")
+novaic-agent-runtime/task_queue/client.py:58:        # P3-2: attach shared secret on every request so Queue Service's
+novaic-agent-runtime/task_queue/client.py:60:        self._internal_key = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/task_queue/client.py:327:    实现 SagaClientProtocol，用于 Saga Worker 进程与 Queue Service 通信。
+novaic-agent-runtime/task_queue/client.py:332:        queue_service_url: str,
+novaic-agent-runtime/task_queue/client.py:336:        self.base_url = queue_service_url.rstrip("/")
+novaic-agent-runtime/task_queue/client.py:340:        self._internal_key = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/task_queue/client.py:438:        """Saga Worker 建完 DAG 后调用，标记 launched 并释放 claim"""
+novaic-agent-runtime/task_queue/client.py:573:        queue_service_url: Optional[str] = None,
+novaic-agent-runtime/task_queue/client.py:576:        self.queue_service_url = (
+novaic-agent-runtime/task_queue/client.py:577:            (queue_service_url if queue_service_url is not None else getattr(ServiceConfig, "QUEUE_SERVICE_URL", ""))
+novaic-agent-runtime/task_queue/client.py:701:    # ---------- Task Queue Recovery (Queue Service /api/queue/recover/all) ----------
+novaic-agent-runtime/task_queue/client.py:703:        """Recover stale tasks and sagas. Targets Queue Service, not Gateway."""
+novaic-agent-runtime/task_queue/client.py:704:        if not self.queue_service_url:
+novaic-agent-runtime/task_queue/client.py:705:            raise TaskQueueError("QUEUE_SERVICE_URL not configured for recover_all")
+novaic-agent-runtime/task_queue/client.py:706:        # P3-2: Queue Service requires X-Internal-Key when configured.
+novaic-agent-runtime/task_queue/client.py:707:        queue_key = ServiceConfig.QUEUE_SERVICE_INTERNAL_KEY or ""
+novaic-agent-runtime/task_queue/client.py:710:            base_url=self.queue_service_url,
+novaic-agent-runtime/task_queue/sagas/__init__.py:63:def register_all_sagas(saga_worker):
+novaic-agent-runtime/task_queue/sagas/__init__.py:66:        saga_worker.register(saga_def)
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:9:from queue_service.db.schema import init_schema
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:10:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:11:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:12:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:13:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:14:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:255:    source = Path("queue_service/saga_repo.py").read_text()
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:265:        path for path in Path("queue_service").rglob("*.py")
+novaic-agent-runtime/task_queue/saga.py:6:│                  Saga Worker 进程                        │
+novaic-agent-runtime/task_queue/saga.py:21:- 实际执行由 saga_worker.py 处理
+novaic-agent-runtime/task_queue/saga.py:25:- Saga Worker 建 DAG 后批量 publish，不再顺序执行
+novaic-agent-runtime/tests/test_pr271_session_attach_flow_consolidation.py:7:from queue_service.session_events import SessionEventType
+novaic-agent-runtime/tests/test_pr271_session_attach_flow_consolidation.py:11:    source = Path("queue_service/session_repo.py").read_text(encoding="utf-8")
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:48:    # PR-20 — message_ids flow: assembler → Queue Service metadata →
+novaic-agent-runtime/task_queue/queue.py:4:Worker 不要直接访问 DB；实际实现位于 `queue_service.queue_db`，
+novaic-agent-runtime/task_queue/queue.py:5:并由 Queue Service API 暴露给其它进程。
+novaic-agent-runtime/task_queue/queue.py:8:from queue_service.queue_db import TaskQueue
+novaic-agent-runtime/task_queue/dag_builder.py:2:DAG Builder - Saga Worker 侧
+novaic-agent-runtime/task_queue/dag_builder.py:18:    构建 DAG 任务列表，供 Saga Worker 批量 publish。
+novaic-agent-runtime/task_queue/contracts/react_think.py:3:The saga worker still passes a mutable ``ctx`` dict to step callbacks. This
+novaic-app/src-tauri/resources/config/services.json:15:    "queue_service": {
+novaic-app/scripts/start-backends.sh:5:# desktop subset: Gateway, Queue Service, Blob Service, and runtime workers.
+novaic-app/scripts/start-backends.sh:23:PORT_QUEUE_SERVICE=19997
+novaic-app/scripts/start-backends.sh:111:    for port in $PORT_GATEWAY $PORT_QUEUE_SERVICE \
+novaic-app/scripts/start-backends.sh:128:        "$PORT_QUEUE_SERVICE:Queue Service"
+novaic-app/scripts/start-backends.sh:158:echo "Starts: Gateway, Queue Service, Blob Service, runtime workers"
+novaic-app/scripts/start-backends.sh:165:QS_URL="http://127.0.0.1:$PORT_QUEUE_SERVICE"
+novaic-app/scripts/start-backends.sh:178:        --queue-service-url "$QS_URL" \
+novaic-app/scripts/start-backends.sh:187:# 2. Queue Service (part of novaic-agent-runtime)
+novaic-app/scripts/start-backends.sh:190:    echo "Starting Queue Service..."
+novaic-app/scripts/start-backends.sh:193:    "$PY" "$AR_DIR/main_novaic.py" queue-service \
+novaic-app/scripts/start-backends.sh:194:        --host 127.0.0.1 --port "$PORT_QUEUE_SERVICE" \
+novaic-app/scripts/start-backends.sh:196:        >> "$LOG_DIR/queue-service.log" 2>&1 &
+novaic-app/scripts/start-backends.sh:197:    wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
+novaic-app/scripts/start-backends.sh:217:# 4. Workers (task, saga, durable outbox, health, scheduler)
+novaic-app/scripts/start-backends.sh:222:    # Task workers (2 control + 2 execution)
+novaic-app/scripts/start-backends.sh:225:            "$PY" "$AR_DIR/main_novaic.py" task-worker \
+novaic-app/scripts/start-backends.sh:227:                --queue-service-url "$QS_URL" \
+novaic-app/scripts/start-backends.sh:232:                >> "$LOG_DIR/task-worker-${pool}-${i}.log" 2>&1 &
+novaic-app/scripts/start-backends.sh:236:    # Saga workers (2)
+novaic-app/scripts/start-backends.sh:238:        "$PY" "$AR_DIR/main_novaic.py" saga-worker \
+novaic-app/scripts/start-backends.sh:239:            --queue-service-url "$QS_URL" \
+novaic-app/scripts/start-backends.sh:243:            >> "$LOG_DIR/saga-worker-${i}.log" 2>&1 &
+novaic-app/scripts/start-backends.sh:246:    "$PY" "$AR_DIR/main_novaic.py" session-outbox-worker \
+novaic-app/scripts/start-backends.sh:248:        >> "$LOG_DIR/session-outbox-worker.log" 2>&1 &
+novaic-app/scripts/start-backends.sh:250:    "$PY" "$AR_DIR/main_novaic.py" saga-outbox-worker \
+novaic-app/scripts/start-backends.sh:252:        >> "$LOG_DIR/saga-outbox-worker.log" 2>&1 &
+novaic-app/scripts/start-backends.sh:256:        --queue-service-url "$QS_URL" \
+novaic-app/scripts/start-backends.sh:260:    # Scheduler
+novaic-app/scripts/start-backends.sh:261:    "$PY" "$AR_DIR/main_novaic.py" scheduler \
+novaic-app/scripts/start-backends.sh:263:        --queue-service-url "$QS_URL" \
+novaic-app/scripts/start-backends.sh:266:        >> "$LOG_DIR/scheduler.log" 2>&1 &
+novaic-app/src-tauri/gen/apple/assets/config/services.json:15:    "queue_service": {

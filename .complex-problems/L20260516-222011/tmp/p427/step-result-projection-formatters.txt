@@ -1,0 +1,51 @@
+                    "mimeType": mime,
+                })
+            else:
+                # Normal URL: represent unresolved display media as text.
+                converted.append({"type": "text", "text": f"[Image: {url}]"})
+                
+    if not converted:
+        converted.append({"type": "text", "text": empty_text})
+
+    return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
+
+
+def format_for_history_llm(
+    result_data: Dict[str, Any],
+    provider: str = "openai",
+    max_text_len: Optional[int] = None,
+) -> str:
+    """Format historical tool output as manifest/text only."""
+    _ = provider
+    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+
+
+def format_for_current_tool_result_llm(
+    result_data: Dict[str, Any],
+    provider: str = "openai",
+    max_text_len: Optional[int] = None,
+) -> str:
+    """Format current non-display tool output as manifest/text only."""
+    _ = provider
+    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+
+
+def format_for_display_perception_llm(
+    result_data: Dict[str, Any],
+    provider: str = "openai",
+    max_text_len: Optional[int] = None,
+) -> str:
+    """Format explicit display perception output with allowed visual content."""
+    _ = provider
+    return _format_mcp_content(
+        result_data,
+        include_display=True,
+        max_text_len=max_text_len,
+        empty_text="[Display produced no text or media for LLM perception]",
+    )
+
+
+def format_for_monitor(result_data: Dict[str, Any], max_text_len: int = 500) -> str:
+    """Format a monitor-safe text preview of a tool result."""
+    return preview_for_text(result_data, max_text_len=max_text_len)
+

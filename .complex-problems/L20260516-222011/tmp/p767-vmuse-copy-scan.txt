@@ -1,0 +1,441 @@
+## VMuse copy files
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/pyproject.toml
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/run_server.sh
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/virtio_proxy.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/config.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/windows.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/context.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/__init__.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/virtio_proxy.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/config.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/windows.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/context.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/__init__.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/run_server.sh
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/pyproject.toml
+
+## VMuse copy high-signal hits
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:7:Built with FastMCP for standards-compliant MCP implementation.
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:18:import base64
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:22:from fastmcp import FastMCP
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:23:from fastmcp.utilities.types import Image
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:34:# ==================== FastMCP Server ====================
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:36:mcp = FastMCP(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:51:| screenshot | 截屏 (带坐标网格) |
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:61:| browser_screenshot | 浏览器截图 |
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:89:1. `screenshot()` 获取屏幕 (显示坐标网格)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:111:@mcp.tool(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:112:    description="""Capture desktop screenshot for viewing the screen.
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:121:1. screenshot() → View full screen with grid, estimate target at (X, Y)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:122:2. mouse(action='aim', x=X, y=Y) → Aim and get zoomed screenshot with crosshair
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:125:async def screenshot(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:129:    """Capture desktop screenshot with optional coordinate grid"""
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:136:    # The actual grid_density logic is handled in DesktopTools.screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:139:    result = await DesktopTools.screenshot(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:146:    # 如果成功，返回 [ImageContent, 说明文字]
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:147:    if result.get("success") and result.get("screenshot"):
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:148:        image_bytes = base64.b64decode(result["screenshot"])
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:149:        image = Image(data=image_bytes, format="png")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:150:        # 转换为 MCP ImageContent 类型
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:181:@mcp.tool(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:184:AIM (get aim_id + zoomed screenshot with crosshair axes):
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:197:- Aim screenshot shows crosshair axes with delta scale (crosshair at origin 0)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:228:    # If aim action returns screenshot, format it with image
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:229:    if result.get("success") and result.get("screenshot") and action == "aim":
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:230:        image_bytes = base64.b64decode(result["screenshot"])
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:231:        image = Image(data=image_bytes, format="png")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:246:@mcp.tool(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:280:@mcp.tool(description="Navigate to URL in managed Chromium browser")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:290:@mcp.tool(description="Click element by selector. Selectors: text=Login | #id | .class | [name='x']")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:300:@mcp.tool(description="Type into input field. Clears existing content by default")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:311:@mcp.tool(description="Capture browser viewport screenshot")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:312:async def browser_screenshot(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:315:    """Take browser screenshot"""
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:317:    result = await browser.screenshot(full_page)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:319:    # 如果成功，返回 [ImageContent, 说明文字]
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:320:    if result.get("success") and result.get("screenshot"):
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:321:        image_bytes = base64.b64decode(result["screenshot"])
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:322:        image = Image(data=image_bytes, format="png")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:323:        # 转换为 MCP ImageContent 类型
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:340:@mcp.tool(description="Scroll browser page")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:351:@mcp.tool(description="Execute JavaScript in page context")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:358:@mcp.tool(description="List open browser tabs")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:365:@mcp.tool(description="Switch to tab by index (0-based)")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:372:@mcp.tool(description="Close browser tab")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:381:@mcp.tool(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:417:@mcp.tool(description="Execute Python code directly")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:429:@mcp.tool(description="Read text file. Large files may be truncated with result_id")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:435:@mcp.tool(description="Write file. Creates dirs, overwrites existing")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:441:@mcp.tool(description="Get file metadata: size, type, permissions, timestamps")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:449:@mcp.tool(description="List all desktop windows with window_id, title, position, size")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:455:@mcp.tool(description="Bring window to front. Get window_id from list_windows")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:461:@mcp.tool(description="Maximize window to fill screen")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:467:@mcp.tool(description="Minimize window to taskbar")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:473:@mcp.tool(description="Close window")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:479:@mcp.tool(description="Resize window to specific dimensions")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:489:@mcp.tool(description="Launch app by name (non-blocking). Apps: firefox, chromium, code, terminal, files")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:497:@mcp.tool(description="Get system state: windows, clipboard, resources, processes")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:503:@mcp.tool(description="Analyze directory: tree, project type, stats")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:513:@mcp.tool(description="Get app state: windows, processes")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:519:@mcp.tool(description="Get clipboard text")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:525:@mcp.tool(description="Set clipboard text")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:531:@mcp.tool(description="Find recently modified files")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:541:@mcp.tool(description="Get environment: shell, PATH, installed tools, env vars")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:569:    # 使用 FastMCP 的 run 方法 - streamable-http 是推荐的 transport
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/run_server.sh:8:export DISPLAY=:0
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/run_server.sh:10:python3 -m novaic_mcp_vmuse.http_server
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:14:        description="NovAIC - Linux Desktop MCP Server (FastMCP)"
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:63:║   🐧 NovAIC - Linux Desktop MCP Server (FastMCP v0.2.0)     ║
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:84:        print("novaic 0.2.0 (FastMCP)")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:89:        print(f"\nNovAIC - FastMCP Server")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:7:Built with FastMCP for standards-compliant MCP implementation.
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:18:import base64
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:22:from fastmcp import FastMCP
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:23:from fastmcp.utilities.types import Image
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:34:# ==================== FastMCP Server ====================
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:36:mcp = FastMCP(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:51:| screenshot | 截屏 (带坐标网格) |
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:61:| browser_screenshot | 浏览器截图 |
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:89:1. `screenshot()` 获取屏幕 (显示坐标网格)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:111:@mcp.tool(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:112:    description="""Capture desktop screenshot for viewing the screen.
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:121:1. screenshot() → View full screen with grid, estimate target at (X, Y)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:122:2. mouse(action='aim', x=X, y=Y) → Aim and get zoomed screenshot with crosshair
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:125:async def screenshot(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:129:    """Capture desktop screenshot with optional coordinate grid"""
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:136:    # The actual grid_density logic is handled in DesktopTools.screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:139:    result = await DesktopTools.screenshot(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:146:    # 如果成功，返回 [ImageContent, 说明文字]
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:147:    if result.get("success") and result.get("screenshot"):
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:148:        image_bytes = base64.b64decode(result["screenshot"])
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:149:        image = Image(data=image_bytes, format="png")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:150:        # 转换为 MCP ImageContent 类型
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:181:@mcp.tool(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:184:AIM (get aim_id + zoomed screenshot with crosshair axes):
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:197:- Aim screenshot shows crosshair axes with delta scale (crosshair at origin 0)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:228:    # If aim action returns screenshot, format it with image
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:229:    if result.get("success") and result.get("screenshot") and action == "aim":
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:230:        image_bytes = base64.b64decode(result["screenshot"])
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:231:        image = Image(data=image_bytes, format="png")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:246:@mcp.tool(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:280:@mcp.tool(description="Navigate to URL in managed Chromium browser")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:290:@mcp.tool(description="Click element by selector. Selectors: text=Login | #id | .class | [name='x']")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:300:@mcp.tool(description="Type into input field. Clears existing content by default")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:311:@mcp.tool(description="Capture browser viewport screenshot")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:312:async def browser_screenshot(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:315:    """Take browser screenshot"""
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:317:    result = await browser.screenshot(full_page)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:319:    # 如果成功，返回 [ImageContent, 说明文字]
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:320:    if result.get("success") and result.get("screenshot"):
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:321:        image_bytes = base64.b64decode(result["screenshot"])
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:322:        image = Image(data=image_bytes, format="png")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:323:        # 转换为 MCP ImageContent 类型
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:340:@mcp.tool(description="Scroll browser page")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:351:@mcp.tool(description="Execute JavaScript in page context")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:358:@mcp.tool(description="List open browser tabs")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:365:@mcp.tool(description="Switch to tab by index (0-based)")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:372:@mcp.tool(description="Close browser tab")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:381:@mcp.tool(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:417:@mcp.tool(description="Execute Python code directly")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:429:@mcp.tool(description="Read text file. Large files may be truncated with result_id")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:435:@mcp.tool(description="Write file. Creates dirs, overwrites existing")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:441:@mcp.tool(description="Get file metadata: size, type, permissions, timestamps")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:449:@mcp.tool(description="List all desktop windows with window_id, title, position, size")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:455:@mcp.tool(description="Bring window to front. Get window_id from list_windows")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:461:@mcp.tool(description="Maximize window to fill screen")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:467:@mcp.tool(description="Minimize window to taskbar")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:473:@mcp.tool(description="Close window")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:479:@mcp.tool(description="Resize window to specific dimensions")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:489:@mcp.tool(description="Launch app by name (non-blocking). Apps: firefox, chromium, code, terminal, files")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:497:@mcp.tool(description="Get system state: windows, clipboard, resources, processes")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:503:@mcp.tool(description="Analyze directory: tree, project type, stats")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:513:@mcp.tool(description="Get app state: windows, processes")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:519:@mcp.tool(description="Get clipboard text")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:525:@mcp.tool(description="Set clipboard text")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:531:@mcp.tool(description="Find recently modified files")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:541:@mcp.tool(description="Get environment: shell, PATH, installed tools, env vars")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py:569:    # 使用 FastMCP 的 run 方法 - streamable-http 是推荐的 transport
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/run_server.sh:8:export DISPLAY=:0
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/run_server.sh:10:python3 -m novaic_mcp_vmuse.http_server
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py:11:- Coordinate grid system for screenshots
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py:12:- HTTP server (no FastMCP dependency)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py:25:# Note: main.py (FastMCP) and http_server.py are separate entry points
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py:27:# Import http_server only when needed: from .http_server import VMUSEServer
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py:11:- Coordinate grid system for screenshots
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py:12:- HTTP server (no FastMCP dependency)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py:25:# Note: main.py (FastMCP) and http_server.py are separate entry points
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/__init__.py:27:# Import http_server only when needed: from .http_server import VMUSEServer
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:2:NovAIC VMUSE HTTP Server - 去 FastMCP 化版本
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:10:import base64
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:42:    display = runtime_context.get("display")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:43:    if display:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:44:        env["DISPLAY"] = str(display)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:49:        # XAUTHORITY for X11 auth when targeting vm_user's display
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:50:        if display:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:94:        self.app.router.add_post('/api/desktop/screenshot', self.desktop_screenshot)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:102:        self.app.router.add_post('/api/browser/screenshot', self.browser_screenshot)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:144:    async def desktop_screenshot(self, request):
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:159:            result = await DesktopTools.screenshot(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:169:            logger.error(f"Screenshot error: {e}")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:277:    async def browser_screenshot(self, request):
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:282:            result = await browser.screenshot(data.get('full_page', False))
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:285:            logger.error(f"Browser screenshot error: {e}")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:379:        """Pull file from VM (path → content). binary=True returns base64."""
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:397:        """Push file to VM (content → path). binary=True expects base64 content."""
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:643:        logger.info(f"  Desktop: /api/desktop/* (screenshot, mouse, keyboard)")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:644:        logger.info(f"  Browser: /api/browser/* (navigate, click, type, screenshot, scroll, eval, tabs)")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:669:║   去 FastMCP 化，保留所有原始工具功能                         ║
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:14:        description="NovAIC - Linux Desktop MCP Server (FastMCP)"
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:63:║   🐧 NovAIC - Linux Desktop MCP Server (FastMCP v0.2.0)     ║
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:84:        print("novaic 0.2.0 (FastMCP)")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py:89:        print(f"\nNovAIC - FastMCP Server")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:97:        env = ShellTools._get_env_with_display(runtime_context)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:196:    def _get_env_with_display(runtime_context: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:197:        """Get environment variables with DISPLAY set for GUI apps"""
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:201:            display = runtime_context.get("display")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:202:            if display:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:203:                env["DISPLAY"] = str(display)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:215:        if "DISPLAY" not in env:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:216:            env["DISPLAY"] = ":0"
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:273:            f"DISPLAY={env.get('DISPLAY', ':0')}",
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:305:        env = ShellTools._get_env_with_display(runtime_context)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:312:                    "DISPLAY": env.get("DISPLAY", ":0"),
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:6:import base64
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:104:            binary: If True, read as binary and return base64. If False, read as text.
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:113:import base64, json, pathlib, sys
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:124:    print(json.dumps({"success": True, "content": base64.b64encode(raw).decode("ascii"), "is_base64": True, "size": len(raw)}))
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:127:    print(json.dumps({"success": True, "content": content, "is_base64": False, "size": len(content)}))
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:140:                content = base64.b64encode(raw).decode("ascii")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:144:                    "is_base64": True,
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:153:                    "is_base64": False,
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:180:import base64, json, pathlib, sys
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:186:    raw = base64.b64decode(content.decode("utf-8"))
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:209:                raw = base64.b64decode(content)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/context.py:519:                "display": os.environ.get("DISPLAY", "unknown"),
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:6:import base64
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:222:    async def screenshot(self, full_page: bool = False) -> Dict[str, Any]:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:224:        Take a browser screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:232:            screenshot_bytes = await page.screenshot(full_page=full_page)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:236:                "screenshot": base64.b64encode(screenshot_bytes).decode('utf-8')
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:97:        env = ShellTools._get_env_with_display(runtime_context)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:196:    def _get_env_with_display(runtime_context: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:197:        """Get environment variables with DISPLAY set for GUI apps"""
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:201:            display = runtime_context.get("display")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:202:            if display:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:203:                env["DISPLAY"] = str(display)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:215:        if "DISPLAY" not in env:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:216:            env["DISPLAY"] = ":0"
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:273:            f"DISPLAY={env.get('DISPLAY', ':0')}",
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:305:        env = ShellTools._get_env_with_display(runtime_context)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py:312:                    "DISPLAY": env.get("DISPLAY", ":0"),
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:6:import base64
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:104:            binary: If True, read as binary and return base64. If False, read as text.
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:113:import base64, json, pathlib, sys
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:124:    print(json.dumps({"success": True, "content": base64.b64encode(raw).decode("ascii"), "is_base64": True, "size": len(raw)}))
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:127:    print(json.dumps({"success": True, "content": content, "is_base64": False, "size": len(content)}))
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:140:                content = base64.b64encode(raw).decode("ascii")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:144:                    "is_base64": True,
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:153:                    "is_base64": False,
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:180:import base64, json, pathlib, sys
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:186:    raw = base64.b64decode(content.decode("utf-8"))
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/files.py:209:                raw = base64.b64decode(content)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:2:NovAIC VMUSE HTTP Server - 去 FastMCP 化版本
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:10:import base64
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:42:    display = runtime_context.get("display")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:43:    if display:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:44:        env["DISPLAY"] = str(display)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:49:        # XAUTHORITY for X11 auth when targeting vm_user's display
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:50:        if display:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:94:        self.app.router.add_post('/api/desktop/screenshot', self.desktop_screenshot)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:102:        self.app.router.add_post('/api/browser/screenshot', self.browser_screenshot)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:144:    async def desktop_screenshot(self, request):
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:159:            result = await DesktopTools.screenshot(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:169:            logger.error(f"Screenshot error: {e}")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:277:    async def browser_screenshot(self, request):
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:282:            result = await browser.screenshot(data.get('full_page', False))
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:285:            logger.error(f"Browser screenshot error: {e}")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:379:        """Pull file from VM (path → content). binary=True returns base64."""
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:397:        """Push file to VM (content → path). binary=True expects base64 content."""
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:643:        logger.info(f"  Desktop: /api/desktop/* (screenshot, mouse, keyboard)")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:644:        logger.info(f"  Browser: /api/browser/* (navigate, click, type, screenshot, scroll, eval, tabs)")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py:669:║   去 FastMCP 化，保留所有原始工具功能                         ║
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/context.py:519:                "display": os.environ.get("DISPLAY", "unknown"),
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:2:Desktop Tools - Mouse, Keyboard, Screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:3:Uses xdotool for input and scrot/import for screenshots
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:6:- screenshot: Pure viewing (area, grid)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:8:  - aim: Returns aim_id + screenshot + recommendation
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:13:import base64
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:23:    """Build env for X11 tools (DISPLAY, HOME, XAUTHORITY, USER, etc.)."""
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:27:    display = runtime_context.get("display")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:28:    if display:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:29:        env["DISPLAY"] = str(display)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:33:        if display:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:137:    async def screenshot(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:146:        Take a desktop screenshot with optional coordinate grid overlay
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:150:            center: Optional {x, y} center point for zoomed screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:154:                         If None, auto-selects based on screenshot size
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:169:                # Secondary screenshot command when scrot is unavailable
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:174:                return {"success": False, "error": f"Screenshot failed: {result.stderr}"}
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:316:                screenshot_bytes = f.read()
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:317:            original_size = len(screenshot_bytes)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:341:            # Check if this is a plain fullscreen screenshot (no zoom, no region)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:342:            # In this case, return the raw screenshot without any grid/labels/processing
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:346:                # Plain fullscreen: return raw screenshot without any processing
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:347:                print(f"[DesktopTools] Plain fullscreen mode - returning raw screenshot")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:352:                    "screenshot": base64.b64encode(screenshot_bytes).decode('utf-8'),
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:367:                    img = Image.open(BytesIO(screenshot_bytes))
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:518:                    # Draw border around the screenshot area
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:537:                        # Convert aim point to pixel position in resized screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:909:                                # Calculate pixel position in resized screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:910:                                pixel_x_in_screenshot = int((sys_x - visible_start_x_system) * scale)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:911:                                if 0 <= pixel_x_in_screenshot <= width:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:912:                                    actual_x = label_padding_left + pixel_x_in_screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:924:                            # Calculate pixel position in resized screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:925:                            pixel_x_in_screenshot = int((sys_x - visible_start_x_system) * scale)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:926:                            if 0 <= pixel_x_in_screenshot <= width:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:928:                                actual_x = label_padding_left + pixel_x_in_screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:930:                                # Draw primary vertical line through screenshot area
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:937:                                # Draw coordinate label at top (outside screenshot, in padding area)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:943:                                # Draw label above screenshot area
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:958:                                # Draw coordinate label at bottom (outside screenshot, in padding area)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:994:                                # Calculate pixel position in resized screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:995:                                pixel_y_in_screenshot = int((sys_y - visible_start_y_system) * scale)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:996:                                if 0 <= pixel_y_in_screenshot <= height:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:997:                                    actual_y = label_padding_top + pixel_y_in_screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1009:                            # Calculate pixel position in resized screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1010:                            pixel_y_in_screenshot = int((sys_y - visible_start_y_system) * scale)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1011:                            if 0 <= pixel_y_in_screenshot <= height:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1013:                                actual_y = label_padding_top + pixel_y_in_screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1015:                                # Draw primary horizontal line through screenshot area
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1022:                                # Draw coordinate label on left (outside screenshot, in padding area)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1028:                                # Draw label to the left of screenshot area
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1043:                                # Draw coordinate label on right (outside screenshot, in padding area)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1096:                            # Load fullscreen screenshot for thumbnail
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1132:                            # Clamp to screen bounds for display
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1182:                    screenshot_bytes = output.getvalue()
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1188:                    print(f"[DesktopTools] Saved grid overlay with padding, new size: {len(screenshot_bytes)} bytes (original: {original_size} bytes)")
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1191:                    # If grid overlay fails, use original screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1199:                "screenshot": base64.b64encode(screenshot_bytes).decode('utf-8'),
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1206:                # Zoomed screenshot - show visible range
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1223:                # Region screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1298:                prev_center_for_screenshot = None
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1311:                    prev_center_for_screenshot = {"x": prev_aim["x"], "y": prev_aim["y"]}
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1326:                # Take zoomed screenshot centered at (x, y)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1327:                screenshot_result = await DesktopTools.screenshot(
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1331:                    prev_center=prev_center_for_screenshot,
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1335:                if not screenshot_result.get("success"):
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1336:                    return screenshot_result
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1339:                grid_spacing = screenshot_result.get("grid_spacing", 100)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1359:                    "screenshot": screenshot_result.get("screenshot"),
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1360:                    "width": screenshot_result.get("width"),
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1361:                    "height": screenshot_result.get("height"),
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1402:                    "hint": f"Clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1418:                    "hint": f"Double-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1433:                    "hint": f"Right-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:6:import base64
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:222:    async def screenshot(self, full_page: bool = False) -> Dict[str, Any]:
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:224:        Take a browser screenshot
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:232:            screenshot_bytes = await page.screenshot(full_page=full_page)
+novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py:236:                "screenshot": base64.b64encode(screenshot_bytes).decode('utf-8')
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:2:Desktop Tools - Mouse, Keyboard, Screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:3:Uses xdotool for input and scrot/import for screenshots
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:6:- screenshot: Pure viewing (area, grid)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:8:  - aim: Returns aim_id + screenshot + recommendation
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:13:import base64
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:23:    """Build env for X11 tools (DISPLAY, HOME, XAUTHORITY, USER, etc.)."""
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:27:    display = runtime_context.get("display")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:28:    if display:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:29:        env["DISPLAY"] = str(display)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:33:        if display:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:137:    async def screenshot(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:146:        Take a desktop screenshot with optional coordinate grid overlay
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:150:            center: Optional {x, y} center point for zoomed screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:154:                         If None, auto-selects based on screenshot size
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:169:                # Secondary screenshot command when scrot is unavailable
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:174:                return {"success": False, "error": f"Screenshot failed: {result.stderr}"}
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:316:                screenshot_bytes = f.read()
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:317:            original_size = len(screenshot_bytes)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:341:            # Check if this is a plain fullscreen screenshot (no zoom, no region)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:342:            # In this case, return the raw screenshot without any grid/labels/processing
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:346:                # Plain fullscreen: return raw screenshot without any processing
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:347:                print(f"[DesktopTools] Plain fullscreen mode - returning raw screenshot")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:352:                    "screenshot": base64.b64encode(screenshot_bytes).decode('utf-8'),
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:367:                    img = Image.open(BytesIO(screenshot_bytes))
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:518:                    # Draw border around the screenshot area
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:537:                        # Convert aim point to pixel position in resized screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:909:                                # Calculate pixel position in resized screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:910:                                pixel_x_in_screenshot = int((sys_x - visible_start_x_system) * scale)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:911:                                if 0 <= pixel_x_in_screenshot <= width:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:912:                                    actual_x = label_padding_left + pixel_x_in_screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:924:                            # Calculate pixel position in resized screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:925:                            pixel_x_in_screenshot = int((sys_x - visible_start_x_system) * scale)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:926:                            if 0 <= pixel_x_in_screenshot <= width:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:928:                                actual_x = label_padding_left + pixel_x_in_screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:930:                                # Draw primary vertical line through screenshot area
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:937:                                # Draw coordinate label at top (outside screenshot, in padding area)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:943:                                # Draw label above screenshot area
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:958:                                # Draw coordinate label at bottom (outside screenshot, in padding area)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:994:                                # Calculate pixel position in resized screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:995:                                pixel_y_in_screenshot = int((sys_y - visible_start_y_system) * scale)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:996:                                if 0 <= pixel_y_in_screenshot <= height:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:997:                                    actual_y = label_padding_top + pixel_y_in_screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1009:                            # Calculate pixel position in resized screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1010:                            pixel_y_in_screenshot = int((sys_y - visible_start_y_system) * scale)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1011:                            if 0 <= pixel_y_in_screenshot <= height:
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1013:                                actual_y = label_padding_top + pixel_y_in_screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1015:                                # Draw primary horizontal line through screenshot area
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1022:                                # Draw coordinate label on left (outside screenshot, in padding area)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1028:                                # Draw label to the left of screenshot area
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1043:                                # Draw coordinate label on right (outside screenshot, in padding area)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1096:                            # Load fullscreen screenshot for thumbnail
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1132:                            # Clamp to screen bounds for display
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1182:                    screenshot_bytes = output.getvalue()
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1188:                    print(f"[DesktopTools] Saved grid overlay with padding, new size: {len(screenshot_bytes)} bytes (original: {original_size} bytes)")
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1191:                    # If grid overlay fails, use original screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1199:                "screenshot": base64.b64encode(screenshot_bytes).decode('utf-8'),
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1206:                # Zoomed screenshot - show visible range
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1223:                # Region screenshot
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1298:                prev_center_for_screenshot = None
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1311:                    prev_center_for_screenshot = {"x": prev_aim["x"], "y": prev_aim["y"]}
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1326:                # Take zoomed screenshot centered at (x, y)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1327:                screenshot_result = await DesktopTools.screenshot(
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1331:                    prev_center=prev_center_for_screenshot,
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1335:                if not screenshot_result.get("success"):
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1336:                    return screenshot_result
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1339:                grid_spacing = screenshot_result.get("grid_spacing", 100)
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1359:                    "screenshot": screenshot_result.get("screenshot"),
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1360:                    "width": screenshot_result.get("width"),
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1361:                    "height": screenshot_result.get("height"),
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1402:                    "hint": f"Clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1418:                    "hint": f"Double-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/desktop.py:1433:                    "hint": f"Right-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+
+## Source/copy checksum comparison
+src/novaic_mcp_vmuse/main.py :: novaic-app/src-tauri/resources/novaic-mcp-vmuse: same source=a628fa1e1165 copy=a628fa1e1165
+src/novaic_mcp_vmuse/main.py :: novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse: same source=a628fa1e1165 copy=a628fa1e1165
+src/novaic_mcp_vmuse/cli.py :: novaic-app/src-tauri/resources/novaic-mcp-vmuse: same source=df0b390cc707 copy=df0b390cc707
+src/novaic_mcp_vmuse/cli.py :: novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse: same source=df0b390cc707 copy=df0b390cc707
+src/novaic_mcp_vmuse/http_server.py :: novaic-app/src-tauri/resources/novaic-mcp-vmuse: same source=87cfc1b12264 copy=87cfc1b12264
+src/novaic_mcp_vmuse/http_server.py :: novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse: same source=87cfc1b12264 copy=87cfc1b12264
+src/novaic_mcp_vmuse/__init__.py :: novaic-app/src-tauri/resources/novaic-mcp-vmuse: same source=346c2f9e4b57 copy=346c2f9e4b57
+src/novaic_mcp_vmuse/__init__.py :: novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse: same source=346c2f9e4b57 copy=346c2f9e4b57
+pyproject.toml :: novaic-app/src-tauri/resources/novaic-mcp-vmuse: same source=d37b0f016cc5 copy=d37b0f016cc5
+pyproject.toml :: novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse: same source=d37b0f016cc5 copy=d37b0f016cc5
+run_server.sh :: novaic-app/src-tauri/resources/novaic-mcp-vmuse: same source=e67a7ac845ff copy=e67a7ac845ff
+run_server.sh :: novaic-app/src-tauri/gen/apple/assets/novaic-mcp-vmuse: same source=e67a7ac845ff copy=e67a7ac845ff

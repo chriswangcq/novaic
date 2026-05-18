@@ -1,0 +1,572 @@
+=== SDK DTO mount slice ===
+    cwd: str
+    env: Mapping[str, str]
+    timeout: int
+    display_command: str = ""
+    mount: SandboxBindMount | None = None
+
+    @classmethod
+    def from_spec(cls, spec: SandboxExecSpec) -> "SandboxdExecuteRequest":
+        return cls(
+            command=spec.command,
+            cwd=spec.cwd,
+            env=dict(spec.env),
+            timeout=spec.timeout,
+            display_command=spec.display_command,
+            mount=spec.mount,
+        )
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "SandboxdExecuteRequest":
+        env_raw = data.get("env", {})
+        if not isinstance(env_raw, Mapping):
+            raise ValueError("env must be an object")
+        env: dict[str, str] = {}
+        for key, value in env_raw.items():
+            if not isinstance(key, str) or not isinstance(value, str):
+                raise ValueError("env keys and values must be strings")
+            env[key] = value
+
+        mount_raw = data.get("mount")
+        mount: SandboxBindMount | None = None
+        if mount_raw is not None:
+            if not isinstance(mount_raw, Mapping):
+                raise ValueError("mount must be an object or null")
+            mount = SandboxBindMount(
+                source_root=_require_str(mount_raw, "source_root"),
+                mount_point=_require_str(mount_raw, "mount_point"),
+                stable_cwd=_require_str(mount_raw, "stable_cwd"),
+            )
+
+        return cls(
+            command=_require_str(data, "command"),
+            cwd=_require_str(data, "cwd"),
+            env=env,
+            timeout=_require_int(data, "timeout"),
+            display_command=_optional_str(data, "display_command"),
+            mount=mount,
+        )
+
+    def to_spec(self) -> SandboxExecSpec:
+        return SandboxExecSpec(
+            command=self.command,
+            cwd=self.cwd,
+            env=dict(self.env),
+            timeout=self.timeout,
+            display_command=self.display_command,
+            mount=self.mount,
+        )
+
+    def to_dict(self) -> JsonObject:
+        mount: JsonObject | None = None
+        if self.mount is not None:
+            mount = {
+                "source_root": self.mount.source_root,
+                "mount_point": self.mount.mount_point,
+                "stable_cwd": self.mount.stable_cwd,
+            }
+        return {
+            "command": self.command,
+            "cwd": self.cwd,
+            "env": dict(self.env),
+            "timeout": self.timeout,
+            "display_command": self.display_command,
+            "mount": mount,
+        }
+
+
+@dataclass(frozen=True)
+class SandboxBindMount:
+    source_root: str
+    mount_point: str
+    stable_cwd: str
+
+
+@dataclass(frozen=True)
+class SandboxExecSpec:
+    command: str
+    cwd: str
+    env: Mapping[str, str]
+    timeout: int
+    display_command: str = ""
+    mount: SandboxBindMount | None = None
+
+
+@dataclass(frozen=True)
+
+=== Cortex LogicalFS mount planning slice ===
+    def stable_cwd(self) -> str:
+        return self.substrate.stable_cwd
+
+    @property
+    def env(self) -> Mapping[str, str]:
+        return self.substrate.env
+
+
+def _detect_logicalfs_capabilities() -> LogicalFSCapabilities:
+    return LogicalFSCapabilities(
+        provider="sandboxd-logicalfs",
+        true_stable_path_mount=True,
+        outer_command_path_adapter=False,
+        notes=(
+            "Cortex projects Workspace data into LogicalFS and asks sandboxd to "
+            "bind-mount the materialized view at /cortex. Cortex does not "
+            "execute local shell processes."
+        ),
+    )
+
+
+
+        The writable tree can contain large generated artifacts. Shell startup
+        must not become proportional to all historical RW files, so only direct
+        root files and explicit shared/current-subagent work directories are
+        mounted by default. Any new file the command writes under /rw is still
+        persisted on release.
+        """
+
+        await self._add_directory_files(files, "/rw/")
+        for logical_prefix in (
+            "/rw/public/",
+            "/rw/system/",
+        ):
+            await self._add_tree(files, logical_prefix)
+
+        subagent_id = _safe_subagent_path_component((extra_env or {}).get("NOVAIC_SUBAGENT_ID"), "main")
+        await self._add_tree(files, f"/rw/subagents/{subagent_id}/")
+
+    async def _workspace_snapshot(
+        self,
+        *,
+        generated_rw_files: Mapping[str, bytes],
+        extra_env: Mapping[str, str] | None,
+    ) -> LogicalFSSnapshot:
+        files: dict[tuple[bool, str], LogicalFSFile] = {}
+
+        # Keep shell startup bounded. The previous implementation recursively
+        # materialized all of /ro, which made every shell call proportional to
+        # total agent history. Shell does not need the runtime tool-schema
+        # store or the installed skill library as local files; capability CLIs
+        # are generated into /cortex/bin and call Cortex/Business APIs when
+        # they need agent-harness data. Historical or broad reads must be
+        # explicit API reads, not implicit full mounts.
+        await self._add_file_if_exists(files, "/ro/config/engine.json")
+        await self._add_file_if_exists(files, "/ro/config/tools/_index.json")
+
+        scope_id = str((extra_env or {}).get("NOVAIC_SCOPE_ID") or "").strip()
+        wake_scope_path = str((extra_env or {}).get("NOVAIC_WAKE_SCOPE_PATH") or "").strip().rstrip("/")
+        if scope_id:
+            root_path = f"/ro/active/{scope_id}"
+            await self._add_file_if_exists(files, f"{root_path}/meta.json")
+            await self._add_file_if_exists(files, f"{root_path}/steps/_index.jsonl")
+            await self._add_file_if_exists(files, f"{root_path}/context_events/events.jsonl")
+            writable_dirs=(f"{STABLE_CORTEX_RW}/system",),
+        )
+
+    def _execution_env(self, extra_env: Mapping[str, str] | None, token: str | None) -> LogicalFSEnv:
+        values = {
+            "NOVAIC_API": self._cortex_api_url,
+            "CORTEX_FS_PROVIDER": self.capabilities.provider,
+            "CORTEX_TRUE_STABLE_PATH_MOUNT": "1" if self.capabilities.true_stable_path_mount else "0",
+        }
+        values.update(_capability_env(dict(extra_env or {})))
+        if token is not None:
+            values["NOVAIC_TOKEN"] = token
+        return LogicalFSEnv(values)
+
+    def _generated_env_file(self, token: str | None) -> bytes:
+        env_json: dict[str, str] = {
+            "api": self._cortex_api_url,
+            "fs_provider": self.capabilities.provider,
+        }
+        if token is not None:
+            env_json["token"] = token
+        return _json.dumps(env_json).encode("utf-8")
+
+    async def acquire_view(
+        self,
+        root: Path,
+        *,
+        cwd: str | None,
+        extra_env: dict[str, str] | None,
+    ) -> LogicalFSView:
+        token = self._token_factory() if self._token_factory is not None else None
+        snapshot = await self._workspace_snapshot(
+            generated_rw_files={".novaic_env.json": self._generated_env_file(token)},
+            extra_env=extra_env,
+        )
+
+        if self._max_sync_bytes is not None:
+            total = self._snapshot_bytes(snapshot)
+            if total > self._max_sync_bytes:
+                raise ValueError(
+                    f"logicalfs sync would read {total} bytes from workspace files, "
+                    f"exceeds max_sync_bytes={self._max_sync_bytes}"
+                )
+
+        substrate = self._provider.materialize(
+            snapshot=snapshot,
+            root=root,
+            layout=self._rw_layout(extra_env),
+            env=self._execution_env(extra_env, token),
+            cwd=cwd,
+        )
+        _write_capability_scripts(substrate.bin)
+        return LogicalFSView(substrate=substrate, capabilities=self.capabilities)
+
+    def process_mount_plan(self, view: LogicalFSView) -> SandboxBindMount:
+        if not view.capabilities.true_stable_path_mount:
+            raise RuntimeError(view.capabilities.notes)
+        return SandboxBindMount(
+            source_root=str(view.root.resolve()),
+            mount_point=STABLE_CORTEX_ROOT,
+            stable_cwd=view.stable_cwd,
+        )
+
+
+=== Sandbox service validation and process/mount slice ===
+
+
+def _validate_spec(spec: ProcessSpec) -> None:
+    if spec.timeout <= 0:
+        raise ValueError("timeout must be positive")
+    if spec.mount is not None:
+        if not spec.mount.source_root.is_dir():
+            raise ValueError("mount.source_root must be an existing directory")
+        if not spec.mount.mount_point.startswith("/"):
+            raise ValueError("mount.mount_point must be absolute")
+        if not spec.mount.stable_cwd.startswith("/"):
+            raise ValueError("mount.stable_cwd must be absolute")
+        return
+    if not spec.cwd.is_dir():
+        raise ValueError("cwd must be an existing directory")
+
+
+def _sdk_request_to_core_spec(request: SandboxdExecuteRequest) -> ProcessSpec:
+    spec = request.to_spec()
+    mount: BindMountPlan | None = None
+    if spec.mount is not None:
+        mount = BindMountPlan(
+            source_root=Path(spec.mount.source_root),
+            mount_point=spec.mount.mount_point,
+            stable_cwd=spec.mount.stable_cwd,
+        )
+    return ProcessSpec(
+        command=spec.command,
+        cwd=Path(spec.cwd),
+        env=dict(spec.env),
+        timeout=spec.timeout,
+        display_command=spec.display_command,
+        mount=mount,
+    )
+
+
+"""Async process execution substrate used inside sandboxd."""
+
+from __future__ import annotations
+
+import asyncio
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Mapping
+
+from sandbox_service.core.mount_namespace import build_bind_mount_command
+
+
+@dataclass(frozen=True)
+class BindMountPlan:
+    source_root: Path
+    mount_point: str
+    stable_cwd: str
+
+
+@dataclass(frozen=True)
+class ProcessSpec:
+    command: str
+    cwd: Path
+    env: Mapping[str, str]
+    timeout: int
+    display_command: str = ""
+    mount: BindMountPlan | None = None
+
+
+@dataclass(frozen=True)
+class ProcessRunResult:
+    stdout: bytes
+    stderr: bytes
+    exit_code: int
+    duration_s: float
+
+
+class AsyncProcessRunner:
+    """Run a shell command with explicit cwd/env/timeout inputs."""
+
+    async def run(self, spec: ProcessSpec) -> ProcessRunResult:
+        command = spec.command
+        cwd = spec.cwd
+        if spec.mount is not None:
+            command = build_bind_mount_command(
+                command=spec.command,
+                source_root=spec.mount.source_root,
+                mount_point=spec.mount.mount_point,
+                stable_cwd=spec.mount.stable_cwd,
+            )
+            cwd = spec.mount.source_root
+
+        t0 = time.monotonic()
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            cwd=str(cwd),
+            env=dict(spec.env),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        try:
+            stdout_b, stderr_b = await asyncio.wait_for(
+                proc.communicate(),
+                timeout=spec.timeout,
+            )
+            exit_code = proc.returncode if proc.returncode is not None else -1
+        except asyncio.TimeoutError:
+            try:
+"""Linux mount namespace helpers for sandboxd internals."""
+
+from __future__ import annotations
+
+import os
+import shlex
+import shutil
+from pathlib import Path
+
+
+def mount_namespace_available() -> bool:
+    """Return whether the current process can create private bind mounts."""
+    return (
+        os.name == "posix"
+        and hasattr(os, "geteuid")
+        and os.geteuid() == 0
+        and shutil.which("unshare") is not None
+        and shutil.which("mount") is not None
+    )
+
+
+def build_bind_mount_command(
+    *,
+    command: str,
+    source_root: str | Path,
+    mount_point: str,
+    stable_cwd: str,
+) -> str:
+    """Build a shell command that bind-mounts source_root at mount_point.
+
+    The caller owns all policy: what root to mount, where to mount it, and which
+    stable cwd/command should run inside that private namespace.
+    """
+    source = shlex.quote(str(Path(source_root).resolve()))
+    mount = shlex.quote(mount_point)
+    cwd = shlex.quote(stable_cwd)
+    command_arg = shlex.quote(command)
+    inner = (
+        "set -e; "
+        f"mkdir -p {mount}; "
+        f"mount --bind {source} {mount}; "
+        f"cd {cwd}; "
+        f"exec /bin/sh -c {command_arg}"
+    )
+    return f"unshare --mount --propagation private /bin/bash -lc {shlex.quote(inner)}"
+
+=== Tests: sandboxd/logicalfs mount coverage ===
+async def test_sandbox_passes_raw_command_and_mount_plan_to_runner() -> None:
+    ws, store = make_workspace_with_store("sandboxd-wiring")
+    await ws.initialize()
+    runner = RecordingRunner(stdout=b"runner-out")
+
+    result = await Sandbox(ws, process_runner=runner).exec("printf raw-command")
+
+    assert result.exit_code == 0
+    assert result.stdout == "runner-out"
+    assert len(runner.seen) == 1
+    spec = runner.seen[0]
+    assert spec.command == "printf raw-command"
+    assert not spec.command.startswith("unshare ")
+    assert spec.mount is not None
+    assert spec.mount.mount_point == "/cortex"
+    assert spec.mount.stable_cwd == "/cortex/rw"
+    assert runner.seen_capability_bins == [["agentctl", "cortex", "devicectl"]]
+    assert spec.env["PATH"].startswith("/cortex/bin:")
+    assert spec.env["RO"] == "/cortex/ro"
+    assert spec.env["RW"] == "/cortex/rw"
+
+
+@pytest.mark.asyncio
+async def test_sandbox_runner_sees_logicalfs_view_and_rw_patch_is_persisted() -> None:
+    ws, store = make_workspace_with_store("sandboxd-logicalfs-patch")
+    await ws.initialize()
+    await ws._sys_write("/ro/config/source.txt", "readonly")
+    await ws.write_bytes("/rw/existing.txt", b"old")
+
+    def mutate_view(spec: SandboxExecSpec) -> None:
+        assert spec.mount is not None
+        root = Path(spec.mount.source_root)
+        assert not (root / "ro/config/source.txt").exists()
+        assert (root / "rw/existing.txt").read_bytes() == b"old"
+        assert sorted(path.name for path in (root / "bin").iterdir()) == [
+            "agentctl",
+            "cortex",
+            "devicectl",
+        ]
+        (root / "rw/existing.txt").write_bytes(b"new")
+        (root / "rw/created.txt").write_bytes(b"created")
+
+    runner = RecordingRunner(stdout=b"patched", on_execute=mutate_view)
+
+    result = await Sandbox(ws, process_runner=runner).exec("touch created.txt")
+
+    assert result.exit_code == 0
+    assert result.stdout == "patched"
+    assert result.files_changed == ["/rw/created.txt", "/rw/existing.txt"]
+    assert await ws.read_bytes("/rw/existing.txt") == b"new"
+    assert await ws.read_bytes("/rw/created.txt") == b"created"
+
+
+@pytest.mark.asyncio
+async def test_sandbox_materializes_scoped_ro_working_set_only() -> None:
+    ws, store = make_workspace_with_store("sandboxd-scoped-ro")
+    await ws.initialize()
+    root_path = await ws.create_scope("agent-root-main", "root", "wake")
+    old_wake_path = await ws.create_scope("old-wake", "old", "wake", parent_path=root_path)
+    wake_path = await ws.create_scope("current-wake", "current", "wake", parent_path=root_path)
+    await ws._sys_write(f"{old_wake_path}/payloads/old.json", "old")
+    await ws._sys_write(f"{wake_path}/payloads/current.json", "current")
+    await ws._sys_write("/ro/active/unrelated-root/meta.json", "unrelated")
+
+    def inspect_view(spec: SandboxExecSpec) -> None:
+        assert spec.mount is not None
+        root = Path(spec.mount.source_root)
+        wake_rel = wake_path.removeprefix("/ro/")
+        old_wake_rel = old_wake_path.removeprefix("/ro/")
+        assert (root / "ro/active/agent-root-main/meta.json").is_file()
+        assert (root / "ro/active/agent-root-main/steps/_index.jsonl").is_file()
+        assert (root / "ro" / wake_rel / "payloads/current.json").is_file()
+        assert not (root / "ro" / old_wake_rel / "payloads/old.json").exists()
+        assert not (root / "ro/active/unrelated-root/meta.json").exists()
+
+    runner = RecordingRunner(stdout=b"scoped", on_execute=inspect_view)
+
+    result = await Sandbox(ws, process_runner=runner).exec(
+        "printf scoped",
+        extra_env={
+            "NOVAIC_SCOPE_ID": "agent-root-main",
+            "NOVAIC_WAKE_SCOPE_PATH": wake_path,
+        },
+    )
+
+    assert result.exit_code == 0
+    assert result.stdout == "scoped"
+
+
+@pytest.mark.asyncio
+async def test_sandbox_materializes_scoped_rw_working_set_only() -> None:
+    ws, store = make_workspace_with_store("sandboxd-scoped-rw")
+    await ws.initialize()
+    await ws.write_bytes("/rw/root-note.txt", b"root")
+    await ws.write_bytes("/rw/public/shared.txt", b"shared")
+    await ws.write_bytes("/rw/system/state.txt", b"system")
+    await ws.write_bytes("/rw/tmp/temp.txt", b"stale tmp")
+    await ws.write_bytes("/rw/subagents/main/scratch/current.txt", b"current")
+    await ws.write_bytes("/rw/subagents/sub-other/scratch/other.txt", b"other")
+    await ws.write_bytes("/rw/old-large-tree/nested/hidden.txt", b"hidden")
+
+    def inspect_view(spec: SandboxExecSpec) -> None:
+        assert spec.mount is not None
+        root = Path(spec.mount.source_root)
+        assert (root / "rw/root-note.txt").read_bytes() == b"root"
+        assert (root / "rw/public/shared.txt").read_bytes() == b"shared"
+        assert (root / "rw/system/state.txt").read_bytes() == b"system"
+        assert not (root / "rw/tmp/temp.txt").exists()
+        assert (root / "rw/subagents/main/scratch/current.txt").read_bytes() == b"current"
+        assert not (root / "rw/subagents/sub-other/scratch/other.txt").exists()
+        assert not (root / "rw/old-large-tree/nested/hidden.txt").exists()
+        (root / "rw/new-root.txt").write_bytes(b"new")
+
+    runner = RecordingRunner(stdout=b"scoped-rw", on_execute=inspect_view)
+
+    result = await Sandbox(ws, process_runner=runner).exec(
+        "printf scoped-rw",
+        extra_env={"NOVAIC_SUBAGENT_ID": "main"},
+    )
+
+    assert result.exit_code == 0
+    assert result.stdout == "scoped-rw"
+    assert await ws.read_bytes("/rw/new-root.txt") == b"new"
+
+
+def test_internal_shell_endpoint_uses_configured_process_runner() -> None:
+    ws, store = make_workspace_with_store("api-sandboxd-wiring")
+
+
+def test_build_bind_mount_command_quotes_inputs(tmp_path: Path) -> None:
+    cmd = build_bind_mount_command(
+        command='printf "a b"',
+        source_root=tmp_path,
+        mount_point="/cortex",
+        stable_cwd="/cortex/rw",
+    )
+
+    assert "unshare --mount --propagation private" in cmd
+    assert "mount --bind" in cmd
+    assert "/cortex" in cmd
+    assert "/cortex/rw" in cmd
+
+
+def test_file_stats_changed_paths_and_sanitize(tmp_path: Path) -> None:
+    before_root = tmp_path / "before"
+def test_execute_rejects_missing_mount_source(tmp_path: Path) -> None:
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/v1/execute",
+        json=_execute_payload(
+            SandboxExecSpec(
+                command="printf no",
+                cwd=str(tmp_path),
+                env={},
+                timeout=5,
+                mount=SandboxBindMount(
+                    source_root=str(tmp_path / "missing"),
+                    mount_point="/cortex",
+                    stable_cwd="/cortex/rw",
+                ),
+            )
+        ),
+    )
+
+    assert response.status_code == 400
+    assert "mount.source_root" in response.json()["detail"]
+
+
+def test_execute_passes_mount_plan_to_runner(tmp_path: Path) -> None:
+    runner = RecordingRunner()
+    client = TestClient(create_app(runner=runner))
+    source_root = tmp_path / "root"
+    source_root.mkdir()
+
+    response = client.post(
+        "/v1/execute",
+        json=_execute_payload(
+            SandboxExecSpec(
+                command="printf ok",
+                cwd=str(source_root),
+                env={"A": "B"},
+                timeout=5,
+                mount=SandboxBindMount(
+                    source_root=str(source_root),
+                    mount_point="/cortex",
+                    stable_cwd="/cortex/rw",
+                ),
+            )
+        ),
+    )
+
+    assert response.status_code == 200

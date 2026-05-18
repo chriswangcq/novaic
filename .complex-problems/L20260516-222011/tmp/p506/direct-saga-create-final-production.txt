@@ -1,0 +1,22 @@
+# direct-saga-create final production guard
+pattern: SagaOrchestrator\.create|create_wake_saga|wake_saga|saga_started|SAGA_START|SagaStarted|saga_start
+created: 2026-05-17T12:33:01Z
+
+novaic-agent-runtime/queue_service/session_outbox.py:29:    CREATE_WAKE_SAGA = "create_wake_saga"
+novaic-agent-runtime/queue_service/session_outbox.py:140:            return self._publish_create_wake_saga(effect)
+novaic-agent-runtime/queue_service/session_outbox.py:148:    def _publish_create_wake_saga(self, effect: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_outbox.py:154:            "create_wake_saga outbox payload requires scope_id",
+novaic-agent-runtime/queue_service/session_outbox.py:159:            "create_wake_saga outbox payload requires session_key",
+novaic-agent-runtime/queue_service/session_outbox.py:164:            "create_wake_saga outbox payload requires agent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:169:            "create_wake_saga outbox payload requires subagent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:174:            "create_wake_saga outbox payload requires saga_idempotency_key",
+novaic-agent-runtime/queue_service/session_outbox.py:179:            "create_wake_saga outbox payload requires saga_type",
+novaic-agent-runtime/queue_service/session_outbox.py:183:            surface="session outbox create_wake_saga",
+novaic-agent-runtime/queue_service/session_observed_events.py:77:                        reason="create_wake_saga outbox race loser",
+novaic-agent-runtime/queue_service/session_observed_events.py:93:                    reason="stale create_wake_saga observation",
+novaic-agent-runtime/queue_service/session_observed_events.py:130:                        "action": payload.get("result_action") or "wake_saga_created",
+novaic-agent-runtime/queue_service/session_effects.py:13:def build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:11:from queue_service.session_effects import build_create_wake_saga_effect
+novaic-agent-runtime/queue_service/session_wake_plan.py:76:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:88:            result_action="wake_saga_created",
+novaic-agent-runtime/queue_service/session_wake_plan.py:113:        outbox_effect=build_create_wake_saga_effect(

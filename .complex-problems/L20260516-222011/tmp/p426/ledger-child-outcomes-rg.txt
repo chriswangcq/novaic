@@ -1,0 +1,193 @@
+.complex-problems/L20260516-222011/tmp/p425-child-outcome-reconcile.md:13:- Every P421-P424 child outcome is accounted for.
+.complex-problems/L20260516-222011/tmp/p423-result.md:5:P423 found the workspace step/payload normalization boundary already aligned with the pointer-oriented contract. Tool steps reject inline `result`, require an observation percept, require `payload_ref` when writing payloads, and externalized payloads are stored through Blob-backed manifests.
+.complex-problems/L20260516-222011/tmp/p423-result.md:36:No P423-specific workspace step/payload normalization gap was found. Archive semantics remain under P418, and API lifecycle/step read projection remains under P424.
+.complex-problems/L20260516-222011/tmp/p423-check.md:1:# Check P423 against R403
+.complex-problems/L20260516-222011/tmp/p423-check.md:9:P423 was a one_go audit, so I checked for actual enforcement points, not just tests. The inspected code has hard failures for inline `result`, missing observation, missing payload ref, and missing Blob client for large payloads.
+.complex-problems/L20260516-222011/tmp/p423-check.md:25:No workspace step/payload normalization risk remains in P423. Archive and API lifecycle work are separate child problems.
+.complex-problems/L20260516-222011/tmp/p422-check.md:1:# Check P422 against R402
+.complex-problems/L20260516-222011/tmp/p422-check.md:9:P422 found a live projection leak risk and patched the actual projection path, not just tests. The dangerous fallback `stable_json(observation)` was removed from `_tool_result_content()`, so unknown dict observations can no longer dump embedded media/base64 payloads into LLM history.
+.complex-problems/L20260516-222011/tmp/p422-check.md:25:Workspace step payload normalization and API/display-current projection are not closed by P422; they remain in sibling P423/P424.
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:1:# P423: Workspace step and payload normalization cleanup
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:8:Package: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:9:Body: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/README.md
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:26:- R403
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:29:C429
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:32:- Problem: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/README.md
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:33:- Ticket T410: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/tickets/T410.md
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:34:- Result R403: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/results/R403.md
+.complex-problems/L20260516-222011/views/P423-workspace-step-and-payload-normalization-cleanup.md:35:- Check C429: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/checks/C429.md
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:1:# P421: ContextEvent store and writer contract audit
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:8:Package: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:9:Body: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/README.md
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:26:- R401
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:29:C427
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:32:- Problem: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/README.md
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:33:- Ticket T408: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/tickets/T408.md
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:34:- Result R401: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/results/R401.md
+.complex-problems/L20260516-222011/views/P421-contextevent-store-and-writer-contract-audit.md:35:- Check C427: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/checks/C427.md
+.complex-problems/L20260516-222011/views/P426-problem-contextevent-child-outcome-reconciliatio.md:16:- Every P421-P424 child outcome is accounted for.
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:1:# P422: ContextEvent projection and read-model cleanup
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:8:Package: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:9:Body: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/README.md
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:26:- R402
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:29:C428
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:32:- Problem: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/README.md
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:33:- Ticket T409: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/tickets/T409.md
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:34:- Result R402: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/results/R402.md
+.complex-problems/L20260516-222011/views/P422-contextevent-projection-and-read-model-cleanup.md:35:- Check C428: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/checks/C428.md
+.complex-problems/L20260516-222011/tmp/p421-check.md:1:# Check P421 against R401
+.complex-problems/L20260516-222011/tmp/p421-check.md:14:- Append identity/idempotency/clock/id provider behavior classified: satisfied in R401 classification.
+.complex-problems/L20260516-222011/tmp/p421-check.md:17:- Unresolved gaps split: sibling P417 children own non-store/writer lifecycle concerns; no P421-specific split needed.
+.complex-problems/L20260516-222011/views/INDEX.md:418:              - [done] P421: ContextEvent store and writer contract audit
+.complex-problems/L20260516-222011/views/INDEX.md:419:              - [done] P422: ContextEvent projection and read-model cleanup
+.complex-problems/L20260516-222011/views/INDEX.md:420:              - [done] P423: Workspace step and payload normalization cleanup
+.complex-problems/L20260516-222011/views/INDEX.md:421:              - [done] P424: ContextEvent API lifecycle endpoint cleanup
+.complex-problems/L20260516-222011/views/INDEX.md:870:- [x] P421: ContextEvent store and writer contract audit
+.complex-problems/L20260516-222011/views/INDEX.md:871:- [x] P422: ContextEvent projection and read-model cleanup
+.complex-problems/L20260516-222011/views/INDEX.md:872:- [x] P423: Workspace step and payload normalization cleanup
+.complex-problems/L20260516-222011/views/INDEX.md:873:- [x] P424: ContextEvent API lifecycle endpoint cleanup
+.complex-problems/L20260516-222011/views/INDEX.md:1284:- [done] T408: ContextEvent store and writer contract audit ticket -> P421 (one_go)
+.complex-problems/L20260516-222011/views/INDEX.md:1285:- [done] T409: ContextEvent projection and read-model cleanup ticket -> P422 (one_go)
+.complex-problems/L20260516-222011/views/INDEX.md:1286:- [done] T410: Workspace step and payload normalization cleanup ticket -> P423 (one_go)
+.complex-problems/L20260516-222011/views/INDEX.md:1287:- [done] T411: ContextEvent API lifecycle endpoint cleanup ticket -> P424 (one_go)
+.complex-problems/L20260516-222011/views/INDEX.md:1298:- [success] C427: P421 ContextEvent store/writer/model contract passed: explicit dependencies, no hidden-default guard hits, focused tests green.
+.complex-problems/L20260516-222011/views/INDEX.md:1299:- [success] C428: P422 Projection/read-model cleanup succeeded: unknown dict tool observations no longer serialize full payloads into LLM context.
+.complex-problems/L20260516-222011/views/INDEX.md:1300:- [success] C429: P423 Workspace step/payload normalization passed: pointer-oriented payload rules are enforced and focused tests are green.
+.complex-problems/L20260516-222011/views/INDEX.md:1301:- [success] C430: P424 P424 endpoint lifecycle contract is clean within scope.
+.complex-problems/L20260516-222011/views/P417-cortex-context-event-lifecycle-cleanup.md:23:- P421: ContextEvent store and writer contract audit
+.complex-problems/L20260516-222011/views/P417-cortex-context-event-lifecycle-cleanup.md:24:- P422: ContextEvent projection and read-model cleanup
+.complex-problems/L20260516-222011/views/P417-cortex-context-event-lifecycle-cleanup.md:25:- P423: Workspace step and payload normalization cleanup
+.complex-problems/L20260516-222011/views/P417-cortex-context-event-lifecycle-cleanup.md:26:- P424: ContextEvent API lifecycle endpoint cleanup
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:1:# P424: ContextEvent API lifecycle endpoint cleanup
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:8:Package: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:9:Body: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/README.md
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:26:- R404
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:29:C430
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:32:- Problem: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/README.md
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:33:- Ticket T411: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/tickets/T411.md
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:34:- Result R404: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/results/R404.md
+.complex-problems/L20260516-222011/views/P424-contextevent-api-lifecycle-endpoint-cleanup.md:35:- Check C430: problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/checks/C430.md
+.complex-problems/L20260516-222011/tmp/p426-ticket.md:5:Build a compact reconciliation table for P421-P424, including child result IDs, check IDs, test evidence, source changes, and residual risks.
+.complex-problems/L20260516-222011/tmp/p426-ticket.md:9:- P421, P422, P423, and P424 are all accounted for.
+.complex-problems/L20260516-222011/tmp/p424-result.md:1:# Result: P424 / T411 ContextEvent API lifecycle endpoint cleanup
+.complex-problems/L20260516-222011/tmp/p424-result.md:31:- Broader archive/direct `/v1/scope/end` diagnostics and non-ContextEvent archive projection behavior are outside P424 and remain assigned to sibling Cortex cleanup tickets P418/P419.
+.complex-problems/L20260516-222011/tmp/p422-result.md:5:P422 found and fixed a real projection leak risk: when a tool observation dict had no `preview`, `summary`, or `head`, ContextEvent projection serialized the entire observation into LLM history. That could re-inline display/media/base64-shaped payloads. The fallback now emits a bounded pointer-style diagnostic using `payload_ref` and observation keys instead of serializing the observation body.
+.complex-problems/L20260516-222011/tmp/p424-check.md:1:# Check: P424 ContextEvent API lifecycle endpoint cleanup
+.complex-problems/L20260516-222011/tmp/p424-check.md:9:- Result `R404`
+.complex-problems/L20260516-222011/tmp/p424-check.md:38:- Remaining risk is not in P424's endpoint boundary: archive/direct `/v1/scope/end` diagnostics and non-ContextEvent archive projection are assigned to sibling Cortex cleanup tickets P418/P419.
+.complex-problems/L20260516-222011/tmp/p421-result.md:5:P421 found the ContextEvent store/writer/model append boundary already clean: dependencies are explicit, the domain model is pure, idempotency compares canonical semantic bodies, and no hidden default guard hits were found.
+.complex-problems/L20260516-222011/tmp/p421-result.md:35:No P421 store/writer/model gap was found. Projection/read-model, workspace payload normalization, and API lifecycle remain in sibling P417 child problems.
+.complex-problems/L20260516-222011/state.json:15083:    "C427": {
+.complex-problems/L20260516-222011/state.json:15085:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/checks/C427.md",
+.complex-problems/L20260516-222011/state.json:15088:        "P421 criteria map to saved source inspections, hidden-default guard, and 50 focused tests."
+.complex-problems/L20260516-222011/state.json:15098:      "id": "C427",
+.complex-problems/L20260516-222011/state.json:15099:      "problem_id": "P421",
+.complex-problems/L20260516-222011/state.json:15104:        "R401"
+.complex-problems/L20260516-222011/state.json:15113:    "C428": {
+.complex-problems/L20260516-222011/state.json:15115:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/checks/C428.md",
+.complex-problems/L20260516-222011/state.json:15118:        "P422 criteria map to source inspection, projection fallback patch, regression test, and 53 focused tests."
+.complex-problems/L20260516-222011/state.json:15130:      "id": "C428",
+.complex-problems/L20260516-222011/state.json:15131:      "problem_id": "P422",
+.complex-problems/L20260516-222011/state.json:15133:        "Workspace step payload normalization and API/display-current projection remain sibling work, not P422 scope."
+.complex-problems/L20260516-222011/state.json:15136:        "R402"
+.complex-problems/L20260516-222011/state.json:15145:    "C429": {
+.complex-problems/L20260516-222011/state.json:15147:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/checks/C429.md",
+.complex-problems/L20260516-222011/state.json:15150:        "P423 criteria map to workspace inspection, guard output, inline-result/missing-observation/payload-ref enforcement, and 55 tests."
+.complex-problems/L20260516-222011/state.json:15161:      "id": "C429",
+.complex-problems/L20260516-222011/state.json:15162:      "problem_id": "P423",
+.complex-problems/L20260516-222011/state.json:15167:        "R403"
+.complex-problems/L20260516-222011/state.json:15176:    "C430": {
+.complex-problems/L20260516-222011/state.json:15178:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/checks/C430.md",
+.complex-problems/L20260516-222011/state.json:15190:      "id": "C430",
+.complex-problems/L20260516-222011/state.json:15191:      "problem_id": "P424",
+.complex-problems/L20260516-222011/state.json:15193:        "Archive/direct scope-end diagnostics remain outside P424 and assigned to sibling tickets."
+.complex-problems/L20260516-222011/state.json:15196:        "R404"
+.complex-problems/L20260516-222011/state.json:15203:      "summary": "P424 endpoint lifecycle contract is clean within scope."
+.complex-problems/L20260516-222011/state.json:28968:        "P421",
+.complex-problems/L20260516-222011/state.json:28969:        "P422",
+.complex-problems/L20260516-222011/state.json:28970:        "P423",
+.complex-problems/L20260516-222011/state.json:28971:        "P424",
+.complex-problems/L20260516-222011/state.json:29068:    "P421": {
+.complex-problems/L20260516-222011/state.json:29069:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/README.md",
+.complex-problems/L20260516-222011/state.json:29071:        "C427"
+.complex-problems/L20260516-222011/state.json:29079:      "id": "P421",
+.complex-problems/L20260516-222011/state.json:29080:      "package_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421",
+.complex-problems/L20260516-222011/state.json:29083:        "R401"
+.complex-problems/L20260516-222011/state.json:29101:    "P422": {
+.complex-problems/L20260516-222011/state.json:29102:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/README.md",
+.complex-problems/L20260516-222011/state.json:29104:        "C428"
+.complex-problems/L20260516-222011/state.json:29112:      "id": "P422",
+.complex-problems/L20260516-222011/state.json:29113:      "package_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422",
+.complex-problems/L20260516-222011/state.json:29116:        "R402"
+.complex-problems/L20260516-222011/state.json:29134:    "P423": {
+.complex-problems/L20260516-222011/state.json:29135:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/README.md",
+.complex-problems/L20260516-222011/state.json:29137:        "C429"
+.complex-problems/L20260516-222011/state.json:29145:      "id": "P423",
+.complex-problems/L20260516-222011/state.json:29146:      "package_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423",
+.complex-problems/L20260516-222011/state.json:29149:        "R403"
+.complex-problems/L20260516-222011/state.json:29167:    "P424": {
+.complex-problems/L20260516-222011/state.json:29168:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/README.md",
+.complex-problems/L20260516-222011/state.json:29170:        "C430"
+.complex-problems/L20260516-222011/state.json:29178:      "id": "P424",
+.complex-problems/L20260516-222011/state.json:29179:      "package_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424",
+.complex-problems/L20260516-222011/state.json:29182:        "R404"
+.complex-problems/L20260516-222011/state.json:29250:        "Every P421-P424 child outcome is accounted for.",
+.complex-problems/L20260516-222011/state.json:40979:    "R401": {
+.complex-problems/L20260516-222011/state.json:40986:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/results/R401.md",
+.complex-problems/L20260516-222011/state.json:40996:      "id": "R401",
+.complex-problems/L20260516-222011/state.json:40998:        "No P421 store/writer/model gap was found. Projection/read-model, workspace payload normalization, and API lifecycle remain in sibling P417 child problems."
+.complex-problems/L20260516-222011/state.json:41000:      "problem_id": "P421",
+.complex-problems/L20260516-222011/state.json:41002:      "summary": "P421 found the ContextEvent store/writer/model append boundary already clean: dependencies are explicit, the domain model is pure, idempotency compares canonical semantic bodies, and no hidden default guard hits were found.",
+.complex-problems/L20260516-222011/state.json:41014:    "R402": {
+.complex-problems/L20260516-222011/state.json:41021:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/results/R402.md",
+.complex-problems/L20260516-222011/state.json:41032:      "id": "R402",
+.complex-problems/L20260516-222011/state.json:41036:      "problem_id": "P422",
+.complex-problems/L20260516-222011/state.json:41038:      "summary": "P422 found and fixed a real projection leak risk: when a tool observation dict had no `preview`, `summary`, or `head`, ContextEvent projection serialized the entire observation into LLM history. That could re-inline display/media/base64-shaped payloads. The fallback now emits a bounded pointer-style diagnostic using `payload_ref` and observation keys instead of serializing the observation body.",
+.complex-problems/L20260516-222011/state.json:41050:    "R403": {
+.complex-problems/L20260516-222011/state.json:41055:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/results/R403.md",
+.complex-problems/L20260516-222011/state.json:41067:      "id": "R403",
+.complex-problems/L20260516-222011/state.json:41069:        "No P423-specific workspace step/payload normalization gap was found. Archive semantics remain under P418, and API lifecycle/step read projection remains under P424."
+.complex-problems/L20260516-222011/state.json:41071:      "problem_id": "P423",
+.complex-problems/L20260516-222011/state.json:41073:      "summary": "P423 found the workspace step/payload normalization boundary already aligned with the pointer-oriented contract. Tool steps reject inline `result`, require an observation percept, require `payload_ref` when writing payloads, and externalized payloads are stored through Blob-backed manifests.",
+.complex-problems/L20260516-222011/state.json:41091:    "R404": {
+.complex-problems/L20260516-222011/state.json:41098:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/results/R404.md",
+.complex-problems/L20260516-222011/state.json:41110:      "id": "R404",
+.complex-problems/L20260516-222011/state.json:41112:        "Broader archive/direct `/v1/scope/end` diagnostics and non-ContextEvent archive projection behavior are outside P424 and remain assigned to sibling Cortex cleanup tickets P418/P419."
+.complex-problems/L20260516-222011/state.json:41114:      "problem_id": "P424",
+.complex-problems/L20260516-222011/state.json:53086:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/tickets/T408.md",
+.complex-problems/L20260516-222011/state.json:53092:      "problem_id": "P421",
+.complex-problems/L20260516-222011/state.json:53095:        "R401"
+.complex-problems/L20260516-222011/state.json:53117:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/tickets/T409.md",
+.complex-problems/L20260516-222011/state.json:53123:      "problem_id": "P422",
+.complex-problems/L20260516-222011/state.json:53126:        "R402"
+.complex-problems/L20260516-222011/state.json:53148:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/tickets/T410.md",
+.complex-problems/L20260516-222011/state.json:53154:      "problem_id": "P423",
+.complex-problems/L20260516-222011/state.json:53157:        "R403"
+.complex-problems/L20260516-222011/state.json:53180:      "body_path": "problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/tickets/T411.md",
+.complex-problems/L20260516-222011/state.json:53186:      "problem_id": "P424",
+.complex-problems/L20260516-222011/state.json:53189:        "R404"
+.complex-problems/L20260516-222011/state.json:53223:        "P421-P424 accounted; result/check IDs named; source-change status noted; residual risks routed or marked none."
+.complex-problems/L20260516-222011/state.json:53231:      "problem_definition": "ContextEvent final verification needs explicit reconciliation of P421-P424 child outcomes rather than relying on memory.",
+.complex-problems/L20260516-222011/state.json:53233:      "proposed_solution": "Read ledger summaries/results/checks for P421-P424 and produce a compact reconciliation artifact.",
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/results/R404.md:1:# Result: P424 / T411 ContextEvent API lifecycle endpoint cleanup
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/results/R404.md:31:- Broader archive/direct `/v1/scope/end` diagnostics and non-ContextEvent archive projection behavior are outside P424 and remain assigned to sibling Cortex cleanup tickets P418/P419.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/checks/C430.md:1:# Check: P424 ContextEvent API lifecycle endpoint cleanup
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/checks/C430.md:9:- Result `R404`
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P424/checks/C430.md:38:- Remaining risk is not in P424's endpoint boundary: archive/direct `/v1/scope/end` diagnostics and non-ContextEvent archive projection are assigned to sibling Cortex cleanup tickets P418/P419.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/results/R403.md:5:P423 found the workspace step/payload normalization boundary already aligned with the pointer-oriented contract. Tool steps reject inline `result`, require an observation percept, require `payload_ref` when writing payloads, and externalized payloads are stored through Blob-backed manifests.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/results/R403.md:36:No P423-specific workspace step/payload normalization gap was found. Archive semantics remain under P418, and API lifecycle/step read projection remains under P424.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/checks/C429.md:1:# Check P423 against R403
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/checks/C429.md:9:P423 was a one_go audit, so I checked for actual enforcement points, not just tests. The inspected code has hard failures for inline `result`, missing observation, missing payload ref, and missing Blob client for large payloads.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P423/checks/C429.md:25:No workspace step/payload normalization risk remains in P423. Archive and API lifecycle work are separate child problems.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/results/R402.md:5:P422 found and fixed a real projection leak risk: when a tool observation dict had no `preview`, `summary`, or `head`, ContextEvent projection serialized the entire observation into LLM history. That could re-inline display/media/base64-shaped payloads. The fallback now emits a bounded pointer-style diagnostic using `payload_ref` and observation keys instead of serializing the observation body.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/checks/C428.md:1:# Check P422 against R402
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/checks/C428.md:9:P422 found a live projection leak risk and patched the actual projection path, not just tests. The dangerous fallback `stable_json(observation)` was removed from `_tool_result_content()`, so unknown dict observations can no longer dump embedded media/base64 payloads into LLM history.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P422/checks/C428.md:25:Workspace step payload normalization and API/display-current projection are not closed by P422; they remain in sibling P423/P424.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P425/children/P426/README.md:13:- Every P421-P424 child outcome is accounted for.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P425/children/P426/tickets/T413.md:5:Build a compact reconciliation table for P421-P424, including child result IDs, check IDs, test evidence, source changes, and residual risks.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P425/children/P426/tickets/T413.md:9:- P421, P422, P423, and P424 are all accounted for.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/results/R401.md:5:P421 found the ContextEvent store/writer/model append boundary already clean: dependencies are explicit, the domain model is pure, idempotency compares canonical semantic bodies, and no hidden default guard hits were found.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/results/R401.md:35:No P421 store/writer/model gap was found. Projection/read-model, workspace payload normalization, and API lifecycle remain in sibling P417 child problems.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/checks/C427.md:1:# Check P421 against R401
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/checks/C427.md:14:- Append identity/idempotency/clock/id provider behavior classified: satisfied in R401 classification.
+.complex-problems/L20260516-222011/problems/P000/children/P004/children/P278/children/P283/children/P329/children/P404/children/P417/children/P421/checks/C427.md:17:- Unresolved gaps split: sibling P417 children own non-store/writer lifecycle concerns; no P421-specific split needed.

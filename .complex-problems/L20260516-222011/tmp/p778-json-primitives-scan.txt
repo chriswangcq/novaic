@@ -1,0 +1,446 @@
+## Shared primitive candidate files
+novaic-app/src/application/blobAttachmentPath.test.ts
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts
+novaic-app/src/components/Visual/ActivityTimeline.tsx
+novaic-app/src/components/Visual/SmartValue.tsx
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx
+novaic-app/src/components/Visual/AgentMonitorCapsule.test.tsx
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx
+novaic-app/src/components/hooks/useAuthenticatedImage.ts
+novaic-app/src/components/hooks/useActivityTimeline.ts
+novaic-app/src/components/hooks/useActivityTimeline.test.ts
+novaic-app/src/components/Layout/AgentDrawer.tsx
+novaic-app/src/components/Chat/Markdown.tsx
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts
+novaic-app/src/types/activityTimeline.ts
+novaic-app/src/locales/en/translation.json
+novaic-app/src/locales/zh-TW/translation.json
+novaic-app/src/locales/es/translation.json
+novaic-app/src/locales/zh/translation.json
+novaic-app/src/locales/fr/translation.json
+novaic-app/src/locales/pt/translation.json
+novaic-app/src/locales/ko/translation.json
+novaic-app/src/locales/ru/translation.json
+novaic-app/src/locales/de/translation.json
+novaic-app/src/locales/it/translation.json
+novaic-app/src/locales/ar/translation.json
+novaic-app/src/locales/ja/translation.json
+
+## High-signal shared primitive hits
+novaic-app/src/types/index.ts:223:  /** Stable BlobRef locator (`blob://...`) resolved through Gateway. */
+novaic-app/src/types/index.ts:225:  /** Display locator. New attachments use the same `blob://...` value. */
+novaic-app/src/types/index.ts:229:  /** 'image' for inline preview, 'resource' for download link */
+novaic-app/src/types/api.ts:2: * Product API entity and action payload types.
+novaic-app/src/application/deviceService.test.ts:38:      payload: { os_type: 'ubuntu', os_version: '24.04', pc_client_id: 'pc-1' },
+novaic-app/src/application/deviceService.test.ts:54:      payload: { os_type: 'debian', os_version: '12', pc_client_id: 'pc-2' },
+novaic-app/src/application/deviceService.test.ts:57:      payload: {
+novaic-app/src/hooks/useRemoteInput.ts:50:interface ClipboardMsg {
+novaic-app/src/hooks/useRemoteInput.ts:51:  type: 'clipboard';
+novaic-app/src/hooks/useRemoteInput.ts:67:type InputMessage = MouseEventMsg | TouchEventMsg | KeyEventMsg | ClipboardMsg | MobileActionMsg | PingMsg;
+novaic-app/src/hooks/useRemoteInput.ts:77:    clipboard: boolean;
+novaic-app/src/hooks/useRemoteInput.ts:120:  /** Send clipboard content */
+novaic-app/src/hooks/useRemoteInput.ts:121:  sendClipboard: (text: string) => void;
+novaic-app/src/hooks/useRemoteInput.ts:308:      dc.send(JSON.stringify(msg));
+novaic-app/src/hooks/useRemoteInput.ts:337:        const msg = JSON.parse(event.data);
+novaic-app/src/hooks/useRemoteInput.ts:964:  // ── Clipboard sync (Ctrl+V → send clipboard) ─────────────────────────
+novaic-app/src/hooks/useRemoteInput.ts:971:    const onPaste = async (e: ClipboardEvent) => {
+novaic-app/src/hooks/useRemoteInput.ts:973:      const text = e.clipboardData?.getData('text/plain');
+novaic-app/src/hooks/useRemoteInput.ts:976:          type: 'clipboard',
+novaic-app/src/hooks/useRemoteInput.ts:1014:  const sendClipboard = useCallback((text: string) => {
+novaic-app/src/hooks/useRemoteInput.ts:1015:    send({ type: 'clipboard', format: 'text', content: text });
+novaic-app/src/hooks/useRemoteInput.ts:1026:      dc.send(JSON.stringify({ type: 'request_keyframe' }));
+novaic-app/src/hooks/useRemoteInput.ts:1035:    sendClipboard,
+novaic-app/src/types/chatMessageContract.test.ts:16:  return JSON.parse(readFileSync(
+novaic-app/src/components/Console/DeviceConsole.tsx:356:  const handleClipboardSend = useCallback((text: string) => {
+novaic-app/src/components/Console/DeviceConsole.tsx:358:    // 比 clipboard + Ctrl+V 更可靠（不依赖远程剪贴板支持）
+novaic-app/src/components/Console/DeviceConsole.tsx:393:      if (e.key === 'Escape') {
+novaic-app/src/components/Console/DeviceConsole.tsx:598:          onClipboardSend={handleClipboardSend}
+novaic-app/src/application/converters.ts:39:      const parsed = JSON.parse(content);
+novaic-app/src/hooks/useFocusTrap.ts:6: * - Escape calls onClose
+novaic-app/src/hooks/useFocusTrap.ts:32:      if (e.key === 'Escape') {
+novaic-app/src/types/activityTimeline.ts:9:  truncated?: boolean;
+novaic-app/src/types/activityTimeline.ts:12:  has_payload?: boolean;
+novaic-app/src/application/skillsService.ts:52:      payload: { skill_id: skillId, ...(newName ? { name: newName } : {}) },
+novaic-app/src/application/skillsService.ts:62:      { payload: { task, max_skills: maxSkills ?? 3 } },
+novaic-app/src/application/skillsService.ts:76:      payload: { agent_id: agentId },
+novaic-app/src/application/skillsService.ts:83:      payload: { agent_id: agentId, ...data },
+novaic-app/src/application/skillsService.ts:90:      payload: { agent_id: agentId },
+novaic-app/src/application/skillsService.ts:97:      payload: { agent_id: agentId, skill_ids: skillIds },
+novaic-app/src/application/skillsService.ts:101:  /** Get prompts preview — via Entangled agents.prompts_preview action */
+novaic-app/src/application/skillsService.ts:102:  async getPromptsPreview(agentId: string) {
+novaic-app/src/application/skillsService.ts:103:    return entangledMethod('agents', 'prompts_preview', {
+novaic-app/src/application/skillsService.ts:104:      payload: { agent_id: agentId },
+novaic-app/src/application/skillsService.ts:111:      payload: { agent_id: agentId },
+novaic-app/src/application/skillsService.ts:118:      payload: { agent_id: agentId, ...data },
+novaic-app/src/application/blobAttachmentPath.test.ts:21:    expect(source).not.toContain('/api/blobs/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:22:    expect(source).not.toContain('/api/files/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:25:    expect(source).not.toContain('fileToBase64');
+novaic-app/src/application/blobAttachmentPath.test.ts:30:  it('records voice audio as compressed multipart blobs instead of WAV/base64 uploads', () => {
+novaic-app/src/application/blobAttachmentPath.test.ts:38:    expect(recorder).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:40:    expect(input).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:50:    expect(source).toContain('Only blob:// file references are supported');
+novaic-app/src/application/deviceService.ts:35:      const parsed = JSON.parse(value);
+novaic-app/src/application/deviceService.ts:37:        return (parsed as Record<string, unknown>).detail
+novaic-app/src/application/deviceService.ts:54:    if (typeof obj.detail === 'string') return obj.detail;
+novaic-app/src/application/deviceService.ts:101:      { payload: { device_id: deviceId, pc_client_id: pcClientId, ...(data || {}) } },
+novaic-app/src/application/deviceService.ts:108:      { payload: { device_id: deviceId, pc_client_id: pcClientId } },
+novaic-app/src/application/deviceService.ts:115:      { payload: { device_id: deviceId, pc_client_id: pcClientId } },
+novaic-app/src/application/deviceService.ts:122:      { payload: { device_id: deviceId, pc_client_id: pcClientId } },
+novaic-app/src/application/deviceService.ts:199:      payload: { device_id: deviceId },
+novaic-app/src/application/deviceService.ts:208:      payload: { device_id: deviceId, ...params },
+novaic-app/src/application/deviceService.ts:238:    const payload: Record<string, unknown> = {
+novaic-app/src/application/deviceService.ts:243:    if (pcClientId) payload.pc_client_id = pcClientId;
+novaic-app/src/application/deviceService.ts:247:      { payload },
+novaic-app/src/application/deviceService.ts:253:    const payload: Record<string, unknown> = {
+novaic-app/src/application/deviceService.ts:257:    if (pcClientId) payload.pc_client_id = pcClientId;
+novaic-app/src/application/deviceService.ts:261:      { payload },
+novaic-app/src/application/deviceService.ts:280:      payload: { pc_client_id: pcClientId },
+novaic-app/src/application/deviceService.ts:286:      payload: { os_type: osType, os_version: osVersion, pc_client_id: pcClientId },
+novaic-app/src/application/deviceService.ts:297:      payload: {
+novaic-app/src/application/deviceService.ts:357:      payload: { agent_id: agentId },
+novaic-app/src/application/vmUserService.ts:42:      payload: { device_id: deviceId, username },
+novaic-app/src/application/agentService.ts:70:    const payload: Record<string, unknown> = { name: data.name };
+novaic-app/src/application/agentService.ts:71:    if (selectedModelId) payload.model_id = selectedModelId;
+novaic-app/src/application/agentService.ts:74:      payload,
+novaic-app/src/application/agentService.ts:85:    await entangledMethod('agents', 'delete_cascade', { payload: { agent_id: agentId } });
+novaic-app/src/application/converters.test.ts:15:      attachments: [{ blob_ref: 'blob://user-file/blob-1', filename: 'a.png', mime_type: 'image/png' }],
+novaic-app/src/application/converters.test.ts:21:        path: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:24:        blob_ref: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:25:        url: 'blob://user-file/blob-1',
+novaic-app/src/application/modelConfigService.ts:31:      payload: { api_key_id: apiKeyId },
+novaic-app/src/application/modelConfigService.ts:46:      payload: { model_id: modelId, api_key_id: apiKeyId, available },
+novaic-app/src/application/modelConfigService.ts:56:      payload: { api_key_id: apiKeyId, model_id: modelId, name },
+novaic-app/src/application/modelConfigService.ts:68:      payload: { id: apiKeyModelId },
+novaic-app/src/hooks/useDeviceStatusPolling.test.ts:26:  it('does not turn malformed probe payloads into device errors', () => {
+novaic-app/src/hooks/useAgentBinding.ts:2: * useAgentBinding – fetch agent's device binding + device details.
+novaic-app/src/components/Console/ConsoleToolbar.tsx:12:  Clipboard, Type, Move, RotateCcw,
+novaic-app/src/components/Console/ConsoleToolbar.tsx:37:  onClipboardSend?: (text: string) => void;
+novaic-app/src/components/Console/ConsoleToolbar.tsx:90:function ClipboardButton({ onSend }: { onSend: (text: string) => void }) {
+novaic-app/src/components/Console/ConsoleToolbar.tsx:97:        <Clipboard size={14} />
+novaic-app/src/components/Console/ConsoleToolbar.tsx:142:                    const clip = await navigator.clipboard.readText();
+novaic-app/src/components/Console/ConsoleToolbar.tsx:144:                  } catch { /* clipboard not available */ }
+novaic-app/src/components/Console/ConsoleToolbar.tsx:150:                <Clipboard size={13} />
+novaic-app/src/components/Console/ConsoleToolbar.tsx:188:  onClipboardSend,
+novaic-app/src/components/Console/ConsoleToolbar.tsx:246:        {isFixed && isConnected && onClipboardSend && (
+novaic-app/src/components/Console/ConsoleToolbar.tsx:247:          <ClipboardButton onSend={onClipboardSend} />
+novaic-app/src/application/agentDeleteProjection.test.ts:14:    expect(createMethod).toContain('payload');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:10:    expect(source).not.toContain('_mcp_content');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:25:    expect(source).toContain('has_payload');
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts:32:    expect(source).not.toContain('_mcp_content');
+novaic-app/src/hooks/useWebRtc.ts:137:      dc.send(JSON.stringify(event));
+novaic-app/src/hooks/useWebRtc.ts:152:        payload: {
+novaic-app/src/hooks/useWebRtc.ts:187:          payload: {
+novaic-app/src/hooks/useWebRtc.ts:254:          const msg = JSON.parse(msgEvent.data);
+novaic-app/src/hooks/useWebRtc.ts:273:                const rgba = Uint8Array.from(atob(msg.rgba_base64), c => c.charCodeAt(0));
+novaic-app/src/hooks/useWebRtc.ts:356:        const { event: evtType, data } = event.payload;
+novaic-app/src/hooks/useWebRtc.ts:467:          payload: {
+novaic-app/src/components/hooks/useSettings.ts:29:    addApiKey:            (data: any) => entangledMethod('api-keys', 'add', { payload: data }),
+novaic-app/src/components/hooks/useSettings.ts:30:    updateApiKey:         (id: string, data: any) => entangledMethod('api-keys', 'save', { payload: { key_id: id, ...data } }),
+novaic-app/src/components/hooks/useSettings.ts:31:    deleteApiKey:         (id: string) => entangledMethod('api-keys', 'remove', { payload: { key_id: id } }),
+novaic-app/src/components/hooks/useSettings.ts:33:    testApiKey:           (id: string) => entangledMethod('api-keys', 'test', { payload: { key_id: id } }),
+novaic-app/src/components/hooks/useSettings.ts:34:    initAgent:            (agentId?: string) => entangledMethod('agents', 'init', { payload: { agent_id: agentId } }),
+novaic-app/src/components/hooks/useSettings.ts:38:      entangledMethod('user-preferences', 'cleanup', { payload: options || {} }),
+novaic-app/src/components/hooks/useSettings.ts:74:    getPromptsPreview:    (agentId: string) => skillsSvc.getPromptsPreview(agentId),
+novaic-app/src/components/Visual/ActivityTimeline.tsx:25:const DEBUG_DETAIL_PATTERN = new RegExp([
+novaic-app/src/components/Visual/ActivityTimeline.tsx:34:const DETAIL_PREVIEW_LIMIT = 84;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:38:const DATA_IMAGE_BASE64_PATTERN = /\bdata:image\/[a-z0-9.+-]+;base64,/i;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:39:const BINARY_BASE64_PREFIX_PATTERN = /^(\/9j\/|iVBORw0KGgo|R0lGODlh|UklGR)/;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:40:const RAW_PAYLOAD_DETAIL = '输出包含较大的原始文件数据，已在监控中隐藏。';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:98:function publicFullDetail(record: ActivityTimelineRecord): string | undefined {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:100:  if (!text) return record.has_payload ? '结果已保存，需要时可以继续查看细节' : undefined;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:101:  if (looksLikeRawPayloadText(text)) return RAW_PAYLOAD_DETAIL;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:103:  if (DEBUG_DETAIL_PATTERN.test(text)) return undefined;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:108:function looksLikeRawPayloadText(text: string): boolean {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:109:  if (DATA_IMAGE_BASE64_PATTERN.test(text)) return true;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:112:  if (BINARY_BASE64_PREFIX_PATTERN.test(compact)) return true;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:116:function publicPreviewDetail(record: ActivityTimelineRecord): string | undefined {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:117:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:118:  if (!fullDetail) return undefined;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:119:  const oneLine = fullDetail.replace(/\s+/g, ' ');
+novaic-app/src/components/Visual/ActivityTimeline.tsx:120:  return oneLine.length > DETAIL_PREVIEW_LIMIT ? `${oneLine.slice(0, DETAIL_PREVIEW_LIMIT)}…` : oneLine;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:123:function isExpandableDetail(record: ActivityTimelineRecord): boolean {
+novaic-app/src/components/Visual/ActivityTimeline.tsx:124:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:125:  if (!fullDetail) return false;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:126:  const oneLine = fullDetail.replace(/\s+/g, ' ');
+novaic-app/src/components/Visual/ActivityTimeline.tsx:127:  return Boolean(record.truncated || fullDetail.includes('\n') || oneLine.length > DETAIL_PREVIEW_LIMIT);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:145:  const previousDetail = publicPreviewDetail(previous) ?? '';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:146:  const currentDetail = publicPreviewDetail(current) ?? '';
+novaic-app/src/components/Visual/ActivityTimeline.tsx:148:  if (previousTitle === '已回复你') return previousDetail === currentDetail;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:149:  if (previousTitle === '读取了你的消息') return previousDetail === currentDetail;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:169:  const previewDetail = publicPreviewDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:170:  const fullDetail = publicFullDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:171:  const expandable = isExpandableDetail(record);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:172:  const detail = expanded && fullDetail ? fullDetail : previewDetail;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:196:          <span className="text-[13px] font-medium text-nb-text truncate">{title}</span>
+novaic-app/src/components/Visual/ActivityTimeline.tsx:203:        {detail && expandable && (
+novaic-app/src/components/Visual/ActivityTimeline.tsx:210:            {detail}{record.truncated && !expanded ? '…' : ''}
+novaic-app/src/components/Visual/ActivityTimeline.tsx:216:        {detail && !expandable && (
+novaic-app/src/components/Visual/ActivityTimeline.tsx:218:            {detail}{record.truncated ? '…' : ''}
+novaic-app/src/components/Visual/ActivityTimeline.tsx:336:            <div className="text-sm font-medium text-nb-text truncate">{participantLabel}</div>
+novaic-app/src/components/Visual/ActivityTimeline.tsx:337:            <div className="text-tiny text-nb-text-secondary truncate">{statusLabel}</div>
+novaic-app/src/components/Agent/ToolCategorySection.tsx:74:                    <div className="text-[10px] text-nb-text-muted truncate">{tool.description}</div>
+novaic-app/src/components/Visual/SmartValue.tsx:2: * SmartValue - 智能值渲染组件
+novaic-app/src/components/Visual/SmartValue.tsx:8:import { ChevronDown, ChevronRight, ExternalLink, Image, Copy, Check, X, Maximize2 } from 'lucide-react';
+novaic-app/src/components/Visual/SmartValue.tsx:9:import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
+novaic-app/src/components/Visual/SmartValue.tsx:13:const isImageUrl = (value: unknown): boolean => {
+novaic-app/src/components/Visual/SmartValue.tsx:15:  if (value.startsWith('blob://')) return true;
+novaic-app/src/components/Visual/SmartValue.tsx:37:interface ImagePreviewProps {
+novaic-app/src/components/Visual/SmartValue.tsx:42:function ImagePreview({ src, alt = 'Image' }: ImagePreviewProps) {
+novaic-app/src/components/Visual/SmartValue.tsx:46:  const imageSrc = useAuthenticatedImage(src);
+novaic-app/src/components/Visual/SmartValue.tsx:102:interface CollapsibleTextProps {
+novaic-app/src/components/Visual/SmartValue.tsx:107:function CollapsibleText({ text, maxLength = 200 }: CollapsibleTextProps) {
+novaic-app/src/components/Visual/SmartValue.tsx:132:interface JsonTreeProps {
+novaic-app/src/components/Visual/SmartValue.tsx:138:function JsonTree({ data, level = 0, defaultExpanded = true }: JsonTreeProps) {
+novaic-app/src/components/Visual/SmartValue.tsx:148:    if (isImageUrl(data)) return <ImagePreview src={data} />;
+novaic-app/src/components/Visual/SmartValue.tsx:163:      return <CollapsibleText text={data} />;
+novaic-app/src/components/Visual/SmartValue.tsx:186:                <JsonTree data={item} level={level + 1} />
+novaic-app/src/components/Visual/SmartValue.tsx:214:                <JsonTree data={value} level={level + 1} />
+novaic-app/src/components/Visual/SmartValue.tsx:228:interface SmartValueProps {
+novaic-app/src/components/Visual/SmartValue.tsx:231:  copyable?: boolean;
+novaic-app/src/components/Visual/SmartValue.tsx:234:export function SmartValue({ value, isError = false, copyable = true }: SmartValueProps) {
+novaic-app/src/components/Visual/SmartValue.tsx:237:  const copyToClipboard = useCallback(() => {
+novaic-app/src/components/Visual/SmartValue.tsx:238:    const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+novaic-app/src/components/Visual/SmartValue.tsx:239:    navigator.clipboard.writeText(text).then(() => {
+novaic-app/src/components/Visual/SmartValue.tsx:251:      {copyable && (
+novaic-app/src/components/Visual/SmartValue.tsx:253:          onClick={copyToClipboard}
+novaic-app/src/components/Visual/SmartValue.tsx:255:          title="Copy"
+novaic-app/src/components/Visual/SmartValue.tsx:260:            <Copy size={12} className="text-nb-text-secondary" />
+novaic-app/src/components/Visual/SmartValue.tsx:266:        <JsonTree data={value} defaultExpanded={true} />
+novaic-app/src/components/Visual/SmartValue.tsx:272:export { ImagePreview, CollapsibleText, JsonTree };
+novaic-app/src/components/Console/VirtualKeyboard.tsx:55:  { label: 'Esc', key: 'Escape', type: 'action' },
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:37:  detail?: string;
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:115:      detail: `${deviceName} (${device.id.slice(0, 8)}…)`,
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:125:      detail: `${deviceName} / ${username}`,
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:171:            <span className="text-sm font-medium text-nb-text truncate">
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:305:                      <span className="truncate max-w-[60px]">{u.username}</span>
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:345:          <div className="flex-1 overflow-hidden bg-black rounded-b-xl relative group/preview border-t border-transparent]">
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:414:        detail={deleteConfirm?.detail}
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:442:      const msg = typeof e === 'string' ? e : (e?.message ?? JSON.stringify(e));
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:59:      _mcp_content: [{ type: 'text', text: 'raw' }],
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:68:      truncated: undefined,
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:71:      has_payload: undefined,
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:73:    expect(JSON.stringify(normalized)).not.toContain('step-ref:debug');
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:74:    expect(JSON.stringify(normalized)).not.toContain('_mcp_content');
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:98:    expect(JSON.stringify(normalized)).not.toContain('wake_triggers');
+novaic-app/src/components/hooks/useActivityTimeline.test.ts:99:    expect(JSON.stringify(normalized)).not.toContain('summary_lock');
+novaic-app/src/components/hooks/useActivityTimeline.ts:36:    truncated: typeof record.truncated === 'boolean' ? record.truncated : undefined,
+novaic-app/src/components/hooks/useActivityTimeline.ts:39:    has_payload: typeof record.has_payload === 'boolean' ? record.has_payload : undefined,
+novaic-app/src/components/Agent/MountedToolsSection.tsx:11:  clipboard: 'Clipboard',
+novaic-app/src/components/Agent/MountedToolsSection.tsx:113:                    <div className="text-[10px] text-nb-text-muted truncate">{toolDescriptions[tool]}</div>
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx:108:              <span className="truncate max-w-[130px] font-medium">{label}</span>
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx:109:              <span className={`text-[11px] tabular-nums truncate ${selectedActivityTitle && selected ? 'max-w-[170px]' : ''} ${
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:176:  it('expands safe public details inline', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:202:  it('hides raw image data urls from timeline details', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:212:            text: `data:image/jpeg;base64,${'A'.repeat(400)}SECRET_IMAGE_PAYLOAD`,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:219:    expect(screen.queryByText(/SECRET_IMAGE_PAYLOAD/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:220:    expect(screen.queryByText(/data:image/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:224:  it('hides long jpeg-like base64 text from expanded timeline details', () => {
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:225:    const jpegLikePayload = `/9j/${'A'.repeat(220)}+/${'B'.repeat(220)}=SECRET_RAW`;
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:236:            text: jpegLikePayload,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:237:            has_payload: true,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:261:            _mcp_content: [{ type: 'text', text: 'raw' }],
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:270:    expect(screen.queryByText(/_mcp_content/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:279:        error={'Gateway error 500: {"detail":"stack trace"}'}
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:334:            result_id: 'debug-payload-ref',
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:335:            _mcp_content: [{ type: 'text', text: 'raw mcp' }],
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:342:    expect(screen.queryByText(/debug-payload-ref/)).toBeNull();
+novaic-app/src/components/hooks/useSkills.ts:34:    getPromptsPreview:   svc.getPromptsPreview.bind(svc),
+novaic-app/src/components/VM/DeviceManagerPage.tsx:37:  detail?: string;
+novaic-app/src/components/VM/DeviceManagerPage.tsx:111:          <span className="text-sm font-medium text-nb-text truncate">
+novaic-app/src/components/VM/DeviceManagerPage.tsx:268:      detail: `${name} (${id.slice(0, 8)}…)`,
+novaic-app/src/components/VM/DeviceManagerPage.tsx:423:      detail={deleteConfirm?.detail}
+novaic-app/src/components/VM/DeviceManagerPage.tsx:459:      const msg = typeof e === 'string' ? e : (e?.message ?? JSON.stringify(e));
+novaic-app/src/components/VM/DeviceManagerPage.tsx:559:      detail: `${deviceName} / ${username}`,
+novaic-app/src/components/VM/DeviceManagerPage.tsx:597:              <span className="truncate">{u.username}</span>
+novaic-app/src/components/VM/DeviceManagerPage.tsx:632:      detail={deleteConfirm?.detail}
+novaic-app/src/components/VM/DeviceManagerPage.tsx:688:      detail: `${deviceName} / ${username}`,
+novaic-app/src/components/VM/DeviceManagerPage.tsx:742:          <span className="text-[11px] flex-1 truncate">{u.username}</span>
+novaic-app/src/components/VM/DeviceManagerPage.tsx:788:      detail={deleteConfirm?.detail}
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx:62:    expect(screen.queryByText(/_mcp_content/i)).toBeNull();
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:293:          settings.getPromptsPreview(effectiveAgentId),
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:393:      // Reload prompts preview after save
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:395:        const freshPrompts = await settings.getPromptsPreview(effectiveAgentId);
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:780:            {/* ── Prompts Preview ───────────────────────────── */}
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:786:                  <h4 className="text-xs font-semibold text-nb-text tracking-wide">{t('settings.prompts_preview')}</h4>
+novaic-app/src/components/Agent/AgentToolsPanel.tsx:997:        detail={selectedAgent?.name}
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:7: * Key design: ONE fixed div per subject that morphs between preview size/position
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:33:  previewMaxH: 120,       // 预览最大高度 (px)
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:34:  previewBaseW: 154,      // 高度计算基准宽度 (px)
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:47:function getPreviewSize(type: 'linux' | 'android'): { width: number; height: number } {
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:48:  const { previewMaxH, previewBaseW, deviceRatio } = FLOATING_PANEL_LAYOUT;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:50:  const naturalH = previewBaseW / ratio;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:51:  const height = Math.min(Math.round(naturalH), previewMaxH);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:56:const COL_WIDTH = Math.max(getPreviewSize('linux').width, getPreviewSize('android').width);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:76:// ─── Geometry helpers（均基于 FLOATING_PANEL_LAYOUT + getPreviewSize）────────────
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:78:function previewRect(type: 'linux' | 'android', bottomOffset: number): Rect {
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:79:  const { width, height } = getPreviewSize(type);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:88:function previewRectTop(type: 'linux' | 'android', topOffset: number): Rect {
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:89:  const { width, height } = getPreviewSize(type);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:234:// ─── Single device card (morphs between preview ↔ overlay) ───────────────────
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:269:  const getPreviewRect = useCallback(() => {
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:270:    if (topOffset != null) return previewRectTop(deviceInfo.type, topOffset);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:271:    return previewRect(deviceInfo.type, bottomOffset);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:276:      const s = getPreviewSize(deviceInfo.type);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:279:    return topOffset != null ? previewRectTop(deviceInfo.type, topOffset) : previewRect(deviceInfo.type, bottomOffset);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:306:      const s = getPreviewSize(deviceInfo.type);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:308:    } else setRect(getPreviewRect());
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:309:  }, [expanded, deviceInfo.type, spacerWidth, inline, getPreviewRect]);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:321:      if (e.key === 'Escape') { if (operating) setOperating(false); else collapse(); }
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:336:      const s = getPreviewSize(deviceInfo.type);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:338:    } else setRect(getPreviewRect());
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:341:  }, [deviceInfo.type, inline, getPreviewRect]);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:384:  // Apply drag offset to preview position (not when expanded)
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:405:    const chipW = getPreviewSize(deviceInfo.type).width;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:423:          <span className="flex-1 min-w-0 text-xs font-medium text-nb-text truncate">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:455:        <span className="flex-1 min-w-0 text-tiny text-nb-text-muted truncate leading-tight">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:486:          <span className="flex-1 min-w-0 text-xs font-medium text-nb-text truncate">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:756:        <span className="flex-1 min-w-0 text-xs font-medium text-nb-text-muted truncate">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:774:  const chipW = getPreviewSize(deviceInfo.type).width;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:800:      <span className="flex-1 min-w-0 text-tiny text-nb-text-muted truncate leading-tight">
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:942:      topCursor += getPreviewSize(sc.deviceInfo.type).height + FLOATING_PANEL_LAYOUT.gap;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:952:      cursor += getPreviewSize(sc.deviceInfo.type).height + FLOATING_PANEL_LAYOUT.gap;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:1056:    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:1076:          <span className="text-xs text-white/80 truncate max-w-[12.5rem]">
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:50:  const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+novaic-app/src/components/Chat/Markdown.tsx:13:import { Copy, Check, Loader2 } from 'lucide-react';
+novaic-app/src/components/Chat/Markdown.tsx:15:import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
+novaic-app/src/components/Chat/Markdown.tsx:16:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/Markdown.tsx:24: * Code block with language label and copy button
+novaic-app/src/components/Chat/Markdown.tsx:29:  const handleCopy = async () => {
+novaic-app/src/components/Chat/Markdown.tsx:30:    await navigator.clipboard.writeText(code);
+novaic-app/src/components/Chat/Markdown.tsx:32:    setTimeout(() => setCopied(false), UI_CONFIG.COPY_FEEDBACK_DELAY);
+novaic-app/src/components/Chat/Markdown.tsx:37:      {/* Header with language and copy button */}
+novaic-app/src/components/Chat/Markdown.tsx:41:          onClick={handleCopy}
+novaic-app/src/components/Chat/Markdown.tsx:51:              <Copy size={10} />
+novaic-app/src/components/Chat/Markdown.tsx:52:              <span>Copy</span>
+novaic-app/src/components/Chat/Markdown.tsx:69:  const authUrl = useAuthenticatedImage(src ?? '');
+novaic-app/src/components/Chat/Markdown.tsx:90:        <ImagePreviewOverlay
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:2: * components/hooks/useAuthenticatedImage.ts
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:12: *   const authUrl = useAuthenticatedImage(url, cacheKey?, mimeType?);
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:37:export function useAuthenticatedImage(
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:56:        console.error('[useAuthenticatedImage] Failed:', url, err);
+novaic-app/src/components/Layout/AgentDrawer.tsx:225:  // Handle keyboard escape
+novaic-app/src/components/Layout/AgentDrawer.tsx:227:    function handleEscape(event: KeyboardEvent) {
+novaic-app/src/components/Layout/AgentDrawer.tsx:228:      if (event.key === 'Escape') {
+novaic-app/src/components/Layout/AgentDrawer.tsx:233:      document.addEventListener('keydown', handleEscape);
+novaic-app/src/components/Layout/AgentDrawer.tsx:234:      return () => document.removeEventListener('keydown', handleEscape);
+novaic-app/src/components/Layout/AgentDrawer.tsx:299:                      <span className="text-sm font-medium truncate block leading-tight">{agent.name}</span>
+novaic-app/src/components/Layout/AgentDrawer.tsx:300:                      <span className="text-xs text-nb-text-muted truncate block mt-0.5 leading-tight">
+novaic-app/src/components/Layout/AgentDrawer.tsx:381:                        <span className={`text-sm font-medium truncate ${
+novaic-app/src/components/Layout/AgentDrawer.tsx:643:            <span className="text-base-sm font-semibold text-nb-text truncate">{skill.name}</span>
+novaic-app/src/components/Layout/ColumnHeader.tsx:66:    if (e.detail === 2) {
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:10:  detail?: ReactNode;
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:25:  detail,
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:45:      if (event.key === 'Escape') onCancel();
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:94:            {detail && (
+novaic-app/src/components/Common/DestructiveConfirmDialog.tsx:96:                {detail}
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts:23:    expect(source).not.toContain('ActivityTimelinePreview');
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts:24:    expect(source).not.toContain('agent-monitor-preview');
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts:36:    expect(source).not.toContain("from '../Visual/MainAgentLogPreview'");
+novaic-app/src/components/Chat/ChatPanel.activityTimelineGuard.test.ts:38:    expect(source).not.toContain('<MainAgentLogPreview');
+novaic-app/src/components/VM/DeviceManagerModal.tsx:22:  detail?: string;
+novaic-app/src/components/VM/DeviceManagerModal.tsx:76:          <span className="text-sm font-medium text-nb-text truncate">
+novaic-app/src/components/VM/DeviceManagerModal.tsx:82:          <span className="text-[11px] text-nb-text-secondary/60 font-mono truncate">
+novaic-app/src/components/VM/DeviceManagerModal.tsx:259:      detail: `${name} (${id.slice(0, 8)}…)`,
+novaic-app/src/components/VM/DeviceManagerModal.tsx:411:        detail={deleteConfirm?.detail}
+novaic-app/src/components/Layout/DropdownMenu.tsx:37:  // Close on escape
+novaic-app/src/components/Layout/DropdownMenu.tsx:39:    function handleEscape(event: KeyboardEvent) {
+novaic-app/src/components/Layout/DropdownMenu.tsx:40:      if (event.key === 'Escape') {
+novaic-app/src/components/Layout/DropdownMenu.tsx:46:      document.addEventListener('keydown', handleEscape);
+novaic-app/src/components/Layout/DropdownMenu.tsx:47:      return () => document.removeEventListener('keydown', handleEscape);
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:12:interface ImagePreviewOverlayProps {
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:21:export function ImagePreviewOverlay({ src, alt, onClose, saveUrl, saveFilename }: ImagePreviewOverlayProps) {
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:108:      console.error('[ImagePreview] Save failed:', err);
+novaic-app/src/components/Layout/Header.tsx:39:    if (e.detail === 2) {
+novaic-app/src/components/Layout/Header.tsx:84:        <span className="text-base-sm font-medium text-nb-text truncate shrink-0 max-w-[12.5rem]">
+novaic-app/src/components/Chat/AssistantMessage.tsx:5:import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
+novaic-app/src/components/Chat/AssistantMessage.tsx:8:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/AssistantMessage.tsx:12:  const authUrl = useAuthenticatedImage(imageUrl);
+novaic-app/src/components/Chat/AssistantMessage.tsx:13:  const [previewOpen, setPreviewOpen] = useState(false);
+novaic-app/src/components/Chat/AssistantMessage.tsx:25:            onClick={() => setPreviewOpen(true)}
+novaic-app/src/components/Chat/AssistantMessage.tsx:37:      {previewOpen && authUrl && (
+novaic-app/src/components/Chat/AssistantMessage.tsx:38:        <ImagePreviewOverlay
+novaic-app/src/components/Chat/AssistantMessage.tsx:41:          onClose={() => setPreviewOpen(false)}
+novaic-app/src/components/Chat/AssistantMessage.tsx:105:        return typeof content === 'string' ? content : JSON.stringify(content);
+novaic-app/src/components/Chat/ChatInput.tsx:205:      {/* Attachment preview */}
+novaic-app/src/components/Chat/ChatInput.tsx:213:              <span className="truncate max-w-[120px]">{f.name}</span>
+novaic-app/src/components/Chat/FileAttachment.tsx:17:import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
+novaic-app/src/components/Chat/FileAttachment.tsx:19:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/FileAttachment.tsx:57:  const [previewOpen, setPreviewOpen] = useState(false);
+novaic-app/src/components/Chat/FileAttachment.tsx:66:  const authUrl = useAuthenticatedImage(
+novaic-app/src/components/Chat/FileAttachment.tsx:135:  const openPreview = useCallback(() => {
+novaic-app/src/components/Chat/FileAttachment.tsx:136:    setPreviewOpen(true);
+novaic-app/src/components/Chat/FileAttachment.tsx:142:  const closePreview = useCallback(() => {
+novaic-app/src/components/Chat/FileAttachment.tsx:143:    setPreviewOpen(false);
+novaic-app/src/components/Chat/FileAttachment.tsx:150:      onClick={openPreview}
+novaic-app/src/components/Chat/FileAttachment.tsx:172:      onClick={openPreview}
+novaic-app/src/components/Chat/FileAttachment.tsx:178:        <div className="text-sm text-nb-text font-medium truncate" title={filename}>
+novaic-app/src/components/Chat/FileAttachment.tsx:198:  const overlay = previewOpen ? (
+novaic-app/src/components/Chat/FileAttachment.tsx:200:      <ImagePreviewOverlay
+novaic-app/src/components/Chat/FileAttachment.tsx:203:        onClose={closePreview}
+novaic-app/src/components/Chat/FileAttachment.tsx:210:        onClick={closePreview}
+novaic-app/src/components/Chat/FileAttachment.tsx:218:            onClick={closePreview}
+novaic-app/src/components/Settings/shared/PromptSection.tsx:23:  const [isPreviewMode, setIsPreviewMode] = useState(!isEditable); // Start in edit mode if editable
+novaic-app/src/components/Settings/shared/PromptSection.tsx:42:              onClick={() => setIsPreviewMode(true)}
+novaic-app/src/components/Settings/shared/PromptSection.tsx:44:                isPreviewMode 
+novaic-app/src/components/Settings/shared/PromptSection.tsx:50:              <span>{t('settings.preview')}</span>
+novaic-app/src/components/Settings/shared/PromptSection.tsx:54:                onClick={() => setIsPreviewMode(false)}
+novaic-app/src/components/Settings/shared/PromptSection.tsx:56:                  !isPreviewMode 
+novaic-app/src/components/Settings/shared/PromptSection.tsx:68:          {isPreviewMode ? (
+novaic-app/src/components/Layout/DeviceSidebar.tsx:39:  detail?: string;
+novaic-app/src/components/Layout/DeviceSidebar.tsx:169:        <div className="text-[10px] font-medium text-nb-text truncate text-center">
+novaic-app/src/components/Layout/DeviceSidebar.tsx:440:      detail: `${device.name} (${device.id.slice(0, 8)}…)`,
+novaic-app/src/components/Layout/DeviceSidebar.tsx:475:                <span className="text-[10px] font-medium text-nb-text-muted truncate flex-1">{t("device.devices")}</span>
+novaic-app/src/components/Layout/DeviceSidebar.tsx:574:              <span className="text-[10px] font-medium text-nb-text-muted truncate flex-1 min-w-0">
+novaic-app/src/components/Layout/DeviceSidebar.tsx:596:              <span className="text-[9px] font-medium text-nb-text-muted truncate w-full text-center">
+novaic-app/src/components/Layout/DeviceSidebar.tsx:702:        detail={deleteConfirm?.detail}
+novaic-app/src/components/Settings/SettingsModal.tsx:28:  detail?: string;
+novaic-app/src/components/Settings/SettingsModal.tsx:36:// ==================== Prompt Preview/Edit Component ====================
+novaic-app/src/components/Settings/SettingsModal.tsx:121:                    <span className="text-sm font-semibold truncate text-nb-text">
+novaic-app/src/components/Settings/SettingsModal.tsx:124:                    <span className="text-xs text-nb-text-muted truncate">
+novaic-app/src/components/Settings/SettingsModal.tsx:292:      detail: `${entry.name} · ${modelCount} model${modelCount === 1 ? '' : 's'} connected`,
+novaic-app/src/components/Settings/SettingsModal.tsx:358:      detail: modelName,
+novaic-app/src/components/Settings/SettingsModal.tsx:414:      detail: user.email ?? user.user_id,
+novaic-app/src/components/Settings/SettingsModal.tsx:426:      const result = await settings.cleanupGarbage({ deep, clean_vm_cache: cleanVmCache }) as { details: any; message: string };
+novaic-app/src/components/Settings/SettingsModal.tsx:427:      setCleanupResult(result.details);
+novaic-app/src/components/Settings/SettingsModal.tsx:440:      detail: cleanVmCache ? t('settings.clear_vm_cache') : undefined,
+novaic-app/src/components/Settings/SettingsModal.tsx:969:        detail={deleteConfirm?.detail}
+novaic-app/src/components/Settings/SkillsPage.tsx:106:  // ── Viewing builtin skill detail ──
+novaic-app/src/components/Settings/ModelsTab.tsx:357:        <span className="text-sm text-nb-text truncate" title={model.model_id}>
+novaic-app/src/components/Settings/ModelsTab.tsx:655:              <span className={`text-[10px] font-medium truncate w-full text-center ${provider === key ? 'text-nb-text' : 'text-nb-text-muted'}`}>{info.name}</span>
+
+## Focused primitive files
+novaic-app/src/application/blobAttachmentPath.test.ts
+novaic-app/src/application/converters.test.ts
+novaic-app/src/components/Agent/MountedToolsSection.tsx
+novaic-app/src/components/Agent/ToolCategorySection.tsx
+novaic-app/src/components/Chat/AssistantMessage.tsx
+novaic-app/src/components/Chat/ChatInput.tsx
+novaic-app/src/components/Chat/FileAttachment.tsx
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx
+novaic-app/src/components/Chat/Markdown.tsx
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx
+novaic-app/src/components/Layout/AgentDrawer.tsx
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx
+novaic-app/src/components/Layout/DeviceSidebar.tsx
+novaic-app/src/components/Layout/Header.tsx
+novaic-app/src/components/Layout/PcClientDeviceList.tsx
+novaic-app/src/components/Settings/ModelsTab.tsx
+novaic-app/src/components/Settings/SettingsModal.tsx
+novaic-app/src/components/VM/DeviceManagerModal.tsx
+novaic-app/src/components/VM/DeviceManagerPage.tsx
+novaic-app/src/components/Visual/ActivityTimeline.acceptance.test.tsx
+novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx
+novaic-app/src/components/Visual/ActivityTimeline.tsx
+novaic-app/src/components/Visual/AgentMonitorCapsule.tsx
+novaic-app/src/components/Visual/SmartValue.tsx
+novaic-app/src/components/hooks/useActivityTimeline.test.ts
+novaic-app/src/components/hooks/useActivityTimeline.ts
+novaic-app/src/components/hooks/useAuthenticatedImage.ts
+novaic-app/src/hooks/useRemoteInput.ts
+novaic-app/src/hooks/useWebRtc.ts
+novaic-app/src/types/activityTimeline.ts
+novaic-app/src/types/index.ts

@@ -1,0 +1,53 @@
+            "agent_root_scope_id": "agent-root-main",
+            "agent_id": "agent-1",
+            "subagent_id": "main-agent",
+            "user_id": "user-1",
+        }, ctx={})
+    except ValidationError as exc:
+        assert "stack" in str(exc)
+    else:
+        raise AssertionError("missing Cortex stack must not fall back to context.read")
+
+
+def test_prepare_llm_context_uses_prepare_snapshot_not_context_read_projection(monkeypatch):
+    bridge = MagicMock()
+    bridge.read_context.return_value = [
+        {"role": "user", "content": "legacy context.read projection"},
+    ]
+    bridge.read_session_meta.return_value = {"input_message_ids": []}
+    bridge.prepare_for_llm.return_value = {
+        "messages": [{"role": "user", "content": "prepared read-model snapshot"}],
+        "stack": [{"depth": 0, "skill_name": "wake", "scope_id": "wake-current"}],
+    }
+    bridge.load_tool_schemas.return_value = []
+    monkeypatch.setattr(cortex_handlers, "get_cortex_bridge", lambda *args, **kwargs: bridge)
+    monkeypatch.setattr(
+        "task_queue.handlers.context_handlers.get_cortex_bridge",
+        lambda *args, **kwargs: bridge,
+    )
+
+    result = handle_cortex_prepare_llm_context({
+        "scope_id": "wake-current",
+        "agent_root_scope_id": "agent-root-main",
+        "wake_scope_path": "/ro/active/agent-root-main/steps/0002_scope_wake-current",
+        "agent_id": "agent-1",
+        "subagent_id": "main-agent",
+        "user_id": "user-1",
+    }, ctx={})
+
+    contents = [m.get("content") for m in result["messages"]]
+    assert "prepared read-model snapshot" in contents
+    assert "legacy context.read projection" not in contents
+    bridge.prepare_for_llm.assert_called_once_with("agent-root-main")
+
+
+def test_prepare_llm_context_static_authority_contract():
+    source = inspect.getsource(cortex_handlers.handle_cortex_prepare_llm_context)
+
+    assert "bridge.prepare_for_llm(" in source
+    assert "CortexPreparedContext.from_mapping(prepare_result)" in source
+    assert "cortex_context=cortex_context" in source
+    assert "read_result.get(\"context\"" not in source
+    assert "read_result['context'" not in source
+
+

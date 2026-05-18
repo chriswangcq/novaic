@@ -1,0 +1,47 @@
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:117:            round_num=int(round_num or 0),
+novaic-agent-runtime/queue_service/session_outbox.py:225:                "round_num": int(payload.get("round_num") or 0),
+novaic-cortex/novaic_cortex/api.py:1523:        new_val = int(counters.get(req.name, 0) or 0) + int(req.delta or 0)
+novaic-cortex/novaic_cortex/api.py:1547:        new_round = int(current.get("round_num", 0) or 0) + 1
+novaic-agent-runtime/queue_service/task_fsm.py:108:        generation=int(decision.next_state.generation),
+novaic-agent-runtime/queue_service/task_fsm.py:132:                "retry_count": int(event.payload.get("retry_count") or 0),
+novaic-agent-runtime/queue_service/task_fsm.py:302:            generation=int(state.generation) + 1,
+novaic-agent-runtime/queue_service/queue_audit.py:80:        final_generation=_optional_int((state or {}).get("generation")),
+novaic-agent-runtime/queue_service/queue_audit.py:96:        generation=_required_non_negative_int(event.get("generation")),
+novaic-agent-runtime/queue_service/queue_audit.py:121:        generation=_required_non_negative_int(effect.get("generation")),
+novaic-agent-runtime/task_queue/workers/task_execution.py:149:            attempt = int(task.get("retry_count") or 0) + 1
+novaic-agent-runtime/queue_service/saga_fsm.py:120:        generation=int(decision.next_state.generation),
+novaic-agent-runtime/queue_service/saga_fsm.py:342:            generation=int(state.generation) + 1,
+novaic-cortex/novaic_cortex/shell_capabilities.py:616:        return int(result.get("value", 0) or 0)
+novaic-agent-runtime/queue_service/queue_db.py:1070:                        "contention_count": int(row[4] or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1214:            merged["version"] = int(merged.get("version") or 0) + 1
+novaic-agent-runtime/queue_service/queue_db.py:1225:        return int(current.get("generation") or 0)
+novaic-agent-runtime/queue_service/queue_db.py:1232:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1233:            retry_count=int(current.get("retry_count") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1234:            max_retries=int(current.get("max_retries") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1308:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/queue_db.py:1335:                retry_count=int(projection.get("retry_count") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1366:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1401:        generation = int(decision.generation)
+novaic-agent-runtime/task_queue/workers/task_worker.py:82:            "tasks_processed_delta": self.metrics.tasks_processed - int(before["tasks_processed"] or 0),
+novaic-agent-runtime/task_queue/workers/task_worker.py:83:            "tasks_succeeded_delta": self.metrics.tasks_succeeded - int(before["tasks_succeeded"] or 0),
+novaic-agent-runtime/task_queue/workers/task_worker.py:84:            "tasks_failed_delta": self.metrics.tasks_failed - int(before["tasks_failed"] or 0),
+novaic-agent-runtime/task_queue/workers/health_action_specs.py:40:    status_code = int(data.get("status_code", 0) or 0)
+novaic-agent-runtime/task_queue/workers/health_action_specs.py:48:        tasks_recovered=int(data.get("tasks_recovered", 0) or 0),
+novaic-agent-runtime/task_queue/workers/health_action_specs.py:49:        sagas_recovered=int(data.get("sagas_recovered", 0) or 0),
+novaic-agent-runtime/queue_service/saga_repo.py:913:        return int(current.get("generation") or 0)
+novaic-agent-runtime/queue_service/saga_repo.py:920:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/saga_repo.py:980:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/saga_repo.py:1048:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/saga_repo.py:1083:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/lease_fsm.py:94:        generation=int(decision.next_state.generation),
+novaic-agent-runtime/queue_service/lease_fsm.py:193:            generation=int(state.generation) + 1,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:307:        return int(result.get("value", 0) or 0)
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:318:        return int(result.get("round_num", 0) or 0)
+novaic-agent-runtime/task_queue/contracts/react_think.py:65:            no_tool_retry_count=int(ctx.get("no_tool_retry_count") or 0),
+novaic-agent-runtime/task_queue/contracts/react_think.py:66:            stack_hold_retry_count=int(ctx.get("stack_hold_retry_count") or 0),
+novaic-agent-runtime/task_queue/contracts/react_think.py:263:    stack_depth = int(stack_info.get("stack_depth") or 0)
+novaic-agent-runtime/task_queue/contracts/react_think.py:376:    stack_depth = int(decision.get("stack_depth") or 0)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:70:            repeated_tool_error_count=int(ctx.get("repeated_tool_error_count") or 0),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:294:    stack_depth = int(check.get("stack_depth") or 0)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:381:    repeated_count = int(decision.get("repeated_tool_error_count") or 0)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:394:    stack_depth = int(decision.get("stack_depth") or 0)

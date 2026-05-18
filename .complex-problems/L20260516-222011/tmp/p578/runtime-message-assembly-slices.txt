@@ -1,0 +1,1082 @@
+## Cortex prepare LLM context handler
+   293	# ── LLM Context assembly (Context Stack v2) ──
+   294	
+   295	
+   296	@register_handler(TaskTopics.CORTEX_PREPARE_LLM_CONTEXT)
+   297	def handle_cortex_prepare_llm_context(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+   298	    """Collect explicit LLM assembly inputs and invoke the pure assembler.
+   299	
+   300	    Boundary responsibilities:
+   301	    1. Read current Environment notification hints into Cortex.
+   302	    2. Ask Cortex for the prepared context snapshot.
+   303	    3. Ask Cortex/Common for active tool schemas.
+   304	
+   305	    Pure assembly responsibilities live in ``common.contracts.llm_assembly``.
+   306	    """
+   307	    try:
+   308	        prepare_input = LLMPrepareContextInput.from_mapping(payload)
+   309	    except ValueError as exc:
+   310	        raise ValidationError(str(exc)) from exc
+   311	
+   312	    # Step 1: merge current Environment notifications into Cortex context.
+   313	    from .context_handlers import handle_context_read
+   314	    read_result = handle_context_read({
+   315	        "scope_id": prepare_input.scope_id,
+   316	        "agent_root_scope_id": prepare_input.agent_root_scope_id,
+   317	        "wake_scope_path": prepare_input.wake_scope_path,
+   318	        "agent_id": prepare_input.agent_id,
+   319	        "subagent_id": prepare_input.subagent_id,
+   320	        "user_id": prepare_input.user_id,
+   321	    }, ctx)
+   322	
+   323	    if not read_result.get("success"):
+   324	        return read_result
+   325	
+   326	    # Step 2: ContextEvent-backed context preparation. `get_cortex_bridge` is
+   327	    # already imported at module top; the redundant local re-import that
+   328	    # used to sit here defeated `patch("…cortex_handlers.get_cortex_bridge")`
+   329	    # in tests (the local import would re-bind to the source module's
+   330	    # reference, bypassing the patch).
+   331	    bridge = get_cortex_bridge(
+   332	        prepare_input.agent_root_scope_id,
+   333	        prepare_input.user_id,
+   334	        prepare_input.agent_id,
+   335	    )
+   336	    prepare_result = bridge.prepare_for_llm(prepare_input.agent_root_scope_id)
+   337	    try:
+   338	        cortex_context = CortexPreparedContext.from_mapping(prepare_result)
+   339	    except ValueError as exc:
+   340	        raise ValidationError(str(exc)) from exc
+   341	
+   342	    raw_tool_schemas = bridge.load_tool_schemas(
+   343	        subagent_id=prepare_input.subagent_id,
+   344	    )
+   345	    if not raw_tool_schemas:
+   346	        logger.warning("[cortex] No tool schemas returned from Cortex")
+   347	
+   348	    # Transient NO_TOOL_WARNING is driven only by the explicit saga signal.
+   349	    # The pure assembler decides where to place it in the final request.
+   350	    no_tool_retry = prepare_input.no_tool_retry_count
+   351	    if no_tool_retry > 0:
+   352	        logger.info(
+   353	            "[cortex.prepare_llm_context] Injecting NO_TOOL_WARNING "
+   354	            "(no_tool_retry_count=%d, scope=%s)",
+   355	            no_tool_retry, prepare_input.scope_id,
+   356	        )
+   357	
+   358	    assembly_output = assemble_llm_request_from_snapshot(
+   359	        LLMContextAssemblySnapshot(
+   360	            prepare_input=prepare_input,
+   361	            cortex_context=cortex_context,
+   362	            raw_tool_schemas=raw_tool_schemas,
+   363	            new_messages=read_result.get("new_messages", []),
+   364	        ),
+   365	        no_tool_warning=NO_TOOL_WARNING,
+   366	    )
+   367	    return assembly_output.to_dict()
+
+## Common LLM assembly active stack insertion
+    94	class LLMContextAssemblySnapshot:
+    95	    """Explicit IO snapshot collected before final LLM request assembly."""
+    96	
+    97	    prepare_input: LLMPrepareContextInput
+    98	    cortex_context: CortexPreparedContext
+    99	    raw_tool_schemas: list[dict[str, Any]]
+   100	    new_messages: list[dict[str, Any]] = field(default_factory=list)
+   101	
+   102	    def to_assembly_input(self) -> LLMAssemblyInput:
+   103	        return LLMAssemblyInput(
+   104	            scope_id=self.prepare_input.scope_id,
+   105	            agent_root_scope_id=self.prepare_input.agent_root_scope_id,
+   106	            wake_scope_path=self.prepare_input.wake_scope_path,
+   107	            cortex_context=self.cortex_context,
+   108	            raw_tool_schemas=deepcopy(self.raw_tool_schemas),
+   109	            new_messages=deepcopy(self.new_messages),
+   110	            no_tool_retry_count=self.prepare_input.no_tool_retry_count,
+   111	        )
+   112	
+   113	
+   114	@dataclass(frozen=True)
+   115	class LLMAssemblyOutput:
+   116	    """Final LLM request payload plus trace fields expected by Runtime."""
+   117	
+   118	    scope_id: str
+   119	    agent_root_scope_id: str
+   120	    wake_scope_path: str | None
+   121	    messages: list[dict[str, Any]]
+   122	    tools: list[dict[str, Any]]
+   123	    tool_names: list[str]
+   124	    new_messages: list[dict[str, Any]]
+   125	    stack: list[dict[str, Any]]
+   126	
+   127	    def to_dict(self) -> dict[str, Any]:
+   128	        return {
+   129	            "success": True,
+   130	            "scope_id": self.scope_id,
+   131	            "agent_root_scope_id": self.agent_root_scope_id,
+   132	            "wake_scope_path": self.wake_scope_path,
+   133	            "context": deepcopy(self.messages),
+   134	            "messages": deepcopy(self.messages),
+   135	            "tools": deepcopy(self.tools),
+   136	            "tool_names": list(self.tool_names),
+   137	            "new_messages": deepcopy(self.new_messages),
+   138	            "stack": deepcopy(self.stack),
+   139	        }
+   140	
+   141	
+   142	def adapt_function_tools(raw_schemas: Iterable[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+   143	    """Adapt canonical tool schemas to OpenAI function-calling shape."""
+   144	
+   145	    tools: list[dict[str, Any]] = []
+   146	    names: set[str] = set()
+   147	    for schema in raw_schemas:
+   148	        if not isinstance(schema, dict):
+   149	            continue
+   150	        name = schema.get("name", "")
+   151	        if not name:
+   152	            continue
+   153	        tools.append({
+   154	            "type": "function",
+   155	            "function": {
+   156	                "name": name,
+   157	                "description": schema.get("description", ""),
+   158	                "parameters": schema.get("parameters", {}),
+   159	            },
+   160	        })
+   161	        names.add(str(name))
+   162	    return tools, sorted(names)
+   163	
+   164	
+   165	def format_active_skill_stack_message(
+   166	    stack: list[dict[str, Any]],
+   167	    *,
+   168	    hidden_scope_ids: set[str] | None = None,
+   169	) -> str:
+   170	    """Render the active skill stack as a transient LLM system message."""
+   171	
+   172	    if not stack:
+   173	        return ""
+   174	    hidden_scope_ids = hidden_scope_ids or set()
+   175	    frames = [
+   176	        frame for frame in stack
+   177	        if isinstance(frame, dict) and frame.get("scope_id") not in hidden_scope_ids
+   178	    ]
+   179	    if not frames:
+   180	        return ""
+   181	    frames = sorted(frames, key=lambda frame: frame.get("depth", 0))
+   182	    lines = ["[Active skill stack (LIFO — close innermost skill first)]"]
+   183	    for visible_depth, frame in enumerate(frames):
+   184	        lines.append(
+   185	            f"  depth {visible_depth}: {frame.get('skill_name', '?')} "
+   186	            f"(scope_id={frame.get('scope_id', '?')})"
+   187	        )
+   188	    top = frames[-1]
+   189	    top_scope = top.get("scope_id", "")
+   190	    lines.append(
+   191	        f"→ Stack top: scope_id={top_scope or '?'} "
+   192	        f"(skill={top.get('skill_name', '?')}). "
+   193	        f"To close this skill call: skill_end(scope_id='{top_scope}', report='...')"
+   194	    )
+   195	    return "\n".join(lines)
+   196	
+   197	
+   198	def build_active_skill_stack_message(
+   199	    stack: list[dict[str, Any]],
+   200	    *,
+   201	    hidden_scope_ids: set[str] | None = None,
+   202	) -> dict[str, Any] | None:
+   203	    """Build the transient control-plane stack snapshot system message."""
+   204	
+   205	    content = format_active_skill_stack_message(
+   206	        stack,
+   207	        hidden_scope_ids=hidden_scope_ids,
+   208	    )
+   209	    if not content:
+   210	        return None
+   211	    return {
+   212	        "role": "system",
+   213	        "content": content,
+   214	        "_message_type": "SYSTEM_MESSAGE",
+   215	        "_metadata": {
+   216	            "skill_stack_snapshot": True,
+   217	            "transient": True,
+   218	            "source": "control_stack",
+   219	        },
+   220	    }
+   221	
+   222	
+   223	def _is_active_skill_stack_snapshot(message: dict[str, Any]) -> bool:
+   224	    if not isinstance(message, dict) or message.get("role") != "system":
+   225	        return False
+   226	    metadata = message.get("_metadata")
+   227	    if isinstance(metadata, dict) and metadata.get("skill_stack_snapshot") is True:
+   228	        return True
+   229	    content = message.get("content")
+   230	    return isinstance(content, str) and content.startswith("[Active skill stack")
+   231	
+   232	
+   233	def assemble_llm_request(
+   234	    assembly_input: LLMAssemblyInput,
+   235	    *,
+   236	    no_tool_warning: str = "",
+   237	) -> LLMAssemblyOutput:
+   238	    """Pure assembly of the final LLM request.
+   239	
+   240	    The caller is responsible for all IO. This function only copies explicit
+   241	    inputs, appends transient system guidance, and adapts tool schemas.
+   242	    """
+   243	
+   244	    if not assembly_input.scope_id:
+   245	        raise ValueError("LLMAssemblyInput.scope_id is required")
+   246	    if not assembly_input.agent_root_scope_id:
+   247	        raise ValueError("LLMAssemblyInput.agent_root_scope_id is required")
+   248	
+   249	    messages = [
+   250	        deepcopy(message)
+   251	        for message in assembly_input.cortex_context.messages
+   252	        if not _is_active_skill_stack_snapshot(message)
+   253	    ]
+   254	    stack = deepcopy(assembly_input.cortex_context.stack)
+   255	
+   256	    stack_message = build_active_skill_stack_message(stack)
+   257	    if stack_message:
+   258	        messages.append(stack_message)
+   259	
+   260	    if int(assembly_input.no_tool_retry_count or 0) > 0 and no_tool_warning:
+   261	        messages.append({"role": "system", "content": no_tool_warning})
+   262	
+   263	    tools, tool_names = adapt_function_tools(assembly_input.raw_tool_schemas)
+   264	    return LLMAssemblyOutput(
+   265	        scope_id=assembly_input.scope_id,
+   266	        agent_root_scope_id=assembly_input.agent_root_scope_id,
+   267	        wake_scope_path=assembly_input.wake_scope_path,
+   268	        messages=messages,
+   269	        tools=tools,
+   270	        tool_names=tool_names,
+   271	        new_messages=deepcopy(assembly_input.new_messages),
+   272	        stack=stack,
+   273	    )
+   274	
+   275	
+   276	def assemble_llm_request_from_snapshot(
+   277	    snapshot: LLMContextAssemblySnapshot,
+   278	    *,
+   279	    no_tool_warning: str = "",
+   280	) -> LLMAssemblyOutput:
+   281	    """Pure wrapper from collected context/tool snapshot to LLM request."""
+   282	
+   283	    return assemble_llm_request(
+   284	        snapshot.to_assembly_input(),
+   285	        no_tool_warning=no_tool_warning,
+   286	    )
+
+## LLM call handler and explicit prepare contract
+    68	@register_handler(TaskTopics.LLM_CALL)
+    69	def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+    70	    """
+    71	    调用 LLM
+    72	    
+    73	    功能：
+    74	    1. Context 清理：确保 tool_results 紧跟 assistant+tool_calls
+    75	    2. 多模态处理：支持图片等多模态内容
+    76	    3. 广播功能：向前端广播 thinking 状态
+    77	    
+    78	    幂等性：LLM 调用是无状态的，天然幂等
+    79	    
+    80	    Payload:
+    81	        runtime_id: str
+    82	        round_id: str
+    83	        messages: list
+    84	        model: str (可选，默认使用 default_model)
+    85	        tools: list (可选)
+    86	        agent_id: str (可选，用于广播)
+    87	        provider: str (可选，openai/anthropic)
+    88	        
+    89	    Raises:
+    90	        ValidationError: 当必填字段缺失时
+    91	    """
+    92	    try:
+    93	        call_input = LLMCallInput.from_payload(payload)
+    94	    except ValueError as exc:
+    95	        raise ValidationError(str(exc)) from exc
+    96	    
+    97	    biz_url = ctx.get("business_url", ServiceConfig.BUSINESS_URL)
+    98	    llm_config = _fetch_llm_config(
+    99	        biz_url,
+   100	        agent_id=call_input.agent_id,
+   101	        subagent_id=call_input.subagent_id,
+   102	    )
+   103	    
+   104	    if not llm_config.get("success"):
+   105	        return {
+   106	            "success": False,
+   107	            "scope_id": call_input.scope_id,
+   108	            "round_id": call_input.round_id,
+   109	            "error": llm_config.get("error", "Failed to get LLM config"),
+   110	        }
+   111	    
+   112	    try:
+   113	        transport_config = LLMTransportConfig.from_mapping(llm_config)
+   114	    except ValueError as exc:
+   115	        raise ValidationError(str(exc)) from exc
+   116	
+   117	    from ..utils.step_result_client import expand_messages_for_llm
+   118	    from ..utils import sanitize_context, process_multimodal_messages
+   119	
+   120	    prepared = prepare_llm_call(
+   121	        call_input,
+   122	        transport_config,
+   123	        ctx_user_id=ctx.get("user_id", ""),
+   124	        expand_messages_for_llm=expand_messages_for_llm,
+   125	        sanitize_context=sanitize_context,
+   126	        process_multimodal_messages=process_multimodal_messages,
+   127	    )
+   128	    
+   129	    llm_client = _create_factory_client(
+   130	        transport_config,
+   131	        runtime_id=prepared.scope_id,
+   132	        round_id=prepared.round_id,
+   133	    )
+   134	    biz = LLMBusiness(biz_url, llm_client)
+   135	    
+   136	    result = biz.call(
+   137	        messages=prepared.messages,
+   138	        model=prepared.model,
+   139	        tools=prepared.tools,
+   140	        provider=prepared.provider,
+   141	    )
+   142	    
+   143	    if not result.success:
+   144	        return {
+   145	            "success": False,
+     1	"""Explicit LLM call contracts for Runtime.
+     2	
+     3	LLM call handling has two different responsibilities:
+     4	
+     5	1. Build a provider-ready request from an already assembled Cortex context.
+     6	2. Send that request through the configured factory client.
+     7	
+     8	This module owns the first responsibility as an explicit, dependency-injected
+     9	contract. The handler owns IO (Business config lookup and Cortex step-ref
+    10	resolution), and ``LLMBusiness`` stays as a thin transport wrapper.
+    11	"""
+    12	
+    13	from __future__ import annotations
+    14	
+    15	from copy import deepcopy
+    16	from dataclasses import dataclass, field
+    17	from typing import Any, Callable
+    18	
+    19	
+    20	@dataclass(frozen=True)
+    21	class LLMCallInput:
+    22	    """Payload shape expected by the LLM call handler."""
+    23	
+    24	    scope_id: str
+    25	    round_id: str
+    26	    messages: list[dict[str, Any]]
+    27	    model_hint: str = "gpt-4o"
+    28	    tools: list[dict[str, Any]] = field(default_factory=list)
+    29	    provider: str = "openai"
+    30	    agent_id: str = ""
+    31	    subagent_id: str = ""
+    32	    user_id: str = ""
+    33	    agent_root_scope_id: str | None = None
+    34	    wake_scope_path: str | None = None
+    35	
+    36	    @classmethod
+    37	    def from_payload(cls, payload: dict[str, Any]) -> "LLMCallInput":
+    38	        scope_id = payload.get("scope_id") or payload.get("runtime_id")
+    39	        if not scope_id:
+    40	            raise ValueError("Missing required field: scope_id")
+    41	        round_id = payload.get("round_id")
+    42	        if not round_id:
+    43	            raise ValueError("Missing required field: round_id")
+    44	        messages = payload.get("messages")
+    45	        if not messages:
+    46	            raise ValueError("Missing required field: messages")
+    47	        if not isinstance(messages, list):
+    48	            raise ValueError("LLMCallInput.messages must be a list")
+    49	        tools = payload.get("tools") or []
+    50	        if not isinstance(tools, list):
+    51	            raise ValueError("LLMCallInput.tools must be a list")
+    52	        return cls(
+    53	            scope_id=str(scope_id),
+    54	            round_id=str(round_id),
+    55	            messages=deepcopy(messages),
+    56	            model_hint=str(payload.get("model") or "gpt-4o"),
+    57	            tools=deepcopy(tools),
+    58	            provider=str(payload.get("provider") or "openai"),
+    59	            agent_id=str(payload.get("agent_id") or ""),
+    60	            subagent_id=str(payload.get("subagent_id") or ""),
+    61	            user_id=str(payload.get("user_id") or ""),
+    62	            agent_root_scope_id=payload.get("agent_root_scope_id"),
+    63	            wake_scope_path=payload.get("wake_scope_path"),
+    64	        )
+    65	
+    66	
+    67	@dataclass(frozen=True)
+    68	class LLMTransportConfig:
+    69	    """Business-provided transport configuration for one LLM call."""
+    70	
+    71	    factory_url: str
+    72	    model_id: str
+    73	    user_id: str
+    74	    agent_id: str = ""
+    75	    subagent_id: str = ""
+    76	
+    77	    @classmethod
+    78	    def from_mapping(cls, value: dict[str, Any]) -> "LLMTransportConfig":
+    79	        if not value.get("factory_url"):
+    80	            raise ValueError("LLMTransportConfig.factory_url is required")
+    81	        if not value.get("model_id"):
+    82	            raise ValueError("LLMTransportConfig.model_id is required")
+    83	        if not value.get("user_id"):
+    84	            raise ValueError("LLMTransportConfig.user_id is required")
+    85	        return cls(
+    86	            factory_url=str(value["factory_url"]),
+    87	            model_id=str(value["model_id"]),
+    88	            user_id=str(value["user_id"]),
+    89	            agent_id=str(value.get("agent_id") or ""),
+    90	            subagent_id=str(value.get("subagent_id") or ""),
+    91	        )
+    92	
+    93	    def to_client_kwargs(self) -> dict[str, Any]:
+    94	        return {
+    95	            "factory_url": self.factory_url,
+    96	            "model_id": self.model_id,
+    97	            "user_id": self.user_id,
+    98	            "agent_id": self.agent_id,
+    99	        }
+   100	
+   101	
+   102	@dataclass(frozen=True)
+   103	class PreparedLLMCall:
+   104	    """Provider-ready request passed to the transport wrapper."""
+   105	
+   106	    scope_id: str
+   107	    round_id: str
+   108	    messages: list[dict[str, Any]]
+   109	    model: str
+   110	    tools: list[dict[str, Any]]
+   111	    provider: str
+   112	    agent_id: str
+   113	
+   114	
+   115	def prepare_llm_call(
+   116	    source: LLMCallInput,
+   117	    config: LLMTransportConfig,
+   118	    *,
+   119	    ctx_user_id: str = "",
+   120	    expand_messages_for_llm: Callable[..., list[dict[str, Any]]],
+   121	    sanitize_context: Callable[[list[dict[str, Any]]], list[dict[str, Any]]],
+   122	    process_multimodal_messages: Callable[[list[dict[str, Any]], str], list[dict[str, Any]]],
+   123	) -> PreparedLLMCall:
+   124	    """Build provider-ready messages from explicit inputs and injected helpers."""
+   125	
+   126	    agent_id = source.agent_id or config.agent_id
+   127	    cortex_scope_id = source.agent_root_scope_id or source.scope_id
+   128	    messages_for_llm = expand_messages_for_llm(
+   129	        deepcopy(source.messages),
+   130	        provider=source.provider,
+   131	        current_round_id=source.round_id,
+   132	        runtime_id=cortex_scope_id,
+   133	        user_id=source.user_id or ctx_user_id,
+   134	        agent_id=agent_id,
+   135	    )
+   136	    sanitized = sanitize_context(messages_for_llm)
+   137	    processed = process_multimodal_messages(sanitized, source.provider)
+   138	    return PreparedLLMCall(
+   139	        scope_id=source.scope_id,
+   140	        round_id=source.round_id,
+   141	        messages=processed,
+   142	        model=config.model_id,
+   143	        tools=deepcopy(source.tools),
+   144	        provider=source.provider,
+   145	        agent_id=agent_id,
+   146	    )
+
+## Step result expansion and display projection decision
+    75	    tool_call_id = str(msg.get("tool_call_id") or "").strip()
+    76	    return str(
+    77	        msg.get("tool_name")
+    78	        or msg.get("name")
+    79	        or metadata.get("tool")
+    80	        or tool_names_by_id.get(tool_call_id)
+    81	        or ""
+    82	    ).strip()
+    83	
+    84	
+    85	def _latest_tool_call_ids(messages: List[Dict[str, Any]]) -> set[str]:
+    86	    latest: set[str] = set()
+    87	    for msg in messages:
+    88	        if msg.get("role") != "assistant":
+    89	            continue
+    90	        tool_calls = msg.get("tool_calls")
+    91	        if not isinstance(tool_calls, list) or not tool_calls:
+    92	            continue
+    93	        latest = {
+    94	            str(tc.get("id") or "").strip()
+    95	            for tc in tool_calls
+    96	            if isinstance(tc, dict) and str(tc.get("id") or "").strip()
+    97	        }
+    98	    return latest
+    99	
+   100	
+   101	def _tool_names_by_call_id(messages: List[Dict[str, Any]]) -> Dict[str, str]:
+   102	    names: Dict[str, str] = {}
+   103	    for msg in messages:
+   104	        if msg.get("role") != "assistant":
+   105	            continue
+   106	        tool_calls = msg.get("tool_calls")
+   107	        if not isinstance(tool_calls, list):
+   108	            continue
+   109	        for tc in tool_calls:
+   110	            if not isinstance(tc, dict):
+   111	                continue
+   112	            tool_call_id = str(tc.get("id") or "").strip()
+   113	            tool_name = _tool_call_name(tc)
+   114	            if tool_call_id and tool_name:
+   115	                names[tool_call_id] = tool_name
+   116	    return names
+   117	
+   118	
+   119	def _projection_for_tool_message(
+   120	    msg: Dict[str, Any],
+   121	    current_round_id: Optional[str],
+   122	    *,
+   123	    tool_names_by_id: Dict[str, str],
+   124	    latest_tool_call_ids: set[str],
+   125	) -> str:
+   126	    msg_round_id = msg.get("_round_id")
+   127	    tool_call_id = str(msg.get("tool_call_id") or "").strip()
+   128	    is_current = (
+   129	        current_round_id is None
+   130	        or msg_round_id == current_round_id
+   131	        or (not msg_round_id and tool_call_id in latest_tool_call_ids)
+   132	    )
+   133	    if not is_current:
+   134	        return "history"
+   135	
+   136	    tool_name = _tool_message_name(msg, tool_names_by_id)
+   137	    if tool_name == "display":
+   138	        return "display_perception"
+   139	    return "current_tool_result"
+   140	
+   141	
+   142	def fetch_step_preview(
+   143	    step_ref: str,
+   144	    max_text_len: int = 500,
+   145	    runtime_id: Optional[str] = None,
+   146	    user_id: Optional[str] = None,
+   147	    agent_id: Optional[str] = None,
+   148	    tool_call_id: Optional[str] = None,
+   149	    **_kwargs,
+   150	) -> str:
+   151	    """Text preview for step-ref summaries."""
+   152	    bridge = _get_bridge(runtime_id, user_id, agent_id)
+   153	    if not tool_call_id:
+   154	        raise ValueError(f"Tool result preview requires tool_call_id for {step_ref}")
+   155	    preview = bridge.read_step_preview(
+   156	        runtime_id,
+   157	        tool_call_id,
+   158	        max_text_len=max_text_len,
+   159	        step_ref=step_ref,
+   160	    )
+   161	    if preview is None:
+   162	        raise RuntimeError(f"Tool result preview not found: {step_ref}")
+   163	    return preview
+   164	
+   165	
+   166	def expand_messages_for_llm(
+   167	    messages: List[Dict[str, Any]],
+   168	    provider: str = "openai",
+   169	    current_round_id: Optional[str] = None,
+   170	    runtime_id: Optional[str] = None,
+   171	    user_id: Optional[str] = None,
+   172	    agent_id: Optional[str] = None,
+   173	    **_kwargs,
+   174	) -> List[Dict[str, Any]]:
+   175	    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+   176	    out = []
+   177	    tool_names_by_id = _tool_names_by_call_id(messages)
+   178	    latest_tool_call_ids = _latest_tool_call_ids(messages)
+   179	    for msg in messages:
+   180	        role = msg.get("role")
+   181	        step_ref = msg.get("step_ref")
+   182	        tool_call_id = msg.get("tool_call_id")
+   183	        if role in ("tool", "tool_result"):
+   184	            if not step_ref:
+   185	                raise ValueError(f"Tool message missing step_ref: {msg}")
+   186	
+   187	            projection = _projection_for_tool_message(
+   188	                msg,
+   189	                current_round_id,
+   190	                tool_names_by_id=tool_names_by_id,
+   191	                latest_tool_call_ids=latest_tool_call_ids,
+   192	            )
+   193	            content = fetch_step_for_llm(
+   194	                step_ref,
+   195	                provider,
+   196	                projection=projection,
+   197	                runtime_id=runtime_id,
+   198	                user_id=user_id,
+   199	                agent_id=agent_id,
+   200	                tool_call_id=tool_call_id,
+   201	            )
+   202	
+   203	            new_msg = {
+   204	                k: v for k, v in msg.items()
+   205	                if k not in ("step_ref", "_round_id", "_message_type", "_idempotency_key")
+   206	            }
+   207	            new_msg["content"] = content
+   208	            new_msg["_projection"] = projection
+   209	            out.append(new_msg)
+   210	        else:
+
+## Sanitize and multimodal handoff marker preservation
+     1	"""
+     2	Context Utils - Context 清理和处理
+     3	
+     4	用于 LLM 调用前的消息预处理：
+     5	1. sanitize_context: 确保 tool_results 紧跟 assistant+tool_calls
+     6	2. process_multimodal_messages: 处理多模态内容（图片等）
+     7	"""
+     8	
+     9	import json
+    10	from typing import Dict, Any, List
+    11	
+    12	# 导入多模态处理工具
+    13	from . import multimodal
+    14	HAS_MULTIMODAL = True
+    15	
+    16	
+    17	def sanitize_context(context: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    18	    """
+    19	    清理 context，确保 tool_results 紧跟在对应的 assistant+tool_calls 之后
+    20	    
+    21	    这对 LLM 调用很重要，否则 LLM 可能报错。
+    22	    
+    23	    处理：
+    24	    1. 过滤无效消息（空 role、空 content）
+    25	    2. 移除内部元数据字段（_round_id、_message_type 等）
+    26	    3. assistant message with tool_calls 后面必须紧跟对应的 tool_result
+    27	    4. 为缺失的 tool_result 添加占位符
+    28	    5. 移除孤立的 tool_result
+    29	    
+    30	    Args:
+    31	        context: 原始消息列表
+    32	        
+    33	    Returns:
+    34	        清理后的消息列表
+    35	        
+    36	    Example:
+    37	        >>> from task_queue.utils import sanitize_context
+    38	        >>> messages = [
+    39	        ...     {"role": "user", "content": "Hello"},
+    40	        ...     {"role": "assistant", "tool_calls": [{"id": "call_1", "function": {"name": "test"}}]},
+    41	        ...     {"role": "user", "content": "OK"},  # 乱序
+    42	        ...     {"role": "tool", "tool_call_id": "call_1", "content": "result"},
+    43	        ... ]
+    44	        >>> sanitized = sanitize_context(messages)
+    45	        >>> # tool_result 现在紧跟 assistant message
+    46	    """
+    47	    if not context:
+    48	        return []
+    49	    
+    50	    # 预处理：过滤和清理消息
+    51	    cleaned_context = []
+    52	    for msg in context:
+    53	        if not isinstance(msg, dict):
+    54	            continue
+    55	        
+    56	        role = msg.get("role", "")
+    57	        
+    58	        # 跳过内部元数据消息（没有 role 但有 _round_id 等字段）
+    59	        if not role and (msg.get("_round_id") or msg.get("_message_type") or msg.get("_idempotency_key")):
+    60	            continue
+    61	        
+    62	        # 跳过空 role 的消息
+    63	        if not role:
+    64	            continue
+    65	        
+    66	        # 对于非 tool 消息，检查 content 是否有效
+    67	        if role not in ("tool", "tool_result"):
+    68	            content = msg.get("content")
+    69	            tool_calls = msg.get("tool_calls")
+    70	            # assistant 可以只有 tool_calls 没有 content
+    71	            if role == "assistant" and tool_calls:
+    72	                pass
+    73	            elif not content and content != "":  # 允许空字符串
+    74	                continue
+    75	        
+    76	        # Keep tool _projection until process_multimodal_messages runs. It is
+    77	        # an internal handoff marker that decides whether current display()
+    78	        # output may be converted into a provider-native image message; it is
+    79	        # stripped before the final request leaves this module.
+    80	        cleaned_msg = {}
+    81	        for key in (
+    82	            "role",
+    83	            "content",
+    84	            "reasoning_content",
+    85	            "tool_calls",
+    86	            "tool_call_id",
+    87	            "name",
+    88	        ):
+    89	            if key in msg:
+    90	                cleaned_msg[key] = msg[key]
+    91	        if role in ("tool", "tool_result") and "_projection" in msg:
+    92	            cleaned_msg["_projection"] = msg["_projection"]
+    93	
+    94	        cleaned_context.append(cleaned_msg)
+    95	    
+    96	    context = cleaned_context
+    97	    
+    98	    # 第一遍：收集所有消息并跟踪 tool_calls
+    99	    assistant_tool_calls = {}  # tc_id -> {"assistant_idx": int, "name": str}
+   100	    tool_results = {}  # tc_id -> msg
+   101	    other_messages = []  # (original_idx, msg)
+   102	    assistant_messages_with_tools = {}  # idx -> msg
+   103	    
+   104	    for idx, msg in enumerate(context):
+   105	        role = msg.get("role")
+   106	        
+   107	        if role == "assistant" and msg.get("tool_calls"):
+   108	            assistant_messages_with_tools[idx] = msg
+   109	            for tc in msg["tool_calls"]:
+   110	                tc_id = tc.get("id")
+   111	                if tc_id:
+   112	                    func = tc.get("function", {})
+   113	                    tool_name = func.get("name", "unknown")
+   114	                    assistant_tool_calls[tc_id] = {"assistant_idx": idx, "name": tool_name}
+   115	                    
+   116	        elif role == "tool_result" or role == "tool":
+   117	            tc_id = msg.get("tool_call_id")
+   118	            if tc_id and tc_id in assistant_tool_calls:
+   119	                tool_results[tc_id] = msg
+   120	            elif tc_id:
+   121	                # 孤立的 tool_result，忽略
+   122	                pass
+   123	            else:
+   124	                other_messages.append((idx, msg))
+   125	        else:
+   126	            other_messages.append((idx, msg))
+   127	    
+   128	    # 第二遍：按正确顺序构建结果
+   129	    result = []
+   130	    processed_assistant_indices = set()
+   131	    
+   132	    for orig_idx, msg in other_messages:
+   133	        # 插入之前的 assistant+tool_calls+tool_results
+   134	        for asst_idx in sorted(assistant_messages_with_tools.keys()):
+   135	            if asst_idx < orig_idx and asst_idx not in processed_assistant_indices:
+   136	                asst_msg = assistant_messages_with_tools[asst_idx]
+   137	                result.append(asst_msg)
+   138	                processed_assistant_indices.add(asst_idx)
+   139	                
+   140	                # 添加对应的 tool_results
+   141	                for tc in asst_msg.get("tool_calls", []):
+   142	                    tc_id = tc.get("id")
+   143	                    if tc_id:
+   144	                        if tc_id in tool_results:
+   145	                            result.append(tool_results[tc_id])
+   146	                        else:
+   147	                            # 缺失的 tool_result，添加占位符
+   148	                            func = tc.get("function", {})
+   149	                            tool_name = func.get("name", "unknown")
+   150	                            result.append({
+   151	                                "role": "tool",
+   152	                                "tool_call_id": tc_id,
+   153	                                "name": tool_name,
+   154	                                "content": "[Execution was interrupted. Please retry if needed.]"
+   155	                            })
+   156	        
+   157	        result.append(msg)
+   158	    
+   159	    # 添加末尾剩余的 assistant+tool_results
+   160	    for asst_idx in sorted(assistant_messages_with_tools.keys()):
+   161	        if asst_idx not in processed_assistant_indices:
+   162	            asst_msg = assistant_messages_with_tools[asst_idx]
+   163	            result.append(asst_msg)
+   164	            
+   165	            for tc in asst_msg.get("tool_calls", []):
+   166	                tc_id = tc.get("id")
+   167	                if tc_id:
+   168	                    if tc_id in tool_results:
+   169	                        result.append(tool_results[tc_id])
+   170	                    else:
+   171	                        func = tc.get("function", {})
+   172	                        tool_name = func.get("name", "unknown")
+   173	                        result.append({
+   174	                            "role": "tool",
+   175	                            "tool_call_id": tc_id,
+   176	                            "name": tool_name,
+   177	                            "content": "[Execution was interrupted. Please retry if needed.]"
+   178	                        })
+   179	    
+   180	    return result
+   181	
+   182	
+   183	def process_multimodal_messages(
+   184	    messages: List[Dict[str, Any]], 
+   185	    provider: str = "openai"
+   186	) -> List[Dict[str, Any]]:
+   187	    """
+   188	    处理消息中的多模态内容
+   189	    
+   190	    将 tool_result 中的图片提取出来，作为单独的 user message 添加
+
+## Tests: active stack and context assembly
+    19	        lambda payload, ctx: {"success": True, "context": [], "new_messages": []},
+    20	    )
+    21	
+    22	
+    23	def test_prepare_llm_context_has_minimal_structure_order_and_tools(monkeypatch):
+    24	    bridge = MagicMock()
+    25	    bridge.prepare_for_llm.return_value = {
+    26	        "messages": [
+    27	            {"role": "system", "content": "[系统] stable system prompt"},
+    28	            {"role": "system", "content": "[Skill 'user conversation' completed]\nUser prefers 大哥."},
+    29	            {"role": "user", "content": "我叫啥"},
+    30	        ],
+    31	        "stack": [
+    32	            {"depth": 0, "skill_name": "wake", "scope_id": "wake-current"},
+    33	        ],
+    34	    }
+    35	    bridge.load_tool_schemas.return_value = [
+    36	        {"name": "skill_end", "description": "close current scope", "parameters": {"type": "object"}},
+    37	        {"name": "shell", "description": "run command", "parameters": {"type": "object"}},
+    38	    ]
+    39	    monkeypatch.setattr(cortex_handlers, "get_cortex_bridge", lambda *args, **kwargs: bridge)
+    40	    _patch_context_read(monkeypatch)
+    41	
+    42	    result = handle_cortex_prepare_llm_context({
+    43	        "scope_id": "wake-current",
+    44	        "agent_root_scope_id": "agent-root-main",
+    45	        "wake_scope_path": "/ro/active/agent-root-main/steps/0002_scope_wake-current",
+    46	        "agent_id": "agent-1",
+    47	        "subagent_id": "main-agent",
+    48	        "user_id": "user-1",
+    49	    }, ctx={})
+    50	
+    51	    assert result["success"] is True
+    52	    contents = [m["content"] for m in result["messages"]]
+    53	    assert contents[:3] == [
+    54	        "[系统] stable system prompt",
+    55	        "[Skill 'user conversation' completed]\nUser prefers 大哥.",
+    56	        "我叫啥",
+    57	    ]
+    58	    assert "Active skill stack" in contents[-1]
+    59	    assert "scope_id=wake-current" in contents[-1]
+    60	    assert "skill_end(scope_id='wake-current', report='...')" in contents[-1]
+    61	
+    62	    tool_names = {t["function"]["name"] for t in result["tools"]}
+    63	    assert {"skill_end", "shell"}.issubset(tool_names)
+    64	    assert "im_reply" not in tool_names
+    65	
+    66	    snapshot_text = "\n".join(contents)
+    67	    for banned in (
+    68	        "Wake summary",
+    69	        "wake summary",
+    70	        "Recall",
+   138	        "messages": [{"role": "user", "content": "prepared read-model snapshot"}],
+   139	        "stack": [{"depth": 0, "skill_name": "wake", "scope_id": "wake-current"}],
+   140	    }
+   141	    bridge.load_tool_schemas.return_value = []
+   142	    monkeypatch.setattr(cortex_handlers, "get_cortex_bridge", lambda *args, **kwargs: bridge)
+   143	    monkeypatch.setattr(
+   144	        "task_queue.handlers.context_handlers.get_cortex_bridge",
+   145	        lambda *args, **kwargs: bridge,
+   146	    )
+   147	
+   148	    result = handle_cortex_prepare_llm_context({
+   149	        "scope_id": "wake-current",
+   150	        "agent_root_scope_id": "agent-root-main",
+   151	        "wake_scope_path": "/ro/active/agent-root-main/steps/0002_scope_wake-current",
+   152	        "agent_id": "agent-1",
+   153	        "subagent_id": "main-agent",
+   154	        "user_id": "user-1",
+   155	    }, ctx={})
+   156	
+   157	    contents = [m.get("content") for m in result["messages"]]
+   158	    assert "prepared read-model snapshot" in contents
+   159	    assert "legacy context.read projection" not in contents
+   160	    bridge.prepare_for_llm.assert_called_once_with("agent-root-main")
+   161	
+   162	
+   163	def test_prepare_llm_context_static_authority_contract():
+   164	    source = inspect.getsource(cortex_handlers.handle_cortex_prepare_llm_context)
+   165	
+   166	    assert "bridge.prepare_for_llm(" in source
+   167	    assert "CortexPreparedContext.from_mapping(prepare_result)" in source
+   168	    assert "cortex_context=cortex_context" in source
+   169	    assert "read_result.get(\"context\"" not in source
+   170	    assert "read_result['context'" not in source
+   171	
+   172	
+   173	def test_known_tool_names_come_only_from_prepare_context_result():
+   174	    ctx = {
+   175	        "scope_id": "wake-current",
+   176	        "step_results": {"prepare_context": {"tool_names": ["shell"]}},
+   177	    }
+   178	
+   179	    assert _get_known_tool_names(ctx) == {"shell"}
+   180	    assert _get_known_tool_names({"scope_id": "wake-current", "step_results": {}}) == set()
+   181	
+   182	
+   183	def test_runtime_llm_assembly_has_no_local_tool_or_stack_adapter():
+   184	    source = inspect.getsource(cortex_handlers)
+   185	
+   186	    assert "def _load_tool_schemas" not in source
+   187	    assert "def _format_skill_stack_system_message" not in source
+   188	    assert "LLMContextAssemblySnapshot(" in source
+   189	    assert "assemble_llm_request_from_snapshot(" in source
+   190	
+    61	def test_active_skill_stack_message_names_stack_top_scope_id():
+    62	    content = format_active_skill_stack_message([
+    63	        {"depth": 1, "skill_name": "child", "scope_id": "child-1"},
+    64	        {"depth": 0, "skill_name": "wake", "scope_id": "wake-1"},
+    65	    ])
+    66	
+    67	    assert "Active skill stack" in content
+    68	    assert "depth 0: wake (scope_id=wake-1)" in content
+    69	    assert "depth 1: child (scope_id=child-1)" in content
+    70	    assert "skill_end(scope_id='child-1', report='...')" in content
+    71	
+    72	
+    73	def test_active_skill_stack_message_is_marked_transient_control_plane():
+    74	    message = build_active_skill_stack_message([
+    75	        {"depth": 0, "skill_name": "wake", "scope_id": "wake-1"},
+    76	    ])
+    77	
+    78	    assert message is not None
+    79	    assert message["role"] == "system"
+    80	    assert "Active skill stack" in message["content"]
+    81	    assert message["_metadata"] == {
+    82	        "skill_stack_snapshot": True,
+    83	        "transient": True,
+    84	        "source": "control_stack",
+    85	    }
+    86	
+    87	
+    88	def test_assemble_llm_request_uses_only_explicit_inputs():
+    89	    output = assemble_llm_request(
+    90	        LLMAssemblyInput(
+    91	            scope_id="wake-1",
+    92	            agent_root_scope_id="agent-root-main",
+    93	            wake_scope_path="/ro/active/agent-root-main/steps/0001_scope_wake-1",
+    94	            cortex_context=CortexPreparedContext(
+    95	                messages=[
+    96	                    {"role": "system", "content": "system"},
+    97	                    {"role": "system", "content": "folded summary"},
+    98	                ],
+    99	                stack=[{"depth": 0, "skill_name": "wake", "scope_id": "wake-1"}],
+   100	                estimated_tokens=12,
+   101	            ),
+   102	            raw_tool_schemas=[
+   103	                {"name": "shell", "description": "run", "parameters": {"type": "object"}},
+   104	            ],
+   105	            new_messages=[{"notification_id": "notif-1"}],
+   106	            no_tool_retry_count=1,
+   107	        ),
+   108	        no_tool_warning="call a tool",
+   109	    )
+   110	
+   111	    result = output.to_dict()
+   112	    assert result["success"] is True
+   113	    assert result["messages"][0]["content"] == "system"
+   114	    assert result["messages"][1]["content"] == "folded summary"
+   115	    assert "Active skill stack" in result["messages"][2]["content"]
+   116	    assert result["messages"][2]["_metadata"]["skill_stack_snapshot"] is True
+   117	    assert result["messages"][2]["_metadata"]["transient"] is True
+   118	    assert result["messages"][3] == {"role": "system", "content": "call a tool"}
+   119	    assert result["tools"][0]["function"]["name"] == "shell"
+   120	    assert result["tool_names"] == ["shell"]
+   121	    assert result["new_messages"] == [{"notification_id": "notif-1"}]
+   122	
+   123	
+   124	def test_assemble_llm_request_filters_prior_stack_snapshots():
+   125	    output = assemble_llm_request(
+   126	        LLMAssemblyInput(
+   127	            scope_id="wake-2",
+   128	            agent_root_scope_id="agent-root-main",
+   129	            wake_scope_path="/ro/active/agent-root-main/steps/0002_scope_wake-2",
+   130	            cortex_context=CortexPreparedContext(
+   131	                messages=[
+   132	                    {"role": "system", "content": "system"},
+   133	                    {"role": "system", "content": "[Active skill stack (stale)]"},
+   134	                    {
+   135	                        "role": "system",
+   136	                        "content": "metadata stale stack",
+   137	                        "_metadata": {"skill_stack_snapshot": True},
+   138	                    },
+   139	                    {"role": "user", "content": "hello"},
+   140	                ],
+
+## Tests: display image before following system
+   220	                    {"type": "text", "text": "desktop screenshot"},
+   221	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/jpeg"},
+   222	                ]
+   223	            })
+   224	
+   225	    monkeypatch.setattr(
+   226	        "task_queue.utils.step_result_client._get_bridge",
+   227	        lambda runtime_id, user_id, agent_id: Bridge(),
+   228	    )
+   229	
+   230	    prepared = prepare_llm_call(
+   231	        LLMCallInput(
+   232	            scope_id="wake-1",
+   233	            agent_root_scope_id="agent-root-main",
+   234	            round_id="round-2",
+   235	            user_id="user-1",
+   236	            agent_id="agent-1",
+   237	            provider="openai",
+   238	            messages=[
+   239	                {
+   240	                    "role": "assistant",
+   241	                    "content": "Screenshot captured; loading it now.",
+   242	                    "tool_calls": [{
+   243	                        "id": "display:2",
+   244	                        "type": "function",
+   245	                        "function": {
+   246	                            "name": "display",
+   247	                            "arguments": '{"file_url":"blob://runtime-artifact/screen"}',
+   248	                        },
+   249	                    }],
+   250	                },
+   251	                {
+   252	                    "role": "tool",
+   253	                    "tool_call_id": "display:2",
+   254	                    "step_ref": "step-ref:wake-1:round1:display:2",
+   255	                    "content": "inline content must be ignored",
+   256	                },
+   257	                {
+   258	                    "role": "system",
+   259	                    "content": "[Active skill stack] this system message follows the display result",
+   260	                },
+   261	            ],
+   262	        ),
+   263	        LLMTransportConfig(
+   264	            factory_url="http://factory.test",
+   265	            model_id="model-1",
+   266	            user_id="user-1",
+   267	            agent_id="agent-1",
+   268	        ),
+   269	        expand_messages_for_llm=expand_messages_for_llm,
+   270	        sanitize_context=sanitize_context,
+   271	        process_multimodal_messages=process_multimodal_messages,
+   272	    )
+   273	
+   274	    assert calls[0]["scope_id"] == "agent-root-main"
+   275	    assert calls[0]["projection"] == "display_perception"
+   276	    assert [message["role"] for message in prepared.messages] == [
+   277	        "assistant",
+   278	        "tool",
+   279	        "user",
+   280	        "system",
+   281	    ]
+   282	    tool_payload = json.loads(prepared.messages[1]["content"])
+   283	    image_placeholder = tool_payload["_mcp_content"][1]
+   284	    assert image_placeholder["_placeholder"] is True
+   285	    assert "data" not in image_placeholder

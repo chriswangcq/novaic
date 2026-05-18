@@ -1,0 +1,1760 @@
+novaic-agent-runtime/queue_service/routes.py:4:暴露 TaskQueue 和 Saga 的 HTTP API，供 Worker 进程调用。
+novaic-agent-runtime/queue_service/routes.py:5:队列数据库集中在 Queue Service 进程，Worker 只能通过本 API 访问。
+novaic-agent-runtime/queue_service/routes.py:11:from fastapi import APIRouter, HTTPException, Depends, Request
+novaic-agent-runtime/queue_service/routes.py:15:from queue_service.saga_repo import SagaRepository, SagaOrchestrator
+novaic-agent-runtime/queue_service/routes.py:16:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/queue_service/routes.py:17:from queue_service.exceptions import TaskNotFoundError, SagaError
+novaic-agent-runtime/queue_service/routes.py:19:from task_queue.saga_creation_policy import (
+novaic-agent-runtime/queue_service/routes.py:20:    SagaCreationPolicyError,
+novaic-agent-runtime/queue_service/routes.py:21:    reject_session_owned_saga_type,
+novaic-agent-runtime/queue_service/routes.py:45:def _recover_sagas_or_defer(
+novaic-agent-runtime/queue_service/routes.py:46:    orchestrator: "SagaOrchestrator",
+novaic-agent-runtime/queue_service/routes.py:54:        logger.warning("saga_recovery_deferred reason=sqlite_busy")
+novaic-agent-runtime/queue_service/routes.py:57:        logger.warning("saga_recovery_deferred reason=queue_busy")
+novaic-agent-runtime/queue_service/routes.py:70:    saga_id: Optional[str] = None
+novaic-agent-runtime/queue_service/routes.py:81:    worker_id: str
+novaic-agent-runtime/queue_service/routes.py:110:class SagaCreateRequest(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:111:    saga_type: str
+novaic-agent-runtime/queue_service/routes.py:116:class SagaCreateResponse(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:117:    saga_id: str
+novaic-agent-runtime/queue_service/routes.py:120:class SagaClaimRequest(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:121:    saga_types: List[str]
+novaic-agent-runtime/queue_service/routes.py:122:    worker_id: str
+novaic-agent-runtime/queue_service/routes.py:125:class SagaClaimResponse(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:126:    saga: Optional[Dict[str, Any]] = None
+novaic-agent-runtime/queue_service/routes.py:129:class SagaResponse(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:130:    saga: Optional[Dict[str, Any]] = None
+novaic-agent-runtime/queue_service/routes.py:133:class SagaCompleteRequest(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:137:class SagaFailRequest(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:141:class SagaReleaseRequest(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:145:class SagaLaunchedRequest(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:186:    orchestrator: Optional[SagaOrchestrator] = None,
+novaic-agent-runtime/queue_service/routes.py:187:) -> APIRouter:
+novaic-agent-runtime/queue_service/routes.py:193:        orchestrator: SagaOrchestrator 实例（可选）
+novaic-agent-runtime/queue_service/routes.py:196:        router: FastAPI Router
+novaic-agent-runtime/queue_service/routes.py:201:        orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/routes.py:205:            saga_id_provider=deps.saga_id_provider,
+novaic-agent-runtime/queue_service/routes.py:210:    router = APIRouter(tags=["Task Queue"])
+novaic-agent-runtime/queue_service/routes.py:224:            saga_id=req.saga_id,
+novaic-agent-runtime/queue_service/routes.py:238:                worker_id=req.worker_id,
+novaic-agent-runtime/queue_service/routes.py:243:            logger.warning("task_claim_deferred worker=%s reason=sqlite_busy", req.worker_id)
+novaic-agent-runtime/queue_service/routes.py:246:            logger.warning("task_claim_deferred worker=%s reason=queue_busy", req.worker_id)
+novaic-agent-runtime/queue_service/routes.py:260:            if task.get("saga_id") and task.get("step_name") and orchestrator:
+novaic-agent-runtime/queue_service/routes.py:262:                    task["saga_id"], task["step_name"], req.result or {}
+novaic-agent-runtime/queue_service/routes.py:264:                orchestrator.check_saga_complete(task["saga_id"])
+novaic-agent-runtime/queue_service/routes.py:278:        if task and task.get("saga_id") and final_status == "failed" and orchestrator:
+novaic-agent-runtime/queue_service/routes.py:279:            orchestrator.mark_failed(task["saga_id"], req.error)
+novaic-agent-runtime/queue_service/routes.py:356:        """获取所有已知的 topics (Task Worker 启动时调用)"""
+novaic-agent-runtime/queue_service/routes.py:361:    # Saga APIs (if orchestrator provided)
+novaic-agent-runtime/queue_service/routes.py:365:        @router.post("/sagas/create", response_model=SagaCreateResponse)
+novaic-agent-runtime/queue_service/routes.py:366:        def create_saga(req: SagaCreateRequest):
+novaic-agent-runtime/queue_service/routes.py:367:            """创建 Saga (立即返回，由 SagaWorker 执行)"""
+novaic-agent-runtime/queue_service/routes.py:369:                reject_session_owned_saga_type(req.saga_type, surface="/api/queue/sagas/create")
+novaic-agent-runtime/queue_service/routes.py:370:                saga_id = orchestrator.create(
+novaic-agent-runtime/queue_service/routes.py:371:                    saga_type=req.saga_type,
+novaic-agent-runtime/queue_service/routes.py:375:                return SagaCreateResponse(saga_id=saga_id)
+novaic-agent-runtime/queue_service/routes.py:376:            except SagaCreationPolicyError as e:
+novaic-agent-runtime/queue_service/routes.py:378:            except SagaError as e:
+novaic-agent-runtime/queue_service/routes.py:381:        @router.post("/sagas/claim", response_model=SagaClaimResponse)
+novaic-agent-runtime/queue_service/routes.py:382:        def claim_saga(req: SagaClaimRequest):
+novaic-agent-runtime/queue_service/routes.py:383:            """认领 Saga (SagaWorker 调用)"""
+novaic-agent-runtime/queue_service/routes.py:385:                saga = orchestrator.claim(
+novaic-agent-runtime/queue_service/routes.py:386:                    saga_types=req.saga_types,
+novaic-agent-runtime/queue_service/routes.py:387:                    worker_id=req.worker_id,
+novaic-agent-runtime/queue_service/routes.py:392:                logger.warning("saga_claim_deferred worker=%s reason=sqlite_busy", req.worker_id)
+novaic-agent-runtime/queue_service/routes.py:393:                saga = None
+novaic-agent-runtime/queue_service/routes.py:395:                logger.warning("saga_claim_deferred worker=%s reason=queue_busy", req.worker_id)
+novaic-agent-runtime/queue_service/routes.py:396:                saga = None
+novaic-agent-runtime/queue_service/routes.py:397:            return SagaClaimResponse(saga=saga)
+novaic-agent-runtime/queue_service/routes.py:399:        @router.get("/sagas/{saga_id}", response_model=SagaResponse)
+novaic-agent-runtime/queue_service/routes.py:400:        def get_saga(saga_id: str):
+novaic-agent-runtime/queue_service/routes.py:401:            """获取 Saga 状态"""
+novaic-agent-runtime/queue_service/routes.py:402:            saga = orchestrator.get(saga_id)
+novaic-agent-runtime/queue_service/routes.py:403:            if not saga:
+novaic-agent-runtime/queue_service/routes.py:404:                raise HTTPException(status_code=404, detail="Saga not found")
+novaic-agent-runtime/queue_service/routes.py:405:            return SagaResponse(saga=saga)
+novaic-agent-runtime/queue_service/routes.py:407:        @router.post("/sagas/{saga_id}/heartbeat", response_model=SuccessResponse)
+novaic-agent-runtime/queue_service/routes.py:408:        def heartbeat_saga(saga_id: str):
+novaic-agent-runtime/queue_service/routes.py:409:            """更新 Saga 心跳 (SagaWorker 调用)"""
+novaic-agent-runtime/queue_service/routes.py:410:            success = orchestrator.heartbeat(saga_id)
+novaic-agent-runtime/queue_service/routes.py:413:        @router.post("/sagas/{saga_id}/launched", response_model=SuccessResponse)
+novaic-agent-runtime/queue_service/routes.py:414:        def mark_saga_launched(saga_id: str, req: SagaLaunchedRequest):
+novaic-agent-runtime/queue_service/routes.py:415:            """Saga Worker 建完 DAG 后调用，标记 launched 并释放 claim"""
+novaic-agent-runtime/queue_service/routes.py:416:            success = orchestrator.mark_launched(saga_id, req.dag_task_count)
+novaic-agent-runtime/queue_service/routes.py:419:        @router.post("/sagas/{saga_id}/complete", response_model=SuccessResponse)
+novaic-agent-runtime/queue_service/routes.py:420:        def complete_saga(saga_id: str, req: SagaCompleteRequest):
+novaic-agent-runtime/queue_service/routes.py:421:            """标记 Saga 完成 (Saga Worker 调用)"""
+novaic-agent-runtime/queue_service/routes.py:422:            orchestrator.mark_completed(saga_id, req.step_results)
+novaic-agent-runtime/queue_service/routes.py:425:        @router.post("/sagas/{saga_id}/fail", response_model=SuccessResponse)
+novaic-agent-runtime/queue_service/routes.py:426:        def fail_saga(saga_id: str, req: SagaFailRequest):
+novaic-agent-runtime/queue_service/routes.py:427:            """标记 Saga 失败 (Saga Worker 调用)"""
+novaic-agent-runtime/queue_service/routes.py:428:            orchestrator.mark_failed(saga_id, req.error)
+novaic-agent-runtime/queue_service/routes.py:439:# execution 在 Runtime Worker 内部执行，产品 mutation 经 Business。
+novaic-agent-runtime/queue_service/routes.py:448:# Queue Service 只接收已归一化的 dispatch / task / saga 请求。
+novaic-agent-runtime/queue_service/routes.py:458:    sagas_recovered: int = 0
+novaic-agent-runtime/queue_service/routes.py:463:    orchestrator: Optional[SagaOrchestrator] = None,
+novaic-agent-runtime/queue_service/routes.py:464:) -> APIRouter:
+novaic-agent-runtime/queue_service/routes.py:470:        orchestrator: SagaOrchestrator 实例（可选）
+novaic-agent-runtime/queue_service/routes.py:473:        router: FastAPI Router
+novaic-agent-runtime/queue_service/routes.py:475:    router = APIRouter(tags=["Task Queue Recovery"])
+novaic-agent-runtime/queue_service/routes.py:484:        @router.post("/sagas", response_model=RecoveryResponse)
+novaic-agent-runtime/queue_service/routes.py:485:        def recover_stale_sagas(timeout_seconds: int = 120):
+novaic-agent-runtime/queue_service/routes.py:486:            """恢复超时 Saga"""
+novaic-agent-runtime/queue_service/routes.py:487:            recovered = _recover_sagas_or_defer(orchestrator, timeout_seconds)
+novaic-agent-runtime/queue_service/routes.py:488:            return RecoveryResponse(sagas_recovered=recovered)
+novaic-agent-runtime/queue_service/routes.py:493:        saga_timeout: int = 600,
+novaic-agent-runtime/queue_service/routes.py:495:        """恢复所有超时任务和 Saga"""
+novaic-agent-runtime/queue_service/routes.py:497:        sagas_recovered = 0
+novaic-agent-runtime/queue_service/routes.py:499:            sagas_recovered = _recover_sagas_or_defer(orchestrator, saga_timeout)
+novaic-agent-runtime/queue_service/routes.py:502:            sagas_recovered=sagas_recovered,
+novaic-agent-runtime/queue_service/routes.py:508:        取消所有 pending/running 的任务和 Saga
+novaic-agent-runtime/queue_service/routes.py:513:            agent_id: 可选，只取消指定 agent 的任务/sagas
+novaic-agent-runtime/queue_service/routes.py:517:            cancelled_sagas: 取消的 saga 数
+novaic-agent-runtime/queue_service/routes.py:520:        cancelled_sagas = 0
+novaic-agent-runtime/queue_service/routes.py:522:            cancelled_sagas = orchestrator.cancel_all(agent_id)
+novaic-agent-runtime/queue_service/routes.py:525:            "cancelled_sagas": cancelled_sagas,
+novaic-agent-runtime/queue_service/routes.py:532:# Session Coordinator Router
+novaic-agent-runtime/queue_service/routes.py:543:class SessionEndedRequest(BaseModel):
+novaic-agent-runtime/queue_service/routes.py:547:    finalize_reason: str
+novaic-agent-runtime/queue_service/routes.py:553:    session_repo: SessionRepository,
+novaic-agent-runtime/queue_service/routes.py:554:) -> APIRouter:
+novaic-agent-runtime/queue_service/routes.py:555:    """Create Session Coordinator API routes.
+novaic-agent-runtime/queue_service/routes.py:558:        POST /dispatch        — Route trigger to start/buffer session
+novaic-agent-runtime/queue_service/routes.py:563:    router = APIRouter(tags=["Session Coordinator"])
+novaic-agent-runtime/queue_service/routes.py:565:    @router.post("/dispatch")
+novaic-agent-runtime/queue_service/routes.py:566:    def dispatch(req: DispatchRequest):
+novaic-agent-runtime/queue_service/routes.py:571:                detail="user_id is required to dispatch a wake.",
+novaic-agent-runtime/queue_service/routes.py:573:        result = session_repo.dispatch(
+novaic-agent-runtime/queue_service/routes.py:584:    def session_ended(req: SessionEndedRequest):
+novaic-agent-runtime/queue_service/routes.py:586:        result = session_repo.session_ended(
+novaic-agent-runtime/queue_service/routes.py:590:            finalize_reason=req.finalize_reason,
+novaic-agent-runtime/queue_service/session_fsm.py:1:"""Pure session FSM decisions for the Queue session harness.
+novaic-agent-runtime/queue_service/session_fsm.py:18:class SessionRuntimeStatus(str, Enum):
+novaic-agent-runtime/queue_service/session_fsm.py:27:class SessionDispatchAction(str, Enum):
+novaic-agent-runtime/queue_service/session_fsm.py:33:class SessionFinalizeAction(str, Enum):
+novaic-agent-runtime/queue_service/session_fsm.py:34:    ACCEPT_FINALIZE = "accept_finalize"
+novaic-agent-runtime/queue_service/session_fsm.py:35:    REJECT_FINALIZE = "reject_finalize"
+novaic-agent-runtime/queue_service/session_fsm.py:38:class SessionEffectType(str, Enum):
+novaic-agent-runtime/queue_service/session_fsm.py:42:    FINALIZE_SESSION = "finalize_session"
+novaic-agent-runtime/queue_service/session_fsm.py:46:class SessionRuntimeState:
+novaic-agent-runtime/queue_service/session_fsm.py:47:    status: SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_fsm.py:49:    active_saga_id: str | None = None
+novaic-agent-runtime/queue_service/session_fsm.py:54:class SessionEffectSpec:
+novaic-agent-runtime/queue_service/session_fsm.py:55:    effect_type: SessionEffectType
+novaic-agent-runtime/queue_service/session_fsm.py:60:class SessionDispatchInput:
+novaic-agent-runtime/queue_service/session_fsm.py:61:    state: SessionRuntimeState
+novaic-agent-runtime/queue_service/session_fsm.py:68:class SessionDispatchDecision:
+novaic-agent-runtime/queue_service/session_fsm.py:69:    action: SessionDispatchAction
+novaic-agent-runtime/queue_service/session_fsm.py:71:    next_status: SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_fsm.py:72:    effects: tuple[SessionEffectSpec, ...]
+novaic-agent-runtime/queue_service/session_fsm.py:76:class SessionFinalizeInput:
+novaic-agent-runtime/queue_service/session_fsm.py:77:    state: SessionRuntimeState
+novaic-agent-runtime/queue_service/session_fsm.py:79:    finalize_generation: int
+novaic-agent-runtime/queue_service/session_fsm.py:83:class SessionFinalizeDecision:
+novaic-agent-runtime/queue_service/session_fsm.py:84:    action: SessionFinalizeAction
+novaic-agent-runtime/queue_service/session_fsm.py:88:    next_status: SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_fsm.py:89:    effects: tuple[SessionEffectSpec, ...]
+novaic-agent-runtime/queue_service/session_fsm.py:135:    """Return ordered non-empty message ids from explicit dispatch metadata."""
+novaic-agent-runtime/queue_service/session_fsm.py:149:def decide_session_dispatch(decision_input: SessionDispatchInput) -> SessionDispatchDecision:
+novaic-agent-runtime/queue_service/session_fsm.py:154:        machine_id="dispatch",
+novaic-agent-runtime/queue_service/session_fsm.py:158:            "active_saga_id": decision_input.state.active_saga_id,
+novaic-agent-runtime/queue_service/session_fsm.py:163:        event_type="dispatch_input",
+novaic-agent-runtime/queue_service/session_fsm.py:173:        reducer=_reduce_session_dispatch,
+novaic-agent-runtime/queue_service/session_fsm.py:175:    return SessionDispatchDecision(
+novaic-agent-runtime/queue_service/session_fsm.py:176:        action=SessionDispatchAction(decision.action),
+novaic-agent-runtime/queue_service/session_fsm.py:178:        next_status=SessionRuntimeStatus(decision.next_state.state),
+novaic-agent-runtime/queue_service/session_fsm.py:183:def build_session_dispatch_decision_trace(
+novaic-agent-runtime/queue_service/session_fsm.py:186:    active_saga_id: str | None,
+novaic-agent-runtime/queue_service/session_fsm.py:191:    """Build a deterministic trace payload for a dispatch decision."""
+novaic-agent-runtime/queue_service/session_fsm.py:194:        SessionRuntimeStatus.ACTIVE
+novaic-agent-runtime/queue_service/session_fsm.py:195:        if active_saga_id and active_scope_id
+novaic-agent-runtime/queue_service/session_fsm.py:196:        else SessionRuntimeStatus.NO_ACTIVE
+novaic-agent-runtime/queue_service/session_fsm.py:198:    decision = decide_session_dispatch(SessionDispatchInput(
+novaic-agent-runtime/queue_service/session_fsm.py:199:        state=SessionRuntimeState(
+novaic-agent-runtime/queue_service/session_fsm.py:201:            generation=1 if status is SessionRuntimeStatus.ACTIVE else 0,
+novaic-agent-runtime/queue_service/session_fsm.py:202:            active_saga_id=active_saga_id,
+novaic-agent-runtime/queue_service/session_fsm.py:218:def decide_session_finalize(decision_input: SessionFinalizeInput) -> SessionFinalizeDecision:
+novaic-agent-runtime/queue_service/session_fsm.py:219:    """Decide whether one finalize event may close the active generation."""
+novaic-agent-runtime/queue_service/session_fsm.py:223:        machine_id="finalize",
+novaic-agent-runtime/queue_service/session_fsm.py:227:            "active_saga_id": decision_input.state.active_saga_id,
+novaic-agent-runtime/queue_service/session_fsm.py:232:        event_type="session_finalize",
+novaic-agent-runtime/queue_service/session_fsm.py:235:            "finalize_generation": decision_input.finalize_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:241:        reducer=_reduce_session_finalize,
+novaic-agent-runtime/queue_service/session_fsm.py:243:    return SessionFinalizeDecision(
+novaic-agent-runtime/queue_service/session_fsm.py:244:        action=SessionFinalizeAction(decision.action),
+novaic-agent-runtime/queue_service/session_fsm.py:248:            "session finalize decision",
+novaic-agent-runtime/queue_service/session_fsm.py:251:        next_status=SessionRuntimeStatus(decision.next_state.state),
+novaic-agent-runtime/queue_service/session_fsm.py:256:def _reduce_session_dispatch(
+novaic-agent-runtime/queue_service/session_fsm.py:262:    if state.state == SessionRuntimeStatus.NO_ACTIVE.value:
+novaic-agent-runtime/queue_service/session_fsm.py:264:            state=_with_status(state, SessionRuntimeStatus.STARTING),
+novaic-agent-runtime/queue_service/session_fsm.py:265:            action=SessionDispatchAction.START_WAKE,
+novaic-agent-runtime/queue_service/session_fsm.py:267:            effects=[SessionEffectSpec(
+novaic-agent-runtime/queue_service/session_fsm.py:268:                effect_type=SessionEffectType.CREATE_WAKE,
+novaic-agent-runtime/queue_service/session_fsm.py:273:    if state.state != SessionRuntimeStatus.ACTIVE.value:
+novaic-agent-runtime/queue_service/session_fsm.py:276:            action=SessionDispatchAction.BUFFER_PENDING,
+novaic-agent-runtime/queue_service/session_fsm.py:278:            effects=[SessionEffectSpec(
+novaic-agent-runtime/queue_service/session_fsm.py:279:                effect_type=SessionEffectType.BUFFER_INPUT,
+novaic-agent-runtime/queue_service/session_fsm.py:294:            action=SessionDispatchAction.ATTACH_INPUT,
+novaic-agent-runtime/queue_service/session_fsm.py:296:            effects=[SessionEffectSpec(
+novaic-agent-runtime/queue_service/session_fsm.py:297:                effect_type=SessionEffectType.ATTACH_INPUT,
+novaic-agent-runtime/queue_service/session_fsm.py:304:        action=SessionDispatchAction.BUFFER_PENDING,
+novaic-agent-runtime/queue_service/session_fsm.py:306:        effects=[SessionEffectSpec(
+novaic-agent-runtime/queue_service/session_fsm.py:307:            effect_type=SessionEffectType.BUFFER_INPUT,
+novaic-agent-runtime/queue_service/session_fsm.py:313:def _reduce_session_finalize(
+novaic-agent-runtime/queue_service/session_fsm.py:319:    finalize_generation = _positive_generation_or_none(
+novaic-agent-runtime/queue_service/session_fsm.py:320:        event.payload.get("finalize_generation")
+novaic-agent-runtime/queue_service/session_fsm.py:323:        state.generation, "session finalize state"
+novaic-agent-runtime/queue_service/session_fsm.py:328:    if finalize_generation is None:
+novaic-agent-runtime/queue_service/session_fsm.py:331:            action=SessionFinalizeAction.REJECT_FINALIZE,
+novaic-agent-runtime/queue_service/session_fsm.py:336:                    "action": "finalize_rejected",
+novaic-agent-runtime/queue_service/session_fsm.py:347:        and finalize_generation != current_generation
+novaic-agent-runtime/queue_service/session_fsm.py:351:            action=SessionFinalizeAction.REJECT_FINALIZE,
+novaic-agent-runtime/queue_service/session_fsm.py:356:                    "action": "finalize_rejected",
+novaic-agent-runtime/queue_service/session_fsm.py:359:                    "actual_generation": finalize_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:368:            action=SessionFinalizeAction.REJECT_FINALIZE,
+novaic-agent-runtime/queue_service/session_fsm.py:373:                    "action": "finalize_rejected",
+novaic-agent-runtime/queue_service/session_fsm.py:382:    event_generation = finalize_generation
+novaic-agent-runtime/queue_service/session_fsm.py:387:            state=SessionRuntimeStatus.ENDING.value,
+novaic-agent-runtime/queue_service/session_fsm.py:391:        action=SessionFinalizeAction.ACCEPT_FINALIZE,
+novaic-agent-runtime/queue_service/session_fsm.py:392:        reason="finalize_accepted",
+novaic-agent-runtime/queue_service/session_fsm.py:394:        effects=[SessionEffectSpec(
+novaic-agent-runtime/queue_service/session_fsm.py:395:            effect_type=SessionEffectType.FINALIZE_SESSION,
+novaic-agent-runtime/queue_service/session_fsm.py:404:    action: SessionDispatchAction | SessionFinalizeAction,
+novaic-agent-runtime/queue_service/session_fsm.py:407:    effects: list[SessionEffectSpec] | None = None,
+novaic-agent-runtime/queue_service/session_fsm.py:430:    status: SessionRuntimeStatus,
+novaic-agent-runtime/queue_service/session_fsm.py:443:) -> tuple[SessionEffectSpec, ...]:
+novaic-agent-runtime/queue_service/session_fsm.py:444:    effects: list[SessionEffectSpec] = []
+novaic-agent-runtime/queue_service/session_fsm.py:448:        effect_type = SessionEffectType(str(raw.get("effect_type") or ""))
+novaic-agent-runtime/queue_service/session_fsm.py:450:        effects.append(SessionEffectSpec(
+novaic-agent-runtime/queue_service/worker/policies.py:1:"""Explicit worker runtime dependencies, policy, and metrics."""
+novaic-agent-runtime/queue_service/worker/policies.py:10:class WorkerRuntime:
+novaic-agent-runtime/queue_service/worker/policies.py:11:    """Imperative runtime ports used by the generic worker loop."""
+novaic-agent-runtime/queue_service/worker/policies.py:28:class WorkerRuntimeConfig:
+novaic-agent-runtime/queue_service/worker/policies.py:36:            raise ValueError("worker name is required")
+novaic-agent-runtime/queue_service/worker/policies.py:38:            raise ValueError("worker poll_interval must be positive")
+novaic-agent-runtime/queue_service/worker/policies.py:42:class WorkerMetrics:
+novaic-agent-runtime/queue_service/worker/policies.py:74:    """Explicit shutdown state for long-running worker loops."""
+novaic-agent-runtime/queue_service/main.py:4:提供 Task Queue 和 Saga 的 HTTP API。
+novaic-agent-runtime/queue_service/main.py:51:# ==================== FastAPI App ====================
+novaic-agent-runtime/queue_service/main.py:54:from fastapi import FastAPI, Request
+novaic-agent-runtime/queue_service/main.py:60:async def lifespan(app: FastAPI):
+novaic-agent-runtime/queue_service/main.py:63:    Startup: rebuild active sessions from running sagas so Queue Service
+novaic-agent-runtime/queue_service/main.py:64:    can resume dispatching after a restart.
+novaic-agent-runtime/queue_service/main.py:68:    logger.info("[Queue Service] Session rebuild: %d active sessions", rebuilt)
+novaic-agent-runtime/queue_service/main.py:83:app = FastAPI(
+novaic-agent-runtime/queue_service/main.py:85:    description="独立的任务队列服务 - Task Queue + Saga",
+novaic-agent-runtime/queue_service/main.py:107:# shouldn't be driving saga state gets 401'd unless it carries the shared
+novaic-agent-runtime/queue_service/main.py:108:# ``X-Internal-Key``. ``/health`` and ``/`` remain open for LB probes.
+novaic-agent-runtime/queue_service/main.py:110:_QUEUE_PUBLIC_PATHS = ("/health", "/ready", "/")
+novaic-agent-runtime/queue_service/main.py:143:# ==================== Task Queue & Saga Setup ====================
+novaic-agent-runtime/queue_service/main.py:146:from queue_service.saga_repo import SagaRepository, SagaOrchestrator
+novaic-agent-runtime/queue_service/main.py:163:# 创建 SagaRepository
+novaic-agent-runtime/queue_service/main.py:164:saga_repo = SagaRepository(
+novaic-agent-runtime/queue_service/main.py:168:    saga_id_provider=queue_deps.saga_id_provider,
+novaic-agent-runtime/queue_service/main.py:170:logger.info("[Queue Service] SagaRepository created")
+novaic-agent-runtime/queue_service/main.py:172:# 创建 SagaOrchestrator
+novaic-agent-runtime/queue_service/main.py:173:saga_orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/main.py:177:    saga_id_provider=queue_deps.saga_id_provider,
+novaic-agent-runtime/queue_service/main.py:179:logger.info("[Queue Service] SagaOrchestrator created")
+novaic-agent-runtime/queue_service/main.py:181:# 创建 SessionRepository (Session Coordinator)
+novaic-agent-runtime/queue_service/main.py:182:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/main.py:183:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/main.py:184:from queue_service.session_repo import SessionRepository
+novaic-agent-runtime/queue_service/main.py:185:session_ledger = SessionLedgerRepository(
+novaic-agent-runtime/queue_service/main.py:189:    outbox_id_provider=queue_deps.session_outbox_id_provider,
+novaic-agent-runtime/queue_service/main.py:191:session_outbox_dispatcher = SessionOutboxDispatcher(
+novaic-agent-runtime/queue_service/main.py:195:    saga_orchestrator=saga_orchestrator,
+novaic-agent-runtime/queue_service/main.py:197:session_repo = SessionRepository(
+novaic-agent-runtime/queue_service/main.py:202:    outbox_dispatcher=session_outbox_dispatcher,
+novaic-agent-runtime/queue_service/main.py:204:logger.info("[Queue Service] SessionRepository created")
+novaic-agent-runtime/queue_service/main.py:208:# Task Queue & Saga API
+novaic-agent-runtime/queue_service/main.py:209:tq_router = create_task_queue_router(task_queue, saga_orchestrator)
+novaic-agent-runtime/queue_service/main.py:213:recovery_router = create_recovery_router(task_queue, saga_orchestrator)
+novaic-agent-runtime/queue_service/main.py:216:# Session Coordinator API
+novaic-agent-runtime/queue_service/main.py:224:@app.get("/health")
+novaic-agent-runtime/queue_service/main.py:225:def health_check():
+novaic-agent-runtime/queue_service/main.py:228:        "status": "healthy",
+novaic-agent-runtime/queue_service/main.py:237:    """Readiness probe — deep health (P3-8).
+novaic-agent-runtime/queue_service/main.py:239:    Verifies every dependency needed to serve Saga / Task traffic:
+novaic-agent-runtime/queue_service/main.py:241:    - Task queue and saga tables accessible (``count(*)`` on each).
+novaic-agent-runtime/queue_service/main.py:258:    for table in ("tq_tasks", "tq_sagas", "tq_session_state", "tq_session_outbox"):
+novaic-agent-runtime/queue_service/main.py:266:    session_outbox: dict = {}
+novaic-agent-runtime/queue_service/main.py:271:            FROM tq_session_outbox
+novaic-agent-runtime/queue_service/main.py:276:        session_outbox["pending_count"] = pending_count
+novaic-agent-runtime/queue_service/main.py:277:        session_outbox["oldest_pending_created_at"] = (
+novaic-agent-runtime/queue_service/main.py:281:            "SELECT COUNT(*) AS count FROM tq_session_outbox WHERE status = 'dead_letter'"
+novaic-agent-runtime/queue_service/main.py:283:        session_outbox["dead_letter_count"] = int(dead_row["count"] if dead_row else 0)
+novaic-agent-runtime/queue_service/main.py:284:        checks["session_outbox"] = "ok"
+novaic-agent-runtime/queue_service/main.py:286:        checks["session_outbox"] = f"error: {type(exc).__name__}: {str(exc)[:120]}"
+novaic-agent-runtime/queue_service/main.py:311:        "session_outbox": session_outbox,
+novaic-agent-runtime/queue_service/main.py:324:        "description": "独立的任务队列服务 - Task Queue + Saga",
+novaic-agent-runtime/queue_service/main.py:327:            "health": "/health",
+novaic-agent-runtime/queue_service/main.py:329:            "sagas": "/api/queue/sagas/*",
+novaic-agent-runtime/queue_service/main.py:331:            "dispatch": "/api/queue/dispatch",
+novaic-agent-runtime/queue_service/main.py:332:            "session_ended": "/api/queue/session-ended",
+novaic-agent-runtime/queue_service/main.py:339:if __name__ == "__main__":
+novaic-agent-runtime/queue_service/main.py:340:    import uvicorn
+novaic-agent-runtime/queue_service/main.py:345:    uvicorn.run(
+novaic-agent-runtime/queue_service/main.py:350:        # TD-1 (2026-04-20): uvicorn access log disabled; CallerLoggingMiddleware
+novaic-agent-runtime/queue_service/session_audit.py:10:class SessionAuditStep:
+novaic-agent-runtime/queue_service/session_audit.py:36:) -> list[SessionAuditStep]:
+novaic-agent-runtime/queue_service/session_audit.py:40:    the session FSM. It does not reimplement transition rules.
+novaic-agent-runtime/queue_service/session_audit.py:43:    timeline: list[SessionAuditStep] = []
+novaic-agent-runtime/queue_service/session_audit.py:48:        timeline.append(SessionAuditStep(
+novaic-agent-runtime/queue_service/session_rebuild.py:1:"""Startup projector for rebuilding session_state from running sagas."""
+novaic-agent-runtime/queue_service/session_rebuild.py:8:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/session_rebuild.py:11:def rebuild_session_state_from_running_sagas(
+novaic-agent-runtime/queue_service/session_rebuild.py:14:    session_ledger: SessionLedgerRepository,
+novaic-agent-runtime/queue_service/session_rebuild.py:17:    """Rebuild session_state from currently running/launched saga rows.
+novaic-agent-runtime/queue_service/session_rebuild.py:19:    This is an adapter boundary: it reads Queue saga storage and projects the
+novaic-agent-runtime/queue_service/session_rebuild.py:21:    does not need to know the saga table shape.
+novaic-agent-runtime/queue_service/session_rebuild.py:27:        for saga_id, context in _iter_active_saga_contexts(db):
+novaic-agent-runtime/queue_service/session_rebuild.py:42:                active_saga_id=saga_id,
+novaic-agent-runtime/queue_service/session_rebuild.py:65:def _iter_active_saga_contexts(db) -> list[tuple[str, dict[str, Any]]]:
+novaic-agent-runtime/queue_service/session_rebuild.py:69:        FROM tq_saga_state ss
+novaic-agent-runtime/queue_service/session_rebuild.py:70:        JOIN tq_sagas s ON s.id = ss.saga_id
+novaic-agent-runtime/queue_service/session_projection.py:14:class PendingRestartSaga:
+novaic-agent-runtime/queue_service/session_projection.py:106:def build_pending_restart_saga(
+novaic-agent-runtime/queue_service/session_projection.py:111:    finalize_metadata: Mapping[str, Any],
+novaic-agent-runtime/queue_service/session_projection.py:112:) -> PendingRestartSaga:
+novaic-agent-runtime/queue_service/session_projection.py:124:        "finalize": dict(finalize_metadata),
+novaic-agent-runtime/queue_service/session_projection.py:126:    return PendingRestartSaga(
+novaic-agent-runtime/queue_service/session_outbox.py:1:"""Durable session outbox dispatcher."""
+novaic-agent-runtime/queue_service/session_outbox.py:12:from task_queue.saga_creation_policy import require_session_owned_saga_type
+novaic-agent-runtime/queue_service/session_outbox.py:15:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/session_outbox.py:16:from queue_service.session_observed_events import SessionObservedEventHandler
+novaic-agent-runtime/queue_service/session_outbox.py:21:class SessionOutboxDispatcher:
+novaic-agent-runtime/queue_service/session_outbox.py:24:    The outbox row is the durable authority. Publishing is idempotent through
+novaic-agent-runtime/queue_service/session_outbox.py:29:    CREATE_WAKE_SAGA = "create_wake_saga"
+novaic-agent-runtime/queue_service/session_outbox.py:41:        ledger: SessionLedgerRepository,
+novaic-agent-runtime/queue_service/session_outbox.py:44:        saga_orchestrator,
+novaic-agent-runtime/queue_service/session_outbox.py:45:        observed_handler: SessionObservedEventHandler | None = None,
+novaic-agent-runtime/queue_service/session_outbox.py:51:        self.saga_orchestrator = saga_orchestrator
+novaic-agent-runtime/queue_service/session_outbox.py:52:        self.observed_handler = observed_handler or SessionObservedEventHandler(
+novaic-agent-runtime/queue_service/session_outbox.py:54:            saga_repository=saga_orchestrator,
+novaic-agent-runtime/queue_service/session_outbox.py:65:        effects = self.ledger.list_pending_outbox(
+novaic-agent-runtime/queue_service/session_outbox.py:81:                    "[SessionOutbox] publish failed effect=%s id=%s status=%s err=%s",
+novaic-agent-runtime/queue_service/session_outbox.py:91:    def publish_effect(self, outbox_id: str) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_outbox.py:92:        """Publish a single durable outbox row and ack it.
+novaic-agent-runtime/queue_service/session_outbox.py:95:        task id in their return value. The durable outbox row remains the source
+novaic-agent-runtime/queue_service/session_outbox.py:99:        effect = self.ledger.get_outbox(outbox_id)
+novaic-agent-runtime/queue_service/session_outbox.py:101:            raise KeyError(f"session outbox row not found: {outbox_id}")
+novaic-agent-runtime/queue_service/session_outbox.py:122:        self.ledger.mark_outbox_published(
+novaic-agent-runtime/queue_service/session_outbox.py:130:        return self.ledger.mark_outbox_failed(
+novaic-agent-runtime/queue_service/session_outbox.py:140:            return self._publish_create_wake_saga(effect)
+novaic-agent-runtime/queue_service/session_outbox.py:146:        raise ValueError(f"unsupported session outbox effect_type: {effect_type}")
+novaic-agent-runtime/queue_service/session_outbox.py:148:    def _publish_create_wake_saga(self, effect: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_outbox.py:154:            "create_wake_saga outbox payload requires scope_id",
+novaic-agent-runtime/queue_service/session_outbox.py:159:            "create_wake_saga outbox payload requires session_key",
+novaic-agent-runtime/queue_service/session_outbox.py:164:            "create_wake_saga outbox payload requires agent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:169:            "create_wake_saga outbox payload requires subagent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:171:        saga_idempotency_key = _required_payload_str(
+novaic-agent-runtime/queue_service/session_outbox.py:173:            "saga_idempotency_key",
+novaic-agent-runtime/queue_service/session_outbox.py:174:            "create_wake_saga outbox payload requires saga_idempotency_key",
+novaic-agent-runtime/queue_service/session_outbox.py:176:        saga_type = _required_payload_str(
+novaic-agent-runtime/queue_service/session_outbox.py:178:            "saga_type",
+novaic-agent-runtime/queue_service/session_outbox.py:179:            "create_wake_saga outbox payload requires saga_type",
+novaic-agent-runtime/queue_service/session_outbox.py:181:        require_session_owned_saga_type(
+novaic-agent-runtime/queue_service/session_outbox.py:182:            saga_type,
+novaic-agent-runtime/queue_service/session_outbox.py:183:            surface="session outbox create_wake_saga",
+novaic-agent-runtime/queue_service/session_outbox.py:185:        saga_id = self.saga_orchestrator.create(
+novaic-agent-runtime/queue_service/session_outbox.py:186:            saga_type=saga_type,
+novaic-agent-runtime/queue_service/session_outbox.py:188:            idempotency_key=saga_idempotency_key,
+novaic-agent-runtime/queue_service/session_outbox.py:193:            saga_id=saga_id,
+novaic-agent-runtime/queue_service/session_outbox.py:202:            raise ValueError("recovery archive outbox payload requires scope_id")
+novaic-agent-runtime/queue_service/session_outbox.py:205:            "recovery archive outbox payload",
+novaic-agent-runtime/queue_service/session_outbox.py:210:                "recovery archive outbox payload requires remaining_stack"
+novaic-agent-runtime/queue_service/session_outbox.py:222:                "finalize_reason": payload.get("finalize_reason") or "recovery",
+novaic-agent-runtime/queue_service/session_outbox.py:238:            raise ValueError("attach input outbox payload requires message_ids")
+novaic-agent-runtime/queue_service/session_outbox.py:241:            raise ValueError("attach input outbox payload requires scope_id")
+novaic-agent-runtime/queue_service/session_outbox.py:245:                "attach input outbox payload requires expected_session_generation"
+novaic-agent-runtime/queue_service/session_outbox.py:249:            "attach input outbox payload",
+novaic-agent-runtime/queue_service/session_outbox.py:254:            raise ValueError("attach input outbox payload requires agent_id/subagent_id")
+novaic-agent-runtime/queue_service/session_outbox.py:281:                "saga_id": self._saga_id_for_create_wake_effect(effect),
+novaic-agent-runtime/queue_service/session_outbox.py:287:    def _saga_id_for_create_wake_effect(self, effect: dict[str, Any]) -> str | None:
+novaic-agent-runtime/queue_service/session_outbox.py:289:        saga_idempotency_key = payload.get("saga_idempotency_key")
+novaic-agent-runtime/queue_service/session_outbox.py:290:        if not saga_idempotency_key:
+novaic-agent-runtime/queue_service/session_outbox.py:292:        saga = self.saga_orchestrator.get_by_idempotency_key(
+novaic-agent-runtime/queue_service/session_outbox.py:293:            str(saga_idempotency_key)
+novaic-agent-runtime/queue_service/session_outbox.py:295:        return str(saga.get("id")) if saga else None
+novaic-agent-runtime/queue_service/session_outbox.py:299:            return self._saga_id_for_create_wake_effect(effect)
+novaic-agent-runtime/queue_service/session_effects.py:1:"""Pure durable outbox effect builders for Queue sessions."""
+novaic-agent-runtime/queue_service/session_effects.py:13:def build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_effects.py:22:    saga_context: Mapping[str, Any],
+novaic-agent-runtime/queue_service/session_effects.py:23:    saga_idempotency_key: str,
+novaic-agent-runtime/queue_service/session_effects.py:37:            "saga_type": "subagent_wake",
+novaic-agent-runtime/queue_service/session_effects.py:38:            "context": dict(saga_context),
+novaic-agent-runtime/queue_service/session_effects.py:39:            "saga_idempotency_key": saga_idempotency_key,
+novaic-agent-runtime/queue_service/session_effects.py:44:        "idempotency_key": f"session-create-wake:{saga_idempotency_key}",
+novaic-agent-runtime/queue_service/task_fsm.py:1:"""Pure task lifecycle FSM decisions for Queue Service.
+novaic-agent-runtime/queue_service/task_fsm.py:150:                "claimed_by": event.payload.get("worker_id"),
+novaic-agent-runtime/queue_service/dependencies.py:16:    saga_id_provider: Callable[[], str]
+novaic-agent-runtime/queue_service/dependencies.py:19:    session_outbox_id_provider: Callable[[], str]
+novaic-agent-runtime/queue_service/dependencies.py:26:            saga_id_provider=lambda: f"saga-{uuid.uuid4().hex[:12]}",
+novaic-agent-runtime/queue_service/dependencies.py:29:            session_outbox_id_provider=lambda: f"seff-{uuid.uuid4().hex[:12]}",
+novaic-agent-runtime/queue_service/session_outbox_worker.py:1:"""Session outbox handler for the generic worker substrate."""
+novaic-agent-runtime/queue_service/session_outbox_worker.py:8:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_outbox_worker.py:9:from queue_service.worker import (
+novaic-agent-runtime/queue_service/session_outbox_worker.py:10:    WorkerJob,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:11:    WorkerJobDecodeError,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:12:    WorkerJobSpec,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:13:    WorkerResult,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:14:    decode_worker_job,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:18:SESSION_OUTBOX_DRAIN_JOB = WorkerJobSpec(kind="session_outbox_drain")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:22:class SessionOutboxHandlerConfig:
+novaic-agent-runtime/queue_service/session_outbox_worker.py:28:            raise ValueError("session outbox worker batch_size must be positive")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:31:class SessionOutboxHandler:
+novaic-agent-runtime/queue_service/session_outbox_worker.py:32:    """Drain durable session outbox rows through an explicit dispatcher port."""
+novaic-agent-runtime/queue_service/session_outbox_worker.py:37:        dispatcher: SessionOutboxDispatcher,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:38:        config: SessionOutboxHandlerConfig | None = None,
+novaic-agent-runtime/queue_service/session_outbox_worker.py:40:        self.dispatcher = dispatcher
+novaic-agent-runtime/queue_service/session_outbox_worker.py:41:        self.config = config or SessionOutboxHandlerConfig()
+novaic-agent-runtime/queue_service/session_outbox_worker.py:43:    def handle(self, job: WorkerJob) -> WorkerResult:
+novaic-agent-runtime/queue_service/session_outbox_worker.py:45:            decode_worker_job(job, (SESSION_OUTBOX_DRAIN_JOB,))
+novaic-agent-runtime/queue_service/session_outbox_worker.py:46:        except WorkerJobDecodeError as exc:
+novaic-agent-runtime/queue_service/session_outbox_worker.py:47:            return WorkerResult.failure(str(exc), retry=False, reason=exc.reason)
+novaic-agent-runtime/queue_service/session_outbox_worker.py:50:            return WorkerResult.success(result, reason="session_outbox_drained")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:51:        return WorkerResult.noop(result, reason="session_outbox_empty")
+novaic-agent-runtime/queue_service/session_outbox_worker.py:69:        return self.dispatcher.drain_pending(
+novaic-agent-runtime/queue_service/session_wake_plan.py:1:"""Pure wake saga planning helpers for Queue sessions."""
+novaic-agent-runtime/queue_service/session_wake_plan.py:11:from queue_service.session_effects import build_create_wake_saga_effect
+novaic-agent-runtime/queue_service/session_wake_plan.py:12:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_wake_plan.py:13:from queue_service.session_projection import build_pending_restart_saga
+novaic-agent-runtime/queue_service/session_wake_plan.py:14:from queue_service.session_recovery import build_recovery_dispatch
+novaic-agent-runtime/queue_service/session_wake_plan.py:20:    dispatch_metadata: dict[str, Any]
+novaic-agent-runtime/queue_service/session_wake_plan.py:21:    saga_context: dict[str, Any]
+novaic-agent-runtime/queue_service/session_wake_plan.py:22:    saga_idempotency_key: str
+novaic-agent-runtime/queue_service/session_wake_plan.py:23:    outbox_effect: dict[str, Any]
+novaic-agent-runtime/queue_service/session_wake_plan.py:29:    saga_context: dict[str, Any]
+novaic-agent-runtime/queue_service/session_wake_plan.py:30:    saga_idempotency_key: str
+novaic-agent-runtime/queue_service/session_wake_plan.py:31:    outbox_effect: dict[str, Any]
+novaic-agent-runtime/queue_service/session_wake_plan.py:34:def build_dispatch_wake_plan(
+novaic-agent-runtime/queue_service/session_wake_plan.py:49:    dispatch_metadata = dict(metadata or {})
+novaic-agent-runtime/queue_service/session_wake_plan.py:52:        recovery_dispatch = build_recovery_dispatch(
+novaic-agent-runtime/queue_service/session_wake_plan.py:58:        effective_trigger_type = recovery_dispatch.trigger_type
+novaic-agent-runtime/queue_service/session_wake_plan.py:59:        dispatch_metadata = recovery_dispatch.metadata
+novaic-agent-runtime/queue_service/session_wake_plan.py:61:    saga_context = {
+novaic-agent-runtime/queue_service/session_wake_plan.py:68:        **dispatch_metadata,
+novaic-agent-runtime/queue_service/session_wake_plan.py:70:    saga_idempotency_key = idempotency_key or f"session-{session_key}-{scope_id}"
+novaic-agent-runtime/queue_service/session_wake_plan.py:73:        dispatch_metadata=dispatch_metadata,
+novaic-agent-runtime/queue_service/session_wake_plan.py:74:        saga_context=saga_context,
+novaic-agent-runtime/queue_service/session_wake_plan.py:75:        saga_idempotency_key=saga_idempotency_key,
+novaic-agent-runtime/queue_service/session_wake_plan.py:76:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:77:            effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/queue_service/session_wake_plan.py:84:            saga_context=saga_context,
+novaic-agent-runtime/queue_service/session_wake_plan.py:85:            saga_idempotency_key=saga_idempotency_key,
+novaic-agent-runtime/queue_service/session_wake_plan.py:88:            result_action="wake_saga_created",
+novaic-agent-runtime/queue_service/session_wake_plan.py:99:    finalize_metadata: Mapping[str, Any],
+novaic-agent-runtime/queue_service/session_wake_plan.py:102:    restart_saga = build_pending_restart_saga(
+novaic-agent-runtime/queue_service/session_wake_plan.py:106:        finalize_metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_wake_plan.py:108:    saga_idempotency_key = f"session-{session_key}-{scope_id}"
+novaic-agent-runtime/queue_service/session_wake_plan.py:110:        pending_metadata=restart_saga.metadata,
+novaic-agent-runtime/queue_service/session_wake_plan.py:111:        saga_context=restart_saga.context,
+novaic-agent-runtime/queue_service/session_wake_plan.py:112:        saga_idempotency_key=saga_idempotency_key,
+novaic-agent-runtime/queue_service/session_wake_plan.py:113:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:114:            effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/queue_service/session_wake_plan.py:121:            saga_context=restart_saga.context,
+novaic-agent-runtime/queue_service/session_wake_plan.py:122:            saga_idempotency_key=saga_idempotency_key,
+novaic-agent-runtime/queue_service/worker/__init__.py:1:"""Business-agnostic worker substrate for Queue runtime processes."""
+novaic-agent-runtime/queue_service/worker/__init__.py:7:    WorkerJobDecodeError,
+novaic-agent-runtime/queue_service/worker/__init__.py:8:    WorkerJobSpec,
+novaic-agent-runtime/queue_service/worker/__init__.py:9:    WorkerJob,
+novaic-agent-runtime/queue_service/worker/__init__.py:10:    WorkerResult,
+novaic-agent-runtime/queue_service/worker/__init__.py:11:    WorkerResultStatus,
+novaic-agent-runtime/queue_service/worker/__init__.py:12:    decode_worker_job,
+novaic-agent-runtime/queue_service/worker/__init__.py:14:from .concurrent_worker import ConcurrentGenericWorker
+novaic-agent-runtime/queue_service/worker/__init__.py:21:    WorkerEffect,
+novaic-agent-runtime/queue_service/worker/__init__.py:27:from .generic_worker import GenericWorker, WorkerCycleResult, WorkerCycleStatus
+novaic-agent-runtime/queue_service/worker/__init__.py:30:    WorkerMetrics,
+novaic-agent-runtime/queue_service/worker/__init__.py:31:    WorkerRuntime,
+novaic-agent-runtime/queue_service/worker/__init__.py:32:    WorkerRuntimeConfig,
+novaic-agent-runtime/queue_service/worker/__init__.py:38:    "GenericWorker",
+novaic-agent-runtime/queue_service/worker/__init__.py:39:    "ConcurrentGenericWorker",
+novaic-agent-runtime/queue_service/worker/__init__.py:47:    "WorkerCycleResult",
+novaic-agent-runtime/queue_service/worker/__init__.py:48:    "WorkerCycleStatus",
+novaic-agent-runtime/queue_service/worker/__init__.py:49:    "WorkerJobDecodeError",
+novaic-agent-runtime/queue_service/worker/__init__.py:50:    "WorkerJob",
+novaic-agent-runtime/queue_service/worker/__init__.py:51:    "WorkerJobSpec",
+novaic-agent-runtime/queue_service/worker/__init__.py:52:    "WorkerMetrics",
+novaic-agent-runtime/queue_service/worker/__init__.py:53:    "WorkerResult",
+novaic-agent-runtime/queue_service/worker/__init__.py:54:    "WorkerResultStatus",
+novaic-agent-runtime/queue_service/worker/__init__.py:55:    "WorkerRuntime",
+novaic-agent-runtime/queue_service/worker/__init__.py:56:    "WorkerRuntimeConfig",
+novaic-agent-runtime/queue_service/worker/__init__.py:57:    "decode_worker_job",
+novaic-agent-runtime/queue_service/worker/__init__.py:63:    "WorkerEffect",
+novaic-agent-runtime/queue_service/saga_ledger.py:1:"""Saga lifecycle ledger adapter.
+novaic-agent-runtime/queue_service/saga_ledger.py:3:Saga-specific identity and JSON state projection live here; durable
+novaic-agent-runtime/queue_service/saga_ledger.py:4:event/state/outbox mechanics are delegated to the generic FSM SQLite store.
+novaic-agent-runtime/queue_service/saga_ledger.py:15:    FsmOutboxRecord,
+novaic-agent-runtime/queue_service/saga_ledger.py:22:SAGA_FSM_STORE_CONFIG = FsmSqliteStoreConfig(
+novaic-agent-runtime/queue_service/saga_ledger.py:23:    events_table="tq_saga_events",
+novaic-agent-runtime/queue_service/saga_ledger.py:24:    state_table="tq_saga_state",
+novaic-agent-runtime/queue_service/saga_ledger.py:25:    outbox_table="tq_saga_outbox",
+novaic-agent-runtime/queue_service/saga_ledger.py:26:    machine_id_column="saga_id",
+novaic-agent-runtime/queue_service/saga_ledger.py:27:    state_conflict_columns=("saga_id",),
+novaic-agent-runtime/queue_service/saga_ledger.py:33:class SagaStateRecord:
+novaic-agent-runtime/queue_service/saga_ledger.py:34:    saga_id: str
+novaic-agent-runtime/queue_service/saga_ledger.py:38:    saga_type: str | None = None
+novaic-agent-runtime/queue_service/saga_ledger.py:49:class SagaLedgerRepository:
+novaic-agent-runtime/queue_service/saga_ledger.py:50:    """Saga identity adapter for the generic FSM store."""
+novaic-agent-runtime/queue_service/saga_ledger.py:58:        outbox_id_provider: Callable[[], str],
+novaic-agent-runtime/queue_service/saga_ledger.py:64:        self._new_outbox_id = outbox_id_provider
+novaic-agent-runtime/queue_service/saga_ledger.py:67:            config=SAGA_FSM_STORE_CONFIG,
+novaic-agent-runtime/queue_service/saga_ledger.py:74:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_ledger.py:92:            machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_ledger.py:103:    def upsert_state(self, state: SagaStateRecord) -> None:
+novaic-agent-runtime/queue_service/saga_ledger.py:105:            machine_id=state.saga_id,
+novaic-agent-runtime/queue_service/saga_ledger.py:110:                "saga_type": state.saga_type,
+novaic-agent-runtime/queue_service/saga_ledger.py:122:    def append_outbox(
+novaic-agent-runtime/queue_service/saga_ledger.py:125:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_ledger.py:130:        outbox_id: str | None = None,
+novaic-agent-runtime/queue_service/saga_ledger.py:135:            raise ValueError(f"unsupported initial saga outbox status: {status}")
+novaic-agent-runtime/queue_service/saga_ledger.py:137:        return self._store.append_outbox(
+novaic-agent-runtime/queue_service/saga_ledger.py:138:            machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_ledger.py:139:            outbox_id=outbox_id or self._new_outbox_id(),
+novaic-agent-runtime/queue_service/saga_ledger.py:152:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_ledger.py:157:        state: SagaStateRecord,
+novaic-agent-runtime/queue_service/saga_ledger.py:158:        outbox: tuple[FsmOutboxRecord, ...] = (),
+novaic-agent-runtime/queue_service/saga_ledger.py:161:            machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_ledger.py:169:                "saga_type": state.saga_type,
+novaic-agent-runtime/queue_service/saga_ledger.py:180:            outbox=outbox,
+novaic-agent-runtime/queue_service/saga_ledger.py:183:    def list_events(self, saga_id: str) -> list[dict[str, Any]]:
+novaic-agent-runtime/queue_service/saga_ledger.py:184:        return self._store.list_events(saga_id)
+novaic-agent-runtime/queue_service/saga_ledger.py:189:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_ledger.py:193:            machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_ledger.py:210:    def get_state(self, saga_id: str) -> dict[str, Any] | None:
+novaic-agent-runtime/queue_service/saga_ledger.py:211:        row = self._store.get_state(saga_id)
+novaic-agent-runtime/queue_service/saga_ledger.py:216:    def list_outbox(self, saga_id: str) -> list[dict[str, Any]]:
+novaic-agent-runtime/queue_service/saga_ledger.py:217:        return self._store.list_outbox(saga_id)
+novaic-agent-runtime/queue_service/saga_ledger.py:219:    def get_outbox(self, outbox_id: str) -> dict[str, Any] | None:
+novaic-agent-runtime/queue_service/saga_ledger.py:220:        return self._store.get_outbox(outbox_id)
+novaic-agent-runtime/queue_service/saga_ledger.py:222:    def list_pending_outbox(
+novaic-agent-runtime/queue_service/saga_ledger.py:226:        saga_id: str | None = None,
+novaic-agent-runtime/queue_service/saga_ledger.py:229:        return self._store.list_pending_outbox(
+novaic-agent-runtime/queue_service/saga_ledger.py:231:            machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_ledger.py:235:    def mark_outbox_published(self, outbox_id: str, *, published_at: str) -> None:
+novaic-agent-runtime/queue_service/saga_ledger.py:236:        self._store.mark_outbox_published(outbox_id, published_at=published_at)
+novaic-agent-runtime/queue_service/saga_ledger.py:238:    def mark_outbox_failed(
+novaic-agent-runtime/queue_service/saga_ledger.py:240:        outbox_id: str,
+novaic-agent-runtime/queue_service/saga_ledger.py:246:        return self._store.mark_outbox_failed(
+novaic-agent-runtime/queue_service/saga_ledger.py:247:            outbox_id,
+novaic-agent-runtime/queue_service/worker/contracts.py:1:"""Business-agnostic worker contracts.
+novaic-agent-runtime/queue_service/worker/contracts.py:3:The worker substrate owns lifecycle mechanics. Domain code supplies sources and
+novaic-agent-runtime/queue_service/worker/contracts.py:4:handlers through these ports. This module must not import task/saga/session
+novaic-agent-runtime/queue_service/worker/contracts.py:17:class WorkerJob:
+novaic-agent-runtime/queue_service/worker/contracts.py:26:class WorkerResultStatus(str, Enum):
+novaic-agent-runtime/queue_service/worker/contracts.py:32:class WorkerJobDecodeError(ValueError):
+novaic-agent-runtime/queue_service/worker/contracts.py:33:    """Raised when a worker job does not match an explicit job spec."""
+novaic-agent-runtime/queue_service/worker/contracts.py:41:class WorkerResult:
+novaic-agent-runtime/queue_service/worker/contracts.py:44:    status: WorkerResultStatus
+novaic-agent-runtime/queue_service/worker/contracts.py:58:    ) -> "WorkerResult":
+novaic-agent-runtime/queue_service/worker/contracts.py:60:            status=WorkerResultStatus.SUCCESS,
+novaic-agent-runtime/queue_service/worker/contracts.py:75:    ) -> "WorkerResult":
+novaic-agent-runtime/queue_service/worker/contracts.py:77:            status=WorkerResultStatus.FAILURE,
+novaic-agent-runtime/queue_service/worker/contracts.py:92:    ) -> "WorkerResult":
+novaic-agent-runtime/queue_service/worker/contracts.py:94:            status=WorkerResultStatus.NOOP,
+novaic-agent-runtime/queue_service/worker/contracts.py:102:class WorkerJobSpec:
+novaic-agent-runtime/queue_service/worker/contracts.py:103:    """Typed boundary for one worker job kind.
+novaic-agent-runtime/queue_service/worker/contracts.py:106:    The generic worker still moves ``WorkerJob`` envelopes, while business code
+novaic-agent-runtime/queue_service/worker/contracts.py:121:    ) -> WorkerJob:
+novaic-agent-runtime/queue_service/worker/contracts.py:127:        return WorkerJob(
+novaic-agent-runtime/queue_service/worker/contracts.py:134:    def decode(self, job: WorkerJob) -> Any:
+novaic-agent-runtime/queue_service/worker/contracts.py:136:            raise WorkerJobDecodeError(
+novaic-agent-runtime/queue_service/worker/contracts.py:137:                f"unsupported worker job kind: {job.kind}",
+novaic-agent-runtime/queue_service/worker/contracts.py:144:            raise WorkerJobDecodeError(
+novaic-agent-runtime/queue_service/worker/contracts.py:151:def decode_worker_job(job: WorkerJob, specs: tuple[WorkerJobSpec, ...]) -> tuple[WorkerJobSpec, Any]:
+novaic-agent-runtime/queue_service/worker/contracts.py:152:    """Decode a WorkerJob against explicit accepted specs."""
+novaic-agent-runtime/queue_service/worker/contracts.py:158:    raise WorkerJobDecodeError(
+novaic-agent-runtime/queue_service/worker/contracts.py:159:        f"unsupported worker job kind: {job.kind}; expected one of: {expected}",
+novaic-agent-runtime/queue_service/worker/contracts.py:167:    def poll(self) -> WorkerJob | None:
+novaic-agent-runtime/queue_service/worker/contracts.py:174:    def handle(self, job: WorkerJob) -> WorkerResult:
+novaic-agent-runtime/queue_service/worker/contracts.py:181:    Reporters translate worker results into the owning boundary: Queue Service
+novaic-agent-runtime/queue_service/worker/contracts.py:182:    API calls, durable outbox acks, or no-op reporting for synthetic ticks.
+novaic-agent-runtime/queue_service/worker/contracts.py:185:    def report(self, job: WorkerJob, result: WorkerResult) -> None:
+novaic-agent-runtime/queue_service/task_ledger.py:3:Task-specific identity remains here; durable event/state/outbox mechanics are
+novaic-agent-runtime/queue_service/task_ledger.py:4:delegated to the generic FSM SQLite store.
+novaic-agent-runtime/queue_service/task_ledger.py:17:TASK_FSM_STORE_CONFIG = FsmSqliteStoreConfig(
+novaic-agent-runtime/queue_service/task_ledger.py:20:    outbox_table="tq_task_outbox",
+novaic-agent-runtime/queue_service/task_ledger.py:34:    saga_id: str | None = None
+novaic-agent-runtime/queue_service/task_ledger.py:48:    """Task identity adapter for the generic FSM store."""
+novaic-agent-runtime/queue_service/task_ledger.py:56:        outbox_id_provider: Callable[[], str],
+novaic-agent-runtime/queue_service/task_ledger.py:62:        self._new_outbox_id = outbox_id_provider
+novaic-agent-runtime/queue_service/task_ledger.py:65:            config=TASK_FSM_STORE_CONFIG,
+novaic-agent-runtime/queue_service/task_ledger.py:109:                "saga_id": state.saga_id,
+novaic-agent-runtime/queue_service/task_ledger.py:123:    def append_outbox(
+novaic-agent-runtime/queue_service/task_ledger.py:131:        outbox_id: str | None = None,
+novaic-agent-runtime/queue_service/task_ledger.py:136:            raise ValueError(f"unsupported initial task outbox status: {status}")
+novaic-agent-runtime/queue_service/task_ledger.py:138:        return self._store.append_outbox(
+novaic-agent-runtime/queue_service/task_ledger.py:140:            outbox_id=outbox_id or self._new_outbox_id(),
+novaic-agent-runtime/queue_service/task_ledger.py:170:                "saga_id": state.saga_id,
+novaic-agent-runtime/queue_service/task_ledger.py:215:    def list_outbox(self, task_id: str) -> list[dict[str, Any]]:
+novaic-agent-runtime/queue_service/task_ledger.py:216:        return self._store.list_outbox(task_id)
+novaic-agent-runtime/queue_service/task_ledger.py:218:    def get_outbox(self, outbox_id: str) -> dict[str, Any] | None:
+novaic-agent-runtime/queue_service/task_ledger.py:219:        return self._store.get_outbox(outbox_id)
+novaic-agent-runtime/queue_service/task_ledger.py:221:    def list_pending_outbox(
+novaic-agent-runtime/queue_service/task_ledger.py:228:        return self._store.list_pending_outbox(
+novaic-agent-runtime/queue_service/task_ledger.py:234:    def mark_outbox_published(self, outbox_id: str, *, published_at: str) -> None:
+novaic-agent-runtime/queue_service/task_ledger.py:235:        self._store.mark_outbox_published(outbox_id, published_at=published_at)
+novaic-agent-runtime/queue_service/task_ledger.py:237:    def mark_outbox_failed(
+novaic-agent-runtime/queue_service/task_ledger.py:239:        outbox_id: str,
+novaic-agent-runtime/queue_service/task_ledger.py:245:        return self._store.mark_outbox_failed(
+novaic-agent-runtime/queue_service/task_ledger.py:246:            outbox_id,
+novaic-agent-runtime/queue_service/lease_fsm.py:1:"""Pure worker lease FSM decisions for Queue Service."""
+novaic-agent-runtime/queue_service/lease_fsm.py:68:    """Decide one worker lease transition from explicit inputs."""
+novaic-agent-runtime/queue_service/lease_fsm.py:71:        machine_type="queue_worker_lease",
+novaic-agent-runtime/queue_service/lease_fsm.py:114:        worker_id = event.payload.get("worker_id")
+novaic-agent-runtime/queue_service/lease_fsm.py:115:        if not worker_id:
+novaic-agent-runtime/queue_service/lease_fsm.py:116:            return _reject(state, event_type, "missing_worker_id")
+novaic-agent-runtime/queue_service/lease_fsm.py:124:                "claimed_by": worker_id,
+novaic-agent-runtime/queue_service/session_ledger.py:3:Session-specific identity remains here; durable event/state/outbox mechanics are
+novaic-agent-runtime/queue_service/session_ledger.py:4:delegated to the generic FSM SQLite store.
+novaic-agent-runtime/queue_service/session_ledger.py:14:    FsmOutboxRecord,
+novaic-agent-runtime/queue_service/session_ledger.py:20:    SessionEventKeyPrefix,
+novaic-agent-runtime/queue_service/session_ledger.py:21:    SessionEventType,
+novaic-agent-runtime/queue_service/session_ledger.py:24:from queue_service.session_fsm import SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_ledger.py:28:SESSION_FSM_STORE_CONFIG = FsmSqliteStoreConfig(
+novaic-agent-runtime/queue_service/session_ledger.py:31:    outbox_table="tq_session_outbox",
+novaic-agent-runtime/queue_service/session_ledger.py:39:class SessionStateRecord:
+novaic-agent-runtime/queue_service/session_ledger.py:47:    active_saga_id: str | None = None
+novaic-agent-runtime/queue_service/session_ledger.py:67:class SessionLedgerRepository:
+novaic-agent-runtime/queue_service/session_ledger.py:68:    """Session identity adapter for the generic FSM store."""
+novaic-agent-runtime/queue_service/session_ledger.py:76:        outbox_id_provider: Callable[[], str],
+novaic-agent-runtime/queue_service/session_ledger.py:82:        self._new_outbox_id = outbox_id_provider
+novaic-agent-runtime/queue_service/session_ledger.py:85:            config=SESSION_FSM_STORE_CONFIG,
+novaic-agent-runtime/queue_service/session_ledger.py:126:    def upsert_state(self, state: SessionStateRecord) -> None:
+novaic-agent-runtime/queue_service/session_ledger.py:139:                "active_saga_id": state.active_saga_id,
+novaic-agent-runtime/queue_service/session_ledger.py:146:    def append_outbox(
+novaic-agent-runtime/queue_service/session_ledger.py:157:        outbox_id: str | None = None,
+novaic-agent-runtime/queue_service/session_ledger.py:162:            raise ValueError(f"unsupported initial session outbox status: {status}")
+novaic-agent-runtime/queue_service/session_ledger.py:164:        return self._store.append_outbox(
+novaic-agent-runtime/queue_service/session_ledger.py:166:            outbox_id=outbox_id or self._new_outbox_id(),
+novaic-agent-runtime/queue_service/session_ledger.py:215:            event_type=SessionEventType.INPUT_RECEIVED.value,
+novaic-agent-runtime/queue_service/session_ledger.py:223:                    SessionEventKeyPrefix.INPUT_RECEIVED,
+novaic-agent-runtime/queue_service/session_ledger.py:235:            event_type=SessionEventType.INPUT_RECEIVED.value,
+novaic-agent-runtime/queue_service/session_ledger.py:240:            event_type=SessionEventType.INPUT_RECEIVED.value,
+novaic-agent-runtime/queue_service/session_ledger.py:246:            event_type=SessionEventType.INPUT_RECEIVED.value,
+novaic-agent-runtime/queue_service/session_ledger.py:291:                event_type=SessionEventType.INPUT_CONSUMED.value,
+novaic-agent-runtime/queue_service/session_ledger.py:298:                    SessionEventKeyPrefix.INPUT_CONSUMED,
+novaic-agent-runtime/queue_service/session_ledger.py:330:            event_type=SessionEventType.PENDING_PROJECTION_OBSERVED.value,
+novaic-agent-runtime/queue_service/session_ledger.py:336:                SessionEventKeyPrefix.PENDING_PROJECTION,
+novaic-agent-runtime/queue_service/session_ledger.py:343:    def record_session_finalize_rejected(
+novaic-agent-runtime/queue_service/session_ledger.py:351:        finalize_metadata: dict[str, Any],
+novaic-agent-runtime/queue_service/session_ledger.py:354:        finalize_generation: int,
+novaic-agent-runtime/queue_service/session_ledger.py:355:        finalize_reason: str,
+novaic-agent-runtime/queue_service/session_ledger.py:359:        idempotency_suffix = finalize_reason
+novaic-agent-runtime/queue_service/session_ledger.py:361:            idempotency_suffix = f"{finalize_reason}:scope_mismatch"
+novaic-agent-runtime/queue_service/session_ledger.py:368:            event_type=SessionEventType.SESSION_FINALIZE_REJECTED.value,
+novaic-agent-runtime/queue_service/session_ledger.py:369:            payload={**dict(finalize_metadata), "result": dict(result or {})},
+novaic-agent-runtime/queue_service/session_ledger.py:371:                "finalize-rejected:"
+novaic-agent-runtime/queue_service/session_ledger.py:372:                f"{session_key}:{scope_id}:{finalize_generation}:"
+novaic-agent-runtime/queue_service/session_ledger.py:378:    def record_session_finalized(
+novaic-agent-runtime/queue_service/session_ledger.py:385:        active_saga_id: str | None,
+novaic-agent-runtime/queue_service/session_ledger.py:388:        finalize_metadata: dict[str, Any],
+novaic-agent-runtime/queue_service/session_ledger.py:390:        finalize_reason: str,
+novaic-agent-runtime/queue_service/session_ledger.py:399:            event_type=SessionEventType.SESSION_FINALIZED.value,
+novaic-agent-runtime/queue_service/session_ledger.py:400:            payload=dict(finalize_metadata),
+novaic-agent-runtime/queue_service/session_ledger.py:402:                f"finalize:{session_key}:{scope_id}:"
+novaic-agent-runtime/queue_service/session_ledger.py:403:                f"{event_generation}:{finalize_reason}"
+novaic-agent-runtime/queue_service/session_ledger.py:407:        self.upsert_state(SessionStateRecord(
+novaic-agent-runtime/queue_service/session_ledger.py:409:            state=SessionRuntimeStatus.ENDING.value,
+novaic-agent-runtime/queue_service/session_ledger.py:414:            active_saga_id=active_saga_id,
+novaic-agent-runtime/queue_service/session_ledger.py:418:        self.upsert_state(SessionStateRecord(
+novaic-agent-runtime/queue_service/session_ledger.py:420:            state=SessionRuntimeStatus.NO_ACTIVE.value,
+novaic-agent-runtime/queue_service/session_ledger.py:425:            active_saga_id=None,
+novaic-agent-runtime/queue_service/session_ledger.py:439:        active_saga_id: str,
+novaic-agent-runtime/queue_service/session_ledger.py:443:        self.upsert_state(SessionStateRecord(
+novaic-agent-runtime/queue_service/session_ledger.py:445:            state=SessionRuntimeStatus.ACTIVE.value,
+novaic-agent-runtime/queue_service/session_ledger.py:450:            active_saga_id=active_saga_id,
+novaic-agent-runtime/queue_service/session_ledger.py:488:                "state": SessionRuntimeStatus.NO_ACTIVE.value,
+novaic-agent-runtime/queue_service/session_ledger.py:489:                "active_saga_id": None,
+novaic-agent-runtime/queue_service/session_ledger.py:494:            params=(SessionRuntimeStatus.ACTIVE.value,),
+novaic-agent-runtime/queue_service/session_ledger.py:501:                "AND active_saga_id IS NOT NULL "
+novaic-agent-runtime/queue_service/session_ledger.py:504:            params=(SessionRuntimeStatus.ACTIVE.value,),
+novaic-agent-runtime/queue_service/session_ledger.py:508:    def list_outbox(self, session_key: str) -> list[dict[str, Any]]:
+novaic-agent-runtime/queue_service/session_ledger.py:509:        return self._store.list_outbox(session_key)
+novaic-agent-runtime/queue_service/session_ledger.py:511:    def get_outbox(self, outbox_id: str) -> dict[str, Any] | None:
+novaic-agent-runtime/queue_service/session_ledger.py:512:        return self._store.get_outbox(outbox_id)
+novaic-agent-runtime/queue_service/session_ledger.py:514:    def list_pending_outbox(
+novaic-agent-runtime/queue_service/session_ledger.py:521:        return self._store.list_pending_outbox(
+novaic-agent-runtime/queue_service/session_ledger.py:527:    def mark_outbox_published(self, outbox_id: str, *, published_at: str) -> None:
+novaic-agent-runtime/queue_service/session_ledger.py:528:        self._store.mark_outbox_published(outbox_id, published_at=published_at)
+novaic-agent-runtime/queue_service/session_ledger.py:530:    def mark_outbox_failed(
+novaic-agent-runtime/queue_service/session_ledger.py:532:        outbox_id: str,
+novaic-agent-runtime/queue_service/session_ledger.py:538:        return self._store.mark_outbox_failed(
+novaic-agent-runtime/queue_service/session_ledger.py:539:            outbox_id,
+novaic-agent-runtime/queue_service/session_ledger.py:557:        active_saga_id: str | None,
+novaic-agent-runtime/queue_service/session_ledger.py:561:        outbox_effect: dict[str, Any] | None = None,
+novaic-agent-runtime/queue_service/session_ledger.py:562:        outbox_effects: list[dict[str, Any]] | None = None,
+novaic-agent-runtime/queue_service/session_ledger.py:579:        state_record = SessionStateRecord(
+novaic-agent-runtime/queue_service/session_ledger.py:586:            active_saga_id=active_saga_id if state == "active" else None,
+novaic-agent-runtime/queue_service/session_ledger.py:592:        effects = list(outbox_effects or [])
+novaic-agent-runtime/queue_service/session_ledger.py:593:        if outbox_effect:
+novaic-agent-runtime/queue_service/session_ledger.py:594:            effects.append(outbox_effect)
+novaic-agent-runtime/queue_service/session_ledger.py:615:                "active_saga_id": state_record.active_saga_id,
+novaic-agent-runtime/queue_service/session_ledger.py:621:            outbox=tuple(
+novaic-agent-runtime/queue_service/session_ledger.py:622:                FsmOutboxRecord(
+novaic-agent-runtime/queue_service/session_ledger.py:623:                    outbox_id=self._new_outbox_id(),
+novaic-agent-runtime/queue_service/session_ledger.py:644:        return list(write_result.outbox_ids)
+novaic-agent-runtime/queue_service/session_repo.py:2:Session Coordinator — dispatch + session lifecycle for Queue Service
+novaic-agent-runtime/queue_service/session_repo.py:10:- dispatch():       Route a trigger to either start a new saga or buffer it
+novaic-agent-runtime/queue_service/session_repo.py:11:- session_ended():  Clean up session, optionally restart from pending inbox
+novaic-agent-runtime/queue_service/session_repo.py:12:- rebuild():        Reconstruct session_state from running sagas on startup
+novaic-agent-runtime/queue_service/session_repo.py:19:from common.wake.dispatch_contract import QueueDispatchAction, QueueFinalizeAction
+novaic-agent-runtime/queue_service/session_repo.py:24:    SessionEventKeyPrefix,
+novaic-agent-runtime/queue_service/session_repo.py:25:    SessionEventType,
+novaic-agent-runtime/queue_service/session_repo.py:30:    SessionDispatchAction,
+novaic-agent-runtime/queue_service/session_repo.py:31:    SessionDispatchInput,
+novaic-agent-runtime/queue_service/session_repo.py:32:    SessionFinalizeAction,
+novaic-agent-runtime/queue_service/session_repo.py:33:    SessionFinalizeInput,
+novaic-agent-runtime/queue_service/session_repo.py:34:    SessionRuntimeState,
+novaic-agent-runtime/queue_service/session_repo.py:35:    SessionRuntimeStatus,
+novaic-agent-runtime/queue_service/session_repo.py:36:    build_session_dispatch_decision_trace,
+novaic-agent-runtime/queue_service/session_repo.py:37:    decide_session_finalize,
+novaic-agent-runtime/queue_service/session_repo.py:38:    decide_session_dispatch,
+novaic-agent-runtime/queue_service/session_repo.py:41:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/session_repo.py:42:from queue_service.session_outbox import SessionOutboxDispatcher
+novaic-agent-runtime/queue_service/session_repo.py:47:from queue_service.session_rebuild import rebuild_session_state_from_running_sagas
+novaic-agent-runtime/queue_service/session_repo.py:53:    build_dispatch_wake_plan,
+novaic-agent-runtime/queue_service/session_repo.py:89:    status: SessionRuntimeStatus,
+novaic-agent-runtime/queue_service/session_repo.py:93:    if status is SessionRuntimeStatus.NO_ACTIVE:
+novaic-agent-runtime/queue_service/session_repo.py:100:class SessionRepository:
+novaic-agent-runtime/queue_service/session_repo.py:101:    """Session coordination layer on top of Queue Service SQLite."""
+novaic-agent-runtime/queue_service/session_repo.py:109:        session_ledger: SessionLedgerRepository,
+novaic-agent-runtime/queue_service/session_repo.py:110:        outbox_dispatcher: SessionOutboxDispatcher,
+novaic-agent-runtime/queue_service/session_repo.py:114:            db: Database connection (same as queue_db/saga_repo)
+novaic-agent-runtime/queue_service/session_repo.py:120:        self.outbox_dispatcher = outbox_dispatcher
+novaic-agent-runtime/queue_service/session_repo.py:122:    def dispatch(
+novaic-agent-runtime/queue_service/session_repo.py:134:            {"action": "wake_start_queued", "scope_id": ..., "outbox_id": ...}
+novaic-agent-runtime/queue_service/session_repo.py:161:                active_saga_id = active.get("saga_id")
+novaic-agent-runtime/queue_service/session_repo.py:180:                        "saga_id": active_saga_id,
+novaic-agent-runtime/queue_service/session_repo.py:186:                            SessionEventType.SESSION_SUSPECTED_DEAD_OBSERVED.value
+novaic-agent-runtime/queue_service/session_repo.py:189:                            SessionEventKeyPrefix.SESSION_SUSPECTED_DEAD_OBSERVED,
+novaic-agent-runtime/queue_service/session_repo.py:201:                        state=SessionRuntimeStatus.SUSPECTED_DEAD.value,
+novaic-agent-runtime/queue_service/session_repo.py:202:                        active_saga_id=None,
+novaic-agent-runtime/queue_service/session_repo.py:208:                    decision = self._decide_live_dispatch(
+novaic-agent-runtime/queue_service/session_repo.py:213:                    if decision.action is SessionDispatchAction.ATTACH_INPUT:
+novaic-agent-runtime/queue_service/session_repo.py:215:                            "saga_id": active_saga_id,
+novaic-agent-runtime/queue_service/session_repo.py:225:                        # session outbox worker owns external delivery.
+novaic-agent-runtime/queue_service/session_repo.py:228:                            "[SessionCoordinator] dispatch buffered: %s trigger=%s saga=%s scope=%s",
+novaic-agent-runtime/queue_service/session_repo.py:229:                            session_key, trigger_type, active_saga_id, active_scope_id,
+novaic-agent-runtime/queue_service/session_repo.py:233:                            "saga_id": active_saga_id,
+novaic-agent-runtime/queue_service/session_repo.py:237:                            event_type=SessionEventType.DISPATCH_BUFFERED.value,
+novaic-agent-runtime/queue_service/session_repo.py:239:                                SessionEventKeyPrefix.DISPATCH_BUFFERED,
+novaic-agent-runtime/queue_service/session_repo.py:248:                            state=SessionRuntimeStatus.ACTIVE.value,
+novaic-agent-runtime/queue_service/session_repo.py:249:                            active_saga_id=active_saga_id,
+novaic-agent-runtime/queue_service/session_repo.py:251:                            decision_trace=build_session_dispatch_decision_trace(
+novaic-agent-runtime/queue_service/session_repo.py:253:                                active_saga_id=active_saga_id,
+novaic-agent-runtime/queue_service/session_repo.py:271:                decision = decide_session_dispatch(SessionDispatchInput(
+novaic-agent-runtime/queue_service/session_repo.py:277:                if decision.action is not SessionDispatchAction.BUFFER_PENDING:
+novaic-agent-runtime/queue_service/session_repo.py:279:                        "session FSM refused occupied-state buffer: "
+novaic-agent-runtime/queue_service/session_repo.py:283:                    "[SessionCoordinator] dispatch buffered in occupied state: "
+novaic-agent-runtime/queue_service/session_repo.py:292:                    "saga_id": current_state.get("active_saga_id"),
+novaic-agent-runtime/queue_service/session_repo.py:296:                    event_type=SessionEventType.DISPATCH_BUFFERED.value,
+novaic-agent-runtime/queue_service/session_repo.py:298:                        SessionEventKeyPrefix.DISPATCH_BUFFERED,
+novaic-agent-runtime/queue_service/session_repo.py:308:                    active_saga_id=current_state.get("active_saga_id"),
+novaic-agent-runtime/queue_service/session_repo.py:310:                    decision_trace=self._decision_trace_from_dispatch_decision(
+novaic-agent-runtime/queue_service/session_repo.py:358:                transition_event_type=SessionEventType.DISPATCH_ATTACHED_TO_ACTIVE.value,
+novaic-agent-runtime/queue_service/session_repo.py:359:                event_key_prefix=SessionEventKeyPrefix.DISPATCH_ATTACHED,
+novaic-agent-runtime/queue_service/session_repo.py:364:                "[SessionCoordinator] dispatch attached: %s trigger=%s saga=%s scope=%s outbox=%s delivery=%s",
+novaic-agent-runtime/queue_service/session_repo.py:367:                attach_request["saga_id"],
+novaic-agent-runtime/queue_service/session_repo.py:369:                result["outbox_id"],
+novaic-agent-runtime/queue_service/session_repo.py:374:        # Step 2: persist wake intent; the session outbox worker creates the saga.
+novaic-agent-runtime/queue_service/session_repo.py:415:        start_decision = self._decide_live_dispatch(
+novaic-agent-runtime/queue_service/session_repo.py:420:        if start_decision.action is not SessionDispatchAction.START_WAKE:
+novaic-agent-runtime/queue_service/session_repo.py:422:                "session FSM refused start wake: "
+novaic-agent-runtime/queue_service/session_repo.py:426:        wake_plan = build_dispatch_wake_plan(
+novaic-agent-runtime/queue_service/session_repo.py:441:            "[SessionCoordinator] dispatch queued wake start: %s scope=%s",
+novaic-agent-runtime/queue_service/session_repo.py:447:            "delivery": "outbox_pending",
+novaic-agent-runtime/queue_service/session_repo.py:449:        outbox_effects: list[Dict[str, Any]] = [wake_plan.outbox_effect]
+novaic-agent-runtime/queue_service/session_repo.py:455:                effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/queue_service/session_repo.py:458:                outbox_effects.append(recovery_archive_effect)
+novaic-agent-runtime/queue_service/session_repo.py:461:            "event_type": SessionEventType.DISPATCH_WAKE_START_QUEUED.value,
+novaic-agent-runtime/queue_service/session_repo.py:463:                SessionEventKeyPrefix.DISPATCH_WAKE_START_QUEUED,
+novaic-agent-runtime/queue_service/session_repo.py:464:                wake_plan.outbox_effect["idempotency_key"],
+novaic-agent-runtime/queue_service/session_repo.py:470:            "metadata": wake_plan.dispatch_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:472:            "state": SessionRuntimeStatus.STARTING.value,
+novaic-agent-runtime/queue_service/session_repo.py:473:            "active_saga_id": None,
+novaic-agent-runtime/queue_service/session_repo.py:475:            "decision_trace": build_session_dispatch_decision_trace(
+novaic-agent-runtime/queue_service/session_repo.py:477:                active_saga_id=None,
+novaic-agent-runtime/queue_service/session_repo.py:482:            "outbox_effects": outbox_effects,
+novaic-agent-runtime/queue_service/session_repo.py:486:            outbox_ids = self._record_session_transition_in_current_transaction(
+novaic-agent-runtime/queue_service/session_repo.py:489:            if not outbox_ids:
+novaic-agent-runtime/queue_service/session_repo.py:491:                    "required session transition outbox effect was not recorded"
+novaic-agent-runtime/queue_service/session_repo.py:494:            outbox_ids = self._record_session_transition_after_transaction(
+novaic-agent-runtime/queue_service/session_repo.py:496:                require_outbox=True,
+novaic-agent-runtime/queue_service/session_repo.py:498:        if outbox_ids:
+novaic-agent-runtime/queue_service/session_repo.py:499:            result["outbox_id"] = outbox_ids[0]
+novaic-agent-runtime/queue_service/session_repo.py:502:    def session_ended(
+novaic-agent-runtime/queue_service/session_repo.py:508:        finalize_reason: Optional[str] = None,
+novaic-agent-runtime/queue_service/session_repo.py:516:            or {"action": "restart_pending", "scope_id": ..., "outbox_id": ...}
+novaic-agent-runtime/queue_service/session_repo.py:520:        if not (finalize_reason or "").strip():
+novaic-agent-runtime/queue_service/session_repo.py:521:            raise ValueError("finalize_reason is required for session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:523:            raise ValueError("remaining_stack is required for session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:524:        finalize_generation = _require_positive_generation(generation, "session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:525:        finalize_metadata = {
+novaic-agent-runtime/queue_service/session_repo.py:526:            "finalize_reason": finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:527:            "finalize_generation": finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:532:        # Step 1: finalize the active generation and derive restart source from inbox.
+novaic-agent-runtime/queue_service/session_repo.py:535:            finalize_decision = decide_session_finalize(SessionFinalizeInput(
+novaic-agent-runtime/queue_service/session_repo.py:538:                finalize_generation=finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:540:            if finalize_decision.action is SessionFinalizeAction.REJECT_FINALIZE:
+novaic-agent-runtime/queue_service/session_repo.py:541:                result = finalize_decision.result
+novaic-agent-runtime/queue_service/session_repo.py:542:                self.session_ledger.record_session_finalize_rejected(
+novaic-agent-runtime/queue_service/session_repo.py:547:                    event_generation=finalize_decision.event_generation,
+novaic-agent-runtime/queue_service/session_repo.py:548:                    finalize_metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:551:                    finalize_generation=finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:552:                    finalize_reason=finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:553:                    rejection_reason=finalize_decision.reason,
+novaic-agent-runtime/queue_service/session_repo.py:558:            event_generation = finalize_decision.event_generation
+novaic-agent-runtime/queue_service/session_repo.py:559:            self.session_ledger.record_session_finalized(
+novaic-agent-runtime/queue_service/session_repo.py:564:                active_saga_id=(
+novaic-agent-runtime/queue_service/session_repo.py:565:                    current_state.get("active_saga_id")
+novaic-agent-runtime/queue_service/session_repo.py:573:                finalize_metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:575:                finalize_reason=finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:588:                marker=f"session_ended:{session_key}:{scope_id}",
+novaic-agent-runtime/queue_service/session_repo.py:594:                    "[SessionCoordinator] session_ended closed: %s scope=%s",
+novaic-agent-runtime/queue_service/session_repo.py:599:                    event_type=SessionEventType.SESSION_CLOSED.value,
+novaic-agent-runtime/queue_service/session_repo.py:601:                        SessionEventKeyPrefix.SESSION_CLOSED,
+novaic-agent-runtime/queue_service/session_repo.py:609:                    metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:611:                    state=SessionRuntimeStatus.NO_ACTIVE.value,
+novaic-agent-runtime/queue_service/session_repo.py:612:                    active_saga_id=None,
+novaic-agent-runtime/queue_service/session_repo.py:632:                finalize_metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:638:                "[SessionCoordinator] session_ended queued restart: %s scope=%s trigger=%s",
+novaic-agent-runtime/queue_service/session_repo.py:644:                "delivery": "outbox_pending",
+novaic-agent-runtime/queue_service/session_repo.py:646:            outbox_ids = self._record_session_transition_in_current_transaction(
+novaic-agent-runtime/queue_service/session_repo.py:647:                event_type=SessionEventType.SESSION_RESTART_PENDING.value,
+novaic-agent-runtime/queue_service/session_repo.py:649:                    SessionEventKeyPrefix.SESSION_RESTART_PENDING,
+novaic-agent-runtime/queue_service/session_repo.py:650:                    restart_plan.outbox_effect["idempotency_key"],
+novaic-agent-runtime/queue_service/session_repo.py:658:                state=SessionRuntimeStatus.STARTING.value,
+novaic-agent-runtime/queue_service/session_repo.py:659:                active_saga_id=None,
+novaic-agent-runtime/queue_service/session_repo.py:661:                outbox_effect=restart_plan.outbox_effect,
+novaic-agent-runtime/queue_service/session_repo.py:664:            if not outbox_ids:
+novaic-agent-runtime/queue_service/session_repo.py:666:                    "required session restart outbox effect was not recorded"
+novaic-agent-runtime/queue_service/session_repo.py:677:            result["outbox_id"] = outbox_ids[0]
+novaic-agent-runtime/queue_service/session_repo.py:681:        """Reconstruct session_state from running/launched sagas on startup.
+novaic-agent-runtime/queue_service/session_repo.py:689:        count = rebuild_session_state_from_running_sagas(
+novaic-agent-runtime/queue_service/session_repo.py:694:        logger.info("[SessionCoordinator] rebuild complete: %d sessions", count)
+novaic-agent-runtime/queue_service/session_repo.py:725:            SessionEventType.SESSION_SUSPECTED_DEAD.value,
+novaic-agent-runtime/queue_service/session_repo.py:750:        if not state.get("active_saga_id") or not state.get("active_scope_id"):
+novaic-agent-runtime/queue_service/session_repo.py:755:    def _decision_trace_from_dispatch_decision(
+novaic-agent-runtime/queue_service/session_repo.py:768:    def _decide_live_dispatch(
+novaic-agent-runtime/queue_service/session_repo.py:776:            SessionRuntimeStatus.ACTIVE
+novaic-agent-runtime/queue_service/session_repo.py:777:            if active_session else SessionRuntimeStatus.NO_ACTIVE
+novaic-agent-runtime/queue_service/session_repo.py:779:        return decide_session_dispatch(SessionDispatchInput(
+novaic-agent-runtime/queue_service/session_repo.py:780:            state=SessionRuntimeState(
+novaic-agent-runtime/queue_service/session_repo.py:785:                    "live dispatch runtime state",
+novaic-agent-runtime/queue_service/session_repo.py:787:                active_saga_id=(active_session or {}).get("saga_id"),
+novaic-agent-runtime/queue_service/session_repo.py:798:    ) -> SessionRuntimeState:
+novaic-agent-runtime/queue_service/session_repo.py:800:            return SessionRuntimeState(
+novaic-agent-runtime/queue_service/session_repo.py:801:                status=SessionRuntimeStatus.NO_ACTIVE,
+novaic-agent-runtime/queue_service/session_repo.py:806:            status = SessionRuntimeStatus(raw_state)
+novaic-agent-runtime/queue_service/session_repo.py:809:        return SessionRuntimeState(
+novaic-agent-runtime/queue_service/session_repo.py:816:            active_saga_id=state.get("active_saga_id"),
+novaic-agent-runtime/queue_service/session_repo.py:825:            "saga_id": item.get("active_saga_id"),
+novaic-agent-runtime/queue_service/session_repo.py:836:        require_outbox: bool = False,
+novaic-agent-runtime/queue_service/session_repo.py:839:        expects_outbox = bool(kwargs.get("outbox_effect") or kwargs.get("outbox_effects"))
+novaic-agent-runtime/queue_service/session_repo.py:840:        if require_outbox and not expects_outbox:
+novaic-agent-runtime/queue_service/session_repo.py:841:            raise ValueError("required session transition outbox effect is missing")
+novaic-agent-runtime/queue_service/session_repo.py:843:            outbox_ids = self.session_ledger.record_transition(**kwargs)
+novaic-agent-runtime/queue_service/session_repo.py:844:        if require_outbox and not outbox_ids:
+novaic-agent-runtime/queue_service/session_repo.py:845:            raise RuntimeError("required session transition outbox effect was not recorded")
+novaic-agent-runtime/queue_service/session_repo.py:846:        return outbox_ids
+novaic-agent-runtime/queue_service/session_repo.py:864:        event_key_prefix: SessionEventKeyPrefix,
+novaic-agent-runtime/queue_service/session_repo.py:871:            current_saga_id = (current_active or {}).get("saga_id")
+novaic-agent-runtime/queue_service/session_repo.py:876:                or current_saga_id != attach_request["saga_id"]
+novaic-agent-runtime/queue_service/session_repo.py:886:                    "saga_id": current_saga_id,
+novaic-agent-runtime/queue_service/session_repo.py:891:                    event_type=SessionEventType.DISPATCH_BUFFERED.value,
+novaic-agent-runtime/queue_service/session_repo.py:893:                        SessionEventKeyPrefix.DISPATCH_BUFFERED,
+novaic-agent-runtime/queue_service/session_repo.py:903:                    active_saga_id=current_saga_id,
+novaic-agent-runtime/queue_service/session_repo.py:905:                    decision_trace=build_session_dispatch_decision_trace(
+novaic-agent-runtime/queue_service/session_repo.py:907:                        active_saga_id=current_saga_id,
+novaic-agent-runtime/queue_service/session_repo.py:929:            outbox_effect = build_attach_input_effect(
+novaic-agent-runtime/queue_service/session_repo.py:930:                effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/queue_service/session_repo.py:946:                "saga_id": attach_request["saga_id"],
+novaic-agent-runtime/queue_service/session_repo.py:948:                "delivery": "outbox_pending",
+novaic-agent-runtime/queue_service/session_repo.py:950:            outbox_ids = self._record_session_transition_in_current_transaction(
+novaic-agent-runtime/queue_service/session_repo.py:954:                    outbox_effect["idempotency_key"],
+novaic-agent-runtime/queue_service/session_repo.py:962:                state=SessionRuntimeStatus.ACTIVE.value,
+novaic-agent-runtime/queue_service/session_repo.py:963:                active_saga_id=attach_request["saga_id"],
+novaic-agent-runtime/queue_service/session_repo.py:965:                decision_trace=build_session_dispatch_decision_trace(
+novaic-agent-runtime/queue_service/session_repo.py:967:                    active_saga_id=attach_request["saga_id"],
+novaic-agent-runtime/queue_service/session_repo.py:972:                outbox_effect=outbox_effect,
+novaic-agent-runtime/queue_service/session_repo.py:978:            if not outbox_ids:
+novaic-agent-runtime/queue_service/session_repo.py:979:                raise RuntimeError("required session transition outbox effect was not recorded")
+novaic-agent-runtime/queue_service/session_repo.py:983:            "saga_id": attach_request["saga_id"],
+novaic-agent-runtime/queue_service/session_repo.py:985:            "delivery": "outbox_pending",
+novaic-agent-runtime/queue_service/session_repo.py:986:            "outbox_id": outbox_ids[-1],
+novaic-agent-runtime/queue_service/session_repo.py:1032:                "[SessionCoordinator] session pending projection failed session=%s",
+novaic-agent-runtime/queue_service/session_repo.py:1063:                "[SessionCoordinator] session pending projection failed session=%s",
+novaic-agent-runtime/queue_service/worker/effects.py:1:"""Business-agnostic worker effect-plan contracts."""
+novaic-agent-runtime/queue_service/worker/effects.py:11:class WorkerEffect:
+novaic-agent-runtime/queue_service/worker/effects.py:12:    """One explicit side effect requested by a worker action engine."""
+novaic-agent-runtime/queue_service/worker/effects.py:20:            raise ValueError("WorkerEffect requires non-empty kind")
+novaic-agent-runtime/queue_service/worker/effects.py:27:    effects: tuple[WorkerEffect, ...] = ()
+novaic-agent-runtime/queue_service/worker/effects.py:31:    def of(cls, *effects: WorkerEffect, reason: str = "") -> "EffectPlan":
+novaic-agent-runtime/queue_service/worker/effects.py:71:EffectHandler = Callable[[WorkerEffect], EffectOutcome | Mapping[str, Any] | None]
+novaic-agent-runtime/queue_service/worker/effects.py:80:    def execute(self, effect: WorkerEffect) -> EffectOutcome:
+novaic-agent-runtime/queue_service/worker/effects.py:115:        effect = WorkerEffect(kind=kind, payload=payload or {})
+novaic-agent-runtime/queue_service/worker/effects.py:119:def require_success(outcome: EffectOutcome, effect: WorkerEffect) -> Mapping[str, Any]:
+novaic-agent-runtime/queue_service/worker/effects.py:130:    return EffectPlan.of(WorkerEffect(kind=kind, payload=payload or {}))
+novaic-agent-runtime/queue_service/worker/effects.py:138:    effect = WorkerEffect(kind=kind, payload=payload or {})
+novaic-agent-runtime/queue_service/lease_ledger.py:1:"""Worker lease ledger adapter for Queue Service.
+novaic-agent-runtime/queue_service/lease_ledger.py:3:Lease-specific identity lives here; durable event/state/outbox mechanics are
+novaic-agent-runtime/queue_service/lease_ledger.py:4:delegated to the generic FSM SQLite store.
+novaic-agent-runtime/queue_service/lease_ledger.py:16:LEASE_FSM_STORE_CONFIG = FsmSqliteStoreConfig(
+novaic-agent-runtime/queue_service/lease_ledger.py:17:    events_table="tq_worker_lease_events",
+novaic-agent-runtime/queue_service/lease_ledger.py:18:    state_table="tq_worker_lease_state",
+novaic-agent-runtime/queue_service/lease_ledger.py:19:    outbox_table="tq_worker_lease_outbox",
+novaic-agent-runtime/queue_service/lease_ledger.py:39:    """Lease identity adapter for the generic FSM store."""
+novaic-agent-runtime/queue_service/lease_ledger.py:47:        outbox_id_provider: Callable[[], str],
+novaic-agent-runtime/queue_service/lease_ledger.py:53:        self._new_outbox_id = outbox_id_provider
+novaic-agent-runtime/queue_service/lease_ledger.py:56:            config=LEASE_FSM_STORE_CONFIG,
+novaic-agent-runtime/queue_service/lease_ledger.py:111:    def append_outbox(
+novaic-agent-runtime/queue_service/lease_ledger.py:121:        outbox_id: str | None = None,
+novaic-agent-runtime/queue_service/lease_ledger.py:126:            raise ValueError(f"unsupported initial lease outbox status: {status}")
+novaic-agent-runtime/queue_service/lease_ledger.py:128:        return self._store.append_outbox(
+novaic-agent-runtime/queue_service/lease_ledger.py:130:            outbox_id=outbox_id or self._new_outbox_id(),
+novaic-agent-runtime/queue_service/lease_ledger.py:150:    def list_outbox(self, lease_id: str) -> list[dict[str, Any]]:
+novaic-agent-runtime/queue_service/lease_ledger.py:151:        return self._store.list_outbox(lease_id)
+novaic-agent-runtime/queue_service/lease_ledger.py:153:    def list_pending_outbox(
+novaic-agent-runtime/queue_service/lease_ledger.py:160:        return self._store.list_pending_outbox(
+novaic-agent-runtime/queue_service/worker/sources.py:1:"""Generic worker job sources."""
+novaic-agent-runtime/queue_service/worker/sources.py:9:from .contracts import WorkerJob
+novaic-agent-runtime/queue_service/worker/sources.py:16:    This is useful for tick/drain workers where the useful work is a periodic
+novaic-agent-runtime/queue_service/worker/sources.py:25:    def poll(self) -> WorkerJob:
+novaic-agent-runtime/queue_service/worker/sources.py:26:        return WorkerJob(
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:1:"""Business-agnostic concurrent worker lifecycle loop."""
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:8:from .contracts import JobHandler, JobReporter, JobSource, WorkerJob, WorkerResult, WorkerResultStatus
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:9:from .generic_worker import WorkerCycleResult, WorkerCycleStatus
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:10:from .policies import ShutdownController, WorkerMetrics, WorkerRuntime, WorkerRuntimeConfig
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:14:class RunningWorkerJob:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:15:    job: WorkerJob
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:20:class ConcurrentGenericWorker:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:29:        runtime: WorkerRuntime,
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:30:        config: WorkerRuntimeConfig,
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:33:        metrics: WorkerMetrics | None = None,
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:44:        self.metrics = metrics or WorkerMetrics()
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:46:        self._running: dict[str, RunningWorkerJob] = {}
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:48:    def run_once(self) -> WorkerCycleResult:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:50:            return WorkerCycleResult(status=WorkerCycleStatus.STOPPED)
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:54:            return WorkerCycleResult(status=WorkerCycleStatus.IDLE)
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:61:            return WorkerCycleResult(status=WorkerCycleStatus.IDLE)
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:64:        return WorkerCycleResult(
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:65:            status=WorkerCycleStatus.HANDLED,
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:69:    def run(self, *, max_cycles: int | None = None) -> WorkerMetrics:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:82:                cycle = WorkerCycleResult(status=WorkerCycleStatus.ERROR)
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:87:            if cycle.status in (WorkerCycleStatus.IDLE, WorkerCycleStatus.ERROR):
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:115:    def _start_job(self, job: WorkerJob) -> None:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:123:            self._running[job.id] = RunningWorkerJob(
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:132:    def _handle_and_report(self, job: WorkerJob) -> None:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:142:    def _handle(self, job: WorkerJob) -> WorkerResult:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:148:            return WorkerResult.failure(
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:154:    def _record_result(self, result: WorkerResult) -> None:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:155:        if result.status is WorkerResultStatus.SUCCESS:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:157:        elif result.status is WorkerResultStatus.FAILURE:
+novaic-agent-runtime/queue_service/worker/concurrent_worker.py:159:        elif result.status is WorkerResultStatus.NOOP:
+novaic-agent-runtime/queue_service/queue_audit.py:1:"""Read-only audit helpers for Queue Service FSM machines."""
+novaic-agent-runtime/queue_service/queue_audit.py:24:    outbox_id: str
+novaic-agent-runtime/queue_service/queue_audit.py:72:    outbox: list[dict[str, Any]] | None = None,
+novaic-agent-runtime/queue_service/queue_audit.py:74:    """Build a deterministic read-only report from already-read FSM rows."""
+novaic-agent-runtime/queue_service/queue_audit.py:82:        effects=tuple(_effect_step(effect) for effect in (outbox or [])),
+novaic-agent-runtime/queue_service/queue_audit.py:119:        outbox_id=str(effect.get("id") or ""),
+novaic-agent-runtime/queue_service/fsm/__init__.py:1:"""Business-agnostic FSM substrate for Queue harness coordination."""
+novaic-agent-runtime/queue_service/fsm/__init__.py:11:    FsmOutboxRecord,
+novaic-agent-runtime/queue_service/fsm/__init__.py:21:    "FsmOutboxRecord",
+novaic-agent-runtime/queue_service/fsm/core.py:1:"""Pure generic FSM primitives.
+novaic-agent-runtime/queue_service/session_observed_events.py:1:"""Observed event handlers for Queue session outbox publications."""
+novaic-agent-runtime/queue_service/session_observed_events.py:7:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/session_observed_events.py:24:class SessionObservedEventHandler:
+novaic-agent-runtime/queue_service/session_observed_events.py:27:    def __init__(self, *, ledger: SessionLedgerRepository, saga_repository):
+novaic-agent-runtime/queue_service/session_observed_events.py:29:        self.saga_repository = saga_repository
+novaic-agent-runtime/queue_service/session_observed_events.py:35:        saga_id: str,
+novaic-agent-runtime/queue_service/session_observed_events.py:65:                and state.get("active_saga_id")
+novaic-agent-runtime/queue_service/session_observed_events.py:68:            winner_saga_id = saga_id
+novaic-agent-runtime/queue_service/session_observed_events.py:71:                winner_saga_id = str(state.get("active_saga_id") or "")
+novaic-agent-runtime/queue_service/session_observed_events.py:73:                if winner_saga_id != saga_id:
+novaic-agent-runtime/queue_service/session_observed_events.py:74:                    self._cancel_pending_saga(
+novaic-agent-runtime/queue_service/session_observed_events.py:75:                        saga_id=saga_id,
+novaic-agent-runtime/queue_service/session_observed_events.py:77:                        reason="create_wake_saga outbox race loser",
+novaic-agent-runtime/queue_service/session_observed_events.py:80:                        "saga_id": winner_saga_id,
+novaic-agent-runtime/queue_service/session_observed_events.py:90:                self._cancel_pending_saga(
+novaic-agent-runtime/queue_service/session_observed_events.py:91:                    saga_id=saga_id,
+novaic-agent-runtime/queue_service/session_observed_events.py:93:                    reason="stale create_wake_saga observation",
+novaic-agent-runtime/queue_service/session_observed_events.py:96:                    "saga_id": None,
+novaic-agent-runtime/queue_service/session_observed_events.py:109:                active_saga_id=winner_saga_id,
+novaic-agent-runtime/queue_service/session_observed_events.py:130:                        "action": payload.get("result_action") or "wake_saga_created",
+novaic-agent-runtime/queue_service/session_observed_events.py:131:                        "saga_id": winner_saga_id,
+novaic-agent-runtime/queue_service/session_observed_events.py:138:            "saga_id": winner_saga_id,
+novaic-agent-runtime/queue_service/session_observed_events.py:166:    def _cancel_pending_saga(
+novaic-agent-runtime/queue_service/session_observed_events.py:169:        saga_id: str,
+novaic-agent-runtime/queue_service/session_observed_events.py:173:        self.saga_repository.cancel_pending(
+novaic-agent-runtime/queue_service/session_observed_events.py:174:            saga_id,
+novaic-agent-runtime/queue_service/session_events.py:11:class SessionEventType(str, Enum):
+novaic-agent-runtime/queue_service/session_events.py:15:    DISPATCH_BUFFERED = "dispatch_buffered"
+novaic-agent-runtime/queue_service/session_events.py:16:    DISPATCH_ATTACHED_TO_ACTIVE = "dispatch_attached_to_active"
+novaic-agent-runtime/queue_service/session_events.py:17:    DISPATCH_WAKE_START_QUEUED = "dispatch_wake_start_queued"
+novaic-agent-runtime/queue_service/session_events.py:20:    SESSION_FINALIZE_REJECTED = "session_finalize_rejected"
+novaic-agent-runtime/queue_service/session_events.py:21:    SESSION_FINALIZED = "session_finalized"
+novaic-agent-runtime/queue_service/session_events.py:27:class SessionEventKeyPrefix(str, Enum):
+novaic-agent-runtime/queue_service/session_events.py:32:    DISPATCH_BUFFERED = "session:dispatch_buffered:"
+novaic-agent-runtime/queue_service/session_events.py:33:    DISPATCH_ATTACHED = "session:dispatch_attached:"
+novaic-agent-runtime/queue_service/session_events.py:34:    DISPATCH_WAKE_START_QUEUED = "session:dispatch_wake_start_queued:"
+novaic-agent-runtime/queue_service/session_events.py:40:def session_event_key(prefix: SessionEventKeyPrefix, *parts: object) -> str:
+novaic-agent-runtime/queue_service/__init__.py:4:提供 Task Queue 和 Saga 的 HTTP API。
+novaic-agent-runtime/queue_service/worker/generic_worker.py:1:"""Generic worker lifecycle loop.
+novaic-agent-runtime/queue_service/worker/generic_worker.py:4:is a task, saga, outbox effect, scheduler tick, or health tick.
+novaic-agent-runtime/queue_service/worker/generic_worker.py:12:from .contracts import JobHandler, JobReporter, JobSource, WorkerJob, WorkerResult, WorkerResultStatus
+novaic-agent-runtime/queue_service/worker/generic_worker.py:13:from .policies import ShutdownController, WorkerMetrics, WorkerRuntime, WorkerRuntimeConfig
+novaic-agent-runtime/queue_service/worker/generic_worker.py:16:class WorkerCycleStatus(str, Enum):
+novaic-agent-runtime/queue_service/worker/generic_worker.py:24:class WorkerCycleResult:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:25:    status: WorkerCycleStatus
+novaic-agent-runtime/queue_service/worker/generic_worker.py:27:    result_status: WorkerResultStatus | None = None
+novaic-agent-runtime/queue_service/worker/generic_worker.py:31:class GenericWorker:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:40:        runtime: WorkerRuntime,
+novaic-agent-runtime/queue_service/worker/generic_worker.py:41:        config: WorkerRuntimeConfig,
+novaic-agent-runtime/queue_service/worker/generic_worker.py:43:        metrics: WorkerMetrics | None = None,
+novaic-agent-runtime/queue_service/worker/generic_worker.py:51:        self.metrics = metrics or WorkerMetrics()
+novaic-agent-runtime/queue_service/worker/generic_worker.py:53:    def run_once(self) -> WorkerCycleResult:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:61:            return WorkerCycleResult(status=WorkerCycleStatus.STOPPED)
+novaic-agent-runtime/queue_service/worker/generic_worker.py:68:            return WorkerCycleResult(status=WorkerCycleStatus.IDLE)
+novaic-agent-runtime/queue_service/worker/generic_worker.py:75:        return WorkerCycleResult(
+novaic-agent-runtime/queue_service/worker/generic_worker.py:76:            status=WorkerCycleStatus.HANDLED,
+novaic-agent-runtime/queue_service/worker/generic_worker.py:82:    def run(self, *, max_cycles: int | None = None) -> WorkerMetrics:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:97:                cycle = WorkerCycleResult(status=WorkerCycleStatus.ERROR)
+novaic-agent-runtime/queue_service/worker/generic_worker.py:104:            elif cycle.status in (WorkerCycleStatus.IDLE, WorkerCycleStatus.ERROR):
+novaic-agent-runtime/queue_service/worker/generic_worker.py:117:    def _handle(self, job: WorkerJob) -> WorkerResult:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:125:            return WorkerResult.failure(
+novaic-agent-runtime/queue_service/worker/generic_worker.py:131:    def _report(self, job: WorkerJob, result: WorkerResult) -> None:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:138:    def _record_result(self, result: WorkerResult) -> None:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:139:        if result.status is WorkerResultStatus.SUCCESS:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:141:        elif result.status is WorkerResultStatus.FAILURE:
+novaic-agent-runtime/queue_service/worker/generic_worker.py:143:        elif result.status is WorkerResultStatus.NOOP:
+novaic-agent-runtime/queue_service/worker/reporters.py:1:"""Generic worker result reporters."""
+novaic-agent-runtime/queue_service/worker/reporters.py:7:from .contracts import WorkerJob, WorkerResult, WorkerResultStatus
+novaic-agent-runtime/queue_service/worker/reporters.py:8:from .policies import WorkerRuntime
+novaic-agent-runtime/queue_service/worker/reporters.py:14:    def report(self, job: WorkerJob, result: WorkerResult) -> None:
+novaic-agent-runtime/queue_service/worker/reporters.py:20:    """Log non-empty or failed generic worker results."""
+novaic-agent-runtime/queue_service/worker/reporters.py:22:    runtime: WorkerRuntime
+novaic-agent-runtime/queue_service/worker/reporters.py:26:    def report(self, job: WorkerJob, result: WorkerResult) -> None:
+novaic-agent-runtime/queue_service/worker/reporters.py:28:            result.status is WorkerResultStatus.FAILURE
+novaic-agent-runtime/queue_service/worker/reporters.py:29:            or result.status is WorkerResultStatus.SUCCESS
+novaic-agent-runtime/queue_service/worker/reporters.py:32:            and result.status is WorkerResultStatus.NOOP
+novaic-agent-runtime/queue_service/fsm/runner.py:1:"""Generic durable FSM transition runner.
+novaic-agent-runtime/queue_service/fsm/runner.py:3:The runner owns the mechanical write order for an event-sourced FSM transition:
+novaic-agent-runtime/queue_service/fsm/runner.py:4:append event, materialize state, append outbox effects. It deliberately does
+novaic-agent-runtime/queue_service/fsm/runner.py:18:class FsmOutboxRecord:
+novaic-agent-runtime/queue_service/fsm/runner.py:19:    outbox_id: str
+novaic-agent-runtime/queue_service/fsm/runner.py:41:    outbox: tuple[FsmOutboxRecord, ...] = ()
+novaic-agent-runtime/queue_service/fsm/runner.py:47:    outbox_ids: tuple[str, ...] = ()
+novaic-agent-runtime/queue_service/fsm/runner.py:51:    """Persist a transition through the configured generic FSM store."""
+novaic-agent-runtime/queue_service/fsm/runner.py:70:            return FsmTransitionWriteResult(event_id=event_result.id, outbox_ids=())
+novaic-agent-runtime/queue_service/fsm/runner.py:81:        outbox_ids = tuple(
+novaic-agent-runtime/queue_service/fsm/runner.py:82:            self._store.append_outbox(
+novaic-agent-runtime/queue_service/fsm/runner.py:84:                outbox_id=effect.outbox_id,
+novaic-agent-runtime/queue_service/fsm/runner.py:94:            for effect in transition.outbox
+novaic-agent-runtime/queue_service/fsm/runner.py:98:            outbox_ids=outbox_ids,
+novaic-agent-runtime/queue_service/exceptions.py:16:    由其他 Worker 重新认领并重试。
+novaic-agent-runtime/queue_service/exceptions.py:36:class SagaError(TaskQueueError):
+novaic-agent-runtime/queue_service/exceptions.py:37:    """Saga 执行错误"""
+novaic-agent-runtime/queue_service/exceptions.py:41:class SagaStepError(SagaError):
+novaic-agent-runtime/queue_service/exceptions.py:42:    """Saga 步骤执行错误"""
+novaic-agent-runtime/queue_service/exceptions.py:50:class SagaCompensationError(SagaError):
+novaic-agent-runtime/queue_service/exceptions.py:51:    """Saga 补偿操作错误"""
+novaic-agent-runtime/queue_service/saga_repo.py:2:Saga repository/orchestrator (Queue Service DB implementation).
+novaic-agent-runtime/queue_service/saga_repo.py:4:This module holds the DB-backed SagaRepository/SagaOrchestrator so that
+novaic-agent-runtime/queue_service/saga_repo.py:5:Worker code does not directly touch the database.
+novaic-agent-runtime/queue_service/saga_repo.py:13:from queue_service.session_events import SessionEventType
+novaic-agent-runtime/queue_service/saga_repo.py:14:from queue_service.session_ledger import SessionLedgerRepository
+novaic-agent-runtime/queue_service/saga_repo.py:29:from queue_service.fsm.runner import FsmOutboxRecord
+novaic-agent-runtime/queue_service/saga_repo.py:30:from queue_service.saga_fsm import (
+novaic-agent-runtime/queue_service/saga_repo.py:31:    SagaLifecycleEvent,
+novaic-agent-runtime/queue_service/saga_repo.py:32:    SagaLifecycleInput,
+novaic-agent-runtime/queue_service/saga_repo.py:33:    SagaRuntimeState,
+novaic-agent-runtime/queue_service/saga_repo.py:34:    SagaRuntimeStatus,
+novaic-agent-runtime/queue_service/saga_repo.py:35:    decide_saga_lifecycle,
+novaic-agent-runtime/queue_service/saga_repo.py:37:from queue_service.saga_ledger import SagaLedgerRepository, SagaStateRecord
+novaic-agent-runtime/queue_service/saga_repo.py:44:    s.saga_type,
+novaic-agent-runtime/queue_service/saga_repo.py:59:class SagaRepository:
+novaic-agent-runtime/queue_service/saga_repo.py:61:    Saga 仓库 - Queue Service 端
+novaic-agent-runtime/queue_service/saga_repo.py:63:    Saga 表本身就是任务队列：
+novaic-agent-runtime/queue_service/saga_repo.py:66:    - 不需要额外的 saga.run Task
+novaic-agent-runtime/queue_service/saga_repo.py:75:        saga_id_provider: Callable[[], str],
+novaic-agent-runtime/queue_service/saga_repo.py:76:        saga_ledger: SagaLedgerRepository | None = None,
+novaic-agent-runtime/queue_service/saga_repo.py:82:            queue: TaskQueue (可选，用于 Saga 内部发布子 Task)
+novaic-agent-runtime/queue_service/saga_repo.py:87:        self._saga_id_provider = saga_id_provider
+novaic-agent-runtime/queue_service/saga_repo.py:88:        self._saga_ledger = saga_ledger or SagaLedgerRepository(
+novaic-agent-runtime/queue_service/saga_repo.py:91:            event_id_provider=_missing_saga_event_id,
+novaic-agent-runtime/queue_service/saga_repo.py:92:            outbox_id_provider=_missing_saga_outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:98:            outbox_id_provider=_missing_lease_outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:103:        saga_type: str,
+novaic-agent-runtime/queue_service/saga_repo.py:108:        创建 Saga (只创建记录，不发布 Task)
+novaic-agent-runtime/queue_service/saga_repo.py:115:        saga_id = self._new_saga_id()
+novaic-agent-runtime/queue_service/saga_repo.py:117:        decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:118:            state=SagaRuntimeState(
+novaic-agent-runtime/queue_service/saga_repo.py:119:                status=SagaRuntimeStatus.NONE,
+novaic-agent-runtime/queue_service/saga_repo.py:120:                saga_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:122:                saga_type=saga_type,
+novaic-agent-runtime/queue_service/saga_repo.py:124:            event_type=SagaLifecycleEvent.SAGA_CREATED,
+novaic-agent-runtime/queue_service/saga_repo.py:126:                "saga_type": saga_type,
+novaic-agent-runtime/queue_service/saga_repo.py:135:                INSERT INTO tq_sagas (
+novaic-agent-runtime/queue_service/saga_repo.py:136:                    id, saga_type, context, idempotency_key, created_at
+novaic-agent-runtime/queue_service/saga_repo.py:139:            """, (saga_id, saga_type, json.dumps(context), idempotency_key, now))
+novaic-agent-runtime/queue_service/saga_repo.py:140:            self._record_saga_transition(
+novaic-agent-runtime/queue_service/saga_repo.py:141:                saga_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:142:                event_type=SagaLifecycleEvent.SAGA_CREATED,
+novaic-agent-runtime/queue_service/saga_repo.py:144:                    "saga_type": saga_type,
+novaic-agent-runtime/queue_service/saga_repo.py:150:                saga_type=saga_type,
+novaic-agent-runtime/queue_service/saga_repo.py:156:        return saga_id
+novaic-agent-runtime/queue_service/saga_repo.py:160:        saga_types: List[str],
+novaic-agent-runtime/queue_service/saga_repo.py:161:        worker_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:163:        """原子认领一个 pending 状态的 Saga (CAS)"""
+novaic-agent-runtime/queue_service/saga_repo.py:164:        if not saga_types:
+novaic-agent-runtime/queue_service/saga_repo.py:167:        type_placeholders = ",".join("?" * len(saga_types))
+novaic-agent-runtime/queue_service/saga_repo.py:177:                FROM tq_saga_state ss
+novaic-agent-runtime/queue_service/saga_repo.py:178:                JOIN tq_sagas s ON s.id = ss.saga_id
+novaic-agent-runtime/queue_service/saga_repo.py:180:                  AND ss.saga_type IN ({type_placeholders})
+novaic-agent-runtime/queue_service/saga_repo.py:183:            """, tuple(saga_types))
+novaic-agent-runtime/queue_service/saga_repo.py:190:            pending_saga = self._row_to_dict(row)
+novaic-agent-runtime/queue_service/saga_repo.py:192:                "worker_id": worker_id,
+novaic-agent-runtime/queue_service/saga_repo.py:196:            decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:197:                state=self._runtime_state_from_saga(pending_saga),
+novaic-agent-runtime/queue_service/saga_repo.py:198:                event_type=SagaLifecycleEvent.SAGA_CLAIM_REQUESTED,
+novaic-agent-runtime/queue_service/saga_repo.py:202:                "worker_id": worker_id,
+novaic-agent-runtime/queue_service/saga_repo.py:207:                machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:208:                machine_id=str(pending_saga["id"]),
+novaic-agent-runtime/queue_service/saga_repo.py:214:            claimed_saga = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:215:                pending_saga["id"],
+novaic-agent-runtime/queue_service/saga_repo.py:219:            if not claimed_saga:
+novaic-agent-runtime/queue_service/saga_repo.py:221:            self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:222:                saga=claimed_saga,
+novaic-agent-runtime/queue_service/saga_repo.py:223:                event_type=SagaLifecycleEvent.SAGA_CLAIM_REQUESTED,
+novaic-agent-runtime/queue_service/saga_repo.py:229:                machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:230:                machine_id=str(claimed_saga["id"]),
+novaic-agent-runtime/queue_service/saga_repo.py:237:        return claimed_saga
+novaic-agent-runtime/queue_service/saga_repo.py:239:    def heartbeat(self, saga_id: str) -> bool:
+novaic-agent-runtime/queue_service/saga_repo.py:242:        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+novaic-agent-runtime/queue_service/saga_repo.py:243:            saga = self._get_saga_for_update(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:244:            if not saga:
+novaic-agent-runtime/queue_service/saga_repo.py:246:            runtime_state = self._runtime_state_from_saga(saga)
+novaic-agent-runtime/queue_service/saga_repo.py:247:            if runtime_state.status is not SagaRuntimeStatus.RUNNING:
+novaic-agent-runtime/queue_service/saga_repo.py:251:                machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:252:                machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:258:            decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:260:                event_type=SagaLifecycleEvent.SAGA_HEARTBEAT_RECORDED,
+novaic-agent-runtime/queue_service/saga_repo.py:263:            rowcount = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:264:                saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:269:            self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:270:                saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:271:                event_type=SagaLifecycleEvent.SAGA_HEARTBEAT_RECORDED,
+novaic-agent-runtime/queue_service/saga_repo.py:277:                machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:278:                machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:287:        """恢复超时的 Saga (重置为 pending)"""
+novaic-agent-runtime/queue_service/saga_repo.py:297:                FROM tq_saga_state ss
+novaic-agent-runtime/queue_service/saga_repo.py:298:                JOIN tq_sagas s ON s.id = ss.saga_id
+novaic-agent-runtime/queue_service/saga_repo.py:299:                JOIN tq_worker_lease_state ls
+novaic-agent-runtime/queue_service/saga_repo.py:300:                  ON ls.machine_type = 'queue_saga'
+novaic-agent-runtime/queue_service/saga_repo.py:301:                 AND ls.machine_id = ss.saga_id
+novaic-agent-runtime/queue_service/saga_repo.py:315:                saga = self._row_to_dict(row)
+novaic-agent-runtime/queue_service/saga_repo.py:321:                    machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:322:                    machine_id=str(saga["id"]),
+novaic-agent-runtime/queue_service/saga_repo.py:328:                decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:329:                    state=self._runtime_state_from_saga(saga),
+novaic-agent-runtime/queue_service/saga_repo.py:330:                    event_type=SagaLifecycleEvent.SAGA_HEARTBEAT_TIMED_OUT_RETRY,
+novaic-agent-runtime/queue_service/saga_repo.py:333:                rowcount = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:334:                    saga["id"],
+novaic-agent-runtime/queue_service/saga_repo.py:338:                    self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:339:                        saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:340:                        event_type=SagaLifecycleEvent.SAGA_HEARTBEAT_TIMED_OUT_RETRY,
+novaic-agent-runtime/queue_service/saga_repo.py:346:                        machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:347:                        machine_id=str(saga["id"]),
+novaic-agent-runtime/queue_service/saga_repo.py:356:    def get(self, saga_id: str) -> Optional[Dict[str, Any]]:
+novaic-agent-runtime/queue_service/saga_repo.py:357:        """获取 Saga"""
+novaic-agent-runtime/queue_service/saga_repo.py:358:        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+novaic-agent-runtime/queue_service/saga_repo.py:362:                FROM tq_sagas s
+novaic-agent-runtime/queue_service/saga_repo.py:363:                JOIN tq_saga_state ss ON ss.saga_id = s.id
+novaic-agent-runtime/queue_service/saga_repo.py:366:                (saga_id,),
+novaic-agent-runtime/queue_service/saga_repo.py:378:                FROM tq_sagas s
+novaic-agent-runtime/queue_service/saga_repo.py:379:                JOIN tq_saga_state ss ON ss.saga_id = s.id
+novaic-agent-runtime/queue_service/saga_repo.py:388:    def mark_launched(self, saga_id: str, dag_task_count: int) -> bool:
+novaic-agent-runtime/queue_service/saga_repo.py:390:        Saga Worker 建完 DAG 后调用：设置 status=launched，释放 claim。
+novaic-agent-runtime/queue_service/saga_repo.py:393:            saga_id: Saga ID
+novaic-agent-runtime/queue_service/saga_repo.py:400:        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+novaic-agent-runtime/queue_service/saga_repo.py:401:            saga = self._get_saga_for_update(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:402:            if not saga:
+novaic-agent-runtime/queue_service/saga_repo.py:404:            runtime_state = self._runtime_state_from_saga(saga)
+novaic-agent-runtime/queue_service/saga_repo.py:405:            if runtime_state.status is not SagaRuntimeStatus.RUNNING:
+novaic-agent-runtime/queue_service/saga_repo.py:409:                "reason": SagaLifecycleEvent.SAGA_LAUNCHED.value,
+novaic-agent-runtime/queue_service/saga_repo.py:412:                machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:413:                machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:419:            decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:421:                event_type=SagaLifecycleEvent.SAGA_LAUNCHED,
+novaic-agent-runtime/queue_service/saga_repo.py:427:            success = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:428:                saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:432:                self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:433:                    saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:434:                    event_type=SagaLifecycleEvent.SAGA_LAUNCHED,
+novaic-agent-runtime/queue_service/saga_repo.py:443:                    machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:444:                    machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:454:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:459:        追加步骤结果到 step_results（需 saga 锁保证并发安全）
+novaic-agent-runtime/queue_service/saga_repo.py:462:            saga_id: Saga ID
+novaic-agent-runtime/queue_service/saga_repo.py:469:        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+novaic-agent-runtime/queue_service/saga_repo.py:473:                FROM tq_sagas s
+novaic-agent-runtime/queue_service/saga_repo.py:474:                JOIN tq_saga_state ss ON ss.saga_id = s.id
+novaic-agent-runtime/queue_service/saga_repo.py:477:                (saga_id,),
+novaic-agent-runtime/queue_service/saga_repo.py:483:            saga = self._row_to_dict(row)
+novaic-agent-runtime/queue_service/saga_repo.py:485:            decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:486:                state=self._runtime_state_from_saga(saga),
+novaic-agent-runtime/queue_service/saga_repo.py:487:                event_type=SagaLifecycleEvent.SAGA_STEP_RESULT_APPENDED,
+novaic-agent-runtime/queue_service/saga_repo.py:494:            success = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:495:                saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:499:                self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:500:                    saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:501:                    event_type=SagaLifecycleEvent.SAGA_STEP_RESULT_APPENDED,
+novaic-agent-runtime/queue_service/saga_repo.py:512:    def check_saga_complete(self, saga_id: str) -> bool:
+novaic-agent-runtime/queue_service/saga_repo.py:514:        检查 saga 下所有 task 是否完成，若完成则 mark_completed。
+novaic-agent-runtime/queue_service/saga_repo.py:519:        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+novaic-agent-runtime/queue_service/saga_repo.py:523:                FROM tq_sagas s
+novaic-agent-runtime/queue_service/saga_repo.py:524:                JOIN tq_saga_state ss ON ss.saga_id = s.id
+novaic-agent-runtime/queue_service/saga_repo.py:527:                (saga_id,),
+novaic-agent-runtime/queue_service/saga_repo.py:533:            saga = self._row_to_dict(row)
+novaic-agent-runtime/queue_service/saga_repo.py:534:            dag_task_count = saga.get("dag_task_count")
+novaic-agent-runtime/queue_service/saga_repo.py:538:                "SELECT COUNT(*) FROM tq_task_state WHERE saga_id = ? AND state = 'done'",
+novaic-agent-runtime/queue_service/saga_repo.py:539:                (saga_id,),
+novaic-agent-runtime/queue_service/saga_repo.py:546:            step_results = saga.get("step_results") or {}
+novaic-agent-runtime/queue_service/saga_repo.py:547:            decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:548:                state=self._runtime_state_from_saga(saga),
+novaic-agent-runtime/queue_service/saga_repo.py:549:                event_type=SagaLifecycleEvent.SAGA_COMPLETED,
+novaic-agent-runtime/queue_service/saga_repo.py:556:            rowcount = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:557:                saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:562:            self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:563:                saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:564:                event_type=SagaLifecycleEvent.SAGA_COMPLETED,
+novaic-agent-runtime/queue_service/saga_repo.py:575:    def mark_completed(self, saga_id: str, step_results: Dict[str, Any]):
+novaic-agent-runtime/queue_service/saga_repo.py:578:        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+novaic-agent-runtime/queue_service/saga_repo.py:579:            saga = self._get_saga_for_update(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:580:            if not saga:
+novaic-agent-runtime/queue_service/saga_repo.py:582:            decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:583:                state=self._runtime_state_from_saga(saga),
+novaic-agent-runtime/queue_service/saga_repo.py:584:                event_type=SagaLifecycleEvent.SAGA_COMPLETED,
+novaic-agent-runtime/queue_service/saga_repo.py:591:            rowcount = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:592:                saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:596:                self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:597:                    saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:598:                    event_type=SagaLifecycleEvent.SAGA_COMPLETED,
+novaic-agent-runtime/queue_service/saga_repo.py:610:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:617:        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+novaic-agent-runtime/queue_service/saga_repo.py:618:            saga = self._get_saga_for_update(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:619:            if not saga:
+novaic-agent-runtime/queue_service/saga_repo.py:621:            runtime_state = self._runtime_state_from_saga(saga)
+novaic-agent-runtime/queue_service/saga_repo.py:624:            if runtime_state.status is SagaRuntimeStatus.RUNNING:
+novaic-agent-runtime/queue_service/saga_repo.py:627:                    "reason": SagaLifecycleEvent.SAGA_FAILED.value,
+novaic-agent-runtime/queue_service/saga_repo.py:630:                    machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:631:                    machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:637:            decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:639:                event_type=SagaLifecycleEvent.SAGA_FAILED,
+novaic-agent-runtime/queue_service/saga_repo.py:646:            rowcount = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:647:                saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:651:                self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:652:                    saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:653:                    event_type=SagaLifecycleEvent.SAGA_FAILED,
+novaic-agent-runtime/queue_service/saga_repo.py:663:                        machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:664:                        machine_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:672:        """获取待执行/运行中的 Saga（不含 launched，launched 由 Task 推进）"""
+novaic-agent-runtime/queue_service/saga_repo.py:677:                FROM tq_saga_state ss
+novaic-agent-runtime/queue_service/saga_repo.py:678:                JOIN tq_sagas s ON s.id = ss.saga_id
+novaic-agent-runtime/queue_service/saga_repo.py:688:        取消所有 pending/running 状态的 Saga
+novaic-agent-runtime/queue_service/saga_repo.py:691:            agent_id: 可选，只取消指定 agent 的 saga（通过 context 中的 agent_id 字段）
+novaic-agent-runtime/queue_service/saga_repo.py:694:            取消的 saga 数量
+novaic-agent-runtime/queue_service/saga_repo.py:702:                    FROM tq_saga_state ss
+novaic-agent-runtime/queue_service/saga_repo.py:703:                    JOIN tq_sagas s ON s.id = ss.saga_id
+novaic-agent-runtime/queue_service/saga_repo.py:710:                    FROM tq_saga_state ss
+novaic-agent-runtime/queue_service/saga_repo.py:711:                    JOIN tq_sagas s ON s.id = ss.saga_id
+novaic-agent-runtime/queue_service/saga_repo.py:722:                saga = self._row_to_dict(row)
+novaic-agent-runtime/queue_service/saga_repo.py:723:                runtime_state = self._runtime_state_from_saga(saga)
+novaic-agent-runtime/queue_service/saga_repo.py:726:                if runtime_state.status is SagaRuntimeStatus.RUNNING:
+novaic-agent-runtime/queue_service/saga_repo.py:729:                        "reason": SagaLifecycleEvent.SAGA_CANCEL_REQUESTED.value,
+novaic-agent-runtime/queue_service/saga_repo.py:732:                        machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:733:                        machine_id=str(saga["id"]),
+novaic-agent-runtime/queue_service/saga_repo.py:739:                decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:741:                    event_type=SagaLifecycleEvent.SAGA_CANCEL_REQUESTED,
+novaic-agent-runtime/queue_service/saga_repo.py:747:                rowcount = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:748:                    saga["id"],
+novaic-agent-runtime/queue_service/saga_repo.py:752:                    self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:753:                        saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:754:                        event_type=SagaLifecycleEvent.SAGA_CANCEL_REQUESTED,
+novaic-agent-runtime/queue_service/saga_repo.py:764:                            machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:765:                            machine_id=str(saga["id"]),
+novaic-agent-runtime/queue_service/saga_repo.py:776:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:781:        """Cancel one pending saga through the saga FSM projection path."""
+novaic-agent-runtime/queue_service/saga_repo.py:782:        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+novaic-agent-runtime/queue_service/saga_repo.py:783:            saga = self._get_saga_for_update(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:784:            if not saga:
+novaic-agent-runtime/queue_service/saga_repo.py:786:            runtime_state = self._runtime_state_from_saga(saga)
+novaic-agent-runtime/queue_service/saga_repo.py:787:            if runtime_state.status is not SagaRuntimeStatus.PENDING:
+novaic-agent-runtime/queue_service/saga_repo.py:789:            decision = decide_saga_lifecycle(SagaLifecycleInput(
+novaic-agent-runtime/queue_service/saga_repo.py:791:                event_type=SagaLifecycleEvent.SAGA_CANCEL_REQUESTED,
+novaic-agent-runtime/queue_service/saga_repo.py:797:            rowcount = self._apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:798:                saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:803:            self._record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:804:                saga=saga,
+novaic-agent-runtime/queue_service/saga_repo.py:805:                event_type=SagaLifecycleEvent.SAGA_CANCEL_REQUESTED,
+novaic-agent-runtime/queue_service/saga_repo.py:821:                "id", "idempotency_key", "saga_type", "context",
+novaic-agent-runtime/queue_service/saga_repo.py:840:    def _new_saga_id(self) -> str:
+novaic-agent-runtime/queue_service/saga_repo.py:841:        return self._saga_id_provider()
+novaic-agent-runtime/queue_service/saga_repo.py:843:    def _apply_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:845:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:850:        """Validate saga projection existence and return a merged read model.
+novaic-agent-runtime/queue_service/saga_repo.py:852:        `tq_sagas` is physically limited to saga identity and immutable context.
+novaic-agent-runtime/queue_service/saga_repo.py:854:        persisted only through tq_saga_state by `_record_saga_transition`.
+novaic-agent-runtime/queue_service/saga_repo.py:857:            saga = self._get_saga_for_update(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:858:            return self._merge_saga_projection(saga, projection) if saga else None
+novaic-agent-runtime/queue_service/saga_repo.py:860:        return 1 if self._saga_projection_exists(saga_id) else 0
+novaic-agent-runtime/queue_service/saga_repo.py:862:    def _get_saga_for_update(self, saga_id: str) -> Optional[Dict[str, Any]]:
+novaic-agent-runtime/queue_service/saga_repo.py:866:            FROM tq_sagas s
+novaic-agent-runtime/queue_service/saga_repo.py:867:            JOIN tq_saga_state ss ON ss.saga_id = s.id
+novaic-agent-runtime/queue_service/saga_repo.py:870:            (saga_id,),
+novaic-agent-runtime/queue_service/saga_repo.py:876:    def _saga_projection_exists(self, saga_id: str) -> bool:
+novaic-agent-runtime/queue_service/saga_repo.py:877:        cursor = self.db.execute("SELECT 1 FROM tq_sagas WHERE id = ?", (saga_id,))
+novaic-agent-runtime/queue_service/saga_repo.py:882:    def _merge_saga_projection(
+novaic-agent-runtime/queue_service/saga_repo.py:884:        saga: Optional[Dict[str, Any]],
+novaic-agent-runtime/queue_service/saga_repo.py:887:        if not saga:
+novaic-agent-runtime/queue_service/saga_repo.py:889:        merged = dict(saga)
+novaic-agent-runtime/queue_service/saga_repo.py:905:    def _saga_state(self, saga_id: str) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/saga_repo.py:906:        current = self._saga_ledger.get_state(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:908:            raise RuntimeError(f"missing saga FSM state for {saga_id}")
+novaic-agent-runtime/queue_service/saga_repo.py:911:    def _saga_generation(self, saga_id: str) -> int:
+novaic-agent-runtime/queue_service/saga_repo.py:912:        current = self._saga_state(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:915:    def _runtime_state_from_saga(self, saga: Dict[str, Any]) -> SagaRuntimeState:
+novaic-agent-runtime/queue_service/saga_repo.py:916:        current = self._saga_state(str(saga["id"]))
+novaic-agent-runtime/queue_service/saga_repo.py:917:        return SagaRuntimeState(
+novaic-agent-runtime/queue_service/saga_repo.py:918:            status=SagaRuntimeStatus(str(current.get("state") or SagaRuntimeStatus.NONE.value)),
+novaic-agent-runtime/queue_service/saga_repo.py:919:            saga_id=str(saga["id"]),
+novaic-agent-runtime/queue_service/saga_repo.py:921:            saga_type=current.get("saga_type"),
+novaic-agent-runtime/queue_service/saga_repo.py:927:    def _record_saga_transition_from_saga(
+novaic-agent-runtime/queue_service/saga_repo.py:930:        saga: Dict[str, Any],
+novaic-agent-runtime/queue_service/saga_repo.py:931:        event_type: SagaLifecycleEvent,
+novaic-agent-runtime/queue_service/saga_repo.py:937:        current = self._saga_state(str(saga["id"]))
+novaic-agent-runtime/queue_service/saga_repo.py:938:        self._record_saga_transition(
+novaic-agent-runtime/queue_service/saga_repo.py:939:            saga_id=str(saga["id"]),
+novaic-agent-runtime/queue_service/saga_repo.py:943:            saga_type=current.get("saga_type"),
+novaic-agent-runtime/queue_service/saga_repo.py:967:    def _record_saga_transition(
+novaic-agent-runtime/queue_service/saga_repo.py:970:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:971:        event_type: SagaLifecycleEvent,
+novaic-agent-runtime/queue_service/saga_repo.py:974:        saga_type: str | None,
+novaic-agent-runtime/queue_service/saga_repo.py:982:        self._saga_ledger.record_transition(
+novaic-agent-runtime/queue_service/saga_repo.py:983:            saga_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:994:            event_id=f"sevt-{saga_id}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/saga_repo.py:996:                f"saga-event:{saga_id}:{generation}:{event_type.value}"
+novaic-agent-runtime/queue_service/saga_repo.py:998:            state=SagaStateRecord(
+novaic-agent-runtime/queue_service/saga_repo.py:999:                saga_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1002:                saga_type=saga_type or projection.get("saga_type"),
+novaic-agent-runtime/queue_service/saga_repo.py:1013:            outbox=tuple(
+novaic-agent-runtime/queue_service/saga_repo.py:1014:                FsmOutboxRecord(
+novaic-agent-runtime/queue_service/saga_repo.py:1015:                    outbox_id=f"sout-{saga_id}-{generation}-{index}",
+novaic-agent-runtime/queue_service/saga_repo.py:1020:                        f"saga-effect:{saga_id}:{generation}:"
+novaic-agent-runtime/queue_service/saga_repo.py:1120:# Saga types that need wake_finalize compensation on failure
+novaic-agent-runtime/queue_service/saga_repo.py:1147:class SagaOrchestrator(SagaRepository):
+novaic-agent-runtime/queue_service/saga_repo.py:1149:    Saga lifecycle coordinator for queue-service-owned failure handling.
+novaic-agent-runtime/queue_service/saga_repo.py:1158:        saga_id_provider: Callable[[], str],
+novaic-agent-runtime/queue_service/saga_repo.py:1159:            session_ledger: SessionLedgerRepository | None = None,
+novaic-agent-runtime/queue_service/saga_repo.py:1160:            saga_ledger: SagaLedgerRepository | None = None,
+novaic-agent-runtime/queue_service/saga_repo.py:1162:            max_outbox_attempts: int = 10,
+novaic-agent-runtime/queue_service/saga_repo.py:1168:                saga_id_provider=saga_id_provider,
+novaic-agent-runtime/queue_service/saga_repo.py:1169:                saga_ledger=saga_ledger,
+novaic-agent-runtime/queue_service/saga_repo.py:1172:        self._session_ledger = session_ledger or SessionLedgerRepository(
+novaic-agent-runtime/queue_service/saga_repo.py:1176:            outbox_id_provider=_missing_session_outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1178:        self._max_outbox_attempts = int(max_outbox_attempts)
+novaic-agent-runtime/queue_service/saga_repo.py:1180:    def mark_failed(self, saga_id: str, error: str):
+novaic-agent-runtime/queue_service/saga_repo.py:1181:        """Mark failed and persist compensation intent as saga outbox effects.
+novaic-agent-runtime/queue_service/saga_repo.py:1184:          1. WAKE/think/actions saga fails → enqueue wake_finalize creation.
+novaic-agent-runtime/queue_service/saga_repo.py:1185:          2. wake_finalize itself fails → enqueue session suspected-dead event.
+novaic-agent-runtime/queue_service/saga_repo.py:1188:        saga = self.get(saga_id)
+novaic-agent-runtime/queue_service/saga_repo.py:1189:        saga_type = saga.get("saga_type") if saga else None
+novaic-agent-runtime/queue_service/saga_repo.py:1190:        ctx = (saga or {}).get("context") or {}
+novaic-agent-runtime/queue_service/saga_repo.py:1198:        if saga and saga_type in _WAKE_SAGA_TYPES:
+novaic-agent-runtime/queue_service/saga_repo.py:1199:            effect = self._build_wake_finalize_compensation_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1200:                saga_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1201:                saga_type=str(saga_type),
+novaic-agent-runtime/queue_service/saga_repo.py:1206:        elif saga and saga_type == "wake_finalize":
+novaic-agent-runtime/queue_service/saga_repo.py:1208:                saga_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1215:        super().mark_failed(saga_id, error, effects=effects)
+novaic-agent-runtime/queue_service/saga_repo.py:1220:        saga_id: str | None = None,
+novaic-agent-runtime/queue_service/saga_repo.py:1224:        """Publish committed saga outbox effects through boundary adapters."""
+novaic-agent-runtime/queue_service/saga_repo.py:1226:            "create_wake_finalize_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:1230:        pending = self._saga_ledger.list_pending_outbox(
+novaic-agent-runtime/queue_service/saga_repo.py:1231:            saga_id=saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1236:            outbox_id = str(effect["id"])
+novaic-agent-runtime/queue_service/saga_repo.py:1238:                self._publish_saga_outbox_effect(effect)
+novaic-agent-runtime/queue_service/saga_repo.py:1240:                status = self._saga_ledger.mark_outbox_failed(
+novaic-agent-runtime/queue_service/saga_repo.py:1241:                    outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1244:                    max_attempts=self._max_outbox_attempts,
+novaic-agent-runtime/queue_service/saga_repo.py:1251:                    "[SagaOrchestrator] saga outbox effect failed: id=%s type=%s error=%s",
+novaic-agent-runtime/queue_service/saga_repo.py:1252:                    outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1257:            self._saga_ledger.mark_outbox_published(
+novaic-agent-runtime/queue_service/saga_repo.py:1258:                outbox_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1264:    def _publish_saga_outbox_effect(self, effect: dict[str, Any]) -> None:
+novaic-agent-runtime/queue_service/saga_repo.py:1267:        if effect_type == "create_wake_finalize_saga":
+novaic-agent-runtime/queue_service/saga_repo.py:1269:                saga_type=str(payload["saga_type"]),
+novaic-agent-runtime/queue_service/saga_repo.py:1277:        raise ValueError(f"unsupported saga outbox effect_type: {effect_type}")
+novaic-agent-runtime/queue_service/saga_repo.py:1279:    def _build_wake_finalize_compensation_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1282:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:1283:        saga_type: str,
+novaic-agent-runtime/queue_service/saga_repo.py:1291:        finalize_context = {
+novaic-agent-runtime/queue_service/saga_repo.py:1297:            "finalize_reason": f"compensation:{saga_type}_failed",
+novaic-agent-runtime/queue_service/saga_repo.py:1306:                finalize_context[key] = context[key]
+novaic-agent-runtime/queue_service/saga_repo.py:1307:        idempotency_key = f"wake-finalize-{scope_id}-comp"
+novaic-agent-runtime/queue_service/saga_repo.py:1309:            "effect_type": "create_wake_finalize_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:1311:                "saga_type": "wake_finalize",
+novaic-agent-runtime/queue_service/saga_repo.py:1312:                "context": finalize_context,
+novaic-agent-runtime/queue_service/saga_repo.py:1315:            "idempotency_key": f"saga-compensation:{saga_id}:wake_finalize",
+novaic-agent-runtime/queue_service/saga_repo.py:1321:        saga_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:1338:                "failed_saga_id": saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1340:                "saga_context": dict(context),
+novaic-agent-runtime/queue_service/saga_repo.py:1342:            "idempotency_key": f"suspected:{session_key}:{saga_id}",
+novaic-agent-runtime/queue_service/saga_repo.py:1353:        failed_saga_id: str,
+novaic-agent-runtime/queue_service/saga_repo.py:1355:        saga_context: Dict[str, Any],
+novaic-agent-runtime/queue_service/saga_repo.py:1357:        event_id = f"suspected:{session_key}:{failed_saga_id}"
+novaic-agent-runtime/queue_service/saga_repo.py:1358:        recovery_id = f"recovery:{session_key}:{failed_scope_id or failed_saga_id}"
+novaic-agent-runtime/queue_service/saga_repo.py:1362:            "reason": "wake_finalize_failed",
+novaic-agent-runtime/queue_service/saga_repo.py:1365:            "failed_saga_id": failed_saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1366:            "finalize_reason": saga_context.get(
+novaic-agent-runtime/queue_service/saga_repo.py:1367:                "finalize_reason",
+novaic-agent-runtime/queue_service/saga_repo.py:1368:                "wake_finalize_failed",
+novaic-agent-runtime/queue_service/saga_repo.py:1371:            "wake_scope_path": saga_context.get("wake_scope_path"),
+novaic-agent-runtime/queue_service/saga_repo.py:1372:            "agent_root_scope_id": saga_context.get("agent_root_scope_id"),
+novaic-agent-runtime/queue_service/saga_repo.py:1373:            "round_num": saga_context.get("round_num", 0),
+novaic-agent-runtime/queue_service/saga_repo.py:1374:            "remaining_stack": _explicit_or_unknown_remaining_stack(saga_context),
+novaic-agent-runtime/queue_service/saga_repo.py:1393:                event_type=SessionEventType.SESSION_SUSPECTED_DEAD.value,
+novaic-agent-runtime/queue_service/saga_repo.py:1395:                causation_id=failed_saga_id,
+novaic-agent-runtime/queue_service/saga_repo.py:1404:def _missing_saga_event_id() -> str:
+novaic-agent-runtime/queue_service/saga_repo.py:1405:    raise RuntimeError("SagaRepository must pass explicit saga FSM event ids")
+novaic-agent-runtime/queue_service/saga_repo.py:1408:def _missing_saga_outbox_id() -> str:
+novaic-agent-runtime/queue_service/saga_repo.py:1409:    raise RuntimeError("SagaRepository must pass explicit saga FSM outbox ids")
+novaic-agent-runtime/queue_service/saga_repo.py:1413:    raise RuntimeError("SagaRepository must pass explicit worker lease FSM event ids")
+novaic-agent-runtime/queue_service/saga_repo.py:1416:def _missing_lease_outbox_id() -> str:
+novaic-agent-runtime/queue_service/saga_repo.py:1417:    raise RuntimeError("SagaRepository must pass explicit worker lease FSM outbox ids")
+novaic-agent-runtime/queue_service/saga_repo.py:1421:    raise RuntimeError("SagaOrchestrator saga outbox publisher must pass session event ids")
+novaic-agent-runtime/queue_service/saga_repo.py:1424:def _missing_session_outbox_id() -> str:
+novaic-agent-runtime/queue_service/saga_repo.py:1425:    raise RuntimeError("SagaOrchestrator saga outbox publisher must pass session outbox ids")
+novaic-agent-runtime/queue_service/session_recovery.py:71:    failed_saga_id = payload.get("failed_saga_id")
+novaic-agent-runtime/queue_service/session_recovery.py:83:        "failed_saga_id": failed_saga_id,
+novaic-agent-runtime/queue_service/session_recovery.py:84:        "reason": payload.get("reason") or "wake_finalize_failed",
+novaic-agent-runtime/queue_service/session_recovery.py:99:def build_recovery_dispatch(
+novaic-agent-runtime/queue_service/session_recovery.py:106:    """Build dispatch trigger/metadata for a recovered wake."""
+novaic-agent-runtime/queue_service/session_recovery.py:122:        "recovery_failed_saga_id": recovery_marker.get("failed_saga_id"),
+novaic-agent-runtime/queue_service/session_recovery.py:128:            "failed_saga_id": recovery_marker.get("failed_saga_id"),
+novaic-agent-runtime/queue_service/session_recovery.py:177:            "finalize_reason": (
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:1:"""Generic SQLite-backed FSM event/state/outbox store."""
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:20:    outbox_table: str
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:31:            "outbox_table": self.outbox_table,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:41:            raise ValueError("FSM store config requires state_conflict_columns")
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:67:    """Business-agnostic helper for durable FSM rows.
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:125:                "FSM event append",
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:165:                "FSM state upsert",
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:185:    def append_outbox(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:189:        outbox_id: str,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:202:            "id": outbox_id,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:205:                "FSM outbox append",
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:216:            self._insert(self.config.outbox_table, row)
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:217:            return outbox_id
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:221:                    self.config.outbox_table,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:355:    def list_outbox(self, machine_id: str) -> list[dict[str, Any]]:
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:357:            self.config.outbox_table,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:364:    def get_outbox(self, outbox_id: str) -> dict[str, Any] | None:
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:366:            self.config.outbox_table,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:368:            params=(outbox_id,),
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:372:    def list_pending_outbox(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:389:            self.config.outbox_table,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:397:    def mark_outbox_published(self, outbox_id: str, *, published_at: str) -> None:
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:400:            UPDATE {self.config.outbox_table}
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:408:            (published_at, published_at, published_at, outbox_id),
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:411:    def mark_outbox_failed(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:413:        outbox_id: str,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:421:            UPDATE {self.config.outbox_table}
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:431:            (int(max_attempts), error, failed_at, outbox_id),
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:434:            self.config.outbox_table,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:436:            params=(outbox_id,),
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:524:            raise ValueError("FSM store config does not define event_consumed_column")
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:553:        raise ValueError(f"invalid FSM SQL identifier for {name}: {identifier!r}")
+novaic-agent-runtime/queue_service/db/schema.py:6:- tq_sagas: Saga 流程表
+novaic-agent-runtime/queue_service/db/schema.py:37:-- only in tq_task_state / tq_task_events / tq_worker_lease_state.
+novaic-agent-runtime/queue_service/db/schema.py:50:    -- Saga DAG (v2)
+novaic-agent-runtime/queue_service/db/schema.py:51:    saga_id TEXT,                     -- Parent saga ID
+novaic-agent-runtime/queue_service/db/schema.py:52:    step_name TEXT,                   -- Step name in saga
+novaic-agent-runtime/queue_service/db/schema.py:60:-- tq_worker_lease_state, not on tq_tasks.
+novaic-agent-runtime/queue_service/db/schema.py:67:CREATE INDEX IF NOT EXISTS idx_tq_tasks_saga ON tq_tasks(saga_id) WHERE saga_id IS NOT NULL;
+novaic-agent-runtime/queue_service/db/schema.py:70:-- Task FSM ledger tables (v15)
+novaic-agent-runtime/queue_service/db/schema.py:95:-- Materialized task FSM state. This table is the task lifecycle authority.
+novaic-agent-runtime/queue_service/db/schema.py:102:    saga_id TEXT,
+novaic-agent-runtime/queue_service/db/schema.py:120:CREATE INDEX IF NOT EXISTS idx_tq_task_state_saga
+novaic-agent-runtime/queue_service/db/schema.py:121:    ON tq_task_state(saga_id) WHERE saga_id IS NOT NULL;
+novaic-agent-runtime/queue_service/db/schema.py:125:CREATE TABLE IF NOT EXISTS tq_task_outbox (
+novaic-agent-runtime/queue_service/db/schema.py:141:CREATE INDEX IF NOT EXISTS idx_tq_task_outbox_pending
+novaic-agent-runtime/queue_service/db/schema.py:142:    ON tq_task_outbox(status, created_at)
+novaic-agent-runtime/queue_service/db/schema.py:144:CREATE INDEX IF NOT EXISTS idx_tq_task_outbox_task
+novaic-agent-runtime/queue_service/db/schema.py:145:    ON tq_task_outbox(task_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:146:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_task_outbox_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:147:    ON tq_task_outbox(idempotency_key);
+novaic-agent-runtime/queue_service/db/schema.py:149:-- tq_sagas: saga context projection table. Lifecycle authority lives only in
+novaic-agent-runtime/queue_service/db/schema.py:150:-- tq_saga_state / tq_saga_events / tq_worker_lease_state.
+novaic-agent-runtime/queue_service/db/schema.py:151:CREATE TABLE IF NOT EXISTS tq_sagas (
+novaic-agent-runtime/queue_service/db/schema.py:154:    idempotency_key TEXT UNIQUE,      -- Prevents duplicate saga creation
+novaic-agent-runtime/queue_service/db/schema.py:156:    -- Saga definition
+novaic-agent-runtime/queue_service/db/schema.py:157:    saga_type TEXT NOT NULL,          -- Saga type name
+novaic-agent-runtime/queue_service/db/schema.py:164:-- Projection indexes. Lifecycle candidate indexes live on tq_saga_state and
+novaic-agent-runtime/queue_service/db/schema.py:165:-- tq_worker_lease_state, not on tq_sagas.
+novaic-agent-runtime/queue_service/db/schema.py:166:DROP INDEX IF EXISTS idx_tq_sagas_pending;
+novaic-agent-runtime/queue_service/db/schema.py:167:DROP INDEX IF EXISTS idx_tq_sagas_heartbeat;
+novaic-agent-runtime/queue_service/db/schema.py:168:DROP INDEX IF EXISTS idx_tq_sagas_type;
+novaic-agent-runtime/queue_service/db/schema.py:169:CREATE INDEX IF NOT EXISTS idx_tq_sagas_type_projection ON tq_sagas(saga_type);
+novaic-agent-runtime/queue_service/db/schema.py:170:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_sagas_idempotency ON tq_sagas(idempotency_key);
+novaic-agent-runtime/queue_service/db/schema.py:173:-- Saga FSM ledger tables (v16)
+novaic-agent-runtime/queue_service/db/schema.py:176:-- Append-only saga lifecycle events. These rows are the target authority for
+novaic-agent-runtime/queue_service/db/schema.py:177:-- saga create/claim/launch/result/complete/fail/recover/cancel transitions.
+novaic-agent-runtime/queue_service/db/schema.py:178:CREATE TABLE IF NOT EXISTS tq_saga_events (
+novaic-agent-runtime/queue_service/db/schema.py:180:    saga_id TEXT NOT NULL,
+novaic-agent-runtime/queue_service/db/schema.py:191:CREATE INDEX IF NOT EXISTS idx_tq_saga_events_saga
+novaic-agent-runtime/queue_service/db/schema.py:192:    ON tq_saga_events(saga_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:193:CREATE INDEX IF NOT EXISTS idx_tq_saga_events_type
+novaic-agent-runtime/queue_service/db/schema.py:194:    ON tq_saga_events(event_type, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:195:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_saga_events_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:196:    ON tq_saga_events(idempotency_key);
+novaic-agent-runtime/queue_service/db/schema.py:198:-- Materialized saga FSM state. This table is the saga lifecycle authority.
+novaic-agent-runtime/queue_service/db/schema.py:199:-- `tq_sagas` is only the context/result projection.
+novaic-agent-runtime/queue_service/db/schema.py:200:CREATE TABLE IF NOT EXISTS tq_saga_state (
+novaic-agent-runtime/queue_service/db/schema.py:201:    saga_id TEXT PRIMARY KEY,
+novaic-agent-runtime/queue_service/db/schema.py:204:    saga_type TEXT,
+novaic-agent-runtime/queue_service/db/schema.py:216:CREATE INDEX IF NOT EXISTS idx_tq_saga_state_state
+novaic-agent-runtime/queue_service/db/schema.py:217:    ON tq_saga_state(state, updated_at);
+novaic-agent-runtime/queue_service/db/schema.py:218:CREATE INDEX IF NOT EXISTS idx_tq_saga_state_type
+novaic-agent-runtime/queue_service/db/schema.py:219:    ON tq_saga_state(saga_type, state);
+novaic-agent-runtime/queue_service/db/schema.py:221:-- Durable saga side-effect ledger. PR-309 does not publish from here yet.
+novaic-agent-runtime/queue_service/db/schema.py:222:-- It gives compensation and saga/session handoff cutovers a durable effect sink.
+novaic-agent-runtime/queue_service/db/schema.py:223:CREATE TABLE IF NOT EXISTS tq_saga_outbox (
+novaic-agent-runtime/queue_service/db/schema.py:225:    saga_id TEXT NOT NULL,
+novaic-agent-runtime/queue_service/db/schema.py:239:CREATE INDEX IF NOT EXISTS idx_tq_saga_outbox_pending
+novaic-agent-runtime/queue_service/db/schema.py:240:    ON tq_saga_outbox(status, created_at)
+novaic-agent-runtime/queue_service/db/schema.py:242:CREATE INDEX IF NOT EXISTS idx_tq_saga_outbox_saga
+novaic-agent-runtime/queue_service/db/schema.py:243:    ON tq_saga_outbox(saga_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:244:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_saga_outbox_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:245:    ON tq_saga_outbox(idempotency_key);
+novaic-agent-runtime/queue_service/db/schema.py:248:-- Worker lease FSM ledger tables (v17)
+novaic-agent-runtime/queue_service/db/schema.py:251:CREATE TABLE IF NOT EXISTS tq_worker_lease_events (
+novaic-agent-runtime/queue_service/db/schema.py:266:CREATE INDEX IF NOT EXISTS idx_tq_worker_lease_events_lease
+novaic-agent-runtime/queue_service/db/schema.py:267:    ON tq_worker_lease_events(lease_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:268:CREATE INDEX IF NOT EXISTS idx_tq_worker_lease_events_machine
+novaic-agent-runtime/queue_service/db/schema.py:269:    ON tq_worker_lease_events(machine_type, machine_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:270:CREATE INDEX IF NOT EXISTS idx_tq_worker_lease_events_type
+novaic-agent-runtime/queue_service/db/schema.py:271:    ON tq_worker_lease_events(event_type, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:272:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_worker_lease_events_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:273:    ON tq_worker_lease_events(idempotency_key);
+novaic-agent-runtime/queue_service/db/schema.py:275:CREATE TABLE IF NOT EXISTS tq_worker_lease_state (
+novaic-agent-runtime/queue_service/db/schema.py:286:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_worker_lease_state_machine
+novaic-agent-runtime/queue_service/db/schema.py:287:    ON tq_worker_lease_state(machine_type, machine_id);
+novaic-agent-runtime/queue_service/db/schema.py:288:CREATE INDEX IF NOT EXISTS idx_tq_worker_lease_state_status
+novaic-agent-runtime/queue_service/db/schema.py:289:    ON tq_worker_lease_state(state, updated_at);
+novaic-agent-runtime/queue_service/db/schema.py:290:CREATE INDEX IF NOT EXISTS idx_tq_worker_lease_state_heartbeat
+novaic-agent-runtime/queue_service/db/schema.py:291:    ON tq_worker_lease_state(machine_type, state, heartbeat_at);
+novaic-agent-runtime/queue_service/db/schema.py:293:CREATE TABLE IF NOT EXISTS tq_worker_lease_outbox (
+novaic-agent-runtime/queue_service/db/schema.py:311:CREATE INDEX IF NOT EXISTS idx_tq_worker_lease_outbox_pending
+novaic-agent-runtime/queue_service/db/schema.py:312:    ON tq_worker_lease_outbox(status, created_at)
+novaic-agent-runtime/queue_service/db/schema.py:314:CREATE INDEX IF NOT EXISTS idx_tq_worker_lease_outbox_lease
+novaic-agent-runtime/queue_service/db/schema.py:315:    ON tq_worker_lease_outbox(lease_id, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:316:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_worker_lease_outbox_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:317:    ON tq_worker_lease_outbox(idempotency_key);
+novaic-agent-runtime/queue_service/db/schema.py:339:-- Append-only session input/observation events. Session inputs are written here
+novaic-agent-runtime/queue_service/db/schema.py:340:-- before live dispatch decisions so wake start/attach/restart behavior can be
+novaic-agent-runtime/queue_service/db/schema.py:365:-- Materialized session FSM state. This is the only session coordinator source
+novaic-agent-runtime/queue_service/db/schema.py:374:    active_saga_id TEXT,
+novaic-agent-runtime/queue_service/db/schema.py:384:-- Durable side-effect ledger. Outbox effects are created in the same
+novaic-agent-runtime/queue_service/db/schema.py:385:-- transaction as the state transition, then dispatched by an outbox worker.
+novaic-agent-runtime/queue_service/db/schema.py:386:CREATE TABLE IF NOT EXISTS tq_session_outbox (
+novaic-agent-runtime/queue_service/db/schema.py:405:CREATE INDEX IF NOT EXISTS idx_tq_session_outbox_pending
+novaic-agent-runtime/queue_service/db/schema.py:406:    ON tq_session_outbox(status, created_at)
+novaic-agent-runtime/queue_service/db/schema.py:408:CREATE INDEX IF NOT EXISTS idx_tq_session_outbox_session
+novaic-agent-runtime/queue_service/db/schema.py:409:    ON tq_session_outbox(session_key, generation, created_at);
+novaic-agent-runtime/queue_service/db/schema.py:410:CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_session_outbox_idempotency
+novaic-agent-runtime/queue_service/db/schema.py:411:    ON tq_session_outbox(idempotency_key);
+novaic-agent-runtime/queue_service/queue_db.py:57:    t.saga_id,
+novaic-agent-runtime/queue_service/queue_db.py:78:        task = queue.claim(["my_topic"], "worker-1")
+novaic-agent-runtime/queue_service/queue_db.py:106:            outbox_id_provider=_missing_task_outbox_id,
+novaic-agent-runtime/queue_service/queue_db.py:112:            outbox_id_provider=_missing_lease_outbox_id,
+novaic-agent-runtime/queue_service/queue_db.py:121:        saga_id: Optional[str] = None,
+novaic-agent-runtime/queue_service/queue_db.py:129:            saga_id: 父 Saga ID（saga task 时必填）
+novaic-agent-runtime/queue_service/queue_db.py:130:            step_name: Saga 步骤名
+novaic-agent-runtime/queue_service/queue_db.py:159:                        created_at, saga_id, step_name, depends_on
+novaic-agent-runtime/queue_service/queue_db.py:168:                    saga_id, step_name, depends_on_json,
+novaic-agent-runtime/queue_service/queue_db.py:182:                    saga_id=saga_id,
+novaic-agent-runtime/queue_service/queue_db.py:204:        worker_id: str,
+novaic-agent-runtime/queue_service/queue_db.py:220:            # Candidate authority is the task FSM state; tq_tasks is joined only
+novaic-agent-runtime/queue_service/queue_db.py:226:                LEFT JOIN tq_saga_state ss ON ts.saga_id = ss.saga_id
+novaic-agent-runtime/queue_service/queue_db.py:235:                      ts.saga_id IS NOT NULL
+novaic-agent-runtime/queue_service/queue_db.py:236:                      AND ss.saga_id IS NOT NULL
+novaic-agent-runtime/queue_service/queue_db.py:254:                "worker_id": worker_id,
+novaic-agent-runtime/queue_service/queue_db.py:265:                "worker_id": worker_id,
+novaic-agent-runtime/queue_service/queue_db.py:546:                JOIN tq_worker_lease_state ls
+novaic-agent-runtime/queue_service/queue_db.py:731:        """统计各 task FSM state 数量"""
+novaic-agent-runtime/queue_service/queue_db.py:846:            所有在 task FSM state 中出现过的 topic 列表
+novaic-agent-runtime/queue_service/queue_db.py:1087:                "saga_id", "step_name", "depends_on",
+novaic-agent-runtime/queue_service/queue_db.py:1125:        """Persist an already-decided task FSM projection.
+novaic-agent-runtime/queue_service/queue_db.py:1220:            raise RuntimeError(f"missing task FSM state for {task_id}")
+novaic-agent-runtime/queue_service/queue_db.py:1290:            saga_id=task.get("saga_id"),
+novaic-agent-runtime/queue_service/queue_db.py:1303:        saga_id: str | None,
+novaic-agent-runtime/queue_service/queue_db.py:1331:                saga_id=saga_id,
+novaic-agent-runtime/queue_service/queue_db.py:1455:    raise RuntimeError("TaskQueue must pass explicit task FSM event ids")
+novaic-agent-runtime/queue_service/queue_db.py:1458:def _missing_task_outbox_id() -> str:
+novaic-agent-runtime/queue_service/queue_db.py:1459:    raise RuntimeError("TaskQueue must pass explicit task FSM outbox ids")
+novaic-agent-runtime/queue_service/queue_db.py:1463:    raise RuntimeError("TaskQueue must pass explicit worker lease FSM event ids")
+novaic-agent-runtime/queue_service/queue_db.py:1466:def _missing_lease_outbox_id() -> str:
+novaic-agent-runtime/queue_service/queue_db.py:1467:    raise RuntimeError("TaskQueue must pass explicit worker lease FSM outbox ids")
+novaic-agent-runtime/queue_service/saga_fsm.py:1:"""Pure saga lifecycle FSM decisions for Queue Service.
+novaic-agent-runtime/queue_service/saga_fsm.py:3:This module is deliberately IO-free. Callers must provide complete saga state,
+novaic-agent-runtime/queue_service/saga_fsm.py:24:class SagaRuntimeStatus(str, Enum):
+novaic-agent-runtime/queue_service/saga_fsm.py:34:class SagaLifecycleEvent(str, Enum):
+novaic-agent-runtime/queue_service/saga_fsm.py:35:    SAGA_CREATED = "saga_created"
+novaic-agent-runtime/queue_service/saga_fsm.py:36:    SAGA_CLAIM_REQUESTED = "saga_claim_requested"
+novaic-agent-runtime/queue_service/saga_fsm.py:37:    SAGA_LAUNCHED = "saga_launched"
+novaic-agent-runtime/queue_service/saga_fsm.py:38:    SAGA_STEP_RESULT_APPENDED = "saga_step_result_appended"
+novaic-agent-runtime/queue_service/saga_fsm.py:39:    SAGA_COMPLETED = "saga_completed"
+novaic-agent-runtime/queue_service/saga_fsm.py:40:    SAGA_FAILED = "saga_failed"
+novaic-agent-runtime/queue_service/saga_fsm.py:41:    SAGA_RECOVERED = "saga_recovered"
+novaic-agent-runtime/queue_service/saga_fsm.py:42:    SAGA_HEARTBEAT_RECORDED = "saga_heartbeat_recorded"
+novaic-agent-runtime/queue_service/saga_fsm.py:43:    SAGA_HEARTBEAT_TIMED_OUT_RETRY = "saga_heartbeat_timed_out_retry"
+novaic-agent-runtime/queue_service/saga_fsm.py:44:    SAGA_HEARTBEAT_TIMED_OUT_TERMINAL = "saga_heartbeat_timed_out_terminal"
+novaic-agent-runtime/queue_service/saga_fsm.py:45:    SAGA_CANCEL_REQUESTED = "saga_cancel_requested"
+novaic-agent-runtime/queue_service/saga_fsm.py:48:class SagaLifecycleAction(str, Enum):
+novaic-agent-runtime/queue_service/saga_fsm.py:49:    CREATE_SAGA = "create_saga"
+novaic-agent-runtime/queue_service/saga_fsm.py:50:    CLAIM_SAGA = "claim_saga"
+novaic-agent-runtime/queue_service/saga_fsm.py:51:    LAUNCH_SAGA = "launch_saga"
+novaic-agent-runtime/queue_service/saga_fsm.py:53:    COMPLETE_SAGA = "complete_saga"
+novaic-agent-runtime/queue_service/saga_fsm.py:54:    FAIL_SAGA = "fail_saga"
+novaic-agent-runtime/queue_service/saga_fsm.py:55:    RECOVER_SAGA = "recover_saga"
+novaic-agent-runtime/queue_service/saga_fsm.py:57:    CANCEL_SAGA = "cancel_saga"
+novaic-agent-runtime/queue_service/saga_fsm.py:62:class SagaRuntimeState:
+novaic-agent-runtime/queue_service/saga_fsm.py:63:    status: SagaRuntimeStatus
+novaic-agent-runtime/queue_service/saga_fsm.py:64:    saga_id: str
+novaic-agent-runtime/queue_service/saga_fsm.py:66:    saga_type: str | None = None
+novaic-agent-runtime/queue_service/saga_fsm.py:74:class SagaLifecycleInput:
+novaic-agent-runtime/queue_service/saga_fsm.py:75:    state: SagaRuntimeState
+novaic-agent-runtime/queue_service/saga_fsm.py:76:    event_type: SagaLifecycleEvent
+novaic-agent-runtime/queue_service/saga_fsm.py:81:class SagaLifecycleDecision:
+novaic-agent-runtime/queue_service/saga_fsm.py:82:    action: SagaLifecycleAction
+novaic-agent-runtime/queue_service/saga_fsm.py:84:    next_status: SagaRuntimeStatus
+novaic-agent-runtime/queue_service/saga_fsm.py:90:def decide_saga_lifecycle(decision_input: SagaLifecycleInput) -> SagaLifecycleDecision:
+novaic-agent-runtime/queue_service/saga_fsm.py:91:    """Decide one saga lifecycle transition from explicit inputs."""
+novaic-agent-runtime/queue_service/saga_fsm.py:95:        machine_type="queue_saga",
+novaic-agent-runtime/queue_service/saga_fsm.py:96:        machine_id=state.saga_id,
+novaic-agent-runtime/queue_service/saga_fsm.py:101:            "saga_type": state.saga_type,
+novaic-agent-runtime/queue_service/saga_fsm.py:114:        reducer=_reduce_saga_lifecycle,
+novaic-agent-runtime/queue_service/saga_fsm.py:116:    return SagaLifecycleDecision(
+novaic-agent-runtime/queue_service/saga_fsm.py:117:        action=SagaLifecycleAction(decision.action),
+novaic-agent-runtime/queue_service/saga_fsm.py:119:        next_status=SagaRuntimeStatus(decision.next_state.state),
+novaic-agent-runtime/queue_service/saga_fsm.py:126:def _reduce_saga_lifecycle(
+novaic-agent-runtime/queue_service/saga_fsm.py:132:    event_type = SagaLifecycleEvent(event.event_type)
+novaic-agent-runtime/queue_service/saga_fsm.py:134:    if event_type is SagaLifecycleEvent.SAGA_CREATED:
+novaic-agent-runtime/queue_service/saga_fsm.py:135:        if state.state != SagaRuntimeStatus.NONE.value:
+novaic-agent-runtime/queue_service/saga_fsm.py:137:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:139:            status=SagaRuntimeStatus.PENDING,
+novaic-agent-runtime/queue_service/saga_fsm.py:140:            action=SagaLifecycleAction.CREATE_SAGA,
+novaic-agent-runtime/queue_service/saga_fsm.py:141:            reason="saga_created",
+novaic-agent-runtime/queue_service/saga_fsm.py:143:                "status": SagaRuntimeStatus.PENDING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:144:                "saga_type": event.payload.get("saga_type"),
+novaic-agent-runtime/queue_service/saga_fsm.py:151:    if event_type is SagaLifecycleEvent.SAGA_CLAIM_REQUESTED:
+novaic-agent-runtime/queue_service/saga_fsm.py:152:        if state.state != SagaRuntimeStatus.PENDING.value:
+novaic-agent-runtime/queue_service/saga_fsm.py:154:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:156:            status=SagaRuntimeStatus.RUNNING,
+novaic-agent-runtime/queue_service/saga_fsm.py:157:            action=SagaLifecycleAction.CLAIM_SAGA,
+novaic-agent-runtime/queue_service/saga_fsm.py:158:            reason="pending_saga_claimed",
+novaic-agent-runtime/queue_service/saga_fsm.py:160:                "status": SagaRuntimeStatus.RUNNING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:161:                "claimed_by": event.payload.get("worker_id"),
+novaic-agent-runtime/queue_service/saga_fsm.py:167:    if event_type is SagaLifecycleEvent.SAGA_LAUNCHED:
+novaic-agent-runtime/queue_service/saga_fsm.py:168:        if state.state != SagaRuntimeStatus.RUNNING.value:
+novaic-agent-runtime/queue_service/saga_fsm.py:170:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:172:            status=SagaRuntimeStatus.LAUNCHED,
+novaic-agent-runtime/queue_service/saga_fsm.py:173:            action=SagaLifecycleAction.LAUNCH_SAGA,
+novaic-agent-runtime/queue_service/saga_fsm.py:174:            reason="running_saga_launched",
+novaic-agent-runtime/queue_service/saga_fsm.py:176:                "status": SagaRuntimeStatus.LAUNCHED.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:185:    if event_type is SagaLifecycleEvent.SAGA_STEP_RESULT_APPENDED:
+novaic-agent-runtime/queue_service/saga_fsm.py:187:            SagaRuntimeStatus.RUNNING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:188:            SagaRuntimeStatus.LAUNCHED.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:198:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:200:            status=SagaRuntimeStatus(state.state),
+novaic-agent-runtime/queue_service/saga_fsm.py:201:            action=SagaLifecycleAction.RECORD_STEP_RESULT,
+novaic-agent-runtime/queue_service/saga_fsm.py:202:            reason="saga_step_result_appended",
+novaic-agent-runtime/queue_service/saga_fsm.py:210:    if event_type is SagaLifecycleEvent.SAGA_HEARTBEAT_RECORDED:
+novaic-agent-runtime/queue_service/saga_fsm.py:211:        if state.state != SagaRuntimeStatus.RUNNING.value:
+novaic-agent-runtime/queue_service/saga_fsm.py:213:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:215:            status=SagaRuntimeStatus.RUNNING,
+novaic-agent-runtime/queue_service/saga_fsm.py:216:            action=SagaLifecycleAction.RECORD_HEARTBEAT,
+novaic-agent-runtime/queue_service/saga_fsm.py:217:            reason="running_saga_heartbeat_recorded",
+novaic-agent-runtime/queue_service/saga_fsm.py:219:                "status": SagaRuntimeStatus.RUNNING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:226:    if event_type is SagaLifecycleEvent.SAGA_COMPLETED:
+novaic-agent-runtime/queue_service/saga_fsm.py:227:        if state.state != SagaRuntimeStatus.LAUNCHED.value:
+novaic-agent-runtime/queue_service/saga_fsm.py:229:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:231:            status=SagaRuntimeStatus.COMPLETED,
+novaic-agent-runtime/queue_service/saga_fsm.py:232:            action=SagaLifecycleAction.COMPLETE_SAGA,
+novaic-agent-runtime/queue_service/saga_fsm.py:233:            reason="launched_saga_completed",
+novaic-agent-runtime/queue_service/saga_fsm.py:235:                "status": SagaRuntimeStatus.COMPLETED.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:244:    if event_type is SagaLifecycleEvent.SAGA_FAILED:
+novaic-agent-runtime/queue_service/saga_fsm.py:246:            SagaRuntimeStatus.PENDING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:247:            SagaRuntimeStatus.RUNNING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:248:            SagaRuntimeStatus.LAUNCHED.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:251:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:253:            status=SagaRuntimeStatus.FAILED,
+novaic-agent-runtime/queue_service/saga_fsm.py:254:            action=SagaLifecycleAction.FAIL_SAGA,
+novaic-agent-runtime/queue_service/saga_fsm.py:255:            reason="saga_failed",
+novaic-agent-runtime/queue_service/saga_fsm.py:257:                "status": SagaRuntimeStatus.FAILED.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:265:        SagaLifecycleEvent.SAGA_RECOVERED,
+novaic-agent-runtime/queue_service/saga_fsm.py:266:        SagaLifecycleEvent.SAGA_HEARTBEAT_TIMED_OUT_RETRY,
+novaic-agent-runtime/queue_service/saga_fsm.py:268:        if state.state != SagaRuntimeStatus.RUNNING.value:
+novaic-agent-runtime/queue_service/saga_fsm.py:270:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:272:            status=SagaRuntimeStatus.PENDING,
+novaic-agent-runtime/queue_service/saga_fsm.py:273:            action=SagaLifecycleAction.RECOVER_SAGA,
+novaic-agent-runtime/queue_service/saga_fsm.py:274:            reason="running_saga_recovered",
+novaic-agent-runtime/queue_service/saga_fsm.py:276:                "status": SagaRuntimeStatus.PENDING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:284:    if event_type is SagaLifecycleEvent.SAGA_HEARTBEAT_TIMED_OUT_TERMINAL:
+novaic-agent-runtime/queue_service/saga_fsm.py:285:        if state.state != SagaRuntimeStatus.RUNNING.value:
+novaic-agent-runtime/queue_service/saga_fsm.py:287:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:289:            status=SagaRuntimeStatus.FAILED,
+novaic-agent-runtime/queue_service/saga_fsm.py:290:            action=SagaLifecycleAction.FAIL_SAGA,
+novaic-agent-runtime/queue_service/saga_fsm.py:291:            reason="running_saga_timeout_terminal",
+novaic-agent-runtime/queue_service/saga_fsm.py:293:                "status": SagaRuntimeStatus.FAILED.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:300:    if event_type is SagaLifecycleEvent.SAGA_CANCEL_REQUESTED:
+novaic-agent-runtime/queue_service/saga_fsm.py:302:            SagaRuntimeStatus.PENDING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:303:            SagaRuntimeStatus.RUNNING.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:304:            SagaRuntimeStatus.LAUNCHED.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:307:        return _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:309:            status=SagaRuntimeStatus.CANCELLED,
+novaic-agent-runtime/queue_service/saga_fsm.py:310:            action=SagaLifecycleAction.CANCEL_SAGA,
+novaic-agent-runtime/queue_service/saga_fsm.py:311:            reason="saga_cancelled",
+novaic-agent-runtime/queue_service/saga_fsm.py:313:                "status": SagaRuntimeStatus.CANCELLED.value,
+novaic-agent-runtime/queue_service/saga_fsm.py:322:def _saga_decision(
+novaic-agent-runtime/queue_service/saga_fsm.py:325:    status: SagaRuntimeStatus,
+novaic-agent-runtime/queue_service/saga_fsm.py:326:    action: SagaLifecycleAction,
+novaic-agent-runtime/queue_service/saga_fsm.py:352:    event_type: SagaLifecycleEvent,
+novaic-agent-runtime/queue_service/saga_fsm.py:356:        action=SagaLifecycleAction.REJECT_TRANSITION.value,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:1:"""Saga outbox handler for the generic worker substrate."""
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:9:from queue_service.worker import (
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:10:    WorkerJob,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:11:    WorkerJobDecodeError,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:12:    WorkerJobSpec,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:13:    WorkerResult,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:14:    decode_worker_job,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:18:SAGA_OUTBOX_DRAIN_JOB = WorkerJobSpec(kind="saga_outbox_drain")
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:22:class SagaOutboxHandlerConfig:
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:28:            raise ValueError("saga outbox worker batch_size must be positive")
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:31:class SagaOutboxHandler:
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:32:    """Drain durable saga outbox rows through an explicit orchestrator port."""
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:37:        orchestrator: SagaOrchestrator,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:38:        config: SagaOutboxHandlerConfig | None = None,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:41:        self.config = config or SagaOutboxHandlerConfig()
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:43:    def handle(self, job: WorkerJob) -> WorkerResult:
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:45:            decode_worker_job(job, (SAGA_OUTBOX_DRAIN_JOB,))
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:46:        except WorkerJobDecodeError as exc:
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:47:            return WorkerResult.failure(str(exc), retry=False, reason=exc.reason)
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:50:            return WorkerResult.success(result, reason="saga_outbox_drained")
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:51:        return WorkerResult.noop(result, reason="saga_outbox_empty")
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:56:        saga_id: str | None = None,
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:70:            saga_id=saga_id,

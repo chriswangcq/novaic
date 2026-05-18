@@ -1,0 +1,91 @@
+   820	
+   821	    async def list_active_scopes(self) -> List[str]:
+   822	        """List root-level active scope IDs."""
+   823	        prefix = self._files.key("/ro/active/")
+   824	        keys = await self._files.list_object_keys("/ro/active/")
+   825	        scopes: set[str] = set()
+   826	        for k in keys:
+   827	            rest = k[len(prefix):]
+   828	            if "/" in rest:
+   829	                scopes.add(rest.split("/", 1)[0])
+   830	        return sorted(scopes)
+   831	
+   832	    async def get_scope_depth(self) -> int:
+   833	        """Return the number of active root scopes."""
+   834	        return len(await self.list_active_scopes())
+   835	
+   836	    # ── File materialization (for external files) ──
+   837	
+   838	    async def materialize(
+   839	        self,
+   840	        scope_path: str,
+   841	        filename: str,
+   842	        data: bytes,
+   843	    ) -> str:
+   844	        """Write external file bytes into the global scratch directory.
+   845	
+   846	        Returns the logical workspace path.
+   847	        """
+   848	        if "/" in filename or ".." in filename or "\x00" in filename:
+   849	            raise ValueError(f"invalid filename for materialize: {filename!r}")
+   850	        path = f"/rw/scratch/{filename}"
+   851	        await self.write_bytes(path, data)
+   852	        return path
+   853	
+   854	    # ── Session context (conversation history) ──
+   855	
+   856	    async def read_context(self, scope_path: str) -> List[Dict[str, Any]]:
+   857	        """Read the materialized context projection for inspection/debug.
+   858	
+   859	        Returns a list of message dicts in order.  Empty list if file
+   860	        does not exist or is empty.
+   861	        """
+   862	        path = scope_path.rstrip("/") + "/context.jsonl"
+   863	        try:
+   864	            raw = await self.read(path)
+   865	        except (KeyError, FileNotFoundError):
+   866	            return []
+   867	        messages: List[Dict[str, Any]] = []
+   868	        for line_no, line in enumerate(raw.splitlines(), start=1):
+   869	            line = line.strip()
+   870	            if line:
+   871	                try:
+   872	                    messages.append(json.loads(line))
+   873	                except json.JSONDecodeError as exc:
+   874	                    raise ValueError(
+   875	                        f"corrupt context projection {path}:{line_no}: {exc.msg}"
+   876	                    ) from exc
+   877	        return messages
+   878	
+   879	    async def append_context(self, scope_path: str, message: Dict[str, Any]) -> int:
+   880	        """Append a single message to the materialized context projection."""
+   881	        path = scope_path.rstrip("/") + "/context.jsonl"
+   882	        line = json.dumps(message, ensure_ascii=False)
+   883	        await self._sys_append_line(path, line)
+   884	        return -1
+   885	
+   886	    async def append_context_projection(self, scope_path: str, message: Dict[str, Any]) -> int:
+   887	        """Materialize a context-message projection after ContextMessageAppended."""
+   888	        return await self.append_context(scope_path, message)
+   889	
+   890	    async def append_context_batch(self, scope_path: str, messages: List[Dict[str, Any]]) -> None:
+   891	        """Append multiple messages to the materialized context projection."""
+   892	        if not messages:
+   893	            return
+   894	        path = scope_path.rstrip("/") + "/context.jsonl"
+   895	        lines = "".join(
+   896	            json.dumps(m, ensure_ascii=False) + "\n" for m in messages
+   897	        )
+   898	        await self._files.append_lines(path, lines)
+   899	
+   900	    async def append_context_batch_projection(
+   901	        self,
+   902	        scope_path: str,
+   903	        messages: List[Dict[str, Any]],
+   904	    ) -> None:
+   905	        """Materialize context-message projections after batch event append."""
+   906	        await self.append_context_batch(scope_path, messages)
+   907	
+   908	    async def read_session_meta(self, scope_path: str) -> Dict[str, Any]:
+   909	        """Read the session meta.json for a scope."""
+   910	        path = scope_path.rstrip("/") + "/meta.json"

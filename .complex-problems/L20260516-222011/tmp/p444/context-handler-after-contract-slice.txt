@@ -1,0 +1,220 @@
+"""
+Context Handlers — Cortex materialized projection maintenance
+
+Topics:
+- context.read:   Read/maintain materialized context projection notification hints
+- context.append: Append projection messages or durable tool steps
+"""
+
+import logging
+from typing import Dict, Any
+
+from . import register_handler
+from ..topics import TaskTopics
+from ..utils.cortex_bridge import get_cortex_bridge
+from ..utils.activity_projection import (
+    project_assistant_message,
+    project_tool_step,
+    with_system_activity_dependencies,
+)
+from common.exceptions import ValidationError
+from common.utils.metrics import metric_inc
+
+logger = logging.getLogger(__name__)
+
+# ── PR-46 (2026-04-23): context.read by message_ids (SSOT) ─────────────
+#
+# Prior to PR-46, ``handle_context_read`` merged input messages by
+# scanning a mutable UI receipt column — i.e. it trusted a display
+# flag as the source of truth for "what does this scope need to consume".
+# That leaks across scopes: a historical pending
+# ``USER_MESSAGE`` from days ago (e.g. after an agent crash pre-PR-41)
+# would re-enter EVERY new scope's context.jsonl, and simultaneously
+# a freshly-arrived message could be missed under race with receipt updates.
+#
+# PR-46 moves the SSOT to ``scope.meta.input_message_ids`` (maintained
+# by PR-20's ``append_scope_input`` for both fresh-wake and buffered
+# paths). Runtime only consumes what the dispatch layer explicitly
+# wired into THIS scope.
+#
+
+
+# ── PR-165A (2026-05-02): Environment notification-only prompt source ───
+#
+# Runtime no longer fetches chat message bodies during projection maintenance.
+# A message-triggered wake receives notification ids only. The agent must use
+# shell capability command ``agentctl im read`` to observe the actual message
+# content; that tool result is then recorded as a Cortex Observation. This keeps
+# "there is a message" distinct from "the agent has read the message".
+
+
+def _notification_key(notification_id: str) -> str:
+    return f"env-notification-{notification_id}"
+
+
+def _render_notification_content(notification_id: str) -> str:
+    return "\n".join([
+        "[Environment notification]",
+        f"notification_id={notification_id}",
+        "source=im_message",
+        (
+            "Use shell command `agentctl im read --notification-id %s` to observe "
+            "the message content before replying or making claims about it."
+        ) % notification_id,
+    ])
+
+
+def _notification_context_message(notification_id: str) -> dict[str, Any]:
+    return {
+        "role": "system",
+        "content": _render_notification_content(notification_id),
+        "_message_type": "ENVIRONMENT_NOTIFICATION",
+        "_idempotency_key": _notification_key(notification_id),
+        "_metadata": {
+            "origin": "environment",
+            "notification_id": notification_id,
+            "source_kind": "im_message",
+        },
+    }
+
+
+@register_handler(TaskTopics.CONTEXT_READ)
+def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+    """Maintain the materialized context projection notification hints.
+
+    This task is not the LLM history assembly path. LLM requests use
+    ``cortex.prepare_llm_context`` / Cortex's ContextEvent read model. This
+    handler reads ``context.jsonl`` only to deduplicate notification hint
+    projection messages, then appends any missing hints for the current wake.
+
+    Payload:
+        scope_id: str
+        agent_id: str
+        subagent_id: str
+        user_id: str
+    """
+    scope_id = payload.get("scope_id")
+    cortex_scope_id = payload.get("agent_root_scope_id") or scope_id
+    scope_path = payload.get("wake_scope_path") or payload.get("scope_path")
+    agent_id = payload.get("agent_id")
+    subagent_id = payload.get("subagent_id", "")
+    user_id = payload.get("user_id", "")
+
+    if not scope_id:
+        raise ValidationError("Missing required field: scope_id")
+    if not agent_id:
+        raise ValidationError("Missing required field: agent_id")
+
+    bridge = get_cortex_bridge(cortex_scope_id, user_id, agent_id)
+    context = bridge.read_materialized_context_projection(cortex_scope_id, scope_path=scope_path)
+
+    # Idempotency set: collect _idempotency_key of every projection message
+    # already in context.jsonl. Used to skip double-append if a previous
+    # context.read crashed after bridge.append_materialized_context_projection.
+    seen_keys: set[str] = set()
+    for m in context:
+        key = m.get("_idempotency_key") if isinstance(m, dict) else None
+        if key:
+            seen_keys.add(key)
+
+    new_messages_list = []
+
+    # PR-46/PR-113 — single ``read_session_meta`` call for by-id input
+    # assembly. Runtime no longer replays already-consumed chat history.
+    # PR-165A further narrows this path: ids become Environment
+    # notifications, not raw message-body context.
+    try:
+        session_meta = bridge.read_session_meta(cortex_scope_id, scope_path=scope_path)
+    except Exception as e:
+        logger.warning("[context.read] read_session_meta soft-fail: %s", e)
+        session_meta = None
+    if not isinstance(session_meta, dict):
+        session_meta = {}
+
+    # PR-165A/PR-165C — prompt receives Environment notifications only. We keep
+    # the PR-46 by-id SSOT, but we do not fetch Business message rows here and
+    # do not consult UI read/unread receipt state.
+    raw_input_ids = session_meta.get("input_message_ids") or []
+    if not isinstance(raw_input_ids, list):
+        raw_input_ids = []
+    unseen_ids = []
+    for mid in raw_input_ids:
+        if not isinstance(mid, str) or not mid:
+            continue
+        if _notification_key(mid) in seen_keys:
+            continue
+        unseen_ids.append(mid)
+
+    logger.info(
+        "[context.read] event=context_read kind=environment_notifications scope=%s agent=%s "
+        "input_ids=%d unseen=%d",
+        scope_id, agent_id, len(raw_input_ids),
+        len(unseen_ids),
+    )
+    metric_inc("context_read_assembly_total", kind="environment_notifications")
+
+    for notification_id in unseen_ids:
+        ctx_msg = _notification_context_message(notification_id)
+        try:
+            bridge.append_materialized_context_projection(cortex_scope_id, ctx_msg, scope_path=scope_path)
+            seen_keys.add(ctx_msg["_idempotency_key"])
+            context.append(ctx_msg)
+            new_messages_list.append({
+                "notification_id": notification_id,
+                "source_kind": "im_message",
+            })
+        except Exception as e:
+            logger.warning(
+                "[context.read] failed to append notification id=%s err=%s",
+                notification_id, e,
+            )
+            continue
+
+    return {
+        "success": True,
+        "scope_id": scope_id,
+        "context": context,
+        "length": len(context),
+        "new_messages": new_messages_list,
+    }
+
+
+@register_handler(TaskTopics.CONTEXT_APPEND)
+def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+    """Append a materialized projection message OR write a durable step.
+
+    If write_as_step=True, writes to steps/ directory (for tool results).
+    Otherwise writes to context.jsonl as projection state for
+    user/assistant/system messages. This is not authoritative LLM history;
+    LLM preparation uses Cortex ContextEvents.
+    """
+    scope_id = payload.get("scope_id")
+    if not scope_id:
+        raise ValidationError("Missing required field: scope_id")
+    activity_ctx = with_system_activity_dependencies(ctx)
+
+    agent_id = payload.get("agent_id", "")
+    user_id = payload.get("user_id", "")
+    cortex_scope_id = payload.get("agent_root_scope_id") or scope_id
+    scope_path = payload.get("wake_scope_path") or payload.get("scope_path")
+    bridge = get_cortex_bridge(cortex_scope_id, user_id, agent_id)
+
+    if payload.get("write_as_step") and payload.get("step"):
+        step = payload["step"]
+        result = bridge.write_step(cortex_scope_id, step)
+        if result is None:
+            raise RuntimeError(
+                f"write_step failed (cortex unavailable or rejected) for scope={scope_id}"
+            )
+        project_tool_step(payload, activity_ctx, step)
+        return {
+            "success": True,
+            "scope_id": scope_id,
+            "wrote_step": True,
+            "step_path": result.path,
+        }
+
+    if not payload.get("message"):
+        raise ValidationError("Missing required field: message")
+
+    message = dict(payload["message"])

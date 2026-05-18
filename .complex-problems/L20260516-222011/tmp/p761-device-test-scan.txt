@@ -1,0 +1,80 @@
+## Device test files
+novaic-device/tests/test_device_explicit_boundary_contracts.py
+novaic-device/tests/test_pr194_schema_push_fail_fast.py
+novaic-device/tests/test_pr120_no_device_entangled_cli.py
+novaic-device/tests/test_pr141_no_common_auth_db_param.py
+novaic-device/tests/test_pr157_device_vm_prep_actions.py
+novaic-device/tests/test_pr151_device_binding_contract.py
+
+## Device suspicious hits in test-like files
+novaic-device/tests/test_pr120_no_device_entangled_cli.py:1:"""PR-120 — Device Service must not expose retired direct-Entangled CLI."""
+novaic-device/tests/test_pr120_no_device_entangled_cli.py:11:def test_device_entrypoint_has_no_entangled_cli_or_config_branch() -> None:
+novaic-device/tests/test_pr120_no_device_entangled_cli.py:12:    source = (ROOT / "main_device.py").read_text(encoding="utf-8")
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:1:"""PR-157A — Device exposes VM prep through hardware execution actions."""
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:11:def test_device_schema_advertises_vm_prep_actions() -> None:
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:12:    schema_push = (ROOT / "device/schema_push.py").read_text(encoding="utf-8")
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:22:def test_hardware_api_bridges_vm_prep_to_pc_broker() -> None:
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:23:    hardware_api = (ROOT / "device/hardware_api.py").read_text(encoding="utf-8")
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:25:    assert '@router.post("/environment-check")' in hardware_api
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:26:    assert '@router.post("/cloud-image-check")' in hardware_api
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:27:    assert '@router.post("/cloud-image-download")' in hardware_api
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:28:    assert "get_device_broker(req.user_id, req.pc_client_id)" in hardware_api
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:29:    assert "vm_environment_check()" in hardware_api
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:30:    assert "cloud_image_check(req.os_type, req.os_version)" in hardware_api
+novaic-device/tests/test_pr157_device_vm_prep_actions.py:31:    assert "cloud_image_download({" in hardware_api
+novaic-device/tests/test_pr151_device_binding_contract.py:1:"""PR-151 — device binding mounted_tools has one canonical object shape."""
+novaic-device/tests/test_pr151_device_binding_contract.py:9:from device.agent_binding import normalize_mounted_tools
+novaic-device/tests/test_pr151_device_binding_contract.py:17:        "desktop": ["screenshot", "mouse"],
+novaic-device/tests/test_pr151_device_binding_contract.py:21:        "desktop": ["screenshot", "mouse"],
+novaic-device/tests/test_pr151_device_binding_contract.py:31:def test_device_code_has_no_retired_binding_paths() -> None:
+novaic-device/tests/test_pr151_device_binding_contract.py:35:            ROOT / "device/agent_binding.py",
+novaic-device/tests/test_pr151_device_binding_contract.py:36:            ROOT / "device/agent_vm_proxy.py",
+novaic-device/tests/test_pr151_device_binding_contract.py:37:            ROOT / "device/gateway_facing_api.py",
+novaic-device/tests/test_pr151_device_binding_contract.py:38:            ROOT / "device/internal_vm_routes.py",
+novaic-device/tests/test_pr151_device_binding_contract.py:39:            ROOT / "device/vm_routes.py",
+novaic-device/tests/test_pr151_device_binding_contract.py:45:        "device_type selects",
+novaic-device/tests/test_pr151_device_binding_contract.py:46:        "legacy list",
+novaic-device/tests/test_pr151_device_binding_contract.py:47:        "agent.devices",
+novaic-device/tests/test_pr151_device_binding_contract.py:49:        "_get_agent_devices",
+novaic-device/tests/test_pr151_device_binding_contract.py:50:        "_get_device_ports",
+novaic-device/tests/test_pr151_device_binding_contract.py:51:        "_get_device_image_path",
+novaic-device/tests/test_pr141_no_common_auth_db_param.py:5:from device import vm_routes
+novaic-device/tests/test_pr141_no_common_auth_db_param.py:8:def test_vm_routes_do_not_pass_removed_auth_db_argument():
+novaic-device/tests/test_pr141_no_common_auth_db_param.py:9:    source = inspect.getsource(vm_routes)
+novaic-device/tests/test_device_explicit_boundary_contracts.py:1:"""Device explicit boundary contracts for Business proxy and schema push."""
+novaic-device/tests/test_device_explicit_boundary_contracts.py:10:from device.business_entity_client import BusinessEntityClient
+novaic-device/tests/test_device_explicit_boundary_contracts.py:11:from device.contracts import (
+novaic-device/tests/test_device_explicit_boundary_contracts.py:12:    DeviceSchemaPushInput,
+novaic-device/tests/test_device_explicit_boundary_contracts.py:16:from device.schema_push import build_device_schema_specs
+novaic-device/tests/test_device_explicit_boundary_contracts.py:47:        if method == "GET" and url.endswith("/devices"):
+novaic-device/tests/test_device_explicit_boundary_contracts.py:57:        key_params={"device_id": "d1", "skip": None, "enabled": False},
+novaic-device/tests/test_device_explicit_boundary_contracts.py:63:        "device_id": "d1",
+novaic-device/tests/test_device_explicit_boundary_contracts.py:71:def test_business_entity_client_uses_explicit_proxy_request_contract() -> None:
+novaic-device/tests/test_device_explicit_boundary_contracts.py:73:    client = BusinessEntityClient("http://business.test")
+novaic-device/tests/test_device_explicit_boundary_contracts.py:77:        "devices",
+novaic-device/tests/test_device_explicit_boundary_contracts.py:85:        "url": "http://business.test/internal/entities/devices",
+novaic-device/tests/test_device_explicit_boundary_contracts.py:95:    client.create("devices", "u1", {"id": "dev-1"}, params={"type": "linux"}, notify=False)
+novaic-device/tests/test_device_explicit_boundary_contracts.py:102:    with pytest.raises(TypeError, match="Unsupported Business entity options"):
+novaic-device/tests/test_device_explicit_boundary_contracts.py:103:        client.get("devices", "u1", "dev-1", accidental_branch=True)
+novaic-device/tests/test_device_explicit_boundary_contracts.py:106:def test_schema_push_contract_builds_business_hooks_and_register_request() -> None:
+novaic-device/tests/test_device_explicit_boundary_contracts.py:107:    push_input = DeviceSchemaPushInput(
+novaic-device/tests/test_device_explicit_boundary_contracts.py:108:        registration_base_url="http://business.test",
+novaic-device/tests/test_device_explicit_boundary_contracts.py:109:        business_url="http://business-hooks.test",
+novaic-device/tests/test_device_explicit_boundary_contracts.py:110:        device_url="http://device.test",
+novaic-device/tests/test_device_explicit_boundary_contracts.py:113:    specs = build_device_schema_specs(push_input)
+novaic-device/tests/test_device_explicit_boundary_contracts.py:114:    devices_spec = next(spec for spec in specs if spec["name"] == "devices")
+novaic-device/tests/test_device_explicit_boundary_contracts.py:117:    assert devices_spec["action_hooks"]["get_status"] == (
+novaic-device/tests/test_device_explicit_boundary_contracts.py:118:        "http://business-hooks.test/internal/entities/devices/action/get_status"
+novaic-device/tests/test_device_explicit_boundary_contracts.py:123:    assert request.endpoint == "http://business.test/internal/entities/schema/register"
+novaic-device/tests/test_device_explicit_boundary_contracts.py:130:        "devices",
+novaic-device/tests/test_device_explicit_boundary_contracts.py:135:def test_device_boundaries_have_no_retired_implicit_request_builders() -> None:
+novaic-device/tests/test_device_explicit_boundary_contracts.py:136:    business_client_source = (ROOT / "device/business_entity_client.py").read_text(encoding="utf-8")
+novaic-device/tests/test_device_explicit_boundary_contracts.py:137:    schema_push_source = (ROOT / "device/schema_push.py").read_text(encoding="utf-8")
+novaic-device/tests/test_device_explicit_boundary_contracts.py:145:        assert marker not in business_client_source
+novaic-device/tests/test_pr194_schema_push_fail_fast.py:1:"""PR-194: Device schema push must fail fast on partial registration."""
+novaic-device/tests/test_pr194_schema_push_fail_fast.py:22:def test_device_schema_push_rejects_registration_errors(monkeypatch):
+novaic-device/tests/test_pr194_schema_push_fail_fast.py:23:    from device import schema_push
+novaic-device/tests/test_pr194_schema_push_fail_fast.py:32:        schema_push.push_device_schemas("http://business.test")
+novaic-device/tests/test_pr194_schema_push_fail_fast.py:35:def test_device_schema_push_rejects_partial_registered_set(monkeypatch):
+novaic-device/tests/test_pr194_schema_push_fail_fast.py:36:    from device import schema_push
+novaic-device/tests/test_pr194_schema_push_fail_fast.py:45:        schema_push.push_device_schemas("http://business.test")

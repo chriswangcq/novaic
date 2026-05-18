@@ -1,0 +1,303 @@
+## Blob/artifact preview candidate files
+novaic-app/src-tauri/src/commands/file.rs
+novaic-app/src-tauri/src/files/mod.rs
+novaic-app/src-tauri/src/platform/file_ops.rs
+novaic-app/src/application/blobAttachmentPath.test.ts
+novaic-app/src/components/Chat/FileAttachment.tsx
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx
+novaic-app/src/components/hooks/useAuthenticatedImage.ts
+novaic-app/src/services/fileUpload.ts
+
+## High-signal Blob/artifact preview hits
+novaic-app/src/services/auth.ts:25:  display_name: string;
+novaic-app/src/services/auth.ts:34:  display_name: string;
+novaic-app/src/services/auth.ts:82:    display_name: data.display_name,
+novaic-app/src/services/auth.ts:85:  _cachedUser = { user_id: data.user_id, email: data.email, display_name: data.display_name, expires_at: expiresAt };
+novaic-app/src/services/auth.ts:194:    display_name: user.display_name,
+novaic-app/src/services/auth.ts:204:    display_name: _cachedUser.display_name,
+novaic-app/src/services/auth.ts:213:  return { user_id: data.user_id, email: data.email, display_name: data.display_name };
+novaic-app/src/services/auth.ts:221:  displayName?: string,
+novaic-app/src/services/auth.ts:226:    display_name: displayName ?? '',
+novaic-app/src/services/auth.ts:229:  return { user_id: data.user_id, email: data.email, display_name: data.display_name };
+novaic-app/src-tauri/src/commands/file.rs:4://! 前端传入 `blob://` BlobRef，Rust 直接走 `/blob/v1/blobs/...`
+novaic-app/src-tauri/src/commands/file.rs:37:        .strip_prefix("blob://")
+novaic-app/src-tauri/src/commands/file.rs:38:        .ok_or_else(|| "Only blob:// file references are supported".to_string())?;
+novaic-app/src-tauri/src/commands/file.rs:77:/// Cache-first file fetch. Accepts `blob://` BlobRefs.
+novaic-app/src-tauri/src/commands/file.rs:80:pub async fn get_cached_file(
+novaic-app/src-tauri/src/commands/file.rs:114:/// Cache-first file bytes (for inline image/audio display).
+novaic-app/src-tauri/src/commands/file.rs:115:/// Accepts `blob://` BlobRefs.
+novaic-app/src-tauri/src/commands/file.rs:117:pub async fn fetch_cached_bytes(
+novaic-app/src/services/fileUpload.ts:5: * Blob upload edge, then upload raw multipart byte parts.
+novaic-app/src/services/fileUpload.ts:7: * Returns BlobRef metadata ready for messages.send payload.
+novaic-app/src/services/fileUpload.ts:13:const DEFAULT_MULTIPART_PART_SIZE = 5 * 1024 * 1024;
+novaic-app/src/services/fileUpload.ts:16:  blob_ref: string;
+novaic-app/src/services/fileUpload.ts:24:  blob_ref?: string;
+novaic-app/src/services/fileUpload.ts:84:    path: '/api/blobs/upload-config',
+novaic-app/src/services/fileUpload.ts:98:  const blobRef = result.blob_ref || result.url;
+novaic-app/src/services/fileUpload.ts:99:  if (!blobRef?.startsWith('blob://')) {
+novaic-app/src/services/fileUpload.ts:100:    throw new Error('Upload failed: no BlobRef returned');
+novaic-app/src/services/fileUpload.ts:106:      blob_ref: blobRef,
+novaic-app/src/services/fileUpload.ts:114:  const registeredRef = registered.blob_ref || registered.url;
+novaic-app/src/services/fileUpload.ts:115:  if (registered.error || registeredRef !== blobRef || !registered.file_id) {
+novaic-app/src/services/fileUpload.ts:120:    blob_ref: blobRef,
+novaic-app/src/services/fileUpload.ts:121:    url: blobRef,
+novaic-app/src/services/fileUpload.ts:128:async function uploadChatFileMultipart(
+novaic-app/src/services/fileUpload.ts:146:  const partSize = Math.max(1, config.part_size || DEFAULT_MULTIPART_PART_SIZE);
+novaic-app/src/services/fileUpload.ts:205:    const blobRef = result.blob_ref || result.url;
+novaic-app/src/services/fileUpload.ts:206:    if (!blobRef?.startsWith('blob://')) {
+novaic-app/src/services/fileUpload.ts:207:      throw new Error('Upload failed: no BlobRef returned');
+novaic-app/src/services/fileUpload.ts:222: * All chat attachments use the direct multipart Blob upload edge. Gateway
+novaic-app/src/services/fileUpload.ts:230:  return uploadChatFileMultipart(file, agentId);
+novaic-app/src-tauri/src/platform/device_info.rs:15:            let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+novaic-app/src-tauri/src/platform/device_info.rs:46:            let s = String::from_utf8_lossy(&out.stdout);
+novaic-app/src/components/Console/CursorMagnifier.tsx:151:          const cursorDisplayW = (cursorWidthRef.current || 16) * zoom;
+novaic-app/src/components/Console/CursorMagnifier.tsx:152:          const cursorDisplayH = cursorImg.naturalHeight / cursorImg.naturalWidth * cursorDisplayW;
+novaic-app/src/components/Console/CursorMagnifier.tsx:156:          ctx.drawImage(cursorImg, cursorX, cursorY, cursorDisplayW, cursorDisplayH);
+novaic-app/src/components/Console/CursorMagnifier.tsx:191:          style={{ display: 'none' }}
+novaic-app/src-tauri/src/lib.rs:423:            commands::file::get_cached_file,
+novaic-app/src-tauri/src/lib.rs:424:            commands::file::fetch_cached_bytes,
+novaic-app/src-tauri/src/core/config.rs:90:    // ===== Progress Display =====
+novaic-app/src/components/Console/DeviceConsole.tsx:53:  displayNum: _displayNum,
+novaic-app/src/components/Console/DeviceConsole.tsx:301:  const handleScreenshot = useCallback(() => {
+novaic-app/src/components/Console/DeviceConsole.tsx:316:          w.document.title = t("console.screenshot", { name: deviceName });
+novaic-app/src/components/Console/DeviceConsole.tsx:595:          onScreenshot={handleScreenshot}
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:83:  const [selectedUser, setSelectedUser] = useState<{ username: string; displayNum: number } | null>(null);
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:301:                      onClick={() => setSelectedUser({ username: u.username, displayNum: u.display_num })}
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:306:                      <span className="opacity-40 text-[10px]">:{u.display_num}</span>
+novaic-app/src/components/Layout/PcClientDeviceList.tsx:406:          displayNum={selectedUser?.displayNum}
+novaic-app/src/hooks/useRemoteInput.ts:74:  displays: { id: number; width: number; height: number; name: string; scale: number }[];
+novaic-app/src/hooks/useRemoteInput.ts:93:  /** The video element displaying the remote screen */
+novaic-app/src/hooks/useRemoteInput.ts:177:  // Calculate the displayed video area (accounting for object-fit)
+novaic-app/src/hooks/useRemoteInput.ts:178:  const displayAspect = rect.width / rect.height;
+novaic-app/src/hooks/useRemoteInput.ts:181:  let offsetX = 0, offsetY = 0, displayW = rect.width, displayH = rect.height;
+novaic-app/src/hooks/useRemoteInput.ts:183:  if (videoAspect > displayAspect) {
+novaic-app/src/hooks/useRemoteInput.ts:184:    displayH = rect.width / videoAspect;
+novaic-app/src/hooks/useRemoteInput.ts:185:    offsetY = (rect.height - displayH) / 2;
+novaic-app/src/hooks/useRemoteInput.ts:187:    displayW = rect.height * videoAspect;
+novaic-app/src/hooks/useRemoteInput.ts:188:    offsetX = (rect.width - displayW) / 2;
+novaic-app/src/hooks/useRemoteInput.ts:191:  const x = Math.max(0, Math.min(1, (pixelX - offsetX) / displayW));
+novaic-app/src/hooks/useRemoteInput.ts:192:  const y = Math.max(0, Math.min(1, (pixelY - offsetY) / displayH));
+novaic-app/src/hooks/useRemoteInput.ts:553:    const cursor = { px: 0, py: 0, displayW: 1, displayH: 1, offsetX: 0, offsetY: 0 };
+novaic-app/src/hooks/useRemoteInput.ts:556:    const updateDisplayDimensions = () => {
+novaic-app/src/hooks/useRemoteInput.ts:561:      const displayAspect = cw / ch;
+novaic-app/src/hooks/useRemoteInput.ts:563:      if (videoAspect > displayAspect) {
+novaic-app/src/hooks/useRemoteInput.ts:564:        cursor.displayW = cw;
+novaic-app/src/hooks/useRemoteInput.ts:565:        cursor.displayH = cw / videoAspect;
+novaic-app/src/hooks/useRemoteInput.ts:567:        cursor.offsetY = (ch - cursor.displayH) / 2;
+novaic-app/src/hooks/useRemoteInput.ts:569:        cursor.displayW = ch * videoAspect;
+novaic-app/src/hooks/useRemoteInput.ts:570:        cursor.displayH = ch;
+novaic-app/src/hooks/useRemoteInput.ts:571:        cursor.offsetX = (cw - cursor.displayW) / 2;
+novaic-app/src/hooks/useRemoteInput.ts:576:    updateDisplayDimensions();
+novaic-app/src/hooks/useRemoteInput.ts:577:    cursor.px = cursor.displayW / 2;
+novaic-app/src/hooks/useRemoteInput.ts:578:    cursor.py = cursor.displayH / 2;
+novaic-app/src/hooks/useRemoteInput.ts:582:      x: Math.max(0, Math.min(1, cursor.px / cursor.displayW)),
+novaic-app/src/hooks/useRemoteInput.ts:583:      y: Math.max(0, Math.min(1, cursor.py / cursor.displayH)),
+novaic-app/src/hooks/useRemoteInput.ts:652:        updateDisplayDimensions();
+novaic-app/src/hooks/useRemoteInput.ts:720:        cursor.px = Math.max(0, Math.min(cursor.displayW, cursor.px + dx));
+novaic-app/src/hooks/useRemoteInput.ts:721:        cursor.py = Math.max(0, Math.min(cursor.displayH, cursor.py + dy));
+novaic-app/src/hooks/useRemoteInput.ts:751:        cursor.px = Math.max(0, Math.min(cursor.displayW, cursor.px + dx));
+novaic-app/src/hooks/useRemoteInput.ts:752:        cursor.py = Math.max(0, Math.min(cursor.displayH, cursor.py + dy));
+novaic-app/src/components/Settings/SettingsModal.tsx:210:  // Build combined display model list (join of three stores)
+novaic-app/src/components/Settings/SettingsModal.tsx:931:                              {user.display_name && (
+novaic-app/src/components/Settings/SettingsModal.tsx:933:                                  <span className="text-[11px] text-nb-text-muted">{t('settings.display_name')}</span>
+novaic-app/src/components/Settings/SettingsModal.tsx:934:                                  <p className="text-sm text-nb-text">{user.display_name}</p>
+novaic-app/src/components/Console/types.ts:35:  /** VNC 专用：displayNum */
+novaic-app/src/components/Console/types.ts:36:  displayNum?: number;
+novaic-app/src/components/Console/types.ts:66:  screenshot: () => void;
+novaic-app/src/types/index.ts:84:  display_num: number;
+novaic-app/src/types/index.ts:152:      stdout?: string;
+novaic-app/src/types/index.ts:179:// Message status for local delivery display.
+novaic-app/src/types/index.ts:207:  content?: string | { text: string; attachments?: Array<{ blob_ref?: string; url?: string; filename: string; mime_type?: string; file_id?: string }> };
+novaic-app/src/types/index.ts:223:  /** Stable BlobRef locator (`blob://...`) resolved through Gateway. */
+novaic-app/src/types/index.ts:224:  blob_ref?: string;
+novaic-app/src/types/index.ts:225:  /** Display locator. New attachments use the same `blob://...` value. */
+novaic-app/src/types/index.ts:284:// UI display status (derived from VM status)
+novaic-app/src/types/index.ts:285:export type AgentDisplayStatus =
+novaic-app/src/data/entities/user.ts:19:  display_name: string;
+novaic-app/src/components/Console/RemoteCursor.tsx:80:  const displayWidth = cursorWidth > 0 ? cursorWidth : 16;
+novaic-app/src/components/Console/RemoteCursor.tsx:99:            width: displayWidth,
+novaic-app/src/components/Visual/ActivityTimeline.tsx:38:const DATA_IMAGE_BASE64_PATTERN = /\bdata:image\/[a-z0-9.+-]+;base64,/i;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:234:  const displayRecords = useMemo(() => projectActivityTimelineRecords(records), [records]);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:235:  const latestRecord = displayRecords[displayRecords.length - 1] ?? null;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:242:    if (!element || displayRecords.length === 0 || !shouldFollowBottomRef.current) return;
+novaic-app/src/components/Visual/ActivityTimeline.tsx:247:  }, [displayRecords.length, latestRecordKey]);
+novaic-app/src/components/Visual/ActivityTimeline.tsx:279:        ) : displayRecords.length === 0 ? (
+novaic-app/src/components/Visual/ActivityTimeline.tsx:293:            {displayRecords.map((record, index) => (
+novaic-app/src/components/Visual/ActivityTimeline.tsx:297:                isLast={index === displayRecords.length - 1}
+novaic-app/src/types/api.ts:145:  display_num?: number;
+novaic-app/src/components/Visual/SmartValue.tsx:9:import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
+novaic-app/src/components/Visual/SmartValue.tsx:15:  if (value.startsWith('blob://')) return true;
+novaic-app/src/components/Visual/SmartValue.tsx:37:interface ImagePreviewProps {
+novaic-app/src/components/Visual/SmartValue.tsx:42:function ImagePreview({ src, alt = 'Image' }: ImagePreviewProps) {
+novaic-app/src/components/Visual/SmartValue.tsx:46:  const imageSrc = useAuthenticatedImage(src);
+novaic-app/src/components/Visual/SmartValue.tsx:111:  const displayText = shouldCollapse && !isExpanded 
+novaic-app/src/components/Visual/SmartValue.tsx:118:        {displayText}
+novaic-app/src/components/Visual/SmartValue.tsx:148:    if (isImageUrl(data)) return <ImagePreview src={data} />;
+novaic-app/src/components/Visual/SmartValue.tsx:272:export { ImagePreview, CollapsibleText, JsonTree };
+novaic-app/src/components/Console/ConsoleToolbar.tsx:33:  onScreenshot: () => void;
+novaic-app/src/components/Console/ConsoleToolbar.tsx:184:  onScreenshot,
+novaic-app/src/components/Console/ConsoleToolbar.tsx:261:        <IconBtn onClick={onScreenshot} title="Screenshot">
+novaic-app/src/components/Console/VirtualKeyboard.tsx:145:  const getDisplayLabel = () => {
+novaic-app/src/components/Console/VirtualKeyboard.tsx:157:      setPopupLabel(getDisplayLabel());
+novaic-app/src/components/Console/VirtualKeyboard.tsx:176:  const displayLabel = getDisplayLabel();
+novaic-app/src/components/Console/VirtualKeyboard.tsx:219:        display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:256:            display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:310:        {displayLabel}
+novaic-app/src/components/Console/VirtualKeyboard.tsx:440:          display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:462:          display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:473:              display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:491:              display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:513:              display: 'flex',
+novaic-app/src/components/Console/VirtualKeyboard.tsx:529:        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+novaic-app/src/components/Console/VirtualKeyboard.tsx:541:        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+novaic-app/src/components/Console/VirtualKeyboard.tsx:553:        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+novaic-app/src/components/Console/VirtualKeyboard.tsx:566:        <div style={{ display: 'flex', gap: 3, marginBottom: 3 }}>
+novaic-app/src/components/Console/VirtualKeyboard.tsx:579:        <div style={{ display: 'flex', gap: 3 }}>
+novaic-app/src/components/Onboarding/SetupProgress.tsx:4: * Displays the progress of VM setup and deployment:
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:279:          {/* Latency display */}
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:430:  const displayAspect = rect.width / rect.height;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:433:  let offsetX = 0, offsetY = 0, displayW = rect.width, displayH = rect.height;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:434:  if (videoAspect > displayAspect) {
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:435:    displayH = rect.width / videoAspect;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:436:    offsetY = (rect.height - displayH) / 2;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:438:    displayW = rect.height * videoAspect;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:439:    offsetX = (rect.width - displayW) / 2;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:443:  const pixelX = offsetX + x * displayW;
+novaic-app/src/components/Visual/WebRtcScrcpyView.tsx:444:  const pixelY = offsetY + y * displayH;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:69:    /** vm_user 的 displayNum，从 vmUsers.list 解析 */
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:70:    displayNum?: number;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:406:    const displayName = binding.subject_label || deviceInfo.name;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:424:            {displayName}
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:456:          {displayName}
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:471:    const displayName = binding.subject_label || deviceInfo.name;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:487:            {displayName}
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:507:            displayNum={deviceInfo.displayNum}
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:704:          displayNum={deviceInfo.displayNum}
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:741:  const displayName = binding.subject_label || deviceInfo.name;
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:757:          {displayName}
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:801:        {displayName}
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:860:  const [vmUserDisplayNum, setVmUserDisplayNum] = useState<number | undefined>(undefined);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:873:  // C3: vm_user 时从 vmUsers.list 获取 displayNum
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:876:      setVmUserDisplayNum(undefined);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:884:        setVmUserDisplayNum(user?.display_num ?? 0);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:887:        if (!cancelled) setVmUserDisplayNum(0);
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:923:    displayNum: syntheticBinding.subject_type === 'vm_user' ? vmUserDisplayNum : undefined,
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:1068:  const displayName = binding.subject_label || binding.device_name || device.name || 'Device';
+novaic-app/src/components/Layout/DeviceFloatingPanel.tsx:1077:            {displayName}
+novaic-app/src/components/Auth/RegisterForm.tsx:12:  const [displayName, setDisplayName] = useState('');
+novaic-app/src/components/Auth/RegisterForm.tsx:29:    const user = await register(email, password, displayName || undefined);
+novaic-app/src/components/Auth/RegisterForm.tsx:33:  const displayedError = localError || error;
+novaic-app/src/components/Auth/RegisterForm.tsx:38:        <label className="block text-[13px] font-medium text-nb-text-secondary ml-1">Display Name (Optional)</label>
+novaic-app/src/components/Auth/RegisterForm.tsx:41:          value={displayName}
+novaic-app/src/components/Auth/RegisterForm.tsx:42:          onChange={e => { setDisplayName(e.target.value); clearError(); setLocalError(null); }}
+novaic-app/src/components/Auth/RegisterForm.tsx:84:      {displayedError && (
+novaic-app/src/components/Auth/RegisterForm.tsx:86:          {displayedError}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:50:  onOpenDisplay?: () => void;
+novaic-app/src/components/Layout/DeviceSidebar.tsx:59:  onOpenDisplay,
+novaic-app/src/components/Layout/DeviceSidebar.tsx:72:      onOpenDisplay?.();
+novaic-app/src/components/Layout/DeviceSidebar.tsx:190:            <span title={t("device.display")}><ExternalLink size={10} aria-hidden /></span>
+novaic-app/src/components/Layout/DeviceSidebar.tsx:206:                onClick={(e) => { e.stopPropagation(); onOpenDisplay?.(); setShowMenu(false); }}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:210:                Display
+novaic-app/src/components/Layout/DeviceSidebar.tsx:272:// (DeviceDisplayModal removed — replaced by DeviceConsole)
+novaic-app/src/components/Layout/DeviceSidebar.tsx:283:  const [displayDevice, setDisplayDevice] = useState<{ info: DeviceInfo; device: Device } | null>(null);
+novaic-app/src/components/Layout/DeviceSidebar.tsx:406:  const handleOpenDisplay = (device: DeviceInfo) => {
+novaic-app/src/components/Layout/DeviceSidebar.tsx:408:    if (real) setDisplayDevice({ info: device, device: real });
+novaic-app/src/components/Layout/DeviceSidebar.tsx:450:  const displayWidth = effectiveMode === 'expanded' ? sidebarWidth : effectiveMode === 'collapsed' ? sidebarCollapsedWidth : 0;
+novaic-app/src/components/Layout/DeviceSidebar.tsx:495:                        onOpenDisplay={() => handleOpenDisplay(device)}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:514:                        onOpenDisplay={() => handleOpenDisplay(device)}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:568:        style={{ width: displayWidth }}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:634:                    onOpenDisplay={() => handleOpenDisplay(device)}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:659:                    onOpenDisplay={() => handleOpenDisplay(device)}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:688:      {/* ★ 统一设备操作台 (替代旧的 DeviceDisplayModal) */}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:689:      {displayDevice && (
+novaic-app/src/components/Layout/DeviceSidebar.tsx:691:          deviceId={displayDevice.info.id}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:692:          deviceType={displayDevice.info.type === 'host_desktop' ? 'host_desktop' : displayDevice.info.type}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:693:          deviceName={displayDevice.info.name}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:694:          pcClientId={displayDevice.device.pc_client_id}
+novaic-app/src/components/Layout/DeviceSidebar.tsx:695:          onClose={() => setDisplayDevice(null)}
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:211:            title: 'display 完成',
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:212:            text: `data:image/jpeg;base64,${'A'.repeat(400)}SECRET_IMAGE_PAYLOAD`,
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:220:    expect(screen.queryByText(/data:image/)).toBeNull();
+novaic-app/src/components/Visual/ActivityTimeline.test.tsx:235:            title: 'display 完成',
+novaic-app/src/data/index.ts:7: * Architecture (Pessimistic-first + Optimistic-display):
+novaic-app/src/components/hooks/useMessages.ts:76:        blob_ref: string;
+novaic-app/src/application/store.ts:157:  selectedVmUser: { username: string; displayNum: number } | null;
+novaic-app/src/data/entities/messages.ts:10: *   4. send → optimistic temp item displayed immediately → server confirm → real item via delta
+novaic-app/src/data/entities/messages.ts:21:  content: string | { text: string; attachments?: Array<{ blob_ref?: string; url?: string; filename: string; mime_type?: string; file_id?: string }> };
+novaic-app/src/data/entities/messages.ts:61:          blob_ref: a.blob_ref || a.url || '',
+novaic-app/src/data/entities/messages.ts:62:          url: a.blob_ref || a.url || '',
+novaic-app/src/components/VM/DeviceManagerPage.tsx:244:  selectedVmUser?: { username: string; displayNum: number } | null;
+novaic-app/src/components/VM/DeviceManagerPage.tsx:245:  onSelectVmUser?: (username: string | null, displayNum?: number) => void;
+novaic-app/src/components/VM/DeviceManagerPage.tsx:517:  onSelectUser: (username: string | null, displayNum?: number) => void;
+novaic-app/src/components/VM/DeviceManagerPage.tsx:593:              onClick={() => onSelectUser(u.username, u.display_num)}
+novaic-app/src/components/VM/DeviceManagerPage.tsx:598:              <span className="opacity-50">:{u.display_num}</span>
+novaic-app/src/components/VM/DeviceManagerPage.tsx:647:  onSelectUser: (username: string | null, displayNum?: number) => void;
+novaic-app/src/components/VM/DeviceManagerPage.tsx:739:          onClick={() => onSelectUser(u.username, u.display_num)}
+novaic-app/src/components/VM/DeviceManagerPage.tsx:743:          <span className="text-[10px] opacity-50">:{u.display_num}</span>
+novaic-app/src/components/VM/DeviceManagerPage.tsx:824:  const [selectedVmUser, setSelectedVmUser] = useState<{ username: string; displayNum: number } | null>(null);
+novaic-app/src/components/VM/DeviceManagerPage.tsx:908:              onSelectUser={(username, displayNum) => {
+novaic-app/src/components/VM/DeviceManagerPage.tsx:909:                const v = username && displayNum != null ? { username, displayNum } : null;
+novaic-app/src/components/VM/DeviceManagerPage.tsx:1019:          displayNum={selectedVmUser?.displayNum}
+novaic-app/src/components/Chat/UserMessage.tsx:5:import { FileAttachmentList } from './FileAttachment';
+novaic-app/src/components/Chat/UserMessage.tsx:13:// Status display configuration
+novaic-app/src/components/Chat/UserMessage.tsx:57:          <FileAttachmentList attachments={message.attachments} />
+novaic-app/src/data/entangled/hooks.tsx:4: * Architecture (Pessimistic-first + Optimistic-display):
+novaic-app/src/components/Chat/Markdown.tsx:15:import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
+novaic-app/src/components/Chat/Markdown.tsx:16:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/Markdown.tsx:69:  const authUrl = useAuthenticatedImage(src ?? '');
+novaic-app/src/components/Chat/Markdown.tsx:90:        <ImagePreviewOverlay
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:12:interface ImagePreviewOverlayProps {
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:21:export function ImagePreviewOverlay({ src, alt, onClose, saveUrl, saveFilename }: ImagePreviewOverlayProps) {
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:103:      const result = await invoke<{ success: boolean; path?: string }>('get_cached_file', { url: saveUrl, filename });
+novaic-app/src/components/Chat/ImagePreviewOverlay.tsx:108:      console.error('[ImagePreview] Save failed:', err);
+novaic-app/src/components/Chat/AssistantMessage.tsx:5:import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
+novaic-app/src/components/Chat/AssistantMessage.tsx:7:import { FileAttachmentList } from './FileAttachment';
+novaic-app/src/components/Chat/AssistantMessage.tsx:8:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/AssistantMessage.tsx:12:  const authUrl = useAuthenticatedImage(imageUrl);
+novaic-app/src/components/Chat/AssistantMessage.tsx:38:        <ImagePreviewOverlay
+novaic-app/src/components/Chat/AssistantMessage.tsx:224:          <FileAttachmentList attachments={message.attachments} />
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:36:  const displayTime = loading
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:159:      const bytes = await invoke<number[]>('fetch_cached_bytes', { url: rawUrl, filename });
+novaic-app/src/components/Chat/VoiceMessageBubble.tsx:237:        {displayTime}
+novaic-app/src/components/hooks/useAuth.ts:22:  register: (email: string, password: string, displayName?: string) => Promise<UserInfo | null>;
+novaic-app/src/components/hooks/useAuth.ts:67:    displayName?: string,
+novaic-app/src/components/hooks/useAuth.ts:72:      const user = await authRegister(email, password, displayName);
+novaic-app/src/data/entangled/dispatch.ts:5: * `entangled_method` (WS action).  Optimistic display is handled by
+novaic-app/src/components/Chat/FileAttachment.tsx:17:import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
+novaic-app/src/components/Chat/FileAttachment.tsx:19:import { ImagePreviewOverlay } from './ImagePreviewOverlay';
+novaic-app/src/components/Chat/FileAttachment.tsx:22:interface FileAttachmentProps {
+novaic-app/src/components/Chat/FileAttachment.tsx:53:export function FileAttachment({ attachment }: FileAttachmentProps) {
+novaic-app/src/components/Chat/FileAttachment.tsx:66:  const authUrl = useAuthenticatedImage(
+novaic-app/src/components/Chat/FileAttachment.tsx:75:    invoke<{ success: boolean; path?: string; cached?: boolean }>('get_cached_file', {
+novaic-app/src/components/Chat/FileAttachment.tsx:92:      const result = await invoke<{ success: boolean; path?: string }>('get_cached_file', {
+novaic-app/src/components/Chat/FileAttachment.tsx:200:      <ImagePreviewOverlay
+novaic-app/src/components/Chat/FileAttachment.tsx:317:interface FileAttachmentListProps {
+novaic-app/src/components/Chat/FileAttachment.tsx:321:export function FileAttachmentList({ attachments }: FileAttachmentListProps) {
+novaic-app/src/components/Chat/FileAttachment.tsx:336:            <FileAttachment key={attachment.id} attachment={attachment} />
+novaic-app/src/components/Chat/FileAttachment.tsx:350:            <FileAttachment key={attachment.id} attachment={attachment} />
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:2: * components/hooks/useAuthenticatedImage.ts
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:12: *   const authUrl = useAuthenticatedImage(url, cacheKey?, mimeType?);
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:26:  // Rust fetch_cached_bytes: 自动 cache-first（命中磁盘缓存则不走网络）
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:29:    const bytes = await invoke<number[]>('fetch_cached_bytes', { url, filename });
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:37:export function useAuthenticatedImage(
+novaic-app/src/components/hooks/useAuthenticatedImage.ts:56:        console.error('[useAuthenticatedImage] Failed:', url, err);
+novaic-app/src/application/blobAttachmentPath.test.ts:12:  it('uploads all chat attachments through direct multipart Blob upload', () => {
+novaic-app/src/application/blobAttachmentPath.test.ts:15:    expect(source).toContain('/api/blobs/upload-config');
+novaic-app/src/application/blobAttachmentPath.test.ts:19:    expect(source).toContain('blob_ref');
+novaic-app/src/application/blobAttachmentPath.test.ts:20:    expect(source).toContain('uploadChatFileMultipart(file, agentId)');
+novaic-app/src/application/blobAttachmentPath.test.ts:21:    expect(source).not.toContain('/api/blobs/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:22:    expect(source).not.toContain('/api/files/from-base64');
+novaic-app/src/application/blobAttachmentPath.test.ts:23:    expect(source).not.toContain('FileReader');
+novaic-app/src/application/blobAttachmentPath.test.ts:24:    expect(source).not.toContain('readAsDataURL');
+novaic-app/src/application/blobAttachmentPath.test.ts:30:  it('records voice audio as compressed multipart blobs instead of WAV/base64 uploads', () => {
+novaic-app/src/application/blobAttachmentPath.test.ts:38:    expect(recorder).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:40:    expect(input).not.toContain('base64_data');
+novaic-app/src/application/blobAttachmentPath.test.ts:50:    expect(source).toContain('Only blob:// file references are supported');
+novaic-app/src/application/layoutService.ts:71:  /** Sidebar collapsed width constant — for Render-layer display calculations */
+novaic-app/src/application/converters.ts:13:  blob_ref?: string;
+novaic-app/src/application/converters.ts:59:  const locator = a.blob_ref || a.url || '';
+novaic-app/src/application/converters.ts:66:    blob_ref:  a.blob_ref,
+novaic-app/src/application/converters.test.ts:15:      attachments: [{ blob_ref: 'blob://user-file/blob-1', filename: 'a.png', mime_type: 'image/png' }],
+novaic-app/src/application/converters.test.ts:21:        path: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:24:        blob_ref: 'blob://user-file/blob-1',
+novaic-app/src/application/converters.test.ts:25:        url: 'blob://user-file/blob-1',

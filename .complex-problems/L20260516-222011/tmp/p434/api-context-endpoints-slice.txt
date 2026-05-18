@@ -1,0 +1,156 @@
+    idempotency_key: str | None,
+) -> None:
+    root_scope_id, root_scope_path = _root_scope_identity_from_path(scope_path)
+    target_scope_id = _scope_id_from_path(scope_path)
+    writer = _context_event_writer(ws)
+    ctx = _event_write_context(
+        req,
+        root_scope_id=root_scope_id,
+        root_scope_path=root_scope_path,
+    )
+    if message.get("role") == "assistant" and isinstance(message.get("tool_calls"), list):
+        await writer.assistant_tool_call_recorded(
+            ctx,
+            scope_id=target_scope_id,
+            message=message,
+            idempotency_key=idempotency_key,
+        )
+        return
+    await writer.context_message_appended(
+        ctx,
+        scope_id=target_scope_id,
+        message=message,
+        idempotency_key=idempotency_key,
+    )
+
+
+@app.post("/v1/context/read")
+async def context_read(req: ContextScopeRequest):
+    ws = _get_workspace(req.user_id, req.agent_id)
+    scope_path = await _resolve_scope_path(
+        ws,
+        req.scope_id,
+        scope_path=req.scope_path,
+        include_archived=True,
+    )
+    messages = await ws.read_context(scope_path)
+    return {"messages": messages}
+
+
+@app.post("/v1/context/append")
+async def context_append(req: ContextAppendRequest):
+    # The materialized context projection uses append-line writes; serialize per
+    # root scope to prevent concurrent projection updates losing lines.
+    async with _scope_lock_cm(req.user_id, req.agent_id, req.scope_id, op="context_append"):
+        ws = _get_workspace(req.user_id, req.agent_id)
+        scope_path = await _resolve_scope_path(
+            ws,
+            req.scope_id,
+            scope_path=req.scope_path,
+            include_archived=False,
+        )
+        await _append_context_message_event(
+            req,
+            ws,
+            scope_path=scope_path,
+            message=req.message,
+            idempotency_key=req.event_idempotency_key,
+        )
+        await ws.append_context_projection(scope_path, req.message)
+    return {"ok": True}
+
+
+@app.post("/v1/context/batch")
+async def context_batch(req: ContextBatchRequest):
+    async with _scope_lock_cm(req.user_id, req.agent_id, req.scope_id, op="context_batch"):
+        ws = _get_workspace(req.user_id, req.agent_id)
+        scope_path = await _resolve_scope_path(
+            ws,
+            req.scope_id,
+            scope_path=req.scope_path,
+            include_archived=False,
+        )
+        keys = req.event_idempotency_keys or [None] * len(req.messages)
+        for message, idempotency_key in zip(req.messages, keys):
+            await _append_context_message_event(
+                req,
+                ws,
+                scope_path=scope_path,
+                message=message,
+                idempotency_key=idempotency_key,
+            )
+        await ws.append_context_batch_projection(scope_path, req.messages)
+    return {"ok": True}
+
+
+# ── Context Engine (Context Stack v2) ────────────────────────────────────
+
+
+class PrepareForLLMRequest(_TenantMixin):
+    scope_id: str
+
+
+class ContextSkillBeginRequest(_TenantMixin):
+    scope_id: str           # root session scope_id
+    child_scope_id: str     # LLM-chosen unique id for the new skill scope
+    skill_name: str
+    task: str = ""
+
+
+class ContextSkillEndRequest(_TenantMixin):
+    scope_id: str           # root session scope_id
+    child_scope_id: str     # id of the scope to close (must equal current stack top)
+    report: str
+    skill_name: str = ""  # optional; Runtime/CortexBridge sends for tracing
+
+
+class ContextStatusRequest(_TenantMixin):
+    scope_id: str
+    include_usage: bool = False
+
+
+@app.post("/v1/context/prepare_for_llm")
+async def context_prepare_for_llm(req: PrepareForLLMRequest):
+    """Prepare messages for LLM from the ContextEvent source stream."""
+    ws = _get_workspace(req.user_id, req.agent_id)
+    scope_path = _root_scope_path(req.scope_id)
+
+    engine_cfg = await load_engine_config(ws)
+    compact_cfg = engine_config_to_compact_config(engine_cfg)
+    try:
+        prepared = await ContextEventReadModel(
+            workspace=ws,
+            root_scope_path=scope_path,
+            config=compact_cfg,
+        ).prepare()
+    except ContextEventReadModelResetRequired as exc:
+        raise _context_event_reset_required(exc) from exc
+
+    return CortexPreparedContext(
+        messages=prepared.messages,
+        stack=prepared.stack,
+        estimated_tokens=prepared.estimated_tokens,
+    ).to_dict()
+
+
+def _stack_top_id(frames: list[dict]) -> str | None:
+    if not frames:
+        return None
+    # Operational control stacks are returned deepest/current first.
+    first = frames[0] if isinstance(frames[0], dict) else {}
+    return str(first.get("scope_id")) if first.get("scope_id") else None
+
+
+def _scope_id_from_path(path: str) -> str:
+    """Extract bare scope_id from a scope path (strip NNNN_scope_ prefix if present)."""
+    last = path.rstrip("/").split("/")[-1]
+    if "_scope_" in last:
+        return last.split("_scope_", 1)[-1]
+    return last
+
+
+def _scope_kind_from_skill(skill_name: str) -> str:
+    return "wake" if skill_name == "wake" else "skill"
+
+
+def _active_stack_frame(

@@ -1,0 +1,56 @@
+=== legacy stack fallback fields in runtime/test scope ===
+=== recovery remaining_stack references ===
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:172:    assert archive_payload["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:200:    payload["remaining_stack"] = {"known": True, "depth": 0, "frames": []}
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:212:def test_recovery_archive_publisher_rejects_missing_remaining_stack(tmp_path):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:217:    with pytest.raises(ValueError, match="requires remaining_stack"):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:270:    assert archive_payload["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:97:            "remaining_stack": {"known": True, "depth": 2, "frames": []},
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:115:        if event["event_type"] == "session_suspected_dead"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:123:    assert payload["remaining_stack"] == {"known": True, "depth": 2, "frames": []}
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:156:        if event["event_type"] == "session_suspected_dead"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:231:        if event["event_type"] == "session_suspected_dead_observed"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:242:    assert archive_payload["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:260:    assert "_record_session_suspected_dead_event(" not in branch
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:13:    build_recovery_archive_effect,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:94:def test_build_recovery_archive_effect_keeps_scope_end_payload_shape():
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:103:    effect = build_recovery_archive_effect(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:121:            "remaining_stack": {"known": False, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:129:def test_build_recovery_archive_effect_rejects_missing_or_invalid_generation():
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:140:    assert build_recovery_archive_effect(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:147:    assert build_recovery_archive_effect(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:155:def test_build_recovery_archive_effect_preserves_explicit_remaining_stack():
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:157:    remaining_stack = {"known": True, "depth": 2, "frames": [{"scope_id": "child"}]}
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:158:    event["payload"]["remaining_stack"] = remaining_stack
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:167:    effect = build_recovery_archive_effect(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:174:    assert effect["payload"]["remaining_stack"] == remaining_stack
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:177:def test_build_recovery_archive_effect_rejects_bool_round_and_bad_remaining_stack():
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:189:        build_recovery_archive_effect(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:198:    event["payload"]["remaining_stack"] = True
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:207:    with pytest.raises(ValueError, match="remaining_stack"):
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:208:        build_recovery_archive_effect(
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:225:    assert "build_recovery_archive_effect(" in repo_source
+novaic-agent-runtime/queue_service/session_recovery.py:15:def _unknown_remaining_stack() -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_recovery.py:143:def build_recovery_archive_effect(
+novaic-agent-runtime/queue_service/session_recovery.py:160:    raw_remaining_stack = recovery_metadata.get("remaining_stack", _MISSING)
+novaic-agent-runtime/queue_service/session_recovery.py:161:    if raw_remaining_stack is _MISSING:
+novaic-agent-runtime/queue_service/session_recovery.py:162:        remaining_stack = _unknown_remaining_stack()
+novaic-agent-runtime/queue_service/session_recovery.py:163:    elif isinstance(raw_remaining_stack, dict):
+novaic-agent-runtime/queue_service/session_recovery.py:164:        remaining_stack = dict(raw_remaining_stack)
+novaic-agent-runtime/queue_service/session_recovery.py:166:        raise ValueError("remaining_stack must be an object")
+novaic-agent-runtime/queue_service/session_recovery.py:180:            "remaining_stack": remaining_stack,
+novaic-agent-runtime/queue_service/saga_repo.py:1140:def _explicit_or_unknown_remaining_stack(context: Dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/saga_repo.py:1141:    remaining_stack = context.get("remaining_stack")
+novaic-agent-runtime/queue_service/saga_repo.py:1142:    if isinstance(remaining_stack, dict):
+novaic-agent-runtime/queue_service/saga_repo.py:1143:        return dict(remaining_stack)
+novaic-agent-runtime/queue_service/saga_repo.py:1207:            effect = self._build_session_suspected_dead_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1227:            "record_session_suspected_dead",
+novaic-agent-runtime/queue_service/saga_repo.py:1274:        if effect_type == "record_session_suspected_dead":
+novaic-agent-runtime/queue_service/saga_repo.py:1275:            self._record_session_suspected_dead_event(**payload)
+novaic-agent-runtime/queue_service/saga_repo.py:1298:            "remaining_stack": _explicit_or_unknown_remaining_stack(context),
+novaic-agent-runtime/queue_service/saga_repo.py:1318:    def _build_session_suspected_dead_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1331:            "effect_type": "record_session_suspected_dead",
+novaic-agent-runtime/queue_service/saga_repo.py:1345:    def _record_session_suspected_dead_event(
+novaic-agent-runtime/queue_service/saga_repo.py:1374:            "remaining_stack": _explicit_or_unknown_remaining_stack(saga_context),
+novaic-agent-runtime/queue_service/saga_repo.py:1381:                    "cannot record session_suspected_dead without session state"
+novaic-agent-runtime/queue_service/saga_repo.py:1385:                "record_session_suspected_dead",

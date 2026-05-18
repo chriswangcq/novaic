@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260512-191623",
+  "active_ledger_id": "L20260518-235045",
   "ledgers": [
     {
       "active_count": 0,
@@ -682,7 +682,29 @@
       "status": "done",
       "title": "Display image must reach LLM as visual input",
       "updated_at": "2026-05-12T11:36:34+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260516-222011",
+      "path": "L20260516-222011",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Comprehensive project optimization audit and remediation",
+      "updated_at": "2026-05-18T15:20:41+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260518-235045",
+      "path": "L20260518-235045",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "项目文档重写：归档旧文档，从代码重建全套文档",
+      "updated_at": "2026-05-18T16:44:19+00:00"
     }
   ],
-  "updated_at": "2026-05-12T11:36:34+00:00"
+  "updated_at": "2026-05-18T16:44:29+00:00"
 }

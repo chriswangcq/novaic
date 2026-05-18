@@ -1,0 +1,162 @@
+# P408 generic queue infra guard
+novaic-agent-runtime/queue_service/task_fsm.py:56:    generation: int = 0
+novaic-agent-runtime/queue_service/task_fsm.py:57:    retry_count: int = 0
+novaic-agent-runtime/queue_service/task_fsm.py:58:    max_retries: int = 3
+novaic-agent-runtime/queue_service/task_fsm.py:75:    generation: int
+novaic-agent-runtime/queue_service/task_fsm.py:87:        generation=state.generation,
+novaic-agent-runtime/queue_service/task_fsm.py:90:            "retry_count": int(state.retry_count),
+novaic-agent-runtime/queue_service/task_fsm.py:91:            "max_retries": int(state.max_retries),
+novaic-agent-runtime/queue_service/task_fsm.py:108:        generation=int(decision.next_state.generation),
+novaic-agent-runtime/queue_service/task_fsm.py:132:                "retry_count": int(event.payload.get("retry_count") or 0),
+novaic-agent-runtime/queue_service/task_fsm.py:133:                "max_retries": int(event.payload.get("max_retries") or 3),
+novaic-agent-runtime/queue_service/task_fsm.py:192:                "retry_count": event.payload.get("retry_count"),
+novaic-agent-runtime/queue_service/task_fsm.py:302:            generation=int(state.generation) + 1,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:52:def _require_non_negative_generation(value: Any, owner: str) -> int:
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:54:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:56:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:58:        generation = int(value)
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:60:        raise ValueError(f"non-negative generation is required for {owner}") from exc
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:61:    if generation < 0:
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:62:        raise ValueError(f"non-negative generation is required for {owner}")
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:63:    return generation
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:85:        generation: int,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:97:            generation=generation,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:112:        generation: int,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:123:            "generation": _require_non_negative_generation(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:124:                generation,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:153:        generation: int,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:163:            "generation": _require_non_negative_generation(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:164:                generation,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:192:        generation: int,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:203:            "generation": _require_non_negative_generation(
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:204:                generation,
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:393:            limit=int(limit),
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:431:            (int(max_attempts), error, failed_at, outbox_id),
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:484:            params = (*params, int(limit))
+novaic-agent-runtime/queue_service/fsm/sqlite_store.py:491:        attempts = max(1, int(self.config.busy_retries) + 1)
+novaic-agent-runtime/queue_service/saga_repo.py:38:from task_queue.contracts.session_generation import require_positive_session_generation_value
+novaic-agent-runtime/queue_service/saga_repo.py:121:                generation=0,
+novaic-agent-runtime/queue_service/saga_repo.py:307:            """, (stale_cutoff, max(1, int(max_recoveries))))
+novaic-agent-runtime/queue_service/saga_repo.py:911:    def _saga_generation(self, saga_id: str) -> int:
+novaic-agent-runtime/queue_service/saga_repo.py:913:        return int(current.get("generation") or 0)
+novaic-agent-runtime/queue_service/saga_repo.py:918:            status=SagaRuntimeStatus(str(current.get("state") or SagaRuntimeStatus.NONE.value)),
+novaic-agent-runtime/queue_service/saga_repo.py:920:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/saga_repo.py:921:            saga_type=current.get("saga_type"),
+novaic-agent-runtime/queue_service/saga_repo.py:922:            dag_task_count=current.get("dag_task_count"),
+novaic-agent-runtime/queue_service/saga_repo.py:923:            step_results=current.get("step_results") or {},
+novaic-agent-runtime/queue_service/saga_repo.py:924:            claimed_by=current.get("claimed_by"),
+novaic-agent-runtime/queue_service/saga_repo.py:943:            saga_type=current.get("saga_type"),
+novaic-agent-runtime/queue_service/saga_repo.py:944:            context=projection.get("context", current.get("context") or {}),
+novaic-agent-runtime/queue_service/saga_repo.py:945:            step_results=projection.get("step_results", current.get("step_results") or {}),
+novaic-agent-runtime/queue_service/saga_repo.py:951:                    current.get("dag_task_count"),
+novaic-agent-runtime/queue_service/saga_repo.py:953:                "claimed_by": projection.get("claimed_by", current.get("claimed_by")),
+novaic-agent-runtime/queue_service/saga_repo.py:954:                "claimed_at": projection.get("claimed_at", current.get("claimed_at")),
+novaic-agent-runtime/queue_service/saga_repo.py:957:                    current.get("heartbeat_at"),
+novaic-agent-runtime/queue_service/saga_repo.py:959:                "error": projection.get("error", current.get("error")),
+novaic-agent-runtime/queue_service/saga_repo.py:962:                    current.get("completed_at"),
+novaic-agent-runtime/queue_service/saga_repo.py:980:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/saga_repo.py:994:            event_id=f"sevt-{saga_id}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/saga_repo.py:996:                f"saga-event:{saga_id}:{generation}:{event_type.value}"
+novaic-agent-runtime/queue_service/saga_repo.py:1001:                generation=generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1015:                    outbox_id=f"sout-{saga_id}-{generation}-{index}",
+novaic-agent-runtime/queue_service/saga_repo.py:1020:                        f"saga-effect:{saga_id}:{generation}:"
+novaic-agent-runtime/queue_service/saga_repo.py:1044:            status=LeaseRuntimeStatus(str(current.get("state") or LeaseRuntimeStatus.NONE.value)),
+novaic-agent-runtime/queue_service/saga_repo.py:1048:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/saga_repo.py:1049:            claimed_by=current.get("claimed_by"),
+novaic-agent-runtime/queue_service/saga_repo.py:1050:            heartbeat_at=current.get("heartbeat_at"),
+novaic-agent-runtime/queue_service/saga_repo.py:1083:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/saga_repo.py:1089:            generation=generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1100:            event_id=f"levt-{lease_key}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/saga_repo.py:1101:            idempotency_key=f"lease-event:{lease_key}:{generation}:{event_type.value}",
+novaic-agent-runtime/queue_service/saga_repo.py:1107:            generation=generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1117:        return (now_dt - timedelta(seconds=int(seconds))).isoformat().replace("+00:00", "Z")
+novaic-agent-runtime/queue_service/saga_repo.py:1124:def _positive_session_generation_from_context(context: Dict[str, Any]) -> int | None:
+novaic-agent-runtime/queue_service/saga_repo.py:1125:    raw = context.get("session_generation")
+novaic-agent-runtime/queue_service/saga_repo.py:1129:        generation = raw
+novaic-agent-runtime/queue_service/saga_repo.py:1132:            generation = int(raw.strip())
+novaic-agent-runtime/queue_service/saga_repo.py:1137:    return generation if generation > 0 else None
+novaic-agent-runtime/queue_service/saga_repo.py:1171:        self._max_outbox_attempts = int(max_outbox_attempts)
+novaic-agent-runtime/queue_service/saga_repo.py:1200:            effect = self._build_session_suspected_dead_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1220:            "record_session_suspected_dead",
+novaic-agent-runtime/queue_service/saga_repo.py:1267:        if effect_type == "record_session_suspected_dead":
+novaic-agent-runtime/queue_service/saga_repo.py:1268:            self._record_session_suspected_dead_event(**payload)
+novaic-agent-runtime/queue_service/saga_repo.py:1281:        session_generation = _positive_session_generation_from_context(context)
+novaic-agent-runtime/queue_service/saga_repo.py:1282:        if not scope_id or not agent_id or session_generation is None:
+novaic-agent-runtime/queue_service/saga_repo.py:1289:            "session_generation": session_generation,
+novaic-agent-runtime/queue_service/saga_repo.py:1313:    def _build_session_suspected_dead_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1326:            "effect_type": "record_session_suspected_dead",
+novaic-agent-runtime/queue_service/saga_repo.py:1340:    def _record_session_suspected_dead_event(
+novaic-agent-runtime/queue_service/saga_repo.py:1375:                    "cannot record session_suspected_dead without session state"
+novaic-agent-runtime/queue_service/saga_repo.py:1377:            generation = require_positive_session_generation_value(
+novaic-agent-runtime/queue_service/saga_repo.py:1378:                state.get("generation"),
+novaic-agent-runtime/queue_service/saga_repo.py:1379:                "record_session_suspected_dead",
+novaic-agent-runtime/queue_service/saga_repo.py:1386:                generation=generation,
+novaic-agent-runtime/queue_service/queue_db.py:52:    ts.retry_count,
+novaic-agent-runtime/queue_service/queue_db.py:53:    ts.max_retries,
+novaic-agent-runtime/queue_service/queue_db.py:63:    ts.generation AS version
+novaic-agent-runtime/queue_service/queue_db.py:120:        max_retries: int = 3,
+novaic-agent-runtime/queue_service/queue_db.py:141:                generation=0,
+novaic-agent-runtime/queue_service/queue_db.py:142:                retry_count=0,
+novaic-agent-runtime/queue_service/queue_db.py:143:                max_retries=max_retries,
+novaic-agent-runtime/queue_service/queue_db.py:149:                "retry_count": 0,
+novaic-agent-runtime/queue_service/queue_db.py:150:                "max_retries": max_retries,
+novaic-agent-runtime/queue_service/queue_db.py:177:                        "retry_count": 0,
+novaic-agent-runtime/queue_service/queue_db.py:178:                        "max_retries": max_retries,
+novaic-agent-runtime/queue_service/queue_db.py:374:            retry_count = int(runtime_state.retry_count)
+novaic-agent-runtime/queue_service/queue_db.py:375:            max_retries = int(runtime_state.max_retries)
+novaic-agent-runtime/queue_service/queue_db.py:380:                next_retry_count = int(retry_count) + 1
+novaic-agent-runtime/queue_service/queue_db.py:381:                can_retry = int(retry_count) < int(max_retries)
+novaic-agent-runtime/queue_service/queue_db.py:386:                        attempt=next_retry_count,
+novaic-agent-runtime/queue_service/queue_db.py:410:                    "retry_count": next_retry_count,
+novaic-agent-runtime/queue_service/queue_db.py:556:                (stale_cutoff, max(1, int(max_recoveries))),
+novaic-agent-runtime/queue_service/queue_db.py:569:                retry_count = int(runtime_state.retry_count)
+novaic-agent-runtime/queue_service/queue_db.py:570:                max_retries = int(runtime_state.max_retries)
+novaic-agent-runtime/queue_service/queue_db.py:571:                next_retry_count = retry_count + 1
+novaic-agent-runtime/queue_service/queue_db.py:572:                can_retry = retry_count < max_retries
+novaic-agent-runtime/queue_service/queue_db.py:579:                    self._compute_next_retry_at(now=now, attempt=next_retry_count)
+novaic-agent-runtime/queue_service/queue_db.py:601:                    "retry_count": next_retry_count,
+novaic-agent-runtime/queue_service/queue_db.py:879:            delay_override_seconds=max(1, int(lease_seconds)),
+novaic-agent-runtime/queue_service/queue_db.py:1035:        safe_limit = max(1, min(int(limit), 200))
+novaic-agent-runtime/queue_service/queue_db.py:1070:                        "contention_count": int(row[4] or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1086:                "retry_count", "max_retries", "next_retry_at", "result", "error",
+novaic-agent-runtime/queue_service/queue_db.py:1088:                "created_at", "started_at", "finished_at", "version",
+novaic-agent-runtime/queue_service/queue_db.py:1202:            "retry_count",
+novaic-agent-runtime/queue_service/queue_db.py:1203:            "max_retries",
+novaic-agent-runtime/queue_service/queue_db.py:1209:            "version",
+novaic-agent-runtime/queue_service/queue_db.py:1214:            merged["version"] = int(merged.get("version") or 0) + 1
+novaic-agent-runtime/queue_service/queue_db.py:1223:    def _task_generation(self, task_id: str) -> int:
+novaic-agent-runtime/queue_service/queue_db.py:1225:        return int(current.get("generation") or 0)
+novaic-agent-runtime/queue_service/queue_db.py:1230:            status=TaskRuntimeStatus(str(current.get("state") or TaskRuntimeStatus.NONE.value)),
+novaic-agent-runtime/queue_service/queue_db.py:1232:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1233:            retry_count=int(current.get("retry_count") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1234:            max_retries=int(current.get("max_retries") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1235:            claimed_by=current.get("claimed_by"),
+novaic-agent-runtime/queue_service/queue_db.py:1255:                "retry_count": decision.projection.get(
+novaic-agent-runtime/queue_service/queue_db.py:1256:                    "retry_count",
+novaic-agent-runtime/queue_service/queue_db.py:1257:                    current.get("retry_count"),
+novaic-agent-runtime/queue_service/queue_db.py:1259:                "max_retries": decision.projection.get(
+novaic-agent-runtime/queue_service/queue_db.py:1260:                    "max_retries",
+novaic-agent-runtime/queue_service/queue_db.py:1261:                    current.get("max_retries"),
+novaic-agent-runtime/queue_service/queue_db.py:1265:                    current.get("claimed_by"),
+novaic-agent-runtime/queue_service/queue_db.py:1269:                    current.get("claimed_at"),
+novaic-agent-runtime/queue_service/queue_db.py:1273:                    current.get("heartbeat_at"),
+novaic-agent-runtime/queue_service/queue_db.py:1277:                    current.get("next_retry_at"),
+novaic-agent-runtime/queue_service/queue_db.py:1279:                "error": decision.projection.get("error", current.get("error")),
+novaic-agent-runtime/queue_service/queue_db.py:1282:                    current.get("started_at"),
+novaic-agent-runtime/queue_service/queue_db.py:1286:                    current.get("finished_at"),
+novaic-agent-runtime/queue_service/queue_db.py:1308:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/queue_db.py:1322:            event_id=f"tevt-{task_id}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/queue_db.py:1324:                f"task-event:{task_id}:{generation}:{event_type.value}"
+novaic-agent-runtime/queue_service/queue_db.py:1329:                generation=generation,
+novaic-agent-runtime/queue_service/queue_db.py:1335:                retry_count=int(projection.get("retry_count") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1336:                max_retries=int(projection.get("max_retries") or 3),
+novaic-agent-runtime/queue_service/queue_db.py:1362:            status=LeaseRuntimeStatus(str(current.get("state") or LeaseRuntimeStatus.NONE.value)),
+novaic-agent-runtime/queue_service/queue_db.py:1366:            generation=int(current.get("generation") or 0),
+novaic-agent-runtime/queue_service/queue_db.py:1367:            claimed_by=current.get("claimed_by"),
+novaic-agent-runtime/queue_service/queue_db.py:1368:            heartbeat_at=current.get("heartbeat_at"),
+novaic-agent-runtime/queue_service/queue_db.py:1401:        generation = int(decision.generation)
+novaic-agent-runtime/queue_service/queue_db.py:1407:            generation=generation,
+novaic-agent-runtime/queue_service/queue_db.py:1418:            event_id=f"levt-{lease_key}-{generation}-{event_type.value}",
+novaic-agent-runtime/queue_service/queue_db.py:1419:            idempotency_key=f"lease-event:{lease_key}:{generation}:{event_type.value}",
+novaic-agent-runtime/queue_service/queue_db.py:1425:            generation=generation,
+novaic-agent-runtime/queue_service/queue_db.py:1435:        return (now_dt - timedelta(seconds=int(seconds))).isoformat().replace("+00:00", "Z")

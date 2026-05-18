@@ -1,0 +1,196 @@
+=== runtime llm prepare related hits ===
+novaic-agent-runtime/task_queue/handlers/validation.py:82:                error_messages = []
+novaic-cortex/novaic_cortex/context_event_store.py:8:from novaic_cortex.context_events import (
+novaic-cortex/novaic_cortex/context_event_store.py:47:        return f"{root_scope_path}/context_events/events.jsonl"
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:1:"""Cortex Handlers — Cortex scope lifecycle + LLM context assembly
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:8:                              compact to budget, load tools → ready for LLM call
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:21:    LLMContextAssemblySnapshot,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:22:    LLMPrepareContextInput,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:33:    Normal system shutdown is not an LLM-authored summary path. Durable
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:34:    folded memory must come from an active scope the LLM closes with
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:293:# ── LLM Context assembly (Context Stack v2) ──
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:296:@register_handler(TaskTopics.CORTEX_PREPARE_LLM_CONTEXT)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:298:    """Collect explicit LLM assembly inputs and invoke the pure assembler.
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:302:    2. Ask Cortex for the prepared context snapshot.
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:308:        prepare_input = LLMPrepareContextInput.from_mapping(payload)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:336:    prepare_result = bridge.prepare_for_llm(prepare_input.agent_root_scope_id)
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:359:        LLMContextAssemblySnapshot(
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:363:            new_messages=read_result.get("new_messages", []),
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:132:    # ``context.prepare_for_llm`` starts from ``agent_root_scope_id``.
+novaic-cortex/novaic_cortex/context_event_writer.py:9:from novaic_cortex.context_events import ContextEvent, build_stream_id
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:2:LLM Handlers - LLM 调用（纯传输层）
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:5:- llm.call: 调用 LLM
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:10:- 调用 LLM API 并返回原始响应
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:11:- 不决定"给 LLM 哪些工具"（由 Cortex 负责）
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:14:- task_queue.business.LLMBusiness 业务逻辑层
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:19:from ..business import LLMBusiness
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:21:    LLMCallInput,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:22:    LLMTransportConfig,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:31:    llm_config: LLMTransportConfig,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:35:    """创建 Factory LLM Client（不持有 api_key）"""
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:36:    from ..factory_client import FactoryLLMClient
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:38:    return FactoryLLMClient(
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:51:    """Fetch LLM config from Business internal API."""
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:55:        raise ValidationError("Missing required field: agent_id for LLM config lookup")
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:68:@register_handler(TaskTopics.LLM_CALL)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:71:    调用 LLM
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:78:    幂等性：LLM 调用是无状态的，天然幂等
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:93:        call_input = LLMCallInput.from_payload(payload)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:109:            "error": llm_config.get("error", "Failed to get LLM config"),
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:113:        transport_config = LLMTransportConfig.from_mapping(llm_config)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:126:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:134:    biz = LLMBusiness(biz_url, llm_client)
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:137:        messages=prepared.messages,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:128:            "_note": "Image data provided separately to LLM",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:426:    """skill_begin → create child skill. LLM must supply a unique scope_id."""
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:466:        return {"success": False, "error": f"{tool_name} requires agent_id to resolve LLM config"}
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:479:        error = llm_config.get("error") if isinstance(llm_config, dict) else "invalid LLM config"
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:483:    factory_url = (llm_config.get("factory_url") or ServiceConfig.LLM_FACTORY_URL).rstrip("/")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:501:# There is no LLM-facing finalize/rest tool and no tool-side summary path.
+novaic-agent-runtime/task_queue/handlers/__init__.py:144:from . import cortex_handlers   # scope lifecycle + LLM context assembly
+novaic-cortex/novaic_cortex/api.py:503:    events use this post-archive stack so LLM context projection does not keep
+novaic-cortex/novaic_cortex/api.py:679:    through /v1/context/skill_end on an LLM-opened child skill.
+novaic-cortex/novaic_cortex/api.py:813:    """Write an assistant (LLM) message to the active scope's unified timeline."""
+novaic-cortex/novaic_cortex/api.py:895:    messages = await ws.read_context(scope_path)
+novaic-cortex/novaic_cortex/api.py:948:class PrepareForLLMRequest(_TenantMixin):
+novaic-cortex/novaic_cortex/api.py:954:    child_scope_id: str     # LLM-chosen unique id for the new skill scope
+novaic-cortex/novaic_cortex/api.py:971:@app.post("/v1/context/prepare_for_llm")
+novaic-cortex/novaic_cortex/api.py:972:async def context_prepare_for_llm(req: PrepareForLLMRequest):
+novaic-cortex/novaic_cortex/api.py:973:    """Prepare messages for LLM from the ContextEvent source stream."""
+novaic-cortex/novaic_cortex/api.py:989:        messages=prepared.messages,
+novaic-cortex/novaic_cortex/api.py:1065:    LLM-chosen child_scope_id must be globally unique across this agent's entire
+novaic-cortex/novaic_cortex/api.py:1114:        # Depth ceiling for LLM-opened child skills:
+novaic-cortex/novaic_cortex/api.py:1644:# ── Steps: formatted for LLM ────────────────────────────────────────────
+novaic-cortex/novaic_cortex/api.py:1824:    """Read a step and return its result formatted as _mcp_content for LLM."""
+novaic-cortex/novaic_cortex/api.py:2088:        resp = await client.post(f"{factory_url}/v1/chat/completions", json=request_payload)
+novaic-cortex/novaic_cortex/api.py:2146:        messages=[
+novaic-cortex/novaic_cortex/runtime.py:71:        (for example, adding shell back to the LLM-facing tool set).
+novaic-agent-runtime/task_queue/factory_client.py:2:Factory LLM Client - 通过 Factory /v1/chat/completions 代理 LLM 调用
+novaic-agent-runtime/task_queue/factory_client.py:4:所有 LLM 调用通过 Factory 代理，不直接持有 api_key。
+novaic-agent-runtime/task_queue/factory_client.py:16:DEFAULT_TIMEOUT = 300.0  # LLM 调用可能很慢
+novaic-agent-runtime/task_queue/factory_client.py:20:class FactoryLLMClient:
+novaic-agent-runtime/task_queue/factory_client.py:21:    """通过 Factory 代理的 LLM Client，接口兼容 OpenAIClient.chat()"""
+novaic-agent-runtime/task_queue/factory_client.py:41:        """调用 Factory /v1/chat/completions
+novaic-agent-runtime/task_queue/factory_client.py:68:        url = f"{self.factory_url}/v1/chat/completions"
+novaic-agent-runtime/task_queue/factory_client.py:78:                raise RuntimeError(f"Factory LLM call failed ({status}): {body}")
+novaic-agent-runtime/task_queue/factory_client.py:92:            raise RuntimeError(f"Factory LLM call failed ({e.response.status_code}): {detail}") from e
+novaic-agent-runtime/task_queue/factory_client.py:96:            raise RuntimeError(f"Factory LLM call failed: {e}") from e
+novaic-agent-runtime/task_queue/tool_surface_policy.py:6:registry or LLM schema surface.
+novaic-cortex/novaic_cortex/tool_schemas.py:1:"""LLM-facing tool JSON schemas.
+novaic-cortex/novaic_cortex/tool_schemas.py:23:    """Return the LLM-visible builtin schemas for the current agent role."""
+novaic-cortex/novaic_cortex/context_stack/__init__.py:3:LLM context preparation is event-projection backed. This package only exposes
+novaic-cortex/novaic_cortex/context_stack/budget.py:42:        emergency compacts per minute" which usually means the LLM is looping.
+novaic-cortex/novaic_cortex/context_stack/budget.py:140:    messages = _micro_compact(messages, config, stack_top)
+novaic-cortex/novaic_cortex/context_event_read_model.py:1:"""ContextEvent-backed read model for LLM context preparation.
+novaic-cortex/novaic_cortex/context_event_read_model.py:14:    project_context_events,
+novaic-cortex/novaic_cortex/context_event_read_model.py:32:    """Prepared LLM context derived from one ContextEvent stream."""
+novaic-cortex/novaic_cortex/context_event_read_model.py:49:            total_messages=len(self.messages),
+novaic-cortex/novaic_cortex/context_event_read_model.py:67:    """Prepare LLM context from the authoritative ContextEvent stream."""
+novaic-cortex/novaic_cortex/context_event_read_model.py:87:                messages=[],
+novaic-cortex/novaic_cortex/context_event_read_model.py:98:        projection = project_context_events(events)
+novaic-cortex/novaic_cortex/context_event_read_model.py:99:        messages = budget_compact(
+novaic-cortex/novaic_cortex/context_event_read_model.py:111:            messages=messages,
+novaic-cortex/novaic_cortex/context_event_projection.py:1:"""Pure ContextEvent projection to LLM-facing snapshot state."""
+novaic-cortex/novaic_cortex/context_event_projection.py:8:from novaic_cortex.context_events import ContextEvent, stable_json
+novaic-cortex/novaic_cortex/context_event_projection.py:55:def project_context_events(events: Iterable[ContextEvent]) -> ContextProjectionSnapshot:
+novaic-cortex/novaic_cortex/context_event_projection.py:167:        parent_messages = _message_container(state, scope.parent_scope_id)
+novaic-cortex/novaic_cortex/step_result_projection.py:5:results and converts them into provider-facing LLM representations.
+novaic-cortex/novaic_cortex/step_result_projection.py:186:    # payload shapes cannot flood LLM context.
+novaic-cortex/novaic_cortex/step_result_projection.py:278:        empty_text="[Display produced no text or media for LLM perception]",
+novaic-cortex/novaic_cortex/logical_fs.py:240:            await self._add_file_if_exists(files, f"{root_path}/context_events/events.jsonl")
+novaic-cortex/novaic_cortex/shell_capabilities.py:121:  shell entry point instead of as separate LLM tools.
+novaic-cortex/novaic_cortex/shell_capabilities.py:686:        messages = result.get("messages")
+novaic-cortex/novaic_cortex/shell_capabilities.py:892:    result = _post_json(factory_url, "/v1/chat/completions", payload)
+novaic-agent-runtime/task_queue/topics.py:27:    # LLM Tasks
+novaic-agent-runtime/task_queue/topics.py:28:    LLM_CALL = "llm.call"
+novaic-agent-runtime/task_queue/topics.py:37:    # Cortex Tasks — scope lifecycle + LLM context assembly
+novaic-agent-runtime/task_queue/topics.py:41:    CORTEX_PREPARE_LLM_CONTEXT = "cortex.prepare_llm_context"
+novaic-agent-runtime/task_queue/sagas/react_think.py:5:1. Cortex assembles LLM context (ContextEvent read model + tools + transient warning)
+novaic-agent-runtime/task_queue/sagas/react_think.py:6:2. Call LLM (with messages + tools from Step 1)
+novaic-agent-runtime/task_queue/sagas/react_think.py:7:3. Save LLM response to context.jsonl (filter unknown tool_calls)
+novaic-agent-runtime/task_queue/sagas/react_think.py:68:    """Persist only LLM responses that are part of canonical dialogue state.
+novaic-agent-runtime/task_queue/sagas/react_think.py:72:    LLM context. Raw payloads remain available through execution logs.
+novaic-agent-runtime/task_queue/sagas/react_think.py:80:    P0-5 / INV-2 — **never finalize with a non-empty stack.** When the LLM returns
+novaic-agent-runtime/task_queue/sagas/react_think.py:86:      (bounded by ``MAX_STACK_HOLD_RETRIES``) so the LLM gets a chance to emit
+novaic-agent-runtime/task_queue/sagas/react_think.py:150:    topic=TaskTopics.CORTEX_PREPARE_LLM_CONTEXT,
+novaic-agent-runtime/task_queue/sagas/react_think.py:156:    topic=TaskTopics.LLM_CALL,
+novaic-agent-runtime/task_queue/contracts/react_think.py:134:        error_msg = (call_result or {}).get("error", "Unknown LLM error")
+novaic-agent-runtime/task_queue/contracts/react_think.py:135:        return {"role": "assistant", "content": f"[LLM Error] {error_msg}"}
+novaic-agent-runtime/task_queue/contracts/react_think.py:140:        return {"role": "assistant", "content": "[No response from LLM]"}
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:11:only when the LLM closes the current stack-top scope through
+novaic-agent-runtime/task_queue/sagas/__init__.py:6:- react_think:      ReAct Think phase (LLM call)
+novaic-agent-runtime/task_queue/contracts/llm_call.py:1:"""Explicit LLM call contracts for Runtime.
+novaic-agent-runtime/task_queue/contracts/llm_call.py:3:LLM call handling has two different responsibilities:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:10:resolution), and ``LLMBusiness`` stays as a thin transport wrapper.
+novaic-agent-runtime/task_queue/contracts/llm_call.py:21:class LLMCallInput:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:22:    """Payload shape expected by the LLM call handler."""
+novaic-agent-runtime/task_queue/contracts/llm_call.py:37:    def from_payload(cls, payload: dict[str, Any]) -> "LLMCallInput":
+novaic-agent-runtime/task_queue/contracts/llm_call.py:44:        messages = payload.get("messages")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:48:            raise ValueError("LLMCallInput.messages must be a list")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:51:            raise ValueError("LLMCallInput.tools must be a list")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:55:            messages=deepcopy(messages),
+novaic-agent-runtime/task_queue/contracts/llm_call.py:68:class LLMTransportConfig:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:69:    """Business-provided transport configuration for one LLM call."""
+novaic-agent-runtime/task_queue/contracts/llm_call.py:78:    def from_mapping(cls, value: dict[str, Any]) -> "LLMTransportConfig":
+novaic-agent-runtime/task_queue/contracts/llm_call.py:80:            raise ValueError("LLMTransportConfig.factory_url is required")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:82:            raise ValueError("LLMTransportConfig.model_id is required")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:84:            raise ValueError("LLMTransportConfig.user_id is required")
+novaic-agent-runtime/task_queue/contracts/llm_call.py:103:class PreparedLLMCall:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:116:    source: LLMCallInput,
+novaic-agent-runtime/task_queue/contracts/llm_call.py:117:    config: LLMTransportConfig,
+novaic-agent-runtime/task_queue/contracts/llm_call.py:123:) -> PreparedLLMCall:
+novaic-agent-runtime/task_queue/contracts/llm_call.py:138:    return PreparedLLMCall(
+novaic-agent-runtime/task_queue/contracts/llm_call.py:141:        messages=processed,
+novaic-agent-runtime/task_queue/utils/no_tool_warning.py:1:"""Transient LLM warning for no-tool retries."""
+novaic-agent-runtime/task_queue/sagas/react_actions.py:35:# The current wake scope is now a real LLM-closable scope. A reply-only round
+novaic-agent-runtime/task_queue/sagas/react_actions.py:43:#   REPLY_NO_FOLLOWUP  LLM's only tool call this round was a turn closer,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:46:#                      non-empty, continue thinking so the LLM can close the
+novaic-agent-runtime/task_queue/sagas/react_actions.py:83:      0. REPLY_NO_FOLLOWUP — LLM's only tool call was a turn-closer
+novaic-agent-runtime/task_queue/sagas/react_actions.py:85:         if the stack is already empty; otherwise continue thinking so the LLM
+novaic-agent-runtime/task_queue/utils/multimodal.py:1:"""Display-only multimodal conversion for LLM calls.
+novaic-agent-runtime/task_queue/utils/multimodal.py:125:                    "_note": "Image data provided separately to LLM"
+novaic-agent-runtime/task_queue/utils/context.py:4:用于 LLM 调用前的消息预处理：
+novaic-agent-runtime/task_queue/utils/context.py:21:    这对 LLM 调用很重要，否则 LLM 可能报错。
+novaic-agent-runtime/task_queue/utils/context.py:38:        >>> messages = [
+novaic-agent-runtime/task_queue/utils/context.py:101:    other_messages = []  # (original_idx, msg)
+novaic-agent-runtime/task_queue/utils/context.py:191:    （因为 LLM API 不支持在 tool result 中放图片）
+novaic-agent-runtime/task_queue/utils/context.py:198:        provider: LLM 提供商 ("openai" 或 "anthropic")
+novaic-agent-runtime/task_queue/utils/context.py:256:            # User message: 若有 {text, attachments} 格式，转为 LLM content 数组
+novaic-agent-runtime/task_queue/utils/context.py:263:                # 有附件，转为 LLM 格式（文本 + 附件描述）
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:490:    def prepare_for_llm(self, scope_id: str) -> dict:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:491:        """Prepare messages for LLM via Cortex's ContextEvent read model.
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:493:        If this fails we must NOT silently return empty context — the LLM
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:498:        return self._post("/v1/context/prepare_for_llm", {
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:516:            child_scope_id: globally-unique id for the new scope (LLM-chosen).
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:567:        Missing schemas will make the LLM see no tools; callers that depend
+novaic-agent-runtime/task_queue/tool_output.py:3:The LLM-facing representation is a projection, not the durable contract.  This
+novaic-agent-runtime/task_queue/business/__init__.py:5:- llm: LLM calls
+novaic-agent-runtime/task_queue/business/__init__.py:8:from .llm import LLMBusiness
+novaic-agent-runtime/task_queue/business/__init__.py:11:    "LLMBusiness",
+novaic-agent-runtime/task_queue/utils/step_result_client.py:4:Cortex stores tool steps and knows how to format their payloads for LLM
+novaic-agent-runtime/task_queue/utils/step_result_client.py:6:provider-shaped tool-result content just before the LLM call.
+novaic-agent-runtime/task_queue/utils/step_result_client.py:29:    """Resolve a Cortex tool step to _mcp_content JSON for LLM injection."""
+novaic-agent-runtime/task_queue/utils/step_result_client.py:175:    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+novaic-agent-runtime/task_queue/utils/user_content.py:2:User message content 转 LLM 格式
+novaic-agent-runtime/task_queue/utils/user_content.py:28:    将 user message 的 {text, attachments} 转为 LLM content 数组。
+novaic-agent-runtime/task_queue/business/llm.py:2:LLM Business - LLM 调用
+novaic-agent-runtime/task_queue/business/llm.py:5:- 调用 LLM transport client
+novaic-agent-runtime/task_queue/business/llm.py:14:class LLMCallResult:
+novaic-agent-runtime/task_queue/business/llm.py:15:    """LLM 调用结果"""
+novaic-agent-runtime/task_queue/business/llm.py:21:class LLMBusiness:
+novaic-agent-runtime/task_queue/business/llm.py:23:    Thin LLM transport wrapper.
+novaic-agent-runtime/task_queue/business/llm.py:30:        >>> from task_queue.business import LLMBusiness
+novaic-agent-runtime/task_queue/business/llm.py:31:        >>> llm_biz = LLMBusiness(db, llm_client)
+novaic-agent-runtime/task_queue/business/llm.py:52:    ) -> LLMCallResult:
+novaic-agent-runtime/task_queue/business/llm.py:54:        调用 LLM
+novaic-agent-runtime/task_queue/business/llm.py:63:            LLMCallResult
+novaic-agent-runtime/task_queue/business/llm.py:66:            return LLMCallResult(success=False, error="LLM client not configured")
+novaic-agent-runtime/task_queue/business/llm.py:70:                messages=messages,
+novaic-agent-runtime/task_queue/business/llm.py:75:            return LLMCallResult(success=True, response=response)
+novaic-agent-runtime/task_queue/business/llm.py:78:            return LLMCallResult(success=False, error=str(e))
+novaic-agent-runtime/task_queue/business/llm.py:82:        从 LLM 响应中提取 tool_calls
+novaic-agent-runtime/task_queue/business/llm.py:85:            response: LLM 响应
+novaic-agent-runtime/task_queue/business/llm.py:95:        从 LLM 响应中提取文本内容
+novaic-agent-runtime/task_queue/business/llm.py:98:            response: LLM 响应
+novaic-agent-runtime/task_queue/business/llm.py:108:        从 LLM 响应中提取推理内容
+novaic-agent-runtime/task_queue/business/llm.py:113:            response: LLM 响应

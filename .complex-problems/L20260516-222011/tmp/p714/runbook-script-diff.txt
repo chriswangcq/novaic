@@ -1,0 +1,33 @@
+--- /dev/fd/11	2026-05-18 05:02:24
++++ /dev/fd/12	2026-05-18 05:02:24
+@@ -1,18 +1,12 @@
+-# 本地后端联调（Runbook）
+-
+-桌面 **`novaic-app`** 内嵌 VmControl；本地联调时可以按需启动一组 Python 后端。端口约定见 **`novaic-common/config/services.json`** 与 [`../architecture/overview.md`](../architecture/overview.md)。
+-
+-## 方式 A：`novaic-app` 配套 `start-backends.sh`
+-
+-在 **`novaic-app`** 子模块内（在启动 **NovAIC.app / `tauri dev`** 之前）：
+-
+-```bash
+-cd novaic-app/scripts
+-./start-backends.sh              # 启动本地核心子集
+-./start-backends.sh --stop       # 停止本地核心子集
+-./start-backends.sh --status     # 查看本地核心子集状态
+-```
+-
+-该脚本当前只启动本地桌面核心子集：Gateway 19999、Queue Service 19997、Blob Service 19995，以及 Agent Runtime workers。它**不会**启动 Entangled、Business、Device、Cortex 或 Sandboxd；如果要测试依赖这些服务的 agent/runtime 流程，需要先用其他方式启动这些服务，否则 workers 会在日志里出现连接错误。完整逻辑以 `novaic-app/scripts/start-backends.sh` 文件注释为准。
+-
+-## 方式 B：只跑客户端 UI
++#!/usr/bin/env bash
++# start-backends.sh - Start the local desktop backend subset from source.
++#
++# Run this script BEFORE launching NovAIC.app when you only need the local
++# desktop subset: Gateway, Queue Service, Blob Service, and runtime workers.
++# It does not start Entangled, Business, Device, Cortex, or Sandboxd. Workers
++# that call those services need them running separately.
++#
++# Usage:
++#   ./start-backends.sh              # start the local subset
++#   ./start-backends.sh --stop       # stop the local subset
++#   ./start-backends.sh --status     # show local subset status

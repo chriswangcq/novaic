@@ -1,0 +1,1608 @@
+=== P618 runtime/cortex multimodal compatibility residue scan ===
+novaic-cortex/novaic_cortex/scope_transition_events.py:1:"""SQLite-backed scope transition history helpers."""
+novaic-cortex/novaic_cortex/scope_transition_events.py:16:        raise ValueError(f"unsupported scope path for transition history: {scope_path!r}")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:3:import base64
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:85:                        "screenshot": base64.b64encode(screenshot_bytes).decode("ascii"),
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:94:                        "data": base64.b64encode(file_bytes).decode("ascii"),
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:95:                        "is_base64": True,
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:113:                            "blob_ref": f"blob://runtime-artifact/{blob_id}",
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:151:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:158:    assert base64.b64encode(image).decode("ascii") not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:180:    assert body["artifacts"][0]["uri"].startswith("blob://runtime-artifact/")
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:186:    assert base64.b64encode(file_payload).decode("ascii") not in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:197:    assert "base64 into normal shell output" in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:200:def test_devicectl_help_teaches_artifact_manifest_not_base64(tmp_path: Path) -> None:
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:204:    assert "blob:// artifacts in tool-output.v1" in completed.stdout
+novaic-cortex/tests/test_shell_capabilities_blob_contract.py:205:    assert "Do not print or paste raw base64" in completed.stdout
+novaic-cortex/tests/test_context_budget.py:40:def test_compact_level_only_emits_contract_literals_not_legacy_compact_alias() -> None:
+novaic-cortex/tests/test_operational_store.py:72:def test_initialize_resets_incompatible_payload_manifest_schema(tmp_path):
+novaic-cortex/tests/test_operational_store.py:82:                blob_ref TEXT NOT NULL,
+novaic-cortex/tests/test_operational_store.py:97:                payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/tests/test_operational_store.py:101:            VALUES('payload-1', 'root', 'scope-a', 'step-1', 'blob://cortex-payload/1',
+novaic-cortex/tests/test_operational_store.py:124:        blob_ref=None,
+novaic-cortex/tests/test_operational_store.py:133:    assert columns["blob_ref"][3] == 0
+novaic-cortex/tests/test_operational_store.py:135:    assert local["blob_ref"] is None
+novaic-cortex/tests/test_operational_store.py:347:        blob_ref="blob://cortex-payload/1",
+novaic-cortex/tests/test_operational_store.py:360:        blob_ref="blob://cortex-payload/1",
+novaic-cortex/tests/test_operational_store.py:374:    assert store.get_payload_manifest(payload_ref="payload-1")["blob_ref"] == "blob://cortex-payload/1"
+novaic-cortex/tests/test_operational_store.py:377:def test_payload_manifest_supports_local_payload_without_blob_ref(tmp_path):
+novaic-cortex/tests/test_operational_store.py:386:        blob_ref=None,
+novaic-cortex/tests/test_operational_store.py:394:    assert manifest["blob_ref"] is None
+novaic-cortex/tests/test_step_index_outcome.py:21:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:22:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_step_index_outcome.py:23:        return blob_ref
+novaic-cortex/tests/test_step_index_outcome.py:25:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_step_index_outcome.py:26:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_step_index_outcome.py:30:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_step_index_outcome.py:31:        raise KeyError(blob_ref)
+novaic-cortex/tests/test_step_index_outcome.py:65:        "artifacts": [{"url": "blob://user-file/img.png", "filename": "img.png"}],
+novaic-cortex/tests/test_step_index_outcome.py:110:    assert manifest["blob_ref"] is None
+novaic-cortex/tests/test_step_index_outcome.py:150:async def test_write_step_externalizes_large_payload_to_blob_ref():
+novaic-cortex/tests/test_step_index_outcome.py:176:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:181:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:182:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:184:    assert await ws.read_payload(path, "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_step_index_outcome.py:185:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:187:    assert manifest["blob_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_step_index_outcome.py:301:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:303:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:332:        await ws.read_payload(path, "blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:334:    manifest = ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-cortex/tests/test_step_index_outcome.py:458:            "artifacts": [{"uri": "blob://runtime-artifact/img"}],
+novaic-cortex/tests/test_blob_payload_client.py:12:    assert "base64" not in source
+novaic-cortex/novaic_cortex/shell_capabilities.py:40:import base64
+novaic-cortex/novaic_cortex/shell_capabilities.py:61:  agentctl im history [--limit N]
+novaic-cortex/novaic_cortex/shell_capabilities.py:66:  agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT]
+novaic-cortex/novaic_cortex/shell_capabilities.py:67:  agentctl media audio-qa --file-url blob://namespace/id --prompt-file PATH
+novaic-cortex/novaic_cortex/shell_capabilities.py:87:Media/file outputs are stored as blob:// artifacts in tool-output.v1
+novaic-cortex/novaic_cortex/shell_capabilities.py:88:manifests. Do not print or paste raw base64; use the artifact manifest and
+novaic-cortex/novaic_cortex/shell_capabilities.py:124:  base64 into normal shell output, replies, or context.
+novaic-cortex/novaic_cortex/shell_capabilities.py:223:    if not file_url.startswith("blob://"):
+novaic-cortex/novaic_cortex/shell_capabilities.py:224:        print(f"{{COMMAND}}: audio-qa only supports blob:// file_url", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:226:    rest = file_url.removeprefix("blob://")
+novaic-cortex/novaic_cortex/shell_capabilities.py:313:    if not isinstance(blob, dict) or not blob.get("blob_ref"):
+novaic-cortex/novaic_cortex/shell_capabilities.py:314:        print(f"{{COMMAND}}: Blob Service complete did not return blob_ref", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:370:        return base64.b64decode(value.encode("ascii"), validate=True)
+novaic-cortex/novaic_cortex/shell_capabilities.py:372:        print(f"{{COMMAND}}: invalid base64 {{field}} in device response: {{exc}}", file=sys.stderr)
+novaic-cortex/novaic_cortex/shell_capabilities.py:388:    blob_ref = str(blob["blob_ref"])
+novaic-cortex/novaic_cortex/shell_capabilities.py:394:        uri=blob_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:407:        access={{"display": {{"tool": "display", "args": {{"file_url": blob_ref}}}}}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:408:        projection={{"history": "manifest_only", "monitor": "thumbnail_allowed"}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:412:        text=f"Captured host desktop screenshot: {{width}}x{{height}}, stored as {{blob_ref}}.",
+novaic-cortex/novaic_cortex/shell_capabilities.py:422:    if result.get("success") is False or not result.get("data") or result.get("is_base64") is not True:
+novaic-cortex/novaic_cortex/shell_capabilities.py:434:    blob_ref = str(blob["blob_ref"])
+novaic-cortex/novaic_cortex/shell_capabilities.py:438:        uri=blob_ref,
+novaic-cortex/novaic_cortex/shell_capabilities.py:446:        projection={{"history": "manifest_only"}},
+novaic-cortex/novaic_cortex/shell_capabilities.py:450:        text=f"Pulled host desktop file {{path or name}} into runtime artifact {{blob_ref}}.",
+novaic-cortex/novaic_cortex/shell_capabilities.py:668:        print("Usage: agentctl im <read|reply|send|history|search|context> [options]")
+novaic-cortex/novaic_cortex/shell_capabilities.py:741:    if subcmd == "history":
+novaic-cortex/novaic_cortex/shell_capabilities.py:743:            f"/internal/environment/{{urllib.parse.quote(agent_id, safe='')}}/im/history",
+novaic-cortex/novaic_cortex/shell_capabilities.py:838:        print("Usage: agentctl media audio-qa --file-url blob://namespace/id [--prompt TEXT|--prompt-file PATH]")
+novaic-cortex/novaic_cortex/shell_capabilities.py:879:                            "data": base64.b64encode(audio_data).decode("ascii"),
+novaic-cortex/tests/test_context_event_projection.py:708:                    "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_projection.py:717:    assert tool_message["_metadata"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/novaic_cortex/workspace.py:158:            blob_ref=manifest.get("blob_ref"),
+novaic-cortex/novaic_cortex/workspace.py:592:                "blob_ref": actual_payload_ref,
+novaic-cortex/novaic_cortex/workspace.py:614:            blob_ref=actual_payload_ref if externalize else None,
+novaic-cortex/novaic_cortex/workspace.py:651:        if record.get("blob_ref"):
+novaic-cortex/novaic_cortex/workspace.py:662:                    blob_ref=str(record["blob_ref"]),
+novaic-cortex/novaic_cortex/workspace.py:854:    # ── Session context (conversation history) ──
+novaic-cortex/tests/test_context_event_store.py:233:async def test_context_event_store_initializes_fresh_root_without_legacy_migration() -> None:
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:9:- 负责 provider 相关转换（expand Cortex step-ref refs, sanitize, multimodal）
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:118:    from ..utils import sanitize_context, process_multimodal_messages
+novaic-agent-runtime/task_queue/handlers/llm_handlers.py:126:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:1:"""PR-255 - retired session harness compatibility paths stay removed."""
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:15:def test_legacy_dispatch_route_module_is_removed():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:29:    assert "shadow_legacy_action" not in session_repo
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:31:    assert '"legacy_pending"' not in session_repo
+novaic-cortex/tests/test_pr76_boundary_guard.py:64:def test_boundary_guard_ignores_docs_and_ticket_history(tmp_path: Path) -> None:
+novaic-cortex/tests/test_pr76_boundary_guard.py:80:    rel = "novaic-cortex/novaic_cortex/compat.py"
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:15:def test_cortex_api_has_no_legacy_root_summary_read_routes() -> None:
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:21:def test_workspace_has_no_legacy_root_summary_read_helpers() -> None:
+novaic-cortex/tests/test_pr57_list_archived_summaries.py:26:def test_active_cortex_source_no_longer_mentions_legacy_prompt_blocks() -> None:
+novaic-cortex/novaic_cortex/operational_store.py:147:                    blob_ref TEXT,
+novaic-cortex/novaic_cortex/operational_store.py:174:        blob_ref = columns.get("blob_ref")
+novaic-cortex/novaic_cortex/operational_store.py:177:            and blob_ref is not None
+novaic-cortex/novaic_cortex/operational_store.py:178:            and int(blob_ref["notnull"]) == 0
+novaic-cortex/novaic_cortex/operational_store.py:192:                blob_ref TEXT,
+novaic-cortex/novaic_cortex/operational_store.py:487:        blob_ref: str | None,
+novaic-cortex/novaic_cortex/operational_store.py:503:                    payload_ref, source_payload_ref, root_scope_id, scope_id, step_ref, blob_ref,
+novaic-cortex/novaic_cortex/operational_store.py:513:                    blob_ref=excluded.blob_ref,
+novaic-cortex/novaic_cortex/operational_store.py:528:                    blob_ref,
+novaic-cortex/tests/test_step_result_projection.py:3:    format_for_display_perception_llm,
+novaic-cortex/tests/test_step_result_projection.py:4:    format_for_history_llm,
+novaic-cortex/tests/test_step_result_projection.py:13:            {"type": "image", "data": "base64encoded==", "mimeType": "image/jpeg"}
+novaic-cortex/tests/test_step_result_projection.py:18:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:19:    assert parsed["display_files"][0]["url"] == "data:image/jpeg;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:26:            {"type": "image", "data": "base64encoded==", "mimeType": "image/png"},
+novaic-cortex/tests/test_step_result_projection.py:33:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:34:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,base64encoded=="
+novaic-cortex/tests/test_step_result_projection.py:37:def test_parse_tool_result_mcp_image_url():
+novaic-cortex/tests/test_step_result_projection.py:44:    assert len(parsed["display_files"]) == 1
+novaic-cortex/tests/test_step_result_projection.py:45:    assert parsed["display_files"][0]["url"] == "https://example.com/img.png"
+novaic-cortex/tests/test_step_result_projection.py:48:def test_parse_tool_result_mcp_image_ref():
+novaic-cortex/tests/test_step_result_projection.py:53:                "type": "image_ref",
+novaic-cortex/tests/test_step_result_projection.py:54:                "file_url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:64:    assert parsed["display_files"] == [{
+novaic-cortex/tests/test_step_result_projection.py:65:        "url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:81:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_step_result_projection.py:90:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_step_result_projection.py:96:def test_history_projection_truncation():
+novaic-cortex/tests/test_step_result_projection.py:99:        "display_files": []
+novaic-cortex/tests/test_step_result_projection.py:101:    formatted_str = format_for_history_llm(result_data, max_text_len=100)
+novaic-cortex/tests/test_step_result_projection.py:110:def test_display_perception_projection_data_url():
+novaic-cortex/tests/test_step_result_projection.py:113:        "display_files": [
+novaic-cortex/tests/test_step_result_projection.py:114:            {"url": "data:image/png;base64,aabbcc"}
+novaic-cortex/tests/test_step_result_projection.py:117:    formatted_str = format_for_display_perception_llm(result_data)
+novaic-cortex/tests/test_step_result_projection.py:126:def test_display_perception_projection_blob_ref_image_ref():
+novaic-cortex/tests/test_step_result_projection.py:129:        "display_files": [
+novaic-cortex/tests/test_step_result_projection.py:131:                "url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:139:    history = json.loads(format_for_history_llm(result_data))
+novaic-cortex/tests/test_step_result_projection.py:140:    display = json.loads(format_for_display_perception_llm(result_data))
+novaic-cortex/tests/test_step_result_projection.py:142:    assert history["_mcp_content"] == [{"type": "text", "text": "Check this"}]
+novaic-cortex/tests/test_step_result_projection.py:144:        "type": "image_ref",
+novaic-cortex/tests/test_step_result_projection.py:145:        "file_url": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_step_result_projection.py:151:def test_empty_display_perception_projection_is_diagnostic_not_ok():
+novaic-cortex/tests/test_step_result_projection.py:152:    formatted = json.loads(format_for_display_perception_llm({
+novaic-cortex/tests/test_step_result_projection.py:154:        "display_files": [],
+novaic-cortex/tests/test_tool_schemas_limits.py:151:        "im_history",
+novaic-cortex/novaic_cortex/scope_state.py:104:# Durable machine-readable history is written by ``scope_transition_events``.
+novaic-cortex/novaic_cortex/blob_payload.py:5:payloads in Blob Service and returns ``blob://cortex-payload/...`` refs.
+novaic-cortex/novaic_cortex/blob_payload.py:35:    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+novaic-cortex/novaic_cortex/blob_payload.py:115:        blob_ref = data.get("blob_ref")
+novaic-cortex/novaic_cortex/blob_payload.py:116:        if not isinstance(blob_ref, str) or not blob_ref.startswith("blob://cortex-payload/"):
+novaic-cortex/novaic_cortex/blob_payload.py:118:        return blob_ref
+novaic-cortex/novaic_cortex/blob_payload.py:120:    async def get_payload(self, *, tenant_id: str, blob_ref: str) -> Any:
+novaic-cortex/novaic_cortex/blob_payload.py:121:        namespace, blob_id = _parse_blob_ref(blob_ref)
+novaic-cortex/novaic_cortex/blob_payload.py:141:def _parse_blob_ref(blob_ref: str) -> tuple[str, str]:
+novaic-cortex/novaic_cortex/blob_payload.py:142:    prefix = "blob://"
+novaic-cortex/novaic_cortex/blob_payload.py:143:    if not isinstance(blob_ref, str) or not blob_ref.startswith(prefix):
+novaic-cortex/novaic_cortex/blob_payload.py:144:        raise ValueError("payload blob_ref must start with blob://")
+novaic-cortex/novaic_cortex/blob_payload.py:145:    rest = blob_ref[len(prefix):]
+novaic-cortex/novaic_cortex/blob_payload.py:148:        raise ValueError("payload blob_ref must be blob://{namespace}/{blob_id}")
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:14:import base64
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:22:from common.contracts.blob import parse_blob_ref
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:38:_DURABLE_PAYLOAD_KEY = "_novaic_durable_payload"
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:119:    """Return display output safe for public tool history."""
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:142:def _display_durable_payload(result: dict[str, Any]) -> dict[str, Any] | None:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:170:        "type": "image_ref",
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:176:    display_files = [{
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:186:        "llm_content": {
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:193:            "display_files": display_files,
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:262:        "llm_content": {
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:295:        response["durable_payload"] = result[_DURABLE_PAYLOAD_KEY]
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:297:        durable_payload = _display_durable_payload(result)
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:298:        if durable_payload is not None:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:299:            response["durable_payload"] = durable_payload
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:380:def _blob_ref_path(file_url: str) -> tuple[str, str]:
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:384:        parsed = parse_blob_ref(file_url.strip())
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:386:        raise ValueError("display only supports Blob refs: blob://{namespace}/{blob_id}") from exc
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:408:                "data": base64.b64encode(data).decode("ascii"),
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:444:        namespace, blob_id = _blob_ref_path(file_url)
+novaic-cortex/tests/test_scope_history_api.py:22:async def test_scope_history_reads_operational_sqlite(tmp_path):
+novaic-cortex/tests/test_scope_history_api.py:38:        response = await api.scope_history("/ro/active/root-scope")
+novaic-cortex/novaic_cortex/logical_fs.py:226:        # total agent history. Shell does not need the runtime tool-schema
+novaic-cortex/novaic_cortex/step_result_projection.py:84:        "display_files": [],
+novaic-cortex/novaic_cortex/step_result_projection.py:95:    1. 统一格式: {text, files_created, display_files}
+novaic-cortex/novaic_cortex/step_result_projection.py:100:        {"text": "...", "files_created": [...], "display_files": [...]}
+novaic-cortex/novaic_cortex/step_result_projection.py:103:        return {"text": "", "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:114:        return {"text": raw, "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:117:        return {"text": str(raw), "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:120:        return parse_tool_result(raw.get("llm_content", ""))
+novaic-cortex/novaic_cortex/step_result_projection.py:126:    if "display_files" in raw or "files_created" in raw:
+novaic-cortex/novaic_cortex/step_result_projection.py:139:            "display_files": raw.get("display_files") or [],
+novaic-cortex/novaic_cortex/step_result_projection.py:146:        display_files = []
+novaic-cortex/novaic_cortex/step_result_projection.py:154:                # 支持 URL 形式或直接的 data(base64) 形式
+novaic-cortex/novaic_cortex/step_result_projection.py:156:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:163:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:164:                        "url": f"data:{mime};base64,{item['data']}",
+novaic-cortex/novaic_cortex/step_result_projection.py:168:            elif t == "image_ref":
+novaic-cortex/novaic_cortex/step_result_projection.py:171:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:180:                    display_files.append({
+novaic-cortex/novaic_cortex/step_result_projection.py:188:            "display_files": display_files,
+novaic-cortex/novaic_cortex/step_result_projection.py:193:        return {"text": str(raw["text"]), "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:209:    return {"text": serialized, "files_created": [], "display_files": []}
+novaic-cortex/novaic_cortex/step_result_projection.py:229:        display_files = result_data.get("display_files", [])
+novaic-cortex/novaic_cortex/step_result_projection.py:230:        for f in display_files:
+novaic-cortex/novaic_cortex/step_result_projection.py:250:                if url.startswith("blob://") and (modality == "image" or mime.startswith("image/")):
+novaic-cortex/novaic_cortex/step_result_projection.py:252:                        "type": "image_ref",
+novaic-cortex/novaic_cortex/step_result_projection.py:267:def format_for_history_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:287:def format_for_display_perception_llm(
+novaic-cortex/novaic_cortex/step_result_projection.py:314:    displays = result_data.get("display_files", [])
+novaic-agent-runtime/task_queue/utils/context.py:6:2. process_multimodal_messages: 处理多模态内容（图片等）
+novaic-agent-runtime/task_queue/utils/context.py:13:from . import multimodal
+novaic-agent-runtime/task_queue/utils/context.py:76:        # Keep tool _projection until process_multimodal_messages runs. It is
+novaic-agent-runtime/task_queue/utils/context.py:183:def process_multimodal_messages(
+novaic-agent-runtime/task_queue/utils/context.py:203:    Only current-turn ``display_perception`` tool messages may be converted to
+novaic-agent-runtime/task_queue/utils/context.py:220:            if projection != "display_perception":
+novaic-agent-runtime/task_queue/utils/context.py:229:            if isinstance(result, dict) and multimodal.has_images(result):
+novaic-agent-runtime/task_queue/utils/context.py:230:                _, images = multimodal.extract_from_result(result)
+novaic-agent-runtime/task_queue/utils/context.py:231:                text_only = multimodal.result_to_text_only(result)
+novaic-agent-runtime/task_queue/utils/context.py:245:                        img_content = multimodal.to_anthropic_content(images, description)
+novaic-agent-runtime/task_queue/utils/context.py:247:                        img_content = multimodal.to_openai_content(images, description)
+novaic-agent-runtime/task_queue/utils/context.py:265:                llm_content = user_content_to_llm(content, provider=provider)
+novaic-agent-runtime/task_queue/utils/context.py:266:                processed.append({"role": "user", "content": llm_content})
+novaic-cortex/novaic_cortex/auth.py:12:import base64
+novaic-cortex/novaic_cortex/auth.py:32:    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+novaic-cortex/novaic_cortex/auth.py:39:    return base64.urlsafe_b64decode(s)
+novaic-agent-runtime/task_queue/utils/__init__.py:6:- multimodal: display_perception 专用的当前轮图片投影
+novaic-agent-runtime/task_queue/utils/__init__.py:11:    process_multimodal_messages,
+novaic-agent-runtime/task_queue/utils/__init__.py:16:    "process_multimodal_messages",
+novaic-cortex/novaic_cortex/api.py:786:# Scope state transition history.
+novaic-cortex/novaic_cortex/api.py:791:@app.get("/v1/scope/history")
+novaic-cortex/novaic_cortex/api.py:792:async def scope_history(scope_path: str, limit: int = 50):
+novaic-cortex/novaic_cortex/api.py:825:# ── Context (conversation history) ──────────────────────────────────────
+novaic-cortex/novaic_cortex/api.py:1658:    projection: str = "history"
+novaic-cortex/novaic_cortex/api.py:1835:        format_for_display_perception_llm,
+novaic-cortex/novaic_cortex/api.py:1836:        format_for_history_llm,
+novaic-cortex/novaic_cortex/api.py:1850:    if projection == "display_perception":
+novaic-cortex/novaic_cortex/api.py:1851:        content = format_for_display_perception_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1854:    elif projection == "history":
+novaic-cortex/novaic_cortex/api.py:1855:        content = format_for_history_llm(parsed, req.provider)
+novaic-cortex/novaic_cortex/api.py:1862:                "allowed": ["history", "current_tool_result", "display_perception"],
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:78:    assert result["durable_payload"]["version"] == "tool-step-payload.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:79:    assert result["durable_payload"]["llm_content"] == content
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:80:    assert result["durable_payload"]["raw"]["stdout"] == "hello\n"
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:151:    assert result["durable_payload"]["raw"]["stdout"] == large_stdout
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:170:    assert "data:image/" not in content["text"]
+novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py:171:    assert result["durable_payload"]["raw"]["stdout"] == media_like_stdout
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:14:            "blob_ref": "blob://audio-input/voice.mp3",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:20:    assert 'agentctl media audio-qa --file-url "blob://audio-input/voice.mp3"' in rendered
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:29:            "blob_ref": "blob://audio-input/voice.m4a",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:41:            "blob_ref": "blob://user-file/screen.png",
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:45:    assert 'display(file_url="blob://user-file/screen.png")' in rendered
+novaic-agent-runtime/tests/unit/task_queue/test_user_content.py:54:            "blob_ref": "blob://user-file/report.pdf",
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:26:    assert "legacy" not in combined
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:85:    This task is not the LLM history assembly path. LLM requests use
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:123:    # assembly. Runtime no longer replays already-consumed chat history.
+novaic-agent-runtime/task_queue/handlers/context_handlers.py:188:    user/assistant/system messages. This is not authoritative LLM history;
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:157:    # ── Session context (conversation history) ───────────────────────────
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:445:        projection: str = "history",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:250:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:253:def test_expand_messages_for_llm_resolves_current_display_image_ref(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:264:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:265:                        "file_url": "blob://runtime-artifact/screen-1",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:323:def test_expand_messages_for_llm_does_not_resolve_history_image_ref(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:328:            assert kwargs["projection"] == "history"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:333:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:334:                        "file_url": "blob://runtime-artifact/old-screen",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:346:        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("history must not fetch blobs")),
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:365:    assert payload["_mcp_content"][1]["type"] == "image_ref"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:368:def test_expand_messages_for_llm_image_ref_fetch_failure_becomes_text(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:373:            assert kwargs["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:377:                        "type": "image_ref",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:378:                        "file_url": "blob://runtime-artifact/missing",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:427:        "text": "[Image ref not resolved: blob://runtime-artifact/missing — Blob Service returned 404: not found]",
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:461:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:503:    assert calls[0][2]["projection"] == "display_perception"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:561:    assert calls[0][2]["projection"] == "history"
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:566:def test_expand_messages_for_llm_uses_history_projection_for_old_round(monkeypatch):
+novaic-agent-runtime/tests/test_pr71_no_tool_retry_context_cleanup.py:596:    assert calls[0][2]["projection"] == "history"
+novaic-agent-runtime/task_queue/utils/multimodal.py:1:"""Display-only multimodal conversion for LLM calls.
+novaic-agent-runtime/task_queue/utils/multimodal.py:4:``display_perception`` tool messages may carry ``_mcp_content`` media into this
+novaic-agent-runtime/task_queue/utils/multimodal.py:67:        OpenAI content 数组 [{"type": "image_url", ...}, {"type": "text", ...}]
+novaic-agent-runtime/task_queue/utils/multimodal.py:72:        data_url = f"data:{img['mime_type']};base64,{img['data']}"
+novaic-agent-runtime/task_queue/utils/multimodal.py:74:            "type": "image_url",
+novaic-agent-runtime/task_queue/utils/multimodal.py:75:            "image_url": {"url": data_url}
+novaic-agent-runtime/task_queue/utils/multimodal.py:101:                "type": "base64",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:162:    def multimodal(messages, provider):
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:163:        calls.append(("multimodal", messages, provider))
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:184:        process_multimodal_messages=multimodal,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:193:    assert [call[0] for call in calls] == ["expand", "sanitize", "multimodal"]
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:214:def test_react_actions_persists_durable_payload_but_observes_public_content():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:238:    durable_payload = {
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:240:        "llm_content": json.loads(public_content),
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:254:        "durable_payload": durable_payload,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:260:    assert step["payload"] == durable_payload
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:318:    assert "process_multimodal_messages" not in source
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:330:    assert "process_multimodal_messages(sanitized_messages" not in handler_source
+novaic-cortex/tests/test_tool_output_projection.py:5:    format_for_display_perception_llm,
+novaic-cortex/tests/test_tool_output_projection.py:6:    format_for_history_llm,
+novaic-cortex/tests/test_tool_output_projection.py:19:                "uri": "blob://runtime-artifact/screen-1",
+novaic-cortex/tests/test_tool_output_projection.py:28:                        "args": {"file_url": "blob://runtime-artifact/screen-1"},
+novaic-cortex/tests/test_tool_output_projection.py:32:                    "history": "manifest_only",
+novaic-cortex/tests/test_tool_output_projection.py:50:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:52:    assert parsed["artifacts"][0]["uri"] == "blob://runtime-artifact/screen-1"
+novaic-cortex/tests/test_tool_output_projection.py:55:    assert 'display(file_url="blob://runtime-artifact/screen-1")' in parsed["text"]
+novaic-cortex/tests/test_tool_output_projection.py:59:def test_tool_output_v1_display_perception_never_inlines_artifact_image():
+novaic-cortex/tests/test_tool_output_projection.py:61:    formatted = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:65:    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_tool_output_projection.py:74:def test_mcp_image_content_parses_to_display_files_for_explicit_projection():
+novaic-cortex/tests/test_tool_output_projection.py:85:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+novaic-cortex/tests/test_tool_output_projection.py:88:def test_mcp_image_content_is_only_visual_in_display_perception_projection():
+novaic-cortex/tests/test_tool_output_projection.py:98:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:100:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:102:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:124:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:126:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:130:def test_tool_step_payload_v1_projects_llm_content_not_raw_shell_payload():
+novaic-cortex/tests/test_tool_output_projection.py:133:        "llm_content": {
+novaic-cortex/tests/test_tool_output_projection.py:150:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:159:        "llm_content": {
+novaic-cortex/tests/test_tool_output_projection.py:182:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:184:    assert parsed["display_files"] == []
+novaic-cortex/tests/test_tool_output_projection.py:194:        "llm_content": {
+novaic-cortex/tests/test_tool_output_projection.py:197:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:207:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:213:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:214:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:217:    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+novaic-cortex/tests/test_tool_output_projection.py:225:def test_display_tool_step_payload_projects_blobref_image_ref_content():
+novaic-cortex/tests/test_tool_output_projection.py:228:        "llm_content": {
+novaic-cortex/tests/test_tool_output_projection.py:231:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:237:                    "type": "image_ref",
+novaic-cortex/tests/test_tool_output_projection.py:238:                    "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:246:            "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:252:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:253:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:256:    assert parsed["display_files"] == [{
+novaic-cortex/tests/test_tool_output_projection.py:257:        "url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:263:    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+novaic-cortex/tests/test_tool_output_projection.py:265:        "type": "image_ref",
+novaic-cortex/tests/test_tool_output_projection.py:266:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:272:def test_explicit_projection_modes_control_parsed_display_files():
+novaic-cortex/tests/test_tool_output_projection.py:276:        "display_files": [{"url": "data:image/png;base64,aabbcc"}],
+novaic-cortex/tests/test_tool_output_projection.py:279:    history = json.loads(format_for_history_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:281:    display = json.loads(format_for_display_perception_llm(parsed))
+novaic-cortex/tests/test_tool_output_projection.py:283:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:19:                uri="blob://runtime-artifact/abc",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:26:                access={"display": {"tool": "display", "args": {"file_url": "blob://runtime-artifact/abc"}}},
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:27:                projection={"history": "manifest_only", "monitor": "thumbnail_allowed"},
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:37:    assert result["artifacts"][0]["uri"] == "blob://runtime-artifact/abc"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:64:        ({"uri": "blob://x/y", "modality": "unknown"}, "invalid artifact modality"),
+novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py:65:        ({"uri": "blob://x/y", "modality": "image", "size_bytes": -1}, "size_bytes"),
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:1:"""PR-43 legacy ``previous_scope_id`` transport retired by PR-69."""
+novaic-cortex/tests/test_context_event_no_compat.py:43:async def test_prepare_for_llm_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-cortex/tests/test_context_event_no_compat.py:59:async def test_status_include_usage_requires_event_stream_not_legacy_dfs_fallback() -> None:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:9:import base64
+novaic-agent-runtime/task_queue/utils/step_result_client.py:15:from common.contracts.blob import parse_blob_ref
+novaic-agent-runtime/task_queue/utils/step_result_client.py:22:def _image_ref_resolution_note(file_url: str, reason: str) -> Dict[str, str]:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:31:    parsed = parse_blob_ref(file_url)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:42:def _resolve_display_image_refs(content: str, *, user_id: Optional[str]) -> str:
+novaic-agent-runtime/task_queue/utils/step_result_client.py:57:        if not isinstance(item, dict) or item.get("type") != "image_ref":
+novaic-agent-runtime/task_queue/utils/step_result_client.py:64:            resolved.append(_image_ref_resolution_note("", "missing file_url"))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:69:            resolved.append(_image_ref_resolution_note(file_url, str(exc)))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:72:            resolved.append(_image_ref_resolution_note(
+novaic-agent-runtime/task_queue/utils/step_result_client.py:79:            resolved.append(_image_ref_resolution_note(file_url, f"not an image MIME type: {mime_type}"))
+novaic-agent-runtime/task_queue/utils/step_result_client.py:83:            "data": base64.b64encode(data).decode("ascii"),
+novaic-agent-runtime/task_queue/utils/step_result_client.py:105:    projection: str = "history",
+novaic-agent-runtime/task_queue/utils/step_result_client.py:124:    if projection == "display_perception":
+novaic-agent-runtime/task_queue/utils/step_result_client.py:125:        content = _resolve_display_image_refs(content, user_id=user_id)
+novaic-agent-runtime/task_queue/utils/step_result_client.py:132:    projection: str = "history",
+novaic-agent-runtime/task_queue/utils/step_result_client.py:218:        return "history"
+novaic-agent-runtime/task_queue/utils/step_result_client.py:222:        return "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:3:import base64
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:9:    _blob_ref_path,
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:50:    assert "chat_history" not in _EXECUTORS
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:53:def test_blob_ref_path_accepts_only_blob_refs():
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:54:    assert _blob_ref_path("blob://user-file/blob-1") == ("user-file", "blob-1")
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:58:            _blob_ref_path(bad)
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:84:    result = _exec_display({"file_url": "blob://user-file/image-1"}, _deps())
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:93:    assert base64.b64decode(item["data"]) == b"\x89PNG\r\n"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:102:    durable = wrapped["durable_payload"]["llm_content"]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:104:    assert durable["file_url"] == "blob://user-file/image-1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:108:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:109:        "file_url": "blob://user-file/image-1",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:113:    assert durable["display_files"] == [{
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:114:        "url": "blob://user-file/image-1",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:123:def test_display_durable_image_ref_does_not_depend_on_inline_image_data(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:140:    result = _exec_display({"file_url": "blob://runtime-artifact/screen-1"}, _deps())
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:147:    durable = wrapped["durable_payload"]["llm_content"]
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:150:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:151:        "file_url": "blob://runtime-artifact/screen-1",
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:155:    assert durable["display_files"][0]["url"] == "blob://runtime-artifact/screen-1"
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:160:    assert _exec_display({"file_url": "blob://user-file/x"}, _deps(user_id=""))["success"] is False
+novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py:176:    result = _exec_display({"file_url": "blob://user-file/missing"}, _deps())
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:9:from task_queue.utils.context import process_multimodal_messages, sanitize_context
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:29:    processed = process_multimodal_messages([_image_tool_message()], provider="openai")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:36:def test_history_projection_marker_is_stripped_without_image_injection():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:37:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:38:        [_image_tool_message(_projection="history")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:48:def test_display_perception_can_create_user_image_message_and_strips_marker():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:49:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:50:        [_image_tool_message(_projection="display_perception")],
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:60:    assert processed[1]["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:63:def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:65:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:76:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:87:    assert processed[1]["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:91:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:102:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:113:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:127:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:137:def test_sanitize_then_multimodal_preserves_display_projection_until_conversion():
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:145:                "function": {"name": "display", "arguments": '{"file_url":"blob://x/y"}'},
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:148:        _image_tool_message(_projection="display_perception"),
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:152:    assert sanitized[1]["_projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:154:    processed = process_multimodal_messages(sanitized, provider="openai")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:163:    assert user_content[0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:164:    assert user_content[0]["image_url"]["url"].startswith("data:image/png;base64,")
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:171:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:188:    assert wrapped["durable_payload"]["version"] == "tool-step-payload.v1"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:189:    llm_content = wrapped["durable_payload"]["llm_content"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:190:    assert llm_content["_mcp_content"][1] == {
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:191:        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:192:        "file_url": "blob://runtime-artifact/screenshot",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:196:    assert "YWJjMTIz" not in json.dumps(llm_content)
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:198:    processed = process_multimodal_messages(
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:203:            "content": json.dumps(llm_content),
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:204:            "_projection": "display_perception",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:211:    assert tool_payload["_mcp_content"][1]["type"] == "image_ref"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:226:                        "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:227:                        "file_url": "blob://runtime-artifact/screen",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:277:                            "arguments": '{"file_url":"blob://runtime-artifact/screen"}',
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:301:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:305:    assert calls[0]["projection"] == "display_perception"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:319:    assert image_message["content"][0]["type"] == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:320:    assert image_message["content"][0]["image_url"]["url"] == "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:324:def test_screenshot_artifact_manifest_display_current_then_history_replay(monkeypatch):
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:333:        '"artifacts":[{"uri":"blob://runtime-artifact/screen-1",'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:335:        '"access":{"display":{"args":{"file_url":"blob://runtime-artifact/screen-1"}}}}]}\n'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:337:        'Access: display(file_url="blob://runtime-artifact/screen-1")'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:345:                assert projection in {"history", "current_tool_result"}
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:347:            if tool_call_id == "display:2" and projection == "display_perception":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:352:                            "type": "image_ref",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:353:                            "file_url": "blob://runtime-artifact/screen-1",
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:359:            if tool_call_id == "display:2" and projection == "history":
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:417:                    "arguments": '{"file_url":"blob://runtime-artifact/screen-1","modality":"image"}',
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:452:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:455:    assert [call["projection"] for call in calls] == ["history", "display_perception"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:461:        'display(file_url="blob://runtime-artifact/screen-1")'
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:478:        and message["content"][0].get("type") == "image_url"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:481:    assert current_image_messages[0]["content"][0]["image_url"]["url"] == (
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:482:        "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:504:        process_multimodal_messages=process_multimodal_messages,
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:507:    assert [call["projection"] for call in calls] == ["history", "history"]
+novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py:510:        and any(item.get("type") == "image_url" for item in message["content"])
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:38:    """Build a tool_call dict in the OpenAI-compatible shape the saga
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:49:    image_url = "data:image/jpeg;base64,YWJjMTIz"
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:54:                {"type": "image_url", "image_url": {"url": image_url}},
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:75:        "type": "image_url",
+novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py:76:        "image_url": {"url": image_url},
+novaic-agent-runtime/task_queue/tool_surface_policy.py:42:        "im_history",
+novaic-agent-runtime/task_queue/utils/user_content.py:5:附件不直接塞 base64，而是告知 Agent 有哪些文件可用，Agent 需要时调用对应工具查看。
+novaic-agent-runtime/task_queue/utils/user_content.py:6:这样统一走 Cortex step result 的 display_files 机制。
+novaic-agent-runtime/task_queue/utils/user_content.py:30:    不再拉取附件 base64，只返回文本 + 附件描述。
+novaic-agent-runtime/task_queue/utils/user_content.py:52:        url = att.get("blob_ref") or att.get("url") or ""
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py:1:"""PR-83: active Runtime must not expose legacy summary producers."""
+novaic-agent-runtime/tests/test_scheduler_dispatch.py:7:(trigger_source, idempotency_key shape, metadata) is unchanged — 34e must
+novaic-agent-runtime/tests/test_pr113_no_wake_im_replay.py:73:def test_context_read_uses_input_ids_without_history_replay(monkeypatch):
+novaic-cortex/tests/test_context_event_read_source_guards.py:61:        '@app.get("/v1/scope/history")',
+novaic-cortex/tests/test_context_event_read_source_guards.py:116:        "# ── Context (conversation history)",
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:5:summary.md. Runtime must not expose a separate recap/history builder.
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:15:def test_runtime_has_no_legacy_recap_builder_or_env_flags() -> None:
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:23:def test_runtime_handler_source_no_longer_mentions_legacy_recap_blocks() -> None:
+novaic-cortex/tests/test_context_event_api_steps_write.py:43:        blob_ref = "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:44:        self.payloads[(tenant_id, blob_ref)] = payload
+novaic-cortex/tests/test_context_event_api_steps_write.py:45:        return blob_ref
+novaic-cortex/tests/test_context_event_api_steps_write.py:47:    async def get_payload(self, *, tenant_id, blob_ref):
+novaic-cortex/tests/test_context_event_api_steps_write.py:48:        return self.payloads[(tenant_id, blob_ref)]
+novaic-cortex/tests/test_context_event_api_steps_write.py:123:                    "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:139:            "artifacts": [{"uri": "blob://runtime-artifact/shell-log"}],
+novaic-cortex/tests/test_context_event_api_steps_write.py:233:            "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:236:        "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_api_steps_write.py:240:    assert index[0]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:242:    assert step["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:243:    assert step["observation"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_api_steps_write.py:244:    assert await reopened_ws.read_payload(child["child_path"], "blob://cortex-payload/blob-1") == "FULL_PAYLOAD"
+novaic-cortex/tests/test_context_event_api_steps_write.py:245:    manifest = reopened_ws.operational_store.get_payload_manifest(payload_ref="blob://cortex-payload/blob-1")
+novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py:81:    assert json.loads(source["metadata"]) == {
+novaic-agent-runtime/task_queue/business/llm.py:25:    Context assembly, step-ref expansion, sanitization, and multimodal shaping
+novaic-agent-runtime/tests/test_pr112_business_client_boundary.py:25:    "get_chat_history",
+novaic-agent-runtime/tests/test_pr112_business_client_boundary.py:46:def test_business_client_init_has_no_ignored_backcompat_parameters():
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:134:        {"role": "user", "content": "legacy context.read projection"},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:159:    assert "legacy context.read projection" not in contents
+novaic-cortex/tests/test_legacy_skill_lifecycle_removed.py:7:def test_legacy_jwt_skill_routes_are_removed() -> None:
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:1:"""PR-43 legacy ``last_scope_id`` path retired by PR-69."""
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:91:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:113:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_context_read_ordering.py:6:chat-history UI. The old agent-wide scan path depended on explicitly overriding
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:62:def test_session_repository_no_longer_imports_legacy_dispatch_route():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:82:def test_active_queue_coordinators_have_no_legacy_dual_path_language():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:90:        "legacy",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:91:        "compat",
+novaic-agent-runtime/task_queue/tool_output.py:5:for shell capability outputs, artifact manifests, Cortex history, and monitor
+novaic-agent-runtime/task_queue/contracts/llm_call.py:122:    process_multimodal_messages: Callable[[list[dict[str, Any]], str], list[dict[str, Any]]],
+novaic-agent-runtime/task_queue/contracts/llm_call.py:137:    processed = process_multimodal_messages(sanitized, source.provider)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:228:        durable_payload = result.get("durable_payload", content)
+novaic-agent-runtime/task_queue/contracts/react_actions.py:262:                    "payload": durable_payload,
+=== runtime step result client slices ===
+     1	"""
+     2	Cortex step-ref projection client.
+     3	
+     4	Cortex stores tool steps and knows how to format their payloads for LLM
+     5	providers. This module expands lightweight ``step_ref`` tool messages into
+     6	provider-shaped tool-result content just before the LLM call.
+     7	"""
+     8	
+     9	import base64
+    10	import json
+    11	from typing import Any, Dict, List, Optional
+    12	from urllib.parse import quote
+    13	
+    14	from common.config import ServiceConfig
+    15	from common.contracts.blob import parse_blob_ref
+    16	from common.http.clients import internal_sync_client
+    17	
+    18	
+    19	_DISPLAY_IMAGE_REF_MAX_BYTES = 2_000_000
+    20	
+    21	
+    22	def _image_ref_resolution_note(file_url: str, reason: str) -> Dict[str, str]:
+    23	    label = file_url or "unknown image ref"
+    24	    return {
+    25	        "type": "text",
+    26	        "text": f"[Image ref not resolved: {label} — {reason}]",
+    27	    }
+    28	
+    29	
+    30	def _blob_get(file_url: str, *, user_id: str) -> tuple[bytes, str]:
+    31	    parsed = parse_blob_ref(file_url)
+    32	    base_url = ServiceConfig.BLOB_SERVICE_URL.rstrip("/")
+    33	    url = f"{base_url}/v1/blobs/{quote(parsed.namespace, safe='')}/{quote(parsed.blob_id, safe='')}"
+    34	    with internal_sync_client("agent-runtime", timeout=30.0) as client:
+    35	        resp = client.get(url, headers={"X-Tenant-ID": user_id})
+    36	    if resp.status_code >= 400:
+    37	        raise RuntimeError(f"Blob Service returned {resp.status_code}: {resp.text[:200]}")
+    38	    mime_type = resp.headers.get("content-type", "").split(";", 1)[0].strip()
+    39	    return resp.content, mime_type
+    40	
+    41	
+    42	def _resolve_display_image_refs(content: str, *, user_id: Optional[str]) -> str:
+    43	    if not user_id:
+    44	        return content
+    45	
+    46	    try:
+    47	        payload = json.loads(content)
+    48	    except Exception:
+    49	        return content
+    50	    mcp_content = payload.get("_mcp_content") if isinstance(payload, dict) else None
+    51	    if not isinstance(mcp_content, list):
+    52	        return content
+    53	
+    54	    resolved: list[dict[str, Any]] = []
+    55	    changed = False
+    56	    for item in mcp_content:
+    57	        if not isinstance(item, dict) or item.get("type") != "image_ref":
+    58	            resolved.append(item)
+    59	            continue
+    60	
+    61	        changed = True
+    62	        file_url = str(item.get("file_url") or item.get("url") or "").strip()
+    63	        if not file_url:
+    64	            resolved.append(_image_ref_resolution_note("", "missing file_url"))
+    65	            continue
+    66	        try:
+    67	            data, fetched_mime = _blob_get(file_url, user_id=user_id)
+    68	        except Exception as exc:
+    69	            resolved.append(_image_ref_resolution_note(file_url, str(exc)))
+    70	            continue
+    71	        if len(data) > _DISPLAY_IMAGE_REF_MAX_BYTES:
+    72	            resolved.append(_image_ref_resolution_note(
+    73	                file_url,
+    74	                f"image too large for inline perception ({len(data)} bytes)",
+    75	            ))
+    76	            continue
+    77	        mime_type = fetched_mime or str(item.get("mimeType") or item.get("mime_type") or "image/png")
+    78	        if not mime_type.startswith("image/"):
+    79	            resolved.append(_image_ref_resolution_note(file_url, f"not an image MIME type: {mime_type}"))
+    80	            continue
+    81	        resolved.append({
+    82	            "type": "image",
+    83	            "data": base64.b64encode(data).decode("ascii"),
+    84	            "mimeType": mime_type,
+    85	        })
+    86	
+    87	    if not changed:
+    88	        return content
+    89	
+    90	    payload["_mcp_content"] = resolved
+    91	    return json.dumps(payload, ensure_ascii=False)
+    92	
+    93	
+    94	def _get_bridge(runtime_id: Optional[str], user_id: Optional[str], agent_id: Optional[str]):
+    95	    """Return a CortexBridge for step-ref resolution."""
+    96	    if not (runtime_id and user_id and agent_id):
+    97	        raise ValueError("Tool result resolution requires runtime_id, user_id and agent_id")
+    98	    from .cortex_bridge import get_cortex_bridge
+    99	    return get_cortex_bridge(runtime_id, user_id, agent_id)
+   100	
+   101	
+   102	def expand_step_ref_to_content(
+   103	    step_ref: str,
+   104	    provider: str = "openai",
+   105	    projection: str = "history",
+   106	    runtime_id: Optional[str] = None,
+   107	    user_id: Optional[str] = None,
+   108	    agent_id: Optional[str] = None,
+   109	    tool_call_id: Optional[str] = None,
+   110	) -> str:
+   111	    """Resolve a Cortex tool step to _mcp_content JSON for LLM injection."""
+   112	    bridge = _get_bridge(runtime_id, user_id, agent_id)
+   113	    if not tool_call_id:
+   114	        raise ValueError(f"Tool result resolution requires tool_call_id for {step_ref}")
+   115	    content = bridge.read_step_formatted(
+   116	        runtime_id,
+   117	        tool_call_id,
+   118	        provider=provider,
+   119	        projection=projection,
+   120	        step_ref=step_ref,
+   121	    )
+   122	    if content is None:
+   123	        raise RuntimeError(f"Tool result not found: {step_ref}")
+   124	    if projection == "display_perception":
+   125	        content = _resolve_display_image_refs(content, user_id=user_id)
+   126	    return content
+   127	
+   128	
+   129	def fetch_step_for_llm(
+   130	    step_ref: str,
+   131	    provider: str = "openai",
+   132	    projection: str = "history",
+   133	    runtime_id: Optional[str] = None,
+   134	    user_id: Optional[str] = None,
+   135	    agent_id: Optional[str] = None,
+   136	    tool_call_id: Optional[str] = None,
+   137	) -> str:
+   138	    """Alias for expand_step_ref_to_content."""
+   139	    return expand_step_ref_to_content(
+   140	        step_ref,
+   141	        provider=provider,
+   142	        projection=projection,
+   143	        runtime_id=runtime_id,
+   144	        user_id=user_id,
+   145	        agent_id=agent_id,
+   146	        tool_call_id=tool_call_id,
+   147	    )
+   148	
+   149	
+   150	def _tool_call_name(tool_call: Dict[str, Any]) -> str:
+   151	    function = tool_call.get("function") if isinstance(tool_call, dict) else None
+   152	    if not isinstance(function, dict):
+   153	        return ""
+   154	    return str(function.get("name") or "").strip()
+   155	
+   156	
+   157	def _tool_message_name(msg: Dict[str, Any], tool_names_by_id: Dict[str, str]) -> str:
+   158	    metadata = msg.get("_metadata") if isinstance(msg.get("_metadata"), dict) else {}
+   159	    tool_call_id = str(msg.get("tool_call_id") or "").strip()
+   160	    return str(
+   161	        msg.get("tool_name")
+   162	        or msg.get("name")
+   163	        or metadata.get("tool")
+   164	        or tool_names_by_id.get(tool_call_id)
+   165	        or ""
+   166	    ).strip()
+   167	
+   168	
+   169	def _latest_tool_call_ids(messages: List[Dict[str, Any]]) -> set[str]:
+   170	    latest: set[str] = set()
+   171	    for msg in messages:
+   172	        if msg.get("role") != "assistant":
+   173	            continue
+   174	        tool_calls = msg.get("tool_calls")
+   175	        if not isinstance(tool_calls, list) or not tool_calls:
+   176	            continue
+   177	        latest = {
+   178	            str(tc.get("id") or "").strip()
+   179	            for tc in tool_calls
+   180	            if isinstance(tc, dict) and str(tc.get("id") or "").strip()
+   181	        }
+   182	    return latest
+   183	
+   184	
+   185	def _tool_names_by_call_id(messages: List[Dict[str, Any]]) -> Dict[str, str]:
+   186	    names: Dict[str, str] = {}
+   187	    for msg in messages:
+   188	        if msg.get("role") != "assistant":
+   189	            continue
+   190	        tool_calls = msg.get("tool_calls")
+   191	        if not isinstance(tool_calls, list):
+   192	            continue
+   193	        for tc in tool_calls:
+   194	            if not isinstance(tc, dict):
+   195	                continue
+   196	            tool_call_id = str(tc.get("id") or "").strip()
+   197	            tool_name = _tool_call_name(tc)
+   198	            if tool_call_id and tool_name:
+   199	                names[tool_call_id] = tool_name
+   200	    return names
+   201	
+   202	
+   203	def _projection_for_tool_message(
+   204	    msg: Dict[str, Any],
+   205	    current_round_id: Optional[str],
+   206	    *,
+   207	    tool_names_by_id: Dict[str, str],
+   208	    latest_tool_call_ids: set[str],
+   209	) -> str:
+   210	    msg_round_id = msg.get("_round_id")
+   211	    tool_call_id = str(msg.get("tool_call_id") or "").strip()
+   212	    is_current = (
+   213	        current_round_id is None
+   214	        or msg_round_id == current_round_id
+   215	        or (not msg_round_id and tool_call_id in latest_tool_call_ids)
+   216	    )
+   217	    if not is_current:
+   218	        return "history"
+   219	
+   220	    tool_name = _tool_message_name(msg, tool_names_by_id)
+   221	    if tool_name == "display":
+   222	        return "display_perception"
+   223	    return "current_tool_result"
+   224	
+   225	
+   226	def fetch_step_preview(
+   227	    step_ref: str,
+   228	    max_text_len: int = 500,
+   229	    runtime_id: Optional[str] = None,
+   230	    user_id: Optional[str] = None,
+   231	    agent_id: Optional[str] = None,
+   232	    tool_call_id: Optional[str] = None,
+   233	    **_kwargs,
+   234	) -> str:
+   235	    """Text preview for step-ref summaries."""
+   236	    bridge = _get_bridge(runtime_id, user_id, agent_id)
+   237	    if not tool_call_id:
+   238	        raise ValueError(f"Tool result preview requires tool_call_id for {step_ref}")
+   239	    preview = bridge.read_step_preview(
+   240	        runtime_id,
+   241	        tool_call_id,
+   242	        max_text_len=max_text_len,
+   243	        step_ref=step_ref,
+   244	    )
+   245	    if preview is None:
+   246	        raise RuntimeError(f"Tool result preview not found: {step_ref}")
+   247	    return preview
+   248	
+   249	
+   250	def expand_messages_for_llm(
+   251	    messages: List[Dict[str, Any]],
+   252	    provider: str = "openai",
+   253	    current_round_id: Optional[str] = None,
+   254	    runtime_id: Optional[str] = None,
+   255	    user_id: Optional[str] = None,
+   256	    agent_id: Optional[str] = None,
+   257	    **_kwargs,
+   258	) -> List[Dict[str, Any]]:
+   259	    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+   260	    out = []
+   261	    tool_names_by_id = _tool_names_by_call_id(messages)
+   262	    latest_tool_call_ids = _latest_tool_call_ids(messages)
+   263	    for msg in messages:
+   264	        role = msg.get("role")
+   265	        step_ref = msg.get("step_ref")
+   266	        tool_call_id = msg.get("tool_call_id")
+   267	        if role in ("tool", "tool_result"):
+   268	            if not step_ref:
+   269	                raise ValueError(f"Tool message missing step_ref: {msg}")
+   270	
+   271	            projection = _projection_for_tool_message(
+   272	                msg,
+   273	                current_round_id,
+   274	                tool_names_by_id=tool_names_by_id,
+   275	                latest_tool_call_ids=latest_tool_call_ids,
+   276	            )
+   277	            content = fetch_step_for_llm(
+   278	                step_ref,
+   279	                provider,
+   280	                projection=projection,
+   281	                runtime_id=runtime_id,
+   282	                user_id=user_id,
+   283	                agent_id=agent_id,
+   284	                tool_call_id=tool_call_id,
+   285	            )
+   286	
+   287	            new_msg = {
+   288	                k: v for k, v in msg.items()
+   289	                if k not in ("step_ref", "_round_id", "_message_type", "_idempotency_key")
+   290	            }
+   291	            new_msg["content"] = content
+   292	            new_msg["_projection"] = projection
+   293	            out.append(new_msg)
+   294	        else:
+   295	            out.append(msg)
+   296	    return out
+   297	
+   298	
+   299	def expand_messages_for_summary(
+   300	    messages: List[Dict[str, Any]],
+   301	    runtime_id: Optional[str] = None,
+   302	    user_id: Optional[str] = None,
+   303	    agent_id: Optional[str] = None,
+   304	    **_kwargs,
+   305	) -> List[Dict[str, Any]]:
+   306	    """Expand tool messages: step_ref -> text preview for summarization."""
+   307	    out = []
+   308	    for msg in messages:
+   309	        role = msg.get("role")
+   310	        step_ref = msg.get("step_ref")
+   311	        tool_call_id = msg.get("tool_call_id")
+   312	        if role in ("tool", "tool_result"):
+   313	            if not step_ref:
+   314	                raise ValueError(f"Tool message missing step_ref: {msg}")
+   315	
+   316	            content = fetch_step_preview(
+   317	                step_ref,
+   318	                runtime_id=runtime_id,
+   319	                user_id=user_id,
+   320	                agent_id=agent_id,
+   321	                tool_call_id=tool_call_id,
+   322	            )
+   323	
+   324	            new_msg = {
+   325	                k: v for k, v in msg.items()
+   326	                if k not in ("step_ref", "_round_id", "_message_type", "_idempotency_key")
+   327	            }
+   328	            new_msg["content"] = content
+   329	            out.append(new_msg)
+   330	        else:
+   331	            out.append(msg)
+   332	    return out
+=== Cortex projection slices ===
+     1	"""
+     2	Cortex step result projection helpers.
+     3	
+     4	Tool outputs are stored on Cortex steps. This module parses those stored
+     5	results and converts them into provider-facing LLM representations.
+     6	"""
+     7	
+     8	import json
+     9	import logging
+    10	from typing import Any, Dict, Optional
+    11	
+    12	logger = logging.getLogger(__name__)
+    13	
+    14	_TOOL_STEP_PAYLOAD_VERSION = "tool-step-payload.v1"
+    15	_UNKNOWN_DICT_TEXT_LIMIT = 2_000
+    16	
+    17	
+    18	def _tool_output_size_label(size: Any) -> str:
+    19	    if not isinstance(size, int) or size < 0:
+    20	        return ""
+    21	    value = float(size)
+    22	    for unit in ("B", "KB", "MB", "GB"):
+    23	        if value < 1024:
+    24	            return f"{int(value)}B" if unit == "B" else f"{value:.1f}{unit}"
+    25	        value /= 1024
+    26	    return f"{value:.1f}TB"
+    27	
+    28	
+    29	def _tool_output_artifact_line(artifact: Dict[str, Any]) -> str:
+    30	    uri = str(artifact.get("uri") or "").strip()
+    31	    modality = str(artifact.get("modality") or "resource").strip() or "resource"
+    32	    name = str(artifact.get("name") or "").strip()
+    33	    mime_type = str(artifact.get("mime_type") or "").strip()
+    34	    summary = str(artifact.get("summary") or "").strip()
+    35	    size = _tool_output_size_label(artifact.get("size_bytes"))
+    36	    label = name or uri or "artifact"
+    37	    details = ", ".join(part for part in (modality, mime_type, size) if part)
+    38	    prefix = f"[Artifact: {label}"
+    39	    if details:
+    40	        prefix += f" ({details})"
+    41	    prefix += "]"
+    42	
+    43	    access = artifact.get("access") if isinstance(artifact.get("access"), dict) else {}
+    44	    display = access.get("display") if isinstance(access.get("display"), dict) else {}
+    45	    display_args = display.get("args") if isinstance(display.get("args"), dict) else {}
+    46	    display_url = display_args.get("file_url") or uri
+    47	
+    48	    parts = [prefix]
+    49	    if summary:
+    50	        parts.append(summary)
+    51	    if display_url:
+    52	        parts.append(f'Access: display(file_url="{display_url}")')
+    53	    return " — ".join(parts)
+    54	
+    55	
+    56	def _parse_tool_output_v1(raw: Dict[str, Any]) -> Dict[str, Any]:
+    57	    text_parts: list[str] = []
+    58	    text = raw.get("text")
+    59	    if text:
+    60	        text_parts.append(str(text))
+    61	
+    62	    artifacts = raw.get("artifacts") if isinstance(raw.get("artifacts"), list) else []
+    63	    for artifact in artifacts:
+    64	        if isinstance(artifact, dict):
+    65	            text_parts.append(_tool_output_artifact_line(artifact))
+    66	
+    67	    events = raw.get("events") if isinstance(raw.get("events"), list) else []
+    68	    for event in events:
+    69	        if not isinstance(event, dict):
+    70	            continue
+    71	        event_type = str(event.get("type") or "").strip()
+    72	        summary = str(event.get("summary") or "").strip()
+    73	        if event_type or summary:
+    74	            label = f"[Event: {event_type or 'event'}]"
+    75	            text_parts.append(f"{label} {summary}".strip())
+    76	
+    77	    error = raw.get("error")
+    78	    if error and not raw.get("ok", True):
+    79	        text_parts.append(f"[Error] {error}")
+    80	
+    81	    return {
+    82	        "text": "\n".join(text_parts),
+    83	        "files_created": [],
+    84	        "display_files": [],
+    85	        "artifacts": artifacts,
+    86	        "events": events,
+    87	    }
+    88	
+    89	
+    90	def parse_tool_result(raw: Any) -> Dict[str, Any]:
+    91	    """
+    92	    解析工具原始结果为三要素格式。
+    93	
+    94	    支持的输入格式：
+    95	    1. 统一格式: {text, files_created, display_files}
+    96	    2. MCP 格式: {content: [{type, text/data}]}
+    97	    3. 纯文本: str
+    98	
+    99	    Returns:
+   100	        {"text": "...", "files_created": [...], "display_files": [...]}
+   101	    """
+   102	    if raw is None:
+   103	        return {"text": "", "files_created": [], "display_files": []}
+   104	
+   105	    if isinstance(raw, str):
+   106	        stripped = raw.strip()
+   107	        if stripped.startswith("{") or stripped.startswith("["):
+   108	            try:
+   109	                decoded = json.loads(stripped)
+   110	            except json.JSONDecodeError:
+   111	                decoded = None
+   112	            if isinstance(decoded, (dict, list)):
+   113	                return parse_tool_result(decoded)
+   114	        return {"text": raw, "files_created": [], "display_files": []}
+   115	
+   116	    if not isinstance(raw, dict):
+   117	        return {"text": str(raw), "files_created": [], "display_files": []}
+   118	
+   119	    if raw.get("version") == _TOOL_STEP_PAYLOAD_VERSION:
+   120	        return parse_tool_result(raw.get("llm_content", ""))
+   121	
+   122	    if raw.get("version") == "tool-output.v1":
+   123	        return _parse_tool_output_v1(raw)
+   124	
+   125	    # 1. 统一格式（三要素）
+   126	    if "display_files" in raw or "files_created" in raw:
+   127	        text_parts = []
+   128	        if raw.get("text"):
+   129	            text_parts.append(str(raw["text"]))
+   130	        # 把 files_created 的 URL 写入文本
+   131	        files_created = raw.get("files_created") or []
+   132	        if files_created and isinstance(files_created, list):
+   133	            urls = [f.get("url") for f in files_created if isinstance(f, dict) and f.get("url")]
+   134	            if urls:
+   135	                text_parts.append(f"file_url: {urls[0]}" if len(urls) == 1 else f"file_urls: {', '.join(urls)}")
+   136	        return {
+   137	            "text": "\n".join(text_parts),
+   138	            "files_created": files_created,
+   139	            "display_files": raw.get("display_files") or [],
+   140	        }
+   141	
+   142	    # 2. MCP 格式 content 数组
+   143	    content = raw.get("content") or raw.get("_mcp_content")
+   144	    if isinstance(content, list):
+   145	        text_parts = []
+   146	        display_files = []
+   147	        for item in content:
+   148	            if not isinstance(item, dict):
+   149	                continue
+   150	            t = item.get("type", "")
+   151	            if t == "text":
+   152	                text_parts.append(item.get("text", ""))
+   153	            elif t == "image":
+   154	                # 支持 URL 形式或直接的 data(base64) 形式
+   155	                if item.get("url"):
+   156	                    display_files.append({
+   157	                        "url": item["url"],
+   158	                        "filename": "",
+   159	                        "modality": "image",
+   160	                    })
+   161	                elif item.get("data"):
+   162	                    mime = item.get("mimeType", "image/png")
+   163	                    display_files.append({
+   164	                        "url": f"data:{mime};base64,{item['data']}",
+   165	                        "filename": "",
+   166	                        "modality": "image",
+   167	                    })
+   168	            elif t == "image_ref":
+   169	                ref_url = item.get("file_url") or item.get("url")
+   170	                if ref_url:
+   171	                    display_files.append({
+   172	                        "url": ref_url,
+   173	                        "filename": item.get("filename", ""),
+   174	                        "modality": "image",
+   175	                        "mime_type": item.get("mimeType") or item.get("mime_type", ""),
+   176	                        "size": item.get("size", 0),
+   177	                    })
+   178	            elif t == "resource":
+   179	                if item.get("url"):
+   180	                    display_files.append({
+   181	                        "url": item["url"],
+   182	                        "filename": "",
+   183	                        "modality": "resource",
+   184	                    })
+   185	        return {
+   186	            "text": "\n".join(text_parts),
+   187	            "files_created": [],
+   188	            "display_files": display_files,
+   189	        }
+   190	
+   191	    # 4. 其他 dict：提取 text 字段或序列化
+   192	    if raw.get("text"):
+   193	        return {"text": str(raw["text"]), "files_created": [], "display_files": []}
+   194	
+   195	    # 5. Unknown dict fallback: diagnostic text only, bounded so unexpected
+   196	    # payload shapes cannot flood LLM context.
+   197	    def safe_default(obj):
+   198	        return f"<Unserializable {type(obj).__name__}>"
+   199	    try:
+   200	        serialized = json.dumps(raw, ensure_ascii=False, default=safe_default)
+   201	    except Exception as e:
+   202	        serialized = f"[StepResultProjection Parse Error] Failed to serialize object: {str(e)}"
+   203	    if len(serialized) > _UNKNOWN_DICT_TEXT_LIMIT:
+   204	        serialized = (
+   205	            serialized[:_UNKNOWN_DICT_TEXT_LIMIT]
+   206	            + f"\n\n... [Truncated unknown tool result JSON length > {_UNKNOWN_DICT_TEXT_LIMIT}]"
+   207	        )
+   208	    serialized = "[Unknown tool result JSON]\n" + serialized
+   209	    return {"text": serialized, "files_created": [], "display_files": []}
+   210	
+   211	
+   212	def _format_mcp_content(
+   213	    result_data: Dict[str, Any],
+   214	    *,
+   215	    include_display: bool,
+   216	    max_text_len: Optional[int] = None,
+   217	    empty_text: str = "OK",
+   218	) -> str:
+   219	    converted = []
+   220	
+   221	    text = result_data.get("text", "")
+   222	    if max_text_len is not None and len(text) > max_text_len:
+   223	        text = text[:max_text_len] + f"\n\n... [Truncated due to context budget length > {max_text_len}]"
+   224	
+   225	    if text:
+   226	        converted.append({"type": "text", "text": text})
+   227	
+   228	    if include_display:
+   229	        display_files = result_data.get("display_files", [])
+   230	        for f in display_files:
+   231	            url = f.get("url", "")
+   232	            if not url:
+   233	                continue
+   234	            if url.startswith("data:"):
+   235	                # Data URL
+   236	                parts = url.split(",", 1)
+   237	                mime = "image/png"
+   238	                if len(parts) >= 1 and ";" in parts[0]:
+   239	                    mime = parts[0].split(";")[0].replace("data:", "")
+   240	                data_b64 = parts[1] if len(parts) > 1 else ""
+   241	
+   242	                converted.append({
+   243	                    "type": "image",
+   244	                    "data": data_b64,
+   245	                    "mimeType": mime,
+   246	                })
+   247	            else:
+   248	                mime = str(f.get("mime_type") or f.get("mimeType") or "")
+   249	                modality = str(f.get("modality") or "")
+   250	                if url.startswith("blob://") and (modality == "image" or mime.startswith("image/")):
+   251	                    converted.append({
+   252	                        "type": "image_ref",
+   253	                        "file_url": url,
+   254	                        "mimeType": mime or "image/png",
+   255	                        "size": f.get("size") or f.get("size_bytes") or 0,
+   256	                    })
+   257	                else:
+   258	                    # Normal URL: represent unresolved display media as text.
+   259	                    converted.append({"type": "text", "text": f"[Image: {url}]"})
+   260	                
+   261	    if not converted:
+   262	        converted.append({"type": "text", "text": empty_text})
+   263	
+   264	    return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
+   265	
+   266	
+   267	def format_for_history_llm(
+   268	    result_data: Dict[str, Any],
+   269	    provider: str = "openai",
+   270	    max_text_len: Optional[int] = None,
+   271	) -> str:
+   272	    """Format historical tool output as manifest/text only."""
+   273	    _ = provider
+   274	    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+   275	
+   276	
+   277	def format_for_current_tool_result_llm(
+   278	    result_data: Dict[str, Any],
+   279	    provider: str = "openai",
+   280	    max_text_len: Optional[int] = None,
+   281	) -> str:
+   282	    """Format current non-display tool output as manifest/text only."""
+   283	    _ = provider
+   284	    return _format_mcp_content(result_data, include_display=False, max_text_len=max_text_len)
+   285	
+   286	
+   287	def format_for_display_perception_llm(
+   288	    result_data: Dict[str, Any],
+   289	    provider: str = "openai",
+   290	    max_text_len: Optional[int] = None,
+   291	) -> str:
+   292	    """Format explicit display perception output with allowed visual content."""
+   293	    _ = provider
+   294	    return _format_mcp_content(
+   295	        result_data,
+   296	        include_display=True,
+   297	        max_text_len=max_text_len,
+   298	        empty_text="[Display produced no text or media for LLM perception]",
+   299	    )
+   300	
+   301	
+   302	def format_for_monitor(result_data: Dict[str, Any], max_text_len: int = 500) -> str:
+   303	    """Format a monitor-safe text preview of a tool result."""
+   304	    return preview_for_text(result_data, max_text_len=max_text_len)
+   305	
+   306	
+   307	def preview_for_text(result_data: Dict[str, Any], max_text_len: int = 500) -> str:
+   308	    """Generate a concise text preview of a tool result."""
+   309	    text = result_data.get("text", "")
+   310	    if len(text) > max_text_len:
+   311	        text = text[:max_text_len] + "... [truncated]"
+   312	    
+   313	    files = result_data.get("files_created", [])
+   314	    displays = result_data.get("display_files", [])
+   315	    artifacts = result_data.get("artifacts", [])
+   316	    
+   317	    parts = [text] if text else []
+   318	    if files:
+   319	        parts.append(f"[{len(files)} files created]")
+   320	    if displays:
+   321	        parts.append(f"[{len(displays)} media items]")
+   322	    if artifacts:
+   323	        parts.append(f"[{len(artifacts)} artifacts]")
+   324	        
+   325	    if not parts:
+   326	        return "(empty)"
+   327	    return "\n".join(parts)
+=== key runtime tests ===
+   213	        "role": "tool",
+   214	        "tool_call_id": "shell:0",
+   215	        "content": '{"_mcp_content":[{"type":"text","text":"resolved"}]}',
+   216	        "_projection": "current_tool_result",
+   217	    }]
+   218	
+   219	
+   220	def test_expand_messages_for_llm_uses_display_projection_only_for_display_tool(monkeypatch):
+   221	    calls = []
+   222	
+   223	    class Bridge:
+   224	        enabled = True
+   225	
+   226	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   227	            calls.append((scope_id, tool_call_id, kwargs))
+   228	            return '{"_mcp_content":[{"type":"text","text":"resolved"}]}'
+   229	
+   230	    monkeypatch.setattr(
+   231	        "task_queue.utils.step_result_client._get_bridge",
+   232	        lambda runtime_id, user_id, agent_id: Bridge(),
+   233	    )
+   234	
+   235	    expand_messages_for_llm(
+   236	        [{
+   237	            "role": "tool",
+   238	            "tool_call_id": "display:0",
+   239	            "tool_name": "display",
+   240	            "_round_id": "round-1",
+   241	            "step_ref": "step-ref:wake-1:round1:display:0",
+   242	            "content": "inline content must not be used",
+   243	        }],
+   244	        current_round_id="round-1",
+   245	        runtime_id="agent-root-main",
+   246	        user_id="user-1",
+   247	        agent_id="agent-1",
+   248	    )
+   249	
+   250	    assert calls[0][2]["projection"] == "display_perception"
+   251	
+   252	
+   253	def test_expand_messages_for_llm_resolves_current_display_image_ref(monkeypatch):
+   254	    blob_calls = []
+   255	
+   256	    class Bridge:
+   257	        enabled = True
+   258	
+   259	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   260	            return json.dumps({
+   261	                "_mcp_content": [
+   262	                    {"type": "text", "text": "resolved screenshot"},
+   263	                    {
+   264	                        "type": "image_ref",
+   265	                        "file_url": "blob://runtime-artifact/screen-1",
+   266	                        "mimeType": "image/jpeg",
+   267	                        "size": 6,
+   268	                    },
+   269	                ]
+   270	            })
+   271	
+   272	    class FakeResponse:
+   273	        status_code = 200
+   274	        content = b"abc123"
+   275	        text = "abc123"
+   276	        headers = {"content-type": "image/jpeg"}
+   277	
+   278	    class FakeClient:
+   279	        def __enter__(self):
+   280	            return self
+   281	
+   282	        def __exit__(self, *_exc):
+   283	            return False
+   284	
+   285	        def get(self, url, headers):
+   286	            blob_calls.append({"url": url, "headers": headers})
+   287	            return FakeResponse()
+   288	
+   289	    monkeypatch.setattr(
+   290	        "task_queue.utils.step_result_client._get_bridge",
+   291	        lambda runtime_id, user_id, agent_id: Bridge(),
+   292	    )
+   293	    monkeypatch.setattr(
+   294	        "task_queue.utils.step_result_client.internal_sync_client",
+   295	        lambda *a, **kw: FakeClient(),
+   296	    )
+   297	
+   298	    expanded = expand_messages_for_llm(
+   299	        [{
+   300	            "role": "tool",
+   301	            "tool_call_id": "display:0",
+   302	            "tool_name": "display",
+   303	            "_round_id": "round-1",
+   304	            "step_ref": "step-ref:wake-1:round1:display:0",
+   305	            "content": "inline content must not be used",
+   306	        }],
+   307	        current_round_id="round-1",
+   308	        runtime_id="agent-root-main",
+   309	        user_id="user-1",
+   310	        agent_id="agent-1",
+   311	    )
+   312	
+   313	    payload = json.loads(expanded[0]["content"])
+   314	    assert blob_calls[0]["url"].endswith("/v1/blobs/runtime-artifact/screen-1")
+   315	    assert blob_calls[0]["headers"] == {"X-Tenant-ID": "user-1"}
+   316	    assert payload["_mcp_content"][1] == {
+   317	        "type": "image",
+   318	        "data": "YWJjMTIz",
+   319	        "mimeType": "image/jpeg",
+   320	    }
+   321	
+   322	
+   323	def test_expand_messages_for_llm_does_not_resolve_history_image_ref(monkeypatch):
+   324	    class Bridge:
+   325	        enabled = True
+   326	
+   327	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   328	            assert kwargs["projection"] == "history"
+   329	            return json.dumps({
+   330	                "_mcp_content": [
+   331	                    {"type": "text", "text": "old screenshot"},
+   332	                    {
+   333	                        "type": "image_ref",
+   334	                        "file_url": "blob://runtime-artifact/old-screen",
+   335	                        "mimeType": "image/jpeg",
+   336	                    },
+   337	                ]
+   338	            })
+   339	
+   340	    monkeypatch.setattr(
+   341	        "task_queue.utils.step_result_client._get_bridge",
+   342	        lambda runtime_id, user_id, agent_id: Bridge(),
+   343	    )
+   344	    monkeypatch.setattr(
+   345	        "task_queue.utils.step_result_client.internal_sync_client",
+   346	        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("history must not fetch blobs")),
+   347	    )
+   348	
+   349	    expanded = expand_messages_for_llm(
+   350	        [{
+   351	            "role": "tool",
+   352	            "tool_call_id": "display:0",
+   353	            "tool_name": "display",
+   354	            "_round_id": "round-old",
+   355	            "step_ref": "step-ref:wake-1:round1:display:0",
+   356	            "content": "inline content must not be used",
+   357	        }],
+   358	        current_round_id="round-current",
+   359	        runtime_id="agent-root-main",
+   360	        user_id="user-1",
+   361	        agent_id="agent-1",
+   362	    )
+   363	
+   364	    payload = json.loads(expanded[0]["content"])
+   365	    assert payload["_mcp_content"][1]["type"] == "image_ref"
+   366	
+   367	
+   368	def test_expand_messages_for_llm_image_ref_fetch_failure_becomes_text(monkeypatch):
+   369	    class Bridge:
+   370	        enabled = True
+   371	
+   372	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):
+   373	            assert kwargs["projection"] == "display_perception"
+   374	            return json.dumps({
+   375	                "_mcp_content": [
+   376	                    {
+   377	                        "type": "image_ref",
+   378	                        "file_url": "blob://runtime-artifact/missing",
+   379	                        "mimeType": "image/jpeg",
+   380	                    },
+   381	                ]
+   382	            })
+   383	
+   384	    class FakeResponse:
+   385	        status_code = 404
+   386	        content = b"not found"
+   387	        text = "not found"
+   388	        headers = {"content-type": "text/plain"}
+   389	
+   390	    class FakeClient:
+   391	        def __enter__(self):
+   392	            return self
+   393	
+   394	        def __exit__(self, *_exc):
+   395	            return False
+   396	
+   397	        def get(self, url, headers):
+   398	            return FakeResponse()
+   399	
+   400	    monkeypatch.setattr(
+   401	        "task_queue.utils.step_result_client._get_bridge",
+   402	        lambda runtime_id, user_id, agent_id: Bridge(),
+   403	    )
+   404	    monkeypatch.setattr(
+   405	        "task_queue.utils.step_result_client.internal_sync_client",
+   406	        lambda *a, **kw: FakeClient(),
+   407	    )
+   408	
+   409	    expanded = expand_messages_for_llm(
+   410	        [{
+   411	            "role": "tool",
+   412	            "tool_call_id": "display:0",
+   413	            "tool_name": "display",
+   414	            "_round_id": "round-1",
+   415	            "step_ref": "step-ref:wake-1:round1:display:0",
+   416	            "content": "inline content must not be used",
+   417	        }],
+   418	        current_round_id="round-1",
+   419	        runtime_id="agent-root-main",
+   420	        user_id="user-1",
+   421	        agent_id="agent-1",
+   422	    )
+   423	
+   424	    payload = json.loads(expanded[0]["content"])
+   425	    assert payload["_mcp_content"] == [{
+   426	        "type": "text",
+   427	        "text": "[Image ref not resolved: blob://runtime-artifact/missing — Blob Service returned 404: not found]",
+   428	    }]
+   429	
+   430	
+     1	import json
+     2	
+     3	from task_queue.handlers.tool_handlers import _ok
+     4	from task_queue.contracts.llm_call import (
+     5	    LLMCallInput,
+     6	    LLMTransportConfig,
+     7	    prepare_llm_call,
+     8	)
+     9	from task_queue.utils.context import process_multimodal_messages, sanitize_context
+    10	from task_queue.utils.step_result_client import expand_messages_for_llm
+    11	
+    12	
+    13	def _image_tool_message(**extra):
+    14	    return {
+    15	        "role": "tool",
+    16	        "tool_call_id": "call-1",
+    17	        "name": "display",
+    18	        "content": json.dumps({
+    19	            "_mcp_content": [
+    20	                {"type": "text", "text": "screenshot"},
+    21	                {"type": "image", "data": "aabbcc", "mimeType": "image/png"},
+    22	            ]
+    23	        }),
+    24	        **extra,
+    25	    }
+    26	
+    27	
+    28	def test_generic_tool_image_content_does_not_create_user_image_message():
+    29	    processed = process_multimodal_messages([_image_tool_message()], provider="openai")
+    30	
+    31	    assert len(processed) == 1
+    32	    assert processed[0]["role"] == "tool"
+    33	    assert all(message["role"] != "user" for message in processed)
+    34	
+    35	
+    36	def test_history_projection_marker_is_stripped_without_image_injection():
+    37	    processed = process_multimodal_messages(
+    38	        [_image_tool_message(_projection="history")],
+    39	        provider="openai",
+    40	    )
+    41	
+    42	    assert len(processed) == 1
+    43	    assert processed[0]["role"] == "tool"
+    44	    assert "_projection" not in processed[0]
+    45	    assert all(message["role"] != "user" for message in processed)
+    46	
+    47	
+    48	def test_display_perception_can_create_user_image_message_and_strips_marker():
+    49	    processed = process_multimodal_messages(
+    50	        [_image_tool_message(_projection="display_perception")],
+    51	        provider="openai",
+    52	    )
+    53	
+    54	    assert len(processed) == 2
+    55	    assert processed[0]["role"] == "tool"
+    56	    assert "_projection" not in processed[0]
+    57	    tool_payload = json.loads(processed[0]["content"])
+    58	    assert tool_payload["_mcp_content"][1]["_placeholder"] is True
+    59	    assert processed[1]["role"] == "user"
+    60	    assert processed[1]["content"][0]["type"] == "image_url"
+    61	
+    62	
+    63	def test_display_perception_text_receipt_is_bounded_when_images_are_split_out():
+    64	    large_text = "x" * 10_000
+    65	    processed = process_multimodal_messages(
+    66	        [{
+    67	            "role": "tool",
+    68	            "tool_call_id": "display:large-text",
+    69	            "name": "display",
+    70	            "content": json.dumps({
+    71	                "_mcp_content": [
+    72	                    {"type": "text", "text": large_text},
+    73	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+    74	                ]
+    75	            }),
+    76	            "_projection": "display_perception",
+    77	        }],
+    78	        provider="openai",
+    79	    )
+    80	
+    81	    tool_payload = json.loads(processed[0]["content"])
+    82	    text = tool_payload["_mcp_content"][0]["text"]
+    83	
+    84	    assert len(text) < len(large_text)
+    85	    assert "truncated display text" in text
+    86	    assert "YWJjMTIz" not in processed[0]["content"]
+    87	    assert processed[1]["content"][0]["type"] == "image_url"
+    88	
+    89	
+    90	def test_unsupported_content_array_does_not_create_image_projection():
+    91	    processed = process_multimodal_messages(
+    92	        [{
+    93	            "role": "tool",
+    94	            "tool_call_id": "display:unsupported-content",
+    95	            "name": "display",
+    96	            "content": json.dumps({
+    97	                "content": [
+    98	                    {"type": "text", "text": "unsupported shape"},
+    99	                    {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+   100	                ]
+   101	            }),
+   102	            "_projection": "display_perception",
+   103	        }],
+   104	        provider="openai",
+   105	    )
+   106	
+   107	    assert len(processed) == 1
+   108	    assert processed[0]["role"] == "tool"
+   109	    assert all(message["role"] != "user" for message in processed)
+   110	
+   111	
+   112	def test_nested_result_wrapper_does_not_create_image_projection():
+   113	    processed = process_multimodal_messages(
+   114	        [{
+   115	            "role": "tool",
+   116	            "tool_call_id": "display:nested",
+   117	            "name": "display",
+   118	            "content": json.dumps({
+   119	                "success": True,
+   120	                "result": {
+   121	                    "_mcp_content": [
+   122	                        {"type": "text", "text": "unsupported wrapped shape"},
+   123	                        {"type": "image", "data": "YWJjMTIz", "mimeType": "image/png"},
+   124	                    ]
+   125	                },
+   126	            }),
+   127	            "_projection": "display_perception",
+   128	        }],
+   129	        provider="openai",
+   130	    )
+   131	
+   132	    assert len(processed) == 1
+   133	    assert processed[0]["role"] == "tool"
+   134	    assert all(message["role"] != "user" for message in processed)
+   135	
+   136	
+   137	def test_sanitize_then_multimodal_preserves_display_projection_until_conversion():
+   138	    messages = [
+   139	        {
+   140	            "role": "assistant",
+   141	            "content": "",
+   142	            "tool_calls": [{
+   143	                "id": "call-1",
+   144	                "type": "function",
+   145	                "function": {"name": "display", "arguments": '{"file_url":"blob://x/y"}'},
+   146	            }],
+   147	        },
+   148	        _image_tool_message(_projection="display_perception"),
+   149	    ]
+   150	
+   151	    sanitized = sanitize_context(messages)
+   152	    assert sanitized[1]["_projection"] == "display_perception"
+   153	
+   154	    processed = process_multimodal_messages(sanitized, provider="openai")
+   155	
+   156	    assert [message["role"] for message in processed] == ["assistant", "tool", "user"]
+   157	    assert "_projection" not in processed[1]
+   158	    tool_payload = json.loads(processed[1]["content"])
+   159	    image_item = tool_payload["_mcp_content"][1]
+   160	    assert image_item["_placeholder"] is True
+   161	    assert "data" not in image_item
+   162	    user_content = processed[2]["content"]
+   163	    assert user_content[0]["type"] == "image_url"
+   164	    assert user_content[0]["image_url"]["url"].startswith("data:image/png;base64,")
+   165	
+   166	
+   167	def test_runtime_display_wrapper_persists_reference_not_media_bytes():
+   168	    raw_display = {
+   169	        "success": True,
+   170	        "message": "Loaded screenshot.jpg (6B, image/jpeg)",
+   171	        "file_url": "blob://runtime-artifact/screenshot",
+   172	        "mime_type": "image/jpeg",
+   173	        "size": 6,
+   174	        "_mcp_content": [
+   175	            {"type": "text", "text": "desktop screenshot"},
+   176	            {"type": "image", "data": "YWJjMTIz", "mimeType": "image/jpeg"},
+   177	        ],
+   178	    }
+   179	
+   180	    wrapped = _ok("scope-1", "round-1", "display:2", "display", raw_display)
+   181	    public_content = json.loads(wrapped["content"])
+   182	
+   183	    assert public_content["_mcp_content"][1]["type"] == "image"
+   184	    assert public_content["_mcp_content"][1]["_placeholder"] is True
+   185	    assert "data" not in public_content["_mcp_content"][1]
+   186	    assert "YWJjMTIz" not in wrapped["content"]
+   187	    assert public_content.get("version") != "tool-output.v1"
+   188	    assert wrapped["durable_payload"]["version"] == "tool-step-payload.v1"
+   189	    llm_content = wrapped["durable_payload"]["llm_content"]
+   190	    assert llm_content["_mcp_content"][1] == {
+   191	        "type": "image_ref",
+   192	        "file_url": "blob://runtime-artifact/screenshot",
+   193	        "mimeType": "image/jpeg",
+   194	        "size": 6,
+   195	    }
+   196	    assert "YWJjMTIz" not in json.dumps(llm_content)
+   197	
+   198	    processed = process_multimodal_messages(
+   199	        [{
+   200	            "role": "tool",
+   201	            "tool_call_id": "display:2",
+   202	            "name": "display",
+   203	            "content": json.dumps(llm_content),
+   204	            "_projection": "display_perception",
+   205	        }],
+   206	        provider="openai",
+   207	    )
+   208	
+   209	    assert [message["role"] for message in processed] == ["tool"]
+   210	    tool_payload = json.loads(processed[0]["content"])
+   211	    assert tool_payload["_mcp_content"][1]["type"] == "image_ref"
+   212	    assert "YWJjMTIz" not in processed[0]["content"]
+   213	
+   214	
+   215	def test_prepare_llm_call_injects_display_step_image_before_following_system(monkeypatch):
+   216	    calls = []
+   217	    blob_calls = []
+   218	
+   219	    class Bridge:
+   220	        def read_step_formatted(self, scope_id, tool_call_id, **kwargs):

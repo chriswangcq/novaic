@@ -1,0 +1,197 @@
+    runtime_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    **_kwargs,
+) -> List[Dict[str, Any]]:
+    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+    out = []
+    tool_names_by_id = _tool_names_by_call_id(messages)
+    latest_tool_call_ids = _latest_tool_call_ids(messages)
+    for msg in messages:
+        role = msg.get("role")
+        step_ref = msg.get("step_ref")
+        tool_call_id = msg.get("tool_call_id")
+        if role in ("tool", "tool_result"):
+            if not step_ref:
+                raise ValueError(f"Tool message missing step_ref: {msg}")
+
+            projection = _projection_for_tool_message(
+                msg,
+                current_round_id,
+                tool_names_by_id=tool_names_by_id,
+                latest_tool_call_ids=latest_tool_call_ids,
+            )
+            content = fetch_step_for_llm(
+                step_ref,
+                provider,
+                projection=projection,
+                runtime_id=runtime_id,
+                user_id=user_id,
+                agent_id=agent_id,
+                tool_call_id=tool_call_id,
+            )
+
+            new_msg = {
+                k: v for k, v in msg.items()
+                if k not in ("step_ref", "_round_id", "_message_type", "_idempotency_key")
+            }
+            new_msg["content"] = content
+            new_msg["_projection"] = projection
+            out.append(new_msg)
+        else:
+            out.append(msg)
+    return out
+
+
+def expand_messages_for_summary(
+    messages: List[Dict[str, Any]],
+    runtime_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    **_kwargs,
+) -> List[Dict[str, Any]]:
+    """Expand tool messages: step_ref -> text preview for summarization."""
+    out = []
+    for msg in messages:
+        role = msg.get("role")
+        step_ref = msg.get("step_ref")
+        tool_call_id = msg.get("tool_call_id")
+        if role in ("tool", "tool_result"):
+            if not step_ref:
+                raise ValueError(f"Tool message missing step_ref: {msg}")
+
+            content = fetch_step_preview(
+                step_ref,
+                runtime_id=runtime_id,
+                user_id=user_id,
+                agent_id=agent_id,
+                tool_call_id=tool_call_id,
+            )
+
+            new_msg = {
+    msg: Dict[str, Any],
+    current_round_id: Optional[str],
+    *,
+    tool_names_by_id: Dict[str, str],
+    latest_tool_call_ids: set[str],
+) -> str:
+    msg_round_id = msg.get("_round_id")
+    tool_call_id = str(msg.get("tool_call_id") or "").strip()
+    is_current = (
+        current_round_id is None
+        or msg_round_id == current_round_id
+        or (not msg_round_id and tool_call_id in latest_tool_call_ids)
+    )
+    if not is_current:
+        return "history"
+
+    tool_name = _tool_message_name(msg, tool_names_by_id)
+    if tool_name == "display":
+        return "display_perception"
+    return "current_tool_result"
+
+
+def fetch_step_preview(
+    step_ref: str,
+    max_text_len: int = 500,
+    runtime_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    tool_call_id: Optional[str] = None,
+    **_kwargs,
+) -> str:
+    """Text preview for step-ref summaries."""
+    bridge = _get_bridge(runtime_id, user_id, agent_id)
+    if not tool_call_id:
+        raise ValueError(f"Tool result preview requires tool_call_id for {step_ref}")
+    preview = bridge.read_step_preview(
+        runtime_id,
+        tool_call_id,
+        max_text_len=max_text_len,
+        step_ref=step_ref,
+    )
+    if preview is None:
+        raise RuntimeError(f"Tool result preview not found: {step_ref}")
+    return preview
+
+
+def expand_messages_for_llm(
+    messages: List[Dict[str, Any]],
+    provider: str = "openai",
+    current_round_id: Optional[str] = None,
+    runtime_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    **_kwargs,
+) -> List[Dict[str, Any]]:
+    """Expand tool messages: step_ref -> _mcp_content for LLM."""
+    out = []
+    tool_names_by_id = _tool_names_by_call_id(messages)
+    latest_tool_call_ids = _latest_tool_call_ids(messages)
+    for msg in messages:
+        role = msg.get("role")
+        step_ref = msg.get("step_ref")
+        tool_call_id = msg.get("tool_call_id")
+        if role in ("tool", "tool_result"):
+            if not step_ref:
+                raise ValueError(f"Tool message missing step_ref: {msg}")
+
+            projection = _projection_for_tool_message(
+                msg,
+                current_round_id,
+                tool_names_by_id=tool_names_by_id,
+                latest_tool_call_ids=latest_tool_call_ids,
+            )
+            content = fetch_step_for_llm(
+                step_ref,
+                provider,
+                projection=projection,
+                runtime_id=runtime_id,
+                user_id=user_id,
+                agent_id=agent_id,
+                tool_call_id=tool_call_id,
+            )
+
+            new_msg = {
+                k: v for k, v in msg.items()
+                if k not in ("step_ref", "_round_id", "_message_type", "_idempotency_key")
+            }
+            new_msg["content"] = content
+            new_msg["_projection"] = projection
+            out.append(new_msg)
+        else:
+            out.append(msg)
+    return out
+
+
+def expand_messages_for_summary(
+    messages: List[Dict[str, Any]],
+    runtime_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    **_kwargs,
+) -> List[Dict[str, Any]]:
+    """Expand tool messages: step_ref -> text preview for summarization."""
+    out = []
+    for msg in messages:
+        role = msg.get("role")
+        step_ref = msg.get("step_ref")
+        tool_call_id = msg.get("tool_call_id")
+        if role in ("tool", "tool_result"):
+            if not step_ref:
+                raise ValueError(f"Tool message missing step_ref: {msg}")
+
+            content = fetch_step_preview(
+                step_ref,
+                runtime_id=runtime_id,
+                user_id=user_id,
+                agent_id=agent_id,
+                tool_call_id=tool_call_id,
+            )
+
+            new_msg = {
+                k: v for k, v in msg.items()
+                if k not in ("step_ref", "_round_id", "_message_type", "_idempotency_key")
+            }
+            new_msg["content"] = content
+            out.append(new_msg)

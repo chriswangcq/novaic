@@ -1,0 +1,46 @@
+
+
+def _format_mcp_content(
+    result_data: Dict[str, Any],
+    *,
+    include_display: bool,
+    max_text_len: Optional[int] = None,
+    empty_text: str = "OK",
+) -> str:
+    converted = []
+
+    text = result_data.get("text", "")
+    if max_text_len is not None and len(text) > max_text_len:
+        text = text[:max_text_len] + f"\n\n... [Truncated due to context budget length > {max_text_len}]"
+
+    if text:
+        converted.append({"type": "text", "text": text})
+
+    if include_display:
+        display_files = result_data.get("display_files", [])
+        for f in display_files:
+            url = f.get("url", "")
+            if not url:
+                continue
+            if url.startswith("data:"):
+                # Data URL
+                parts = url.split(",", 1)
+                mime = "image/png"
+                if len(parts) >= 1 and ";" in parts[0]:
+                    mime = parts[0].split(";")[0].replace("data:", "")
+                data_b64 = parts[1] if len(parts) > 1 else ""
+
+                converted.append({
+                    "type": "image",
+                    "data": data_b64,
+                    "mimeType": mime,
+                })
+            else:
+                # Normal URL: represent unresolved display media as text.
+                converted.append({"type": "text", "text": f"[Image: {url}]"})
+                
+    if not converted:
+        converted.append({"type": "text", "text": empty_text})
+
+    return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
+

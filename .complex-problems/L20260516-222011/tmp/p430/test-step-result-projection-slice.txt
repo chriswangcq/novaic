@@ -1,0 +1,45 @@
+import json
+from novaic_cortex.step_result_projection import (
+    format_for_display_perception_llm,
+    format_for_history_llm,
+    parse_tool_result,
+    preview_for_text,
+)
+
+def test_parse_tool_result_mcp_image_data():
+    raw = {
+        "content": [
+            {"type": "text", "text": "Here is the image"},
+            {"type": "image", "data": "base64encoded==", "mimeType": "image/jpeg"}
+        ]
+    }
+    parsed = parse_tool_result(raw)
+    assert parsed["text"] == "Here is the image"
+    assert len(parsed["display_files"]) == 1
+    assert parsed["display_files"][0]["url"] == "data:image/jpeg;base64,base64encoded=="
+
+
+def test_parse_tool_result_json_string_mcp_content():
+    raw = json.dumps({
+        "_mcp_content": [
+            {"type": "text", "text": "loaded"},
+            {"type": "image", "data": "base64encoded==", "mimeType": "image/png"},
+        ]
+    })
+
+    parsed = parse_tool_result(raw)
+
+    assert parsed["text"] == "loaded"
+    assert len(parsed["display_files"]) == 1
+    assert parsed["display_files"][0]["url"] == "data:image/png;base64,base64encoded=="
+
+
+def test_parse_tool_result_mcp_image_url():
+    raw = {
+        "content": [
+            {"type": "image", "url": "https://example.com/img.png"}
+        ]
+    }
+    parsed = parse_tool_result(raw)
+    assert len(parsed["display_files"]) == 1
+    assert parsed["display_files"][0]["url"] == "https://example.com/img.png"

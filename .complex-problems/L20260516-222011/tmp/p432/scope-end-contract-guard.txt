@@ -1,0 +1,186 @@
+=== ScopeEndRequest diagnostics guard ===
+class ScopeEndRequest(_TenantMixin):
+    scope_id: str
+    report: str = ""
+    scope_path: str | None = None
+    is_root: bool = True
+    session_generation: int | None = None
+    finalize_reason: str | None = None
+    remaining_stack: dict[str, Any] | None = None
+    round_num: int = 0
+
+    @field_validator("session_generation", mode="before")
+    @classmethod
+    def _reject_bool_session_generation(cls, value: Any) -> Any:
+        if isinstance(value, bool):
+            raise ValueError("positive session_generation is required for archive diagnostics")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_archive_diagnostics(self) -> "ScopeEndRequest":
+        has_diagnostics = (
+            self.session_generation is not None
+            or self.finalize_reason is not None
+            or self.remaining_stack is not None
+        )
+        if not has_diagnostics:
+            return self
+        if self.session_generation is None:
+            raise ValueError("session_generation is required for archive diagnostics")
+        if self.session_generation < 1:
+            raise ValueError("positive session_generation is required for archive diagnostics")
+        if not (self.finalize_reason or "").strip():
+            raise ValueError("finalize_reason is required for archive diagnostics")
+        if self.remaining_stack is None:
+            raise ValueError("remaining_stack is required for archive diagnostics")
+        return self
+
+=== scope_end append/finalize guard ===
+@app.post("/v1/scope/end")
+async def scope_end(req: ScopeEndRequest):
+    """Archive a scope. P2-4: idempotent — replaying after the scope is already
+    archived returns the archive path without raising (``wake_finalize`` →
+    ``cortex_scope_end`` can safely retry after a transient failure).
+
+    Structural scope_end is not a summary API. Non-empty reports must go
+    through /v1/context/skill_end on an LLM-opened child skill.
+    """
+    ws = _get_workspace(req.user_id, req.agent_id)
+
+    if req.report and req.report.strip():
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "scope_end is structural and does not accept report; "
+                "use /v1/context/skill_end for child scope summaries"
+            ),
+        )
+
+    if req.is_root:
+        archived_path = f"/ro/scopes/{req.scope_id}"
+        archived_meta = await ws.read_session_meta(archived_path)
+        if archived_meta and archived_meta.get("phase") == "archived":
+            return {
+                "ok": True,
+                "scope_id": req.scope_id,
+                "archive_path": archived_path + "/",
+                "idempotent": True,
+            }
+        active_path = _root_scope_path(req.scope_id)
+        active_meta = await ws.read_session_meta(active_path)
+        active_stack = read_active_stack_projection(
+            ws.operational_store,
+            root_scope_id=req.scope_id,
+            root_scope_path=active_path,
+        )["frames"]
+        await _append_wake_archived_event(
+            req,
+            ws,
+            scope_path=active_path,
+            meta=active_meta,
+            reason="scope_end_root",
+            remaining_stack=_semantic_remaining_stack_after_archive(
+                active_stack,
+                archived_scope_id=req.scope_id,
+            ),
+        )
+        await _finalize_active_stack_for_archive(
+            ws,
+            root_scope_id=req.scope_id,
+            finalized_scope_id=req.scope_id,
+            frames=active_stack,
+            reason="scope_end_root",
+        )
+        archive_path = await ws.archive_root_scope_projection(req.scope_id, "")
+        await _drop_scope_lock(req.user_id, req.agent_id, req.scope_id)
+    else:
+        scope_path = await _resolve_scope_path(
+            ws,
+            req.scope_id,
+            scope_path=req.scope_path,
+            include_archived=True,
+        )
+        child_meta = await ws.read_session_meta(scope_path)
+        if child_meta.get("phase") == "archived":
+            return {
+                "ok": True,
+                "scope_id": req.scope_id,
+                "archive_path": scope_path.rstrip("/") + "/",
+                "idempotent": True,
+            }
+        root_scope_id, root_scope_path = _root_scope_identity_from_path(scope_path)
+        active_stack = read_active_stack_projection(
+            ws.operational_store,
+            root_scope_id=root_scope_id,
+            root_scope_path=root_scope_path,
+        )["frames"]
+        await _append_wake_archived_event(
+            req,
+            ws,
+            scope_path=scope_path,
+            meta=child_meta,
+            reason="scope_end_child",
+            remaining_stack=_semantic_remaining_stack_after_archive(
+                active_stack,
+                archived_scope_id=_scope_id_from_path(scope_path),
+            ),
+        )
+        if child_meta.get("skill") == "wake":
+            await _finalize_active_stack_for_archive(
+                ws,
+                root_scope_id=root_scope_id,
+                finalized_scope_id=_scope_id_from_path(scope_path),
+                frames=active_stack,
+                reason="scope_end_child",
+            )
+        auto_closed = await ws._auto_close_open_children(scope_path)
+        if auto_closed:
+            log_cortex(
+                "scope.auto_closed_children",
+                scope_id=req.scope_id,
+                count=auto_closed,
+            )
+        await ws.complete_child_scope_projection(scope_path, "")
+        archive_path = scope_path + "/"
+    return {
+        "ok": True,
+        "scope_id": req.scope_id,
+        "archive_path": archive_path,
+=== direct scope_end tests guard ===
+novaic-cortex/tests/test_active_stack_projection.py:224:def test_finalize_active_stack_projection_empty_stack_is_idempotent(tmp_path):
+novaic-cortex/tests/test_active_stack_projection.py:253:        "remaining_stack": [],
+novaic-cortex/tests/test_active_stack_projection.py:264:def test_finalize_active_stack_projection_records_remaining_stack_then_clears(tmp_path):
+novaic-cortex/tests/test_active_stack_projection.py:296:    remaining = result["event"]["payload"]["remaining_stack"]
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:448:async def test_scope_end_root_empty_stack_records_finalize_event_and_clears_projection() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:478:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:487:async def test_scope_end_root_records_finalize_event_and_clears_projection() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:508:        "remaining_stack": [{"depth": 1, "kind": "wake", "name": "user conversation", "parent_path": root["scope_path"], "parent_scope_id": "agent-root", "scope_id": "wake-1", "scope_path": _wake["scope_path"], "skill_name": "wake"}],
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:517:async def test_scope_end_wake_records_remaining_stack_and_retry_is_idempotent() -> None:
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:559:    assert retry["idempotent"] is True
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:561:    assert [frame["scope_id"] for frame in finalize_events[0]["payload"]["remaining_stack"]] == [
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:565:    assert finalize_events[0]["payload"]["remaining_stack"][0]["scope_path"] == opened["child_path"]
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:566:    assert finalize_events[0]["payload"]["remaining_stack"][1]["scope_path"] == wake["scope_path"]
+novaic-cortex/tests/test_context_event_api_skill_lifecycle.py:572:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_lifecycle.py:73:    assert wake["idempotent"] is False
+novaic-cortex/tests/test_context_event_api_lifecycle.py:77:async def test_scope_create_idempotent_retry_does_not_duplicate_lifecycle_events() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:159:    assert result["idempotent"] is False
+novaic-cortex/tests/test_context_event_api_lifecycle.py:168:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_lifecycle.py:173:async def test_scope_end_persists_explicit_archive_diagnostics() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:203:            session_generation=7,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:204:            finalize_reason="reply_no_followup",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:205:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:211:    assert result["idempotent"] is False
+novaic-cortex/tests/test_context_event_api_lifecycle.py:216:        "remaining_stack": [],
+novaic-cortex/tests/test_context_event_api_lifecycle.py:217:        "archive_diagnostics": {
+novaic-cortex/tests/test_context_event_api_lifecycle.py:218:            "session_generation": 7,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:219:            "finalize_reason": "reply_no_followup",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:220:            "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:226:def test_scope_end_rejects_bool_archive_diagnostics_generation() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:227:    with pytest.raises(ValidationError, match="positive session_generation"):
+novaic-cortex/tests/test_context_event_api_lifecycle.py:233:            session_generation=True,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:234:            finalize_reason="reply_no_followup",
+novaic-cortex/tests/test_context_event_api_lifecycle.py:235:            remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-cortex/tests/test_context_event_api_lifecycle.py:239:def test_scope_end_requires_complete_archive_diagnostics() -> None:
+novaic-cortex/tests/test_context_event_api_lifecycle.py:240:    with pytest.raises(ValidationError, match="finalize_reason"):
+novaic-cortex/tests/test_context_event_api_lifecycle.py:246:            session_generation=1,
+novaic-cortex/tests/test_context_event_api_lifecycle.py:247:            remaining_stack={"known": True, "depth": 0, "frames": []},

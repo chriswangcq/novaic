@@ -1,0 +1,58 @@
+# P422 post-fix projection/read-model payload leak guard
+novaic-cortex/novaic_cortex/context_event_projection.py:358:    payload_ref = event.payload.get("payload_ref")
+novaic-cortex/novaic_cortex/context_event_projection.py:359:    content = _tool_result_content(observation, payload_ref=payload_ref)
+novaic-cortex/novaic_cortex/context_event_projection.py:364:        "payload_ref": payload_ref,
+novaic-cortex/novaic_cortex/context_event_projection.py:377:    lookup_ref = step_ref if isinstance(step_ref, str) and step_ref else payload_ref
+novaic-cortex/novaic_cortex/context_event_projection.py:383:def _tool_result_content(observation: Any, *, payload_ref: Any = None) -> str:
+novaic-cortex/novaic_cortex/context_event_projection.py:385:        for key in ("preview", "summary", "head"):
+novaic-cortex/novaic_cortex/context_event_projection.py:389:        ref = payload_ref if isinstance(payload_ref, str) and payload_ref.strip() else None
+novaic-cortex/novaic_cortex/context_event_projection.py:393:            return f"[Tool result omitted from context; inspect payload_ref={ref}{detail}]"
+novaic-cortex/novaic_cortex/context_event_projection.py:394:        return f"[Tool result omitted from context{detail}]"
+novaic-cortex/tests/test_tool_output_projection.py:8:    preview_for_text,
+novaic-cortex/tests/test_tool_output_projection.py:24:                "summary": "Host desktop screenshot",
+novaic-cortex/tests/test_tool_output_projection.py:40:                "summary": "Screenshot stored as artifact.",
+novaic-cortex/tests/test_tool_output_projection.py:63:    assert formatted["_mcp_content"]
+novaic-cortex/tests/test_tool_output_projection.py:64:    assert all(item["type"] == "text" for item in formatted["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:65:    assert "blob://runtime-artifact/screen-1" in formatted["_mcp_content"][0]["text"]
+novaic-cortex/tests/test_tool_output_projection.py:68:def test_tool_output_v1_preview_mentions_artifact_count():
+novaic-cortex/tests/test_tool_output_projection.py:71:    assert "[1 artifacts]" in preview_for_text(parsed)
+novaic-cortex/tests/test_tool_output_projection.py:77:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:85:    assert parsed["display_files"][0]["url"] == "data:image/png;base64,abc"
+novaic-cortex/tests/test_tool_output_projection.py:91:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:102:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:103:    assert all(item["type"] == "text" for item in current["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:104:    assert display["_mcp_content"][1] == {
+novaic-cortex/tests/test_tool_output_projection.py:116:                "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:127:    assert all(item["type"] == "text" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:136:            "text": "exit_code=0\nstdout:\nshort preview",
+novaic-cortex/tests/test_tool_output_projection.py:151:    assert parsed["text"] == "exit_code=0\nstdout:\nshort preview"
+novaic-cortex/tests/test_tool_output_projection.py:187:    assert all(item["type"] == "text" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:188:    assert not any(item.get("type") == "image" for item in display["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:200:            "_mcp_content": [
+novaic-cortex/tests/test_tool_output_projection.py:217:    assert history["_mcp_content"] == [{"type": "text", "text": "desktop screenshot"}]
+novaic-cortex/tests/test_tool_output_projection.py:218:    assert display["_mcp_content"][1] == {
+novaic-cortex/tests/test_tool_output_projection.py:229:        "display_files": [{"url": "data:image/png;base64,aabbcc"}],
+novaic-cortex/tests/test_tool_output_projection.py:236:    assert all(item["type"] == "text" for item in history["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:237:    assert all(item["type"] == "text" for item in current["_mcp_content"])
+novaic-cortex/tests/test_tool_output_projection.py:238:    assert any(item["type"] == "image" for item in display["_mcp_content"])
+novaic-cortex/tests/test_context_event_projection.py:346:def test_project_context_events_closed_skill_renders_fold_summary() -> None:
+novaic-cortex/tests/test_context_event_projection.py:381:def test_project_context_events_blank_scope_close_emits_no_empty_summary() -> None:
+novaic-cortex/tests/test_context_event_projection.py:579:                    "observation": {"preview": "exit_code=0"},
+novaic-cortex/tests/test_context_event_projection.py:580:                    "payload_ref": "step-ref:1",
+novaic-cortex/tests/test_context_event_projection.py:598:                "payload_ref": "step-ref:1",
+novaic-cortex/tests/test_context_event_projection.py:604:def test_project_context_events_multiple_tool_results_preserve_order_and_payload_refs() -> None:
+novaic-cortex/tests/test_context_event_projection.py:625:                    "observation": {"summary": "A"},
+novaic-cortex/tests/test_context_event_projection.py:626:                    "payload_ref": "payload:a",
+novaic-cortex/tests/test_context_event_projection.py:636:                    "observation": {"preview": "B"},
+novaic-cortex/tests/test_context_event_projection.py:637:                    "payload_ref": "payload:b",
+novaic-cortex/tests/test_context_event_projection.py:648:    assert [message["_metadata"]["payload_ref"] for message in snapshot.messages[1:]] == [
+novaic-cortex/tests/test_context_event_projection.py:656:        "_mcp_content": [
+novaic-cortex/tests/test_context_event_projection.py:672:                    "payload_ref": "payload:display-image",
+novaic-cortex/tests/test_context_event_projection.py:680:    assert "_mcp_content" in content
+novaic-cortex/tests/test_context_event_projection.py:706:                    "observation": {"summary": "done"},
+novaic-cortex/tests/test_context_event_projection.py:708:                    "payload_ref": "blob://cortex-payload/blob-1",
+novaic-cortex/tests/test_context_event_projection.py:717:    assert tool_message["_metadata"]["payload_ref"] == "blob://cortex-payload/blob-1"
+novaic-cortex/tests/test_context_event_projection.py:730:                    "observation": {"summary": "orphan"},
+novaic-cortex/tests/test_context_event_projection.py:731:                    "payload_ref": "payload:missing",
+novaic-cortex/tests/test_context_event_projection.py:775:                    "observation": {"preview": "internal output"},
+novaic-cortex/tests/test_context_event_projection.py:776:                    "payload_ref": "payload:shell",

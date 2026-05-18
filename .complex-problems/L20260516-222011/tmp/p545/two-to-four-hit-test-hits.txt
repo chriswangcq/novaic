@@ -1,0 +1,43 @@
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:82:                    if active_scope_id
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:85:                generation=1 if active_scope_id else 0,
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:86:                active_saga_id="saga-1" if active_scope_id else None,
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:147:    assert repo.get_active_session(session_key)["scope_id"] == "scope-1"
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:95:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:100:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:142:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:147:    assert repo.list_active_session_states() == []
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:48:        t1 = queue.publish("test.topic", {"x": 1}, saga_id=saga_id, step_name="step1", depends_on=[])
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:55:        t2 = queue.publish(
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:58:        t3 = queue.publish(
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:47:        "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:65:        "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:72:    assert out["remaining_stack"] == {"known": True, "depth": 0, "frames": []}
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:21:    assert outbox_source.count("self.queue.publish(") == 2
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:22:    assert "queue.publish(" not in repo_source
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:23:    assert "queue.publish(" not in wake_plan_source
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:39:    task_id = queue.publish("demo.topic", {"ok": True}, max_retries=5)
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:65:    task_id = queue.publish("demo.retry", {"ok": True}, max_retries=2)
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:93:    task_id = queue.publish("demo.cancel", {"agent_id": "agent-1"})
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:1:"""PR-43 legacy ``last_scope_id`` path retired by PR-69."""
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:91:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:113:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:276:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:308:    live_active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:151:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:173:    saga = orchestrator.get(repo.get_active_session(session_key)["saga_id"])
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:37:        "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:88:    assert events[0]["payload"]["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr284_session_event_vocabulary.py:24:        "session_suspected_dead_observed"
+novaic-agent-runtime/tests/test_pr284_session_event_vocabulary.py:97:    assert '"session_suspected_dead_observed"' not in source
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:61:    task_id = queue.publish("demo.topic", {"ok": True})
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:83:    task_id = queue.publish("demo.timeout", {"ok": True})
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:38:    """Build a tool_call dict in the OpenAI-compatible shape the saga
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:234:    assert payload["context"]["remaining_stack"] == {
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:15:def test_runtime_has_no_legacy_recap_builder_or_env_flags() -> None:
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:23:def test_runtime_handler_source_no_longer_mentions_legacy_recap_blocks() -> None:
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:118:        "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:129:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:157:        "remaining_stack": {"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:172:        remaining_stack={"known": True, "depth": 0, "frames": []},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:134:        {"role": "user", "content": "legacy context.read projection"},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:159:    assert "legacy context.read projection" not in contents

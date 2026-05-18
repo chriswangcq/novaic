@@ -1,0 +1,117 @@
+# P513 Focused Pytest Target Inventory
+
+## Discovery Commands
+
+- `rg --files novaic-agent-runtime/tests | rg "(queue|session|fsm|outbox|finalize|recovery|saga|dispatch|turn_finalizer)" | sort`
+- `rg -n "(Queue|queue|FSM|fsm|outbox|finalize|recovery|suspected_dead|session_ended|dispatch|Saga|saga|remaining_stack|generation)" novaic-agent-runtime/tests`
+- Filter: `awk '/^novaic-agent-runtime\/tests\/(.*\/)?test_.*\.py$/ {print}' filename-candidates.txt`
+
+## Counts
+
+- Filename candidates selected for focused test execution: `85`
+- Non-test selected paths: `0`
+- Content candidate lines retained for evidence: `3794`
+
+## Selected Focused Test Files
+
+- `novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py`
+- `novaic-agent-runtime/tests/test_finalize_summary_boundary.py`
+- `novaic-agent-runtime/tests/test_health_dispatch.py`
+- `novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py`
+- `novaic-agent-runtime/tests/test_pr235_session_ledger.py`
+- `novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py`
+- `novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py`
+- `novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py`
+- `novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py`
+- `novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py`
+- `novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py`
+- `novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py`
+- `novaic-agent-runtime/tests/test_pr252_session_state_ssot.py`
+- `novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py`
+- `novaic-agent-runtime/tests/test_pr254_finalize_ownership.py`
+- `novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py`
+- `novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py`
+- `novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py`
+- `novaic-agent-runtime/tests/test_pr260_session_harness_generic_fsm_cutover.py`
+- `novaic-agent-runtime/tests/test_pr261_generic_fsm_residue_cleanup.py`
+- `novaic-agent-runtime/tests/test_pr263_session_pending_projection_boundary.py`
+- `novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py`
+- `novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py`
+- `novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py`
+- `novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py`
+- `novaic-agent-runtime/tests/test_pr268_session_input_ledger_boundary.py`
+- `novaic-agent-runtime/tests/test_pr269_session_pending_projection_ledger_boundary.py`
+- `novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py`
+- `novaic-agent-runtime/tests/test_pr271_session_attach_flow_consolidation.py`
+- `novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py`
+- `novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py`
+- `novaic-agent-runtime/tests/test_pr274_session_repository_orchestrator_residue_removal.py`
+- `novaic-agent-runtime/tests/test_pr275_session_repository_required_outbox_dispatcher.py`
+- `novaic-agent-runtime/tests/test_pr276_session_repository_required_ledger.py`
+- `novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py`
+- `novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py`
+- `novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py`
+- `novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py`
+- `novaic-agent-runtime/tests/test_pr282_session_decision_trace_boundary.py`
+- `novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py`
+- `novaic-agent-runtime/tests/test_pr284_session_event_vocabulary.py`
+- `novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py`
+- `novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py`
+- `novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py`
+- `novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py`
+- `novaic-agent-runtime/tests/test_pr293_session_return_contract.py`
+- `novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py`
+- `novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py`
+- `novaic-agent-runtime/tests/test_pr304_task_lifecycle_fsm.py`
+- `novaic-agent-runtime/tests/test_pr305_task_fsm_store_ledger.py`
+- `novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py`
+- `novaic-agent-runtime/tests/test_pr307_taskqueue_old_sql_residue_cleanup.py`
+- `novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py`
+- `novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py`
+- `novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py`
+- `novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py`
+- `novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py`
+- `novaic-agent-runtime/tests/test_pr313_worker_lease_fsm.py`
+- `novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py`
+- `novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py`
+- `novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py`
+- `novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py`
+- `novaic-agent-runtime/tests/test_pr326_session_outbox_generic_worker.py`
+- `novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py`
+- `novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py`
+- `novaic-agent-runtime/tests/test_pr340_saga_launch_plans.py`
+- `novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py`
+- `novaic-agent-runtime/tests/test_pr344_queue_claim_busy_handling.py`
+- `novaic-agent-runtime/tests/test_pr345_recovery_background_defer.py`
+- `novaic-agent-runtime/tests/test_pr48_turn_finalizer.py`
+- `novaic-agent-runtime/tests/test_queue_explicit_dependencies.py`
+- `novaic-agent-runtime/tests/test_saga_creation_policy_boundary.py`
+- `novaic-agent-runtime/tests/test_scheduler_dispatch.py`
+- `novaic-agent-runtime/tests/test_session_init_message_ids.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_dedup_guard_failure_path.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_factory_client_multimodal.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`
+- `novaic-agent-runtime/tests/unit/task_queue/test_user_content.py`
+
+## Coverage Labels
+
+- Dispatch and active inbox: `test_pr233_active_inbox_dispatch.py`, `test_pr253_dispatch_pure_fsm_cutover.py`, `test_health_dispatch.py`, `test_scheduler_dispatch.py`.
+- Session ledger/state/FSM: `test_pr235_session_ledger.py`, `test_pr236_session_fsm_decision.py`, `test_pr252_session_state_ssot.py`, `test_pr260_session_harness_generic_fsm_cutover.py`, `test_pr283_session_state_taxonomy.py`, `test_pr285_session_fsm_decision_contract.py`.
+- Session outbox/attach/wake creation: `test_pr237_session_outbox_observe.py`, `test_pr248_attach_outbox_cutover.py`, `test_pr251_wake_creation_outbox_cutover.py`, `test_pr286a_session_outbox_worker.py`, `test_pr302_session_outbox_worker_production_wiring.py`, `test_pr326_session_outbox_generic_worker.py`.
+- Finalize/recovery/remaining stack: `test_pr245_suspected_dead_recovery.py`, `test_pr247_recovery_outbox_cutover.py`, `test_pr254_finalize_ownership.py`, `test_pr264_session_finalize_fsm_boundary.py`, `test_pr266_session_recovery_boundary.py`, `test_pr48_turn_finalizer.py`.
+- Generic FSM and task/saga FSM: `test_pr258_generic_fsm_substrate.py`, `test_pr259_generic_fsm_store_outbox.py`, `test_pr304_task_lifecycle_fsm.py`, `test_pr305_task_fsm_store_ledger.py`, `test_pr306_taskqueue_fsm_cutover.py`, `test_pr308_saga_lifecycle_fsm.py`, `test_pr309_saga_fsm_store_ledger.py`, `test_pr310_saga_repository_fsm_cutover.py`.
+- Saga compensation/outbox/generic workers: `test_pr311_saga_compensation_outbox_cutover.py`, `test_pr327_saga_outbox_generic_worker.py`, `test_pr333_saga_worker_handler_cutover.py`, `tests/unit/task_queue/test_saga_worker_boundary.py`.
+- Shell/tool output contract regression coverage remains in unit task queue tests because queue context assembly can be destabilized by tool outputs.
+
+## Exclusions
+
+- Non-queue runtime context tests without matching filename terms are not selected for this focused queue FSM run.
+- Non-test helper files such as `__init__.py` are explicitly filtered out.
+- Browser/device/UI tests are outside this queue FSM verification scope.

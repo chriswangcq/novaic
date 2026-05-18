@@ -1,0 +1,14 @@
+# Targeted Optional API Scan
+
+## task_queue exact risky terms
+
+## wake_finalize optional references
+
+## generic optional references in task_queue
+task_queue/handlers/runtime_handlers.py:51:        initial_context: list  (optional, for sub-subagent)
+task_queue/handlers/runtime_handlers.py:52:        user_message: str  (optional, for skill matching)
+task_queue/handlers/subagent_handlers.py:124:        result: str (optional)
+task_queue/retry_policy.py:69:            max_attempts: optional per-task/per-saga max override
+task_queue/tool_output.py:77:        optional = {
+task_queue/tool_output.py:89:        for key, value in optional.items():
+task_queue/utils/cortex_bridge.py:518:            task: optional task description.

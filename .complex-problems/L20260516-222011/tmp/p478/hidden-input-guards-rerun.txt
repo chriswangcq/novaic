@@ -1,0 +1,5 @@
+--- runtime env reads ---
+--- decision adapter direct ServiceConfig max reads ---
+react_think: ServiceConfig=False
+react_actions: ServiceConfig=False
+--- old ServiceConfig monkeypatch in focused tests ---

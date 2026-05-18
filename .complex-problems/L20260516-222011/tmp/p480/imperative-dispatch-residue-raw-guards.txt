@@ -1,0 +1,1078 @@
+--- direct saga creation / saga orchestration ---
+novaic-agent-runtime/task_queue/handlers/saga_handlers.py:12:from ..topics import SagaTopics
+novaic-agent-runtime/task_queue/handlers/saga_handlers.py:20:@register_handler(SagaTopics.SAGA_DECISION)
+novaic-agent-runtime/task_queue/handlers/saga_handlers.py:29:@register_handler(SagaTopics.SAGA_PARALLEL)
+novaic-agent-runtime/task_queue/handlers/saga_handlers.py:38:@register_handler(SagaTopics.SAGA_TRIGGER)
+novaic-agent-runtime/tests/test_pr340_handler_registry_metadata.py:47:    assert by_topic[topics.SagaTopics.SAGA_PARALLEL].pool == "control"
+novaic-agent-runtime/queue_service/routes.py:15:from queue_service.saga_repo import SagaRepository, SagaOrchestrator
+novaic-agent-runtime/queue_service/routes.py:46:    orchestrator: "SagaOrchestrator",
+novaic-agent-runtime/queue_service/routes.py:186:    orchestrator: Optional[SagaOrchestrator] = None,
+novaic-agent-runtime/queue_service/routes.py:193:        orchestrator: SagaOrchestrator 实例（可选）
+novaic-agent-runtime/queue_service/routes.py:201:        orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/routes.py:463:    orchestrator: Optional[SagaOrchestrator] = None,
+novaic-agent-runtime/queue_service/routes.py:470:        orchestrator: SagaOrchestrator 实例（可选）
+novaic-agent-runtime/task_queue/topics.py:6:    from task_queue.topics import TaskTopics, SagaTopics
+novaic-agent-runtime/task_queue/topics.py:58:class SagaTopics:
+novaic-agent-runtime/task_queue/topics.py:83:    return TaskTopics.all() + SagaTopics.all()
+novaic-agent-runtime/task_queue/topics.py:91:    SagaTopics.SAGA_PARALLEL,
+novaic-agent-runtime/task_queue/topics.py:92:    SagaTopics.SAGA_DECISION,
+novaic-agent-runtime/task_queue/topics.py:93:    SagaTopics.SAGA_TRIGGER,
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:82:    method_source = _method("SagaOrchestrator", "mark_failed")
+novaic-agent-runtime/tests/test_pr312_saga_old_sql_residue_cleanup.py:90:    method_source = _method("SagaOrchestrator", "mark_failed")
+novaic-agent-runtime/task_queue/sagas/react_think.py:35:from ..topics import TaskTopics, SagaTopics
+novaic-agent-runtime/task_queue/sagas/react_think.py:196:    topic=SagaTopics.SAGA_TRIGGER,
+novaic-agent-runtime/task_queue/sagas/react_think.py:203:    topic=SagaTopics.SAGA_TRIGGER,
+novaic-agent-runtime/task_queue/sagas/react_think.py:210:    topic=SagaTopics.SAGA_TRIGGER,
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:11:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:28:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:25:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/session_outbox.py:29:    CREATE_WAKE_SAGA = "create_wake_saga"
+novaic-agent-runtime/queue_service/session_outbox.py:140:            return self._publish_create_wake_saga(effect)
+novaic-agent-runtime/queue_service/session_outbox.py:148:    def _publish_create_wake_saga(self, effect: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_outbox.py:154:            "create_wake_saga outbox payload requires scope_id",
+novaic-agent-runtime/queue_service/session_outbox.py:159:            "create_wake_saga outbox payload requires session_key",
+novaic-agent-runtime/queue_service/session_outbox.py:164:            "create_wake_saga outbox payload requires agent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:169:            "create_wake_saga outbox payload requires subagent_id",
+novaic-agent-runtime/queue_service/session_outbox.py:174:            "create_wake_saga outbox payload requires saga_idempotency_key",
+novaic-agent-runtime/queue_service/session_outbox.py:179:            "create_wake_saga outbox payload requires saga_type",
+novaic-agent-runtime/queue_service/session_outbox.py:183:            surface="session outbox create_wake_saga",
+novaic-agent-runtime/queue_service/session_outbox.py:185:        saga_id = self.saga_orchestrator.create(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:11:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:45:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:14:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:34:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:25:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/main.py:146:from queue_service.saga_repo import SagaRepository, SagaOrchestrator
+novaic-agent-runtime/queue_service/main.py:172:# 创建 SagaOrchestrator
+novaic-agent-runtime/queue_service/main.py:173:saga_orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/main.py:179:logger.info("[Queue Service] SagaOrchestrator created")
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:34:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/task_queue/sagas/react_actions.py:29:from ..topics import TaskTopics, SagaTopics
+novaic-agent-runtime/task_queue/sagas/react_actions.py:185:    topic=SagaTopics.SAGA_TRIGGER,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:192:    topic=SagaTopics.SAGA_TRIGGER,
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:12:from ..topics import TaskTopics, SagaTopics
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:111:    topic=SagaTopics.SAGA_TRIGGER,
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:14:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:46:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:242:        if isinstance(node, ast.ClassDef) and node.name == "SagaOrchestrator"
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:28:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr277_session_outbox_required_saga_orchestrator.py:9:    assert source.count(".saga_orchestrator.create(") == 1
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:33:            effect_types=("create_wake_saga",),
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:42:        "effect_types": ["create_wake_saga"],
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:53:            effect_types=("create_wake_saga",),
+novaic-agent-runtime/queue_service/session_observed_events.py:77:                        reason="create_wake_saga outbox race loser",
+novaic-agent-runtime/queue_service/session_observed_events.py:93:                    reason="stale create_wake_saga observation",
+novaic-agent-runtime/tests/test_saga_creation_policy_boundary.py:96:        "effect_type": "create_wake_saga",
+novaic-agent-runtime/tests/test_saga_creation_policy_boundary.py:109:        dispatcher._publish_create_wake_saga(effect)
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:15:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:32:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:12:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:17:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:21:    def __init__(self, delegate: SagaOrchestrator):
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:45:    real_orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:356:        "create_wake_saga outbox payload requires agent_id"
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:372:    assert "_create_wake_saga_outbox_effect" not in source
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr290a_session_transition_write_hard_fail.py:32:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:24:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/queue_service/saga_outbox_worker.py:37:        orchestrator: SagaOrchestrator,
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:25:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:13:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:38:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:11:    build_create_wake_saga_effect,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:16:def test_build_create_wake_saga_effect_keeps_payload_and_key_shape():
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:17:    effect = build_create_wake_saga_effect(
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:142:    assert "build_create_wake_saga_effect(" not in repo_source
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:143:    assert "build_create_wake_saga_effect(" in wake_plan_source
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:149:    assert "_create_wake_saga_outbox_effect" not in repo_source
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:75:    assert "build_create_wake_saga_effect" not in source
+novaic-agent-runtime/tests/test_pr274_session_repository_orchestrator_residue_removal.py:16:    assert outbox_source.count(".saga_orchestrator.create(") == 1
+novaic-agent-runtime/queue_service/saga_repo.py:4:This module holds the DB-backed SagaRepository/SagaOrchestrator so that
+novaic-agent-runtime/queue_service/saga_repo.py:1140:class SagaOrchestrator(SagaRepository):
+novaic-agent-runtime/queue_service/saga_repo.py:1244:                    "[SagaOrchestrator] saga outbox effect failed: id=%s type=%s error=%s",
+novaic-agent-runtime/queue_service/saga_repo.py:1415:    raise RuntimeError("SagaOrchestrator saga outbox publisher must pass session event ids")
+novaic-agent-runtime/queue_service/saga_repo.py:1419:    raise RuntimeError("SagaOrchestrator saga outbox publisher must pass session outbox ids")
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:27:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:13:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:47:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:280:    assert not hasattr(SagaOrchestrator, "queue_recovery_scope_end_task")
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:27:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:8:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:13:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:27:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:12:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:54:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:15:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:29:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:252:    from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:275:    saga_orchestrator = SagaOrchestrator(
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:344:    from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/task_queue/workers/assembly_factories.py:368:        orchestrator=SagaOrchestrator(
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:30:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:18:from task_queue.topics import SagaTopics, TaskTopics
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:59:    assert set(SagaTopics.all()) == {
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:27:    orchestrator = SagaOrchestrator(
+novaic-agent-runtime/queue_service/session_wake_plan.py:11:from queue_service.session_effects import build_create_wake_saga_effect
+novaic-agent-runtime/queue_service/session_wake_plan.py:76:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_wake_plan.py:113:        outbox_effect=build_create_wake_saga_effect(
+novaic-agent-runtime/queue_service/session_effects.py:9:def build_create_wake_saga_effect(
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:55:    assert outbox_source.count(".saga_orchestrator.create(") == 1
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:10:from queue_service.saga_repo import SagaOrchestrator
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:27:    orchestrator = SagaOrchestrator(
+--- direct queue publish / side effect publish ---
+novaic-agent-runtime/queue_service/routes.py:219:        task_id = queue.publish(
+novaic-agent-runtime/queue_service/session_outbox.py:29:    CREATE_WAKE_SAGA = "create_wake_saga"
+novaic-agent-runtime/queue_service/session_outbox.py:30:    RECOVERY_ARCHIVE_SCOPE = "recovery_archive_scope"
+novaic-agent-runtime/queue_service/session_outbox.py:31:    PUBLISH_ATTACH_INPUT = "publish_attach_input"
+novaic-agent-runtime/queue_service/session_outbox.py:33:        CREATE_WAKE_SAGA,
+novaic-agent-runtime/queue_service/session_outbox.py:34:        RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/queue_service/session_outbox.py:35:        PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/queue_service/session_outbox.py:139:        if effect_type == self.CREATE_WAKE_SAGA:
+novaic-agent-runtime/queue_service/session_outbox.py:141:        if effect_type == self.RECOVERY_ARCHIVE_SCOPE:
+novaic-agent-runtime/queue_service/session_outbox.py:144:        if effect_type == self.PUBLISH_ATTACH_INPUT:
+novaic-agent-runtime/queue_service/session_outbox.py:145:            return self._publish_attach_input(effect)
+novaic-agent-runtime/queue_service/session_outbox.py:212:        self.queue.publish(
+novaic-agent-runtime/queue_service/session_outbox.py:230:    def _publish_attach_input(self, effect: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/queue_service/session_outbox.py:255:        task_id = self.queue.publish(
+novaic-agent-runtime/queue_service/session_outbox.py:278:        if effect.get("effect_type") == self.CREATE_WAKE_SAGA:
+novaic-agent-runtime/queue_service/session_outbox.py:298:        if effect.get("effect_type") == self.CREATE_WAKE_SAGA:
+novaic-agent-runtime/queue_service/session_outbox.py:300:        if effect.get("effect_type") != self.PUBLISH_ATTACH_INPUT:
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:62:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:64:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/task_queue/workers/saga_effects.py:35:        task_id = self.task_client.publish(
+novaic-agent-runtime/tests/test_pr317_sagarepository_state_candidate_cutover.py:110:    task_id = queue.publish(
+novaic-agent-runtime/queue_service/queue_db.py:75:        task_id = queue.publish("my_topic", {"key": "value"})
+novaic-agent-runtime/queue_service/session_wake_plan.py:77:            effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/queue_service/session_wake_plan.py:114:            effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:61:    task_id = queue.publish("demo.topic", {"ok": True})
+novaic-agent-runtime/tests/test_pr313_worker_lease_cutover.py:83:    task_id = queue.publish("demo.timeout", {"ok": True})
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:39:    task_id = queue.publish("demo.topic", {"ok": True}, max_retries=5)
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:65:    task_id = queue.publish("demo.retry", {"ok": True}, max_retries=2)
+novaic-agent-runtime/tests/test_pr306_taskqueue_fsm_cutover.py:93:    task_id = queue.publish("demo.cancel", {"agent_id": "agent-1"})
+novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py:255:            effect_type="publish_attach_input",
+novaic-agent-runtime/task_queue/workers/task_effects.py:84:        task_id = self.client.publish(
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:62:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/queue_service/session_repo.py:455:                effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/queue_service/session_repo.py:930:                effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:57:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:137:            effect_type="publish_attach_input",
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:250:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:55:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:15:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:59:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:97:        if effect["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:105:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:112:        if effect["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:126:        effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:133:        effect_types=[SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT],
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:150:            effect_type=OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT,
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:161:    assert OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT not in (
+novaic-agent-runtime/tests/test_pr295_session_audit_tooling.py:68:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:58:    worker.drain_once(effect_types=("publish_attach_input",), limit=3)
+novaic-agent-runtime/tests/test_pr286a_session_outbox_worker.py:61:        "effect_types": ["publish_attach_input"],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:27:        return self.queue.publish(topic, payload, **kwargs)
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:75:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:83:        if effect["effect_type"] == SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:123:        effect_types=[SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:192:        effect_types=[SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:210:        effect_types=[SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT],
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:305:    assert "_publish_attach_input_task" not in source
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:107:        effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:111:        "effect_type": SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:144:        effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:151:        effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:171:            effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:190:            effect_type=SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE,
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:60:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr314_queue_control_plane_audit_replay.py:151:    task_id = queue.publish("demo.topic", {"ok": True})
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:66:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:18:        effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:33:        "effect_type": SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:54:        effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:68:        "effect_type": SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:89:            effect_type=SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:108:        dispatcher._publish_attach_input({
+novaic-agent-runtime/tests/test_pr267_session_outbox_effect_boundary.py:124:        dispatcher._publish_attach_input({
+novaic-agent-runtime/task_queue/client.py:36:        task_id = client.publish("my_topic", {"key": "value"})
+novaic-agent-runtime/tests/test_queue_explicit_dependencies.py:22:    task_id = queue.publish("topic.explicit", {"ok": True})
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:57:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:87:        SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:88:        SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT,
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:157:        SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:158:        SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:17:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:103:    assert effect["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:115:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:130:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:135:        if row["effect_type"] == OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:153:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:182:        if effect["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:194:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:247:        if effect["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:252:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:289:    assert outbox[0]["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:296:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:307:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:332:        effect_type=SessionOutboxDispatcher.CREATE_WAKE_SAGA,
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:347:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:48:    task_id = queue.publish("demo.topic", {"ok": True})
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:64:    task_id = queue.publish("demo.stale", {"ok": True}, max_retries=2)
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:79:    task_id = queue.publish("demo.cancel", {"agent_id": "agent-1"})
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:92:    task_id = queue.publish("demo.claimed-cancel", {"agent_id": "agent-1"})
+novaic-agent-runtime/tests/test_pr316_taskqueue_state_candidate_cutover.py:111:    task_id = queue.publish("state.topic", {"ok": True})
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:13:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:69:    assert outbox[0]["effect_type"] == SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:77:        if effect["effect_type"] == OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:81:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:104:        effect["effect_type"] != OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:57:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:130:    assert outbox[0]["effect_type"] == SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:140:        effect_types=[SessionOutboxDispatcher.PUBLISH_ATTACH_INPUT],
+novaic-agent-runtime/tests/test_pr239_append_only_inbox.py:55:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:64:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:41:        SessionOutboxDispatcher.CREATE_WAKE_SAGA
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:76:        task_id = queue.publish(
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:98:        task2 = queue.publish(
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:105:        task3 = queue.publish(
+novaic-agent-runtime/tests/integration/test_saga_dag_refactor.py:146:        task_id = queue.publish("t", {})
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:75:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:12:    assert ".publish_attach_input_effect(" not in source
+novaic-agent-runtime/tests/test_pr281_session_outbox_wrapper_boundary.py:26:    assert "def publish_attach_input_effect(" not in source
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:28:        return super().publish(topic, payload, **kwargs)
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:80:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:134:        if effect["effect_type"] == SessionOutboxDispatcher.RECOVERY_ARCHIVE_SCOPE
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:57:        effect_types=[SessionOutboxDispatcher.CREATE_WAKE_SAGA],
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:48:        t1 = queue.publish("test.topic", {"x": 1}, saga_id=saga_id, step_name="step1", depends_on=[])
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:55:        t2 = queue.publish(
+novaic-agent-runtime/tests/integration/test_depends_on_prev_result.py:58:        t3 = queue.publish(
+--- active session / session mutation vocabulary ---
+novaic-agent-runtime/queue_service/routes.py:599:        return {"sessions": session_repo.list_active_session_states()}
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:34:def test_retired_active_sessions_table_has_no_runtime_references():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:43:    assert "tq_active_sessions" not in source
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:100:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:147:    assert repo.list_active_session_states() == []
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:14:    SessionRuntimeStatus,
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:81:                    SessionRuntimeStatus.ACTIVE
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:83:                    else SessionRuntimeStatus.NO_ACTIVE
+novaic-agent-runtime/tests/test_pr236_session_fsm_decision.py:147:    assert repo.get_active_session(session_key)["scope_id"] == "scope-1"
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:15:    SessionRuntimeStatus,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:24:                status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:44:                status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:58:                status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:78:                status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:98:                status=SessionRuntimeStatus.NO_ACTIVE,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:144:            status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:163:                status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:181:                state=SessionRuntimeStatus.ENDING.value,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:192:                status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:14:    SessionRuntimeStatus,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:22:        state=SessionRuntimeState(status=SessionRuntimeStatus.NO_ACTIVE, generation=0),
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:29:    assert decision.next_status is SessionRuntimeStatus.STARTING
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:38:            status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:49:    assert decision.next_status is SessionRuntimeStatus.ACTIVE
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:58:            status=SessionRuntimeStatus.STARTING,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:68:    assert decision.next_status is SessionRuntimeStatus.STARTING
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:77:            status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:87:    assert decision.next_status is SessionRuntimeStatus.ENDING
+novaic-agent-runtime/queue_service/session_observed_events.py:103:            self.ledger.record_active_session(
+novaic-agent-runtime/queue_service/session_rebuild.py:36:            session_ledger.record_active_session(
+novaic-agent-runtime/queue_service/session_ledger.py:24:from queue_service.session_fsm import SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_ledger.py:409:            state=SessionRuntimeStatus.ENDING.value,
+novaic-agent-runtime/queue_service/session_ledger.py:420:            state=SessionRuntimeStatus.NO_ACTIVE.value,
+novaic-agent-runtime/queue_service/session_ledger.py:431:    def record_active_session(
+novaic-agent-runtime/queue_service/session_ledger.py:445:            state=SessionRuntimeStatus.ACTIVE.value,
+novaic-agent-runtime/queue_service/session_ledger.py:488:                "state": SessionRuntimeStatus.NO_ACTIVE.value,
+novaic-agent-runtime/queue_service/session_ledger.py:494:            params=(SessionRuntimeStatus.ACTIVE.value,),
+novaic-agent-runtime/queue_service/session_ledger.py:504:            params=(SessionRuntimeStatus.ACTIVE.value,),
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:74:def test_fresh_schema_does_not_create_active_sessions_table(tmp_path):
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:79:    assert "tq_active_sessions" not in _table_names(db)
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:84:def test_dispatch_and_rebuild_use_session_state_without_active_sessions_table(tmp_path):
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:97:    assert repo.get_active_session("agent-1:main")["scope_id"] == "scope-1"
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:99:    assert repo.list_active_session_states()[0]["scope_id"] == "scope-1"
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:100:    assert "tq_active_sessions" not in _table_names(db)
+novaic-agent-runtime/tests/test_pr257_remove_active_sessions_table.py:114:    assert "tq_active_sessions" not in source
+novaic-agent-runtime/queue_service/session_repo.py:35:    SessionRuntimeStatus,
+novaic-agent-runtime/queue_service/session_repo.py:89:    status: SessionRuntimeStatus,
+novaic-agent-runtime/queue_service/session_repo.py:93:    if status is SessionRuntimeStatus.NO_ACTIVE:
+novaic-agent-runtime/queue_service/session_repo.py:158:            active = self._active_session_from_session_state(current_state)
+novaic-agent-runtime/queue_service/session_repo.py:201:                        state=SessionRuntimeStatus.SUSPECTED_DEAD.value,
+novaic-agent-runtime/queue_service/session_repo.py:248:                            state=SessionRuntimeStatus.ACTIVE.value,
+novaic-agent-runtime/queue_service/session_repo.py:472:            "state": SessionRuntimeStatus.STARTING.value,
+novaic-agent-runtime/queue_service/session_repo.py:611:                    state=SessionRuntimeStatus.NO_ACTIVE.value,
+novaic-agent-runtime/queue_service/session_repo.py:658:                state=SessionRuntimeStatus.STARTING.value,
+novaic-agent-runtime/queue_service/session_repo.py:697:    def get_active_session(self, session_key: str) -> Optional[Dict[str, Any]]:
+novaic-agent-runtime/queue_service/session_repo.py:700:            return self._active_session_state_in_current_transaction(session_key)
+novaic-agent-runtime/queue_service/session_repo.py:702:    def list_active_session_states(self) -> list:
+novaic-agent-runtime/queue_service/session_repo.py:737:    def _active_session_state_in_current_transaction(
+novaic-agent-runtime/queue_service/session_repo.py:742:        return self._active_session_from_session_state(state)
+novaic-agent-runtime/queue_service/session_repo.py:744:    def _active_session_from_session_state(
+novaic-agent-runtime/queue_service/session_repo.py:776:            SessionRuntimeStatus.ACTIVE
+novaic-agent-runtime/queue_service/session_repo.py:777:            if active_session else SessionRuntimeStatus.NO_ACTIVE
+novaic-agent-runtime/queue_service/session_repo.py:801:                status=SessionRuntimeStatus.NO_ACTIVE,
+novaic-agent-runtime/queue_service/session_repo.py:806:            status = SessionRuntimeStatus(raw_state)
+novaic-agent-runtime/queue_service/session_repo.py:870:            current_active = self._active_session_from_session_state(current_state)
+novaic-agent-runtime/queue_service/session_repo.py:888:                    "reason": "active_session_changed_before_attach",
+novaic-agent-runtime/queue_service/session_repo.py:962:                state=SessionRuntimeStatus.ACTIVE.value,
+novaic-agent-runtime/queue_service/session_fsm.py:18:class SessionRuntimeStatus(str, Enum):
+novaic-agent-runtime/queue_service/session_fsm.py:47:    status: SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_fsm.py:71:    next_status: SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_fsm.py:88:    next_status: SessionRuntimeStatus
+novaic-agent-runtime/queue_service/session_fsm.py:178:        next_status=SessionRuntimeStatus(decision.next_state.state),
+novaic-agent-runtime/queue_service/session_fsm.py:194:        SessionRuntimeStatus.ACTIVE
+novaic-agent-runtime/queue_service/session_fsm.py:196:        else SessionRuntimeStatus.NO_ACTIVE
+novaic-agent-runtime/queue_service/session_fsm.py:201:            generation=1 if status is SessionRuntimeStatus.ACTIVE else 0,
+novaic-agent-runtime/queue_service/session_fsm.py:251:        next_status=SessionRuntimeStatus(decision.next_state.state),
+novaic-agent-runtime/queue_service/session_fsm.py:262:    if state.state == SessionRuntimeStatus.NO_ACTIVE.value:
+novaic-agent-runtime/queue_service/session_fsm.py:264:            state=_with_status(state, SessionRuntimeStatus.STARTING),
+novaic-agent-runtime/queue_service/session_fsm.py:273:    if state.state != SessionRuntimeStatus.ACTIVE.value:
+novaic-agent-runtime/queue_service/session_fsm.py:387:            state=SessionRuntimeStatus.ENDING.value,
+novaic-agent-runtime/queue_service/session_fsm.py:430:    status: SessionRuntimeStatus,
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:308:    live_active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:109:    assert repo.get_active_session(session_key)["scope_id"] == first["scope_id"]
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:210:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:171:    saga = orchestrator.get(repo.get_active_session(session_key)["saga_id"])
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:20:    SessionRuntimeStatus,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:74:            status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:87:def test_dispatch_decision_starts_wake_when_no_active_session():
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:90:            status=SessionRuntimeStatus.NO_ACTIVE,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:104:            status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:223:    active = repo.get_active_session("agent-1:main")
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:263:    saga = orchestrator.get(repo.get_active_session("agent-1:main")["saga_id"])
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:326:    assert repo.get_active_session("agent-1:main") is not None
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:338:    saga = orchestrator.get(repo.get_active_session("agent-1:main")["saga_id"])
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:66:def _start_active_session(repo):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:94:    first = _start_active_session(repo)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:148:    first = _start_active_session(repo)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:176:    assert repo.get_active_session(session_key) is None
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:184:    first = _start_active_session(repo)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:204:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:229:    first = _start_active_session(repo)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:249:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:95:    assert repo.get_active_session(session_key) is None
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:120:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:201:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:255:    assert repo.get_active_session(session_key)["saga_id"] == "saga-1"
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:281:    assert repo.get_active_session(session_key) is None
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:314:    assert repo.get_active_session(session_key)["saga_id"] == "saga-1"
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:153:    saga = orchestrator.get(repo.get_active_session(session_key)["saga_id"])
+novaic-agent-runtime/tests/test_pr279_session_rebuild_projector_boundary.py:53:    assert "record_active_session" in source
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:30:def test_active_session_state_shape_is_owned_by_session_ledger(tmp_path):
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:35:        ledger.record_active_session(
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:77:    assert "record_active_session(" not in repo_source
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:78:    assert "record_active_session(" not in outbox_source
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:79:    assert "record_active_session(" in observed_source
+novaic-agent-runtime/tests/test_pr272_session_active_state_ledger_boundary.py:80:    assert "record_active_session(" in rebuild_source
+novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py:58:    assert repo.list_active_session_states() == []
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:110:    active = repo.get_active_session("agent-1:main")
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:163:    saga = orchestrator.get(repo.get_active_session("agent-1:main")["saga_id"])
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:223:    saga = orchestrator.get(repo.get_active_session("agent-1:main")["saga_id"])
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:226:    sessions = repo.list_active_session_states()
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:232:def test_concurrent_dispatches_create_one_active_session_and_one_attachment(tmp_path):
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:252:    sessions = repo.list_active_session_states()
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:62:def test_no_active_session_state_drives_start_routing(tmp_path):
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:90:    active = repo.get_active_session(session_key)
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:92:    assert repo.get_active_session(session_key)["scope_id"] == "scope-1"
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:97:def test_active_session_state_routes_attach(tmp_path):
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:184:    active = repo.get_active_session("agent-1:main")
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:189:    assert repo.get_active_session("stale-agent:main") is None
+novaic-agent-runtime/tests/test_pr252_session_state_ssot.py:190:    assert repo.list_active_session_states() == [active]
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:86:        "tq_active_sessions",
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:23:def test_active_session_harness_has_no_stale_dual_path_language():
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:28:    assert "tq_active_sessions" not in combined
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:68:    assert "record_active_session(" not in repo_source
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:69:    assert "record_active_session(" not in outbox_source
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:70:    assert "record_active_session(" in observed_source
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:71:    assert "record_active_session(" in rebuild_source
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:13:    SessionRuntimeStatus,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:19:def _decision_for(status: SessionRuntimeStatus):
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:23:            generation=1 if status is not SessionRuntimeStatus.NO_ACTIVE else 0,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:24:            active_saga_id="saga-1" if status is not SessionRuntimeStatus.NO_ACTIVE else None,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:25:            active_scope_id="scope-1" if status is not SessionRuntimeStatus.NO_ACTIVE else None,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:34:    decision = _decision_for(SessionRuntimeStatus.NO_ACTIVE)
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:41:    decision = _decision_for(SessionRuntimeStatus.ACTIVE)
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:50:        SessionRuntimeStatus.STARTING,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:51:        SessionRuntimeStatus.ENDING,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:52:        SessionRuntimeStatus.SUSPECTED_DEAD,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:53:        SessionRuntimeStatus.RECOVERING,
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:56:def test_non_attachable_lifecycle_states_buffer_new_input(status: SessionRuntimeStatus):
+novaic-agent-runtime/tests/test_pr283_session_state_taxonomy.py:97:    assert state.status is SessionRuntimeStatus.NO_ACTIVE
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:20:    SessionRuntimeStatus,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:108:            status=SessionRuntimeStatus.NO_ACTIVE,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:118:            status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr258_generic_fsm_substrate.py:130:            status=SessionRuntimeStatus.ACTIVE,
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:228:def test_attach_request_buffers_if_active_session_changes_before_record(tmp_path):
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:233:        ledger.record_active_session(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:265:        ledger.record_active_session(
+novaic-agent-runtime/tests/test_pr248_attach_outbox_cutover.py:293:        "reason": "active_session_changed_before_attach",
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:157:    session_ledger.record_active_session(
+--- finalize / session-ended / generation compatibility vocabulary ---
+novaic-agent-runtime/queue_service/routes.py:547:    finalize_reason: str
+novaic-agent-runtime/queue_service/routes.py:584:    def session_ended(req: SessionEndedRequest):
+novaic-agent-runtime/queue_service/routes.py:586:        result = session_repo.session_ended(
+novaic-agent-runtime/queue_service/routes.py:590:            finalize_reason=req.finalize_reason,
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:31:def handle_session_ended(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:34:    Called as the final step of the wake_finalize saga.
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:42:        finalize_reason: str
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:49:    finalize_reason = payload.get("finalize_reason")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:59:    if not finalize_reason:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:60:        raise ValidationError("Missing required field: finalize_reason")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:71:    result = saga_client.session_ended(
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:75:        finalize_reason=str(finalize_reason),
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:80:    if result.get("action") == "finalize_rejected":
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:82:        raise BusinessError(f"session_ended finalize_rejected: {reason}")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:69:    finalize_reason = payload.get("finalize_reason", "stack_empty")
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:105:        scope_id, session_generation, finalize_reason, round_num,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:115:            finalize_reason=str(finalize_reason or "stack_empty"),
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:122:            scope_id, finalize_reason, round_num, e,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:169:        "finalize_reason": finalize_reason,
+novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:258:    """Check Cortex skill stack depth. Used to decide finalize vs continue."""
+novaic-agent-runtime/queue_service/session_outbox.py:222:                "finalize_reason": payload.get("finalize_reason") or "recovery",
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py:86:    # id and the thing wake_finalize closes, but Cortex context assembly starts at
+novaic-agent-runtime/queue_service/main.py:332:            "session_ended": "/api/queue/session-ended",
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:1:"""PR-255 - retired session harness compatibility paths stay removed."""
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:15:def test_legacy_dispatch_route_module_is_removed():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:29:    assert "shadow_legacy_action" not in session_repo
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:31:    assert '"legacy_pending"' not in session_repo
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:56:def test_finalize_contract_is_required_at_public_boundaries():
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:60:    finalizer = _read("task_queue/sagas/wake_finalize.py")
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:62:    for required in ("finalize_reason", "generation", "remaining_stack"):
+novaic-agent-runtime/tests/test_pr255_legacy_compat_cleanup.py:66:        assert required in finalizer
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py:501:# There is no LLM-facing finalize/rest tool and no tool-side summary path.
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:12:    finalize_metadata = {
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:13:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:14:        "finalize_generation": 1,
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:33:        finalize_metadata=finalize_metadata,
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:46:        "finalize": finalize_metadata,
+novaic-agent-runtime/tests/test_pr265_session_restart_context_boundary.py:60:        finalize_metadata={},
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:62:def _require_terminal_finalize_identity(payload: Dict[str, Any], owner: str) -> None:
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:85:    _require_terminal_finalize_identity(payload, "subagent.set_sleeping")
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py:130:    _require_terminal_finalize_identity(payload, "subagent.set_completed")
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:89:    restarted = repo.session_ended(
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:93:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:113:        if event["payload"]["marker"].startswith("session_ended:")
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:136:    closed = repo.session_ended(
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:140:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:152:        if event["payload"]["marker"].startswith("session_ended:")
+novaic-agent-runtime/tests/test_pr243_inbox_restart_cutover.py:155:        "marker": f"session_ended:{session_key}:{first['scope_id']}",
+novaic-agent-runtime/task_queue/handlers/saga_handlers.py:46:        saga_type: str (react_think / react_actions / wake_finalize)
+novaic-agent-runtime/tests/test_health_dispatch.py:110:# ── PR-19 invariant: no fallback-dispatch surface ──────────────────────────
+novaic-agent-runtime/task_queue/saga_creation_policy.py:16:        "wake_finalize",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:1:"""PR-264 - finalize accept/reject decisions use the pure session FSM."""
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:16:    decide_session_finalize,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:20:def test_pure_session_fsm_finalize_matrix():
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:32:            "missing_generation",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:35:                "action": "finalize_rejected",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:36:                "reason": "missing_generation",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:52:            "finalize_accepted",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:69:                "action": "finalize_rejected",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:89:                "action": "finalize_rejected",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:104:            "finalize_accepted",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:113:        finalize_generation,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:119:        decision = decide_session_finalize(SessionFinalizeInput(
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:122:            finalize_generation=finalize_generation,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:131:def test_session_repository_no_longer_builds_finalize_rejection_payloads():
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:134:    assert "decide_session_finalize(" in source
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:141:def test_pure_session_fsm_rejects_malformed_finalize_generation():
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:142:    decision = decide_session_finalize(SessionFinalizeInput(
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:150:        finalize_generation=True,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:154:    assert decision.reason == "missing_generation"
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:161:        decide_session_finalize(SessionFinalizeInput(
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:169:            finalize_generation=1,
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:180:                machine_id="finalize",
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:189:    with pytest.raises(ValueError, match="session finalize decision"):
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:190:        decide_session_finalize(SessionFinalizeInput(
+novaic-agent-runtime/tests/test_pr264_session_finalize_fsm_boundary.py:198:            finalize_generation=1,
+novaic-agent-runtime/queue_service/session_recovery.py:78:        "reason": payload.get("reason") or "wake_finalize_failed",
+novaic-agent-runtime/queue_service/session_recovery.py:157:            "known": bool(recovery_metadata.get("stack_known_at_finalize", True)),
+novaic-agent-runtime/queue_service/session_recovery.py:159:                recovery_metadata.get("stack_depth_at_finalize"),
+novaic-agent-runtime/queue_service/session_recovery.py:160:                "stack_depth_at_finalize",
+novaic-agent-runtime/queue_service/session_recovery.py:174:            "finalize_reason": (
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:16:    decide_session_finalize,
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:74:def test_finalize_accept_decision_declares_ending_and_finalize_effect():
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:75:    decision = decide_session_finalize(SessionFinalizeInput(
+novaic-agent-runtime/tests/test_pr285_session_fsm_decision_contract.py:83:        finalize_generation=4,
+novaic-agent-runtime/queue_service/session_wake_plan.py:99:    finalize_metadata: Mapping[str, Any],
+novaic-agent-runtime/queue_service/session_wake_plan.py:106:        finalize_metadata=finalize_metadata,
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:1:"""Turn finalizer behavior around shell agentctl im reply.
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:9:an already-empty stack can finalize immediately.
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:16:    3. stack empty        → finalize (existing)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:28:    _decide_finalize_or_continue,
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:30:    _build_trigger_finalize_payload,
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:38:    """Build a tool_call dict in the OpenAI-compatible shape the saga
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:104:    # must NOT short-circuit it into finalize from here.
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:123:# ── _decide_finalize_or_continue — priority order ─────────────────
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:133:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:135:    assert decision["force_finalize_reason"] is None
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:142:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:143:    assert decision["force_finalize_reason"] is None
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:147:def test_non_shell_im_reply_does_not_force_reply_finalize():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:150:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:151:    assert decision["force_finalize_reason"] is None
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:155:def test_shell_reply_no_followup_finalizes_when_stack_already_empty():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:158:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:159:    assert decision["force_finalize_reason"] == "reply_no_followup"
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:170:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:172:    assert decision["force_finalize_reason"] is None
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:175:def test_shell_agentctl_reply_with_concurrent_tool_does_not_finalize():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:185:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:186:    assert decision["force_finalize_reason"] is None
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:191:    """Pre-PR-48 natural finalize path: empty stack → finalize, no force
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:196:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:198:    assert decision["force_finalize_reason"] is None
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:201:def test_round_cap_still_forces_finalize():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:202:    """REPLY_NO_FOLLOWUP and round_cap are both force-finalize reasons.
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:208:    decision = _decide_finalize_or_continue(
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:212:            max_rounds_before_force_finalize=5,
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:216:    assert decision["force_finalize_reason"] == "round_cap"
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:218:    assert decision["should_finalize"] is True
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:221:# ── End-to-end: decision feeds finalize payload correctly ─────────
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:224:def test_finalize_payload_carries_reply_no_followup_reason():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:225:    """wake_finalize records ``finalize_reason`` for the audit trail.
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:230:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:231:    payload = _build_trigger_finalize_payload(ctx, decision)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:232:    assert payload["saga_type"] == "wake_finalize"
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:233:    assert payload["context"]["finalize_reason"] == "reply_no_followup"
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:234:    assert payload["context"]["stack_depth_at_finalize"] == 0
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:236:    assert "wake-finalize-scope-A-r1" in payload["idempotency_key"]
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:239:def test_finalize_payload_falls_back_to_stack_empty_reason():
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:240:    """Natural finalize (no force reason) still tags as ``stack_empty``.
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:244:    decision = _decide_finalize_or_continue(ctx, results)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:245:    payload = _build_trigger_finalize_payload(ctx, decision)
+novaic-agent-runtime/tests/test_pr48_turn_finalizer.py:246:    assert payload["context"]["finalize_reason"] == "stack_empty"
+novaic-agent-runtime/queue_service/session_events.py:20:    SESSION_FINALIZE_REJECTED = "session_finalize_rejected"
+novaic-agent-runtime/queue_service/session_events.py:21:    SESSION_FINALIZED = "session_finalized"
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:104:        effect_type="create_wake_finalize_saga",
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:111:        effect_type="create_wake_finalize_saga",
+novaic-agent-runtime/tests/test_pr309_saga_fsm_store_ledger.py:117:        "create_wake_finalize_saga"
+novaic-agent-runtime/queue_service/saga_repo.py:1120:# Saga types that need wake_finalize compensation on failure
+novaic-agent-runtime/queue_service/saga_repo.py:1177:          1. WAKE/think/actions saga fails → enqueue wake_finalize creation.
+novaic-agent-runtime/queue_service/saga_repo.py:1178:          2. wake_finalize itself fails → enqueue session suspected-dead event.
+novaic-agent-runtime/queue_service/saga_repo.py:1192:            effect = self._build_wake_finalize_compensation_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1199:        elif saga and saga_type == "wake_finalize":
+novaic-agent-runtime/queue_service/saga_repo.py:1219:            "create_wake_finalize_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:1260:        if effect_type == "create_wake_finalize_saga":
+novaic-agent-runtime/queue_service/saga_repo.py:1272:    def _build_wake_finalize_compensation_effect(
+novaic-agent-runtime/queue_service/saga_repo.py:1284:        finalize_context = {
+novaic-agent-runtime/queue_service/saga_repo.py:1290:            "finalize_reason": f"compensation:{saga_type}_failed",
+novaic-agent-runtime/queue_service/saga_repo.py:1296:            "stack_known_at_finalize",
+novaic-agent-runtime/queue_service/saga_repo.py:1297:            "stack_depth_at_finalize",
+novaic-agent-runtime/queue_service/saga_repo.py:1301:                finalize_context[key] = context[key]
+novaic-agent-runtime/queue_service/saga_repo.py:1302:        idempotency_key = f"wake-finalize-{scope_id}-comp"
+novaic-agent-runtime/queue_service/saga_repo.py:1304:            "effect_type": "create_wake_finalize_saga",
+novaic-agent-runtime/queue_service/saga_repo.py:1306:                "saga_type": "wake_finalize",
+novaic-agent-runtime/queue_service/saga_repo.py:1307:                "context": finalize_context,
+novaic-agent-runtime/queue_service/saga_repo.py:1310:            "idempotency_key": f"saga-compensation:{saga_id}:wake_finalize",
+novaic-agent-runtime/queue_service/saga_repo.py:1357:            "reason": "wake_finalize_failed",
+novaic-agent-runtime/queue_service/saga_repo.py:1361:            "finalize_reason": saga_context.get(
+novaic-agent-runtime/queue_service/saga_repo.py:1362:                "finalize_reason",
+novaic-agent-runtime/queue_service/saga_repo.py:1363:                "wake_finalize_failed",
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:17:from task_queue.sagas.wake_finalize import WAKE_FINALIZE_SAGA
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:66:def test_wake_finalize_steps_match_current_lifecycle_contract():
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:69:        ("session_ended", "session.ended"),
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:75:def test_wake_finalize_status_tasks_are_gated_by_session_ended():
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:79:    assert by_name["session_ended"]["depends_on"] == ["cortex_scope_end"]
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:80:    assert by_name["set_subagent_sleeping"]["depends_on"] == ["session_ended"]
+novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:81:    assert by_name["set_subagent_completed"]["depends_on"] == ["session_ended"]
+novaic-agent-runtime/queue_service/session_ledger.py:343:    def record_session_finalize_rejected(
+novaic-agent-runtime/queue_service/session_ledger.py:351:        finalize_metadata: dict[str, Any],
+novaic-agent-runtime/queue_service/session_ledger.py:354:        finalize_generation: int,
+novaic-agent-runtime/queue_service/session_ledger.py:355:        finalize_reason: str,
+novaic-agent-runtime/queue_service/session_ledger.py:359:        idempotency_suffix = finalize_reason
+novaic-agent-runtime/queue_service/session_ledger.py:361:            idempotency_suffix = f"{finalize_reason}:scope_mismatch"
+novaic-agent-runtime/queue_service/session_ledger.py:369:            payload={**dict(finalize_metadata), "result": dict(result or {})},
+novaic-agent-runtime/queue_service/session_ledger.py:371:                "finalize-rejected:"
+novaic-agent-runtime/queue_service/session_ledger.py:372:                f"{session_key}:{scope_id}:{finalize_generation}:"
+novaic-agent-runtime/queue_service/session_ledger.py:378:    def record_session_finalized(
+novaic-agent-runtime/queue_service/session_ledger.py:388:        finalize_metadata: dict[str, Any],
+novaic-agent-runtime/queue_service/session_ledger.py:390:        finalize_reason: str,
+novaic-agent-runtime/queue_service/session_ledger.py:400:            payload=dict(finalize_metadata),
+novaic-agent-runtime/queue_service/session_ledger.py:402:                f"finalize:{session_key}:{scope_id}:"
+novaic-agent-runtime/queue_service/session_ledger.py:403:                f"{event_generation}:{finalize_reason}"
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:35:            effect_types=("wake_finalize",),
+novaic-agent-runtime/tests/test_pr327_saga_outbox_generic_worker.py:45:        "effect_types": ["wake_finalize"],
+novaic-agent-runtime/queue_service/session_repo.py:11:- session_ended():  Clean up session, optionally restart from pending inbox
+novaic-agent-runtime/queue_service/session_repo.py:37:    decide_session_finalize,
+novaic-agent-runtime/queue_service/session_repo.py:502:    def session_ended(
+novaic-agent-runtime/queue_service/session_repo.py:508:        finalize_reason: Optional[str] = None,
+novaic-agent-runtime/queue_service/session_repo.py:520:        if not (finalize_reason or "").strip():
+novaic-agent-runtime/queue_service/session_repo.py:521:            raise ValueError("finalize_reason is required for session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:523:            raise ValueError("remaining_stack is required for session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:524:        finalize_generation = _require_positive_generation(generation, "session finalize")
+novaic-agent-runtime/queue_service/session_repo.py:525:        finalize_metadata = {
+novaic-agent-runtime/queue_service/session_repo.py:526:            "finalize_reason": finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:527:            "finalize_generation": finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:532:        # Step 1: finalize the active generation and derive restart source from inbox.
+novaic-agent-runtime/queue_service/session_repo.py:535:            finalize_decision = decide_session_finalize(SessionFinalizeInput(
+novaic-agent-runtime/queue_service/session_repo.py:538:                finalize_generation=finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:540:            if finalize_decision.action is SessionFinalizeAction.REJECT_FINALIZE:
+novaic-agent-runtime/queue_service/session_repo.py:541:                result = finalize_decision.result
+novaic-agent-runtime/queue_service/session_repo.py:542:                self.session_ledger.record_session_finalize_rejected(
+novaic-agent-runtime/queue_service/session_repo.py:547:                    event_generation=finalize_decision.event_generation,
+novaic-agent-runtime/queue_service/session_repo.py:548:                    finalize_metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:551:                    finalize_generation=finalize_generation,
+novaic-agent-runtime/queue_service/session_repo.py:552:                    finalize_reason=finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:553:                    rejection_reason=finalize_decision.reason,
+novaic-agent-runtime/queue_service/session_repo.py:558:            event_generation = finalize_decision.event_generation
+novaic-agent-runtime/queue_service/session_repo.py:559:            self.session_ledger.record_session_finalized(
+novaic-agent-runtime/queue_service/session_repo.py:573:                finalize_metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:575:                finalize_reason=finalize_reason,
+novaic-agent-runtime/queue_service/session_repo.py:588:                marker=f"session_ended:{session_key}:{scope_id}",
+novaic-agent-runtime/queue_service/session_repo.py:594:                    "[SessionCoordinator] session_ended closed: %s scope=%s",
+novaic-agent-runtime/queue_service/session_repo.py:609:                    metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:632:                finalize_metadata=finalize_metadata,
+novaic-agent-runtime/queue_service/session_repo.py:638:                "[SessionCoordinator] session_ended queued restart: %s scope=%s trigger=%s",
+novaic-agent-runtime/tests/test_pr253_dispatch_pure_fsm_cutover.py:62:def test_session_repository_no_longer_imports_legacy_dispatch_route():
+novaic-agent-runtime/queue_service/session_fsm.py:34:    ACCEPT_FINALIZE = "accept_finalize"
+novaic-agent-runtime/queue_service/session_fsm.py:35:    REJECT_FINALIZE = "reject_finalize"
+novaic-agent-runtime/queue_service/session_fsm.py:42:    FINALIZE_SESSION = "finalize_session"
+novaic-agent-runtime/queue_service/session_fsm.py:79:    finalize_generation: int
+novaic-agent-runtime/queue_service/session_fsm.py:218:def decide_session_finalize(decision_input: SessionFinalizeInput) -> SessionFinalizeDecision:
+novaic-agent-runtime/queue_service/session_fsm.py:219:    """Decide whether one finalize event may close the active generation."""
+novaic-agent-runtime/queue_service/session_fsm.py:223:        machine_id="finalize",
+novaic-agent-runtime/queue_service/session_fsm.py:232:        event_type="session_finalize",
+novaic-agent-runtime/queue_service/session_fsm.py:235:            "finalize_generation": decision_input.finalize_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:241:        reducer=_reduce_session_finalize,
+novaic-agent-runtime/queue_service/session_fsm.py:248:            "session finalize decision",
+novaic-agent-runtime/queue_service/session_fsm.py:313:def _reduce_session_finalize(
+novaic-agent-runtime/queue_service/session_fsm.py:319:    finalize_generation = _positive_generation_or_none(
+novaic-agent-runtime/queue_service/session_fsm.py:320:        event.payload.get("finalize_generation")
+novaic-agent-runtime/queue_service/session_fsm.py:323:        state.generation, "session finalize state"
+novaic-agent-runtime/queue_service/session_fsm.py:328:    if finalize_generation is None:
+novaic-agent-runtime/queue_service/session_fsm.py:332:            reason="missing_generation",
+novaic-agent-runtime/queue_service/session_fsm.py:336:                    "action": "finalize_rejected",
+novaic-agent-runtime/queue_service/session_fsm.py:337:                    "reason": "missing_generation",
+novaic-agent-runtime/queue_service/session_fsm.py:347:        and finalize_generation != current_generation
+novaic-agent-runtime/queue_service/session_fsm.py:356:                    "action": "finalize_rejected",
+novaic-agent-runtime/queue_service/session_fsm.py:359:                    "actual_generation": finalize_generation,
+novaic-agent-runtime/queue_service/session_fsm.py:373:                    "action": "finalize_rejected",
+novaic-agent-runtime/queue_service/session_fsm.py:382:    event_generation = finalize_generation
+novaic-agent-runtime/queue_service/session_fsm.py:392:        reason="finalize_accepted",
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:270:    closed = repo.session_ended(
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:274:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:292:        "session_finalized",
+novaic-agent-runtime/tests/test_pr235_session_ledger.py:298:    assert result_events[2]["payload"]["finalize_reason"] == "stack_empty"
+novaic-agent-runtime/task_queue/sagas/react_config.py:12:        max_rounds_before_force_finalize=(
+novaic-agent-runtime/queue_service/session_projection.py:111:    finalize_metadata: Mapping[str, Any],
+novaic-agent-runtime/queue_service/session_projection.py:124:        "finalize": dict(finalize_metadata),
+novaic-agent-runtime/task_queue/sagas/react_think.py:11:   c. No tool_calls + already retried → trigger wake_finalize
+novaic-agent-runtime/task_queue/sagas/react_think.py:25:    build_trigger_finalize,
+novaic-agent-runtime/task_queue/sagas/react_think.py:87:    """Decide between actions / retry_think / finalize.
+novaic-agent-runtime/task_queue/sagas/react_think.py:89:    P0-5 / INV-2 — **never finalize with a non-empty stack.** When the LLM returns
+novaic-agent-runtime/task_queue/sagas/react_think.py:93:    - ``stack_depth == 0`` (and ``stack_known``) → safe to finalize.
+novaic-agent-runtime/task_queue/sagas/react_think.py:96:      ``skill_end``. After the bound, force finalize with a structured reason —
+novaic-agent-runtime/task_queue/sagas/react_think.py:98:    - ``round_num >= MAX_ROUNDS_BEFORE_FORCE_FINALIZE`` → force finalize regardless
+novaic-agent-runtime/task_queue/sagas/react_think.py:107:        max_rounds_before_force_finalize=(
+novaic-agent-runtime/task_queue/sagas/react_think.py:108:            config.max_rounds_before_force_finalize
+novaic-agent-runtime/task_queue/sagas/react_think.py:133:        "[react_think.decide] scope=%s round=%s stack_depth=%s next=finalize reason=%s",
+novaic-agent-runtime/task_queue/sagas/react_think.py:137:        decision.get("finalize_reason"),
+novaic-agent-runtime/task_queue/sagas/react_think.py:149:def _build_trigger_finalize(ctx, decision):
+novaic-agent-runtime/task_queue/sagas/react_think.py:150:    """Carry the finalize decision context into wake_finalize.
+novaic-agent-runtime/task_queue/sagas/react_think.py:152:    P0-5: ``finalize_reason`` is always populated by ``_decide_and_build_actions``
+novaic-agent-runtime/task_queue/sagas/react_think.py:155:    return build_trigger_finalize(ReactThinkInput.from_context(ctx), decision or {})
+novaic-agent-runtime/task_queue/sagas/react_think.py:209:    name="trigger_finalize",
+novaic-agent-runtime/task_queue/sagas/react_think.py:211:    build_payload=_build_trigger_finalize,
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:83:    restarted = repo.session_ended(
+novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:87:        finalize_reason="stack_empty",
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:26:    """Feed finalize_reason + round_num into archival for audit logs.
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:38:        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:54:    explicitly through Environment IM before this finalize step.
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:73:    return require_positive_session_generation(ctx, "wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:102:    stack_known = ctx.get("stack_known_at_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:106:        ctx.get("stack_depth_at_finalize"), "stack_depth_at_finalize"
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:115:def _build_session_ended_payload(ctx):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:122:        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:129:WAKE_FINALIZE_SAGA = SagaDefinition("wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:139:    name="session_ended",
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:141:    build_payload=_build_session_ended_payload,
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:149:    depends_on=["session_ended"],
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:157:    depends_on=["session_ended"],
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:1:"""PR-245 / FSM-06A - wake_finalize failure becomes a recovery event."""
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:75:def test_wake_finalize_failure_only_records_suspected_dead_event(tmp_path):
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:87:    finalize_saga_id = orchestrator.create(
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:88:        "wake_finalize",
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:98:        idempotency_key="finalize-pr245",
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:101:    orchestrator.mark_failed(finalize_saga_id, "scope_end failed")
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:102:    orchestrator.mark_failed(finalize_saga_id, "scope_end failed")
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:119:    assert payload["failed_saga_id"] == finalize_saga_id
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:120:    assert payload["reason"] == "wake_finalize_failed"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:124:        f"suspected:{session_key}:{finalize_saga_id}"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:130:def test_wake_finalize_failure_without_session_state_rejects_generation_zero(tmp_path):
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:133:    finalize_saga_id = orchestrator.create(
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:134:        "wake_finalize",
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:142:        idempotency_key="finalize-orphan",
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:145:    orchestrator.mark_failed(finalize_saga_id, "scope_end failed")
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:179:    finalize_saga_id = orchestrator.create(
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:180:        "wake_finalize",
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:190:        idempotency_key="finalize-pr245-with-inbox",
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:192:    orchestrator.mark_failed(finalize_saga_id, "scope_end failed")
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:220:    assert saga["context"]["recovery_failed_saga_id"] == finalize_saga_id
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:239:    assert archive_payload["finalize_reason"] == "recovery:wake_finalize_failed"
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:252:def test_wake_finalize_failure_branch_has_no_direct_session_mutation():
+novaic-agent-runtime/tests/test_pr245_suspected_dead_recovery.py:254:    branch = source.split('elif saga and saga_type == "wake_finalize":', 1)[1]
+novaic-agent-runtime/task_queue/sagas/__init__.py:8:- wake_finalize:    Runtime cleanup after the active wake scope stack drains
+novaic-agent-runtime/task_queue/sagas/__init__.py:26:            SagaDefinition("wake_finalize")
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:132:    restarted = repo.session_ended(
+novaic-agent-runtime/tests/test_pr241_pending_inbox_projection.py:136:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:193:def test_wake_finalize_failure_records_suspected_dead_event(tmp_path):
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:204:    finalize_saga_id = orchestrator.create(
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:205:        "wake_finalize",
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:211:            "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:213:        idempotency_key="finalize-old-wake",
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:216:    orchestrator.mark_failed(finalize_saga_id, "cortex scope_end failed")
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:241:    assert suspected_payload["failed_saga_id"] == finalize_saga_id
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:242:    assert suspected_payload["reason"] == "wake_finalize_failed"
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:243:    assert suspected_event[1] == f"suspected:agent-1:main:{finalize_saga_id}"
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:281:    assert archive_payload["finalize_reason"] == "recovery:wake_finalize_failed"
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:310:    finalize_saga_id = orchestrator.create(
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:311:        "wake_finalize",
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:318:        idempotency_key="finalize-old-wake-with-pending",
+novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py:320:    orchestrator.mark_failed(finalize_saga_id, "session cleanup failed")
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:1:"""PR-70 regression — runtime finalize must not synthesize summary.md.
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:7:Runtime-owned force-finalize is lifecycle only. It may archive the wake
+novaic-agent-runtime/tests/test_pr70_explicit_skill_summary_only.py:38:        "finalize_reason": "reply_no_followup",
+novaic-agent-runtime/task_queue/sagas/react_actions.py:8:4. Decision: stack empty → wake_finalize, otherwise → ReactThink
+novaic-agent-runtime/task_queue/sagas/react_actions.py:20:    build_trigger_finalize_payload,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:22:    decide_finalize_or_continue,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:43:# finalize and auto-close with an empty summary". We only finalize after a
+novaic-agent-runtime/task_queue/sagas/react_actions.py:50:#                      If the stack is empty, finalize; if the stack is
+novaic-agent-runtime/task_queue/sagas/react_actions.py:84:def _decide_finalize_or_continue(
+novaic-agent-runtime/task_queue/sagas/react_actions.py:89:    """Pick the next control-flow target: finalize vs continue thinking.
+novaic-agent-runtime/task_queue/sagas/react_actions.py:96:      1. Round cap reached → force finalize (runaway safety).
+novaic-agent-runtime/task_queue/sagas/react_actions.py:98:      3. Stack empty → finalize.
+novaic-agent-runtime/task_queue/sagas/react_actions.py:105:    decision = decide_finalize_or_continue(
+novaic-agent-runtime/task_queue/sagas/react_actions.py:108:        max_rounds_before_force_finalize=(
+novaic-agent-runtime/task_queue/sagas/react_actions.py:109:            config.max_rounds_before_force_finalize
+novaic-agent-runtime/task_queue/sagas/react_actions.py:114:    if decision.get("force_finalize_reason") == "reply_no_followup":
+novaic-agent-runtime/task_queue/sagas/react_actions.py:115:        metric_inc("turn_finalizer_total", reason="reply_no_followup")
+novaic-agent-runtime/task_queue/sagas/react_actions.py:117:            "[react_actions.decide_finalize] event=turn_finalizer scope=%s round=%s "
+novaic-agent-runtime/task_queue/sagas/react_actions.py:118:            "reason=reply_no_followup stack_depth=%s next=finalize tool_calls=%s",
+novaic-agent-runtime/task_queue/sagas/react_actions.py:124:    if decision.get("force_finalize_reason") in {"round_cap", "repeated_scope_mismatch"}:
+novaic-agent-runtime/task_queue/sagas/react_actions.py:125:        metric_inc("turn_finalizer_total", reason=str(decision.get("force_finalize_reason")))
+novaic-agent-runtime/task_queue/sagas/react_actions.py:128:        "[react_actions.decide_finalize] scope=%s round=%s stack_depth=%s "
+novaic-agent-runtime/task_queue/sagas/react_actions.py:129:        "stack_known=%s stack_empty=%s should_finalize=%s force_finalize_reason=%s "
+novaic-agent-runtime/task_queue/sagas/react_actions.py:133:        decision.get("should_finalize", decision["stack_empty"]),
+novaic-agent-runtime/task_queue/sagas/react_actions.py:134:        decision["force_finalize_reason"],
+novaic-agent-runtime/task_queue/sagas/react_actions.py:137:        "finalize" if decision.get("should_finalize", decision["stack_empty"]) else "think",
+novaic-agent-runtime/task_queue/sagas/react_actions.py:146:def _build_trigger_finalize_payload(ctx, decision):
+novaic-agent-runtime/task_queue/sagas/react_actions.py:147:    """Propagate decision context so wake_finalize records why it ran.
+novaic-agent-runtime/task_queue/sagas/react_actions.py:149:    finalize_reason is either a forced-finalize cause (e.g. 'round_cap') or
+novaic-agent-runtime/task_queue/sagas/react_actions.py:157:    return build_trigger_finalize_payload(ReactActionsInput.from_context(ctx), decision or {})
+novaic-agent-runtime/task_queue/sagas/react_actions.py:179:    name="decide_finalize",
+novaic-agent-runtime/task_queue/sagas/react_actions.py:180:    decide=_decide_finalize_or_continue,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:187:    condition=lambda d: not d.get("should_finalize", d.get("stack_empty", False)),
+novaic-agent-runtime/task_queue/sagas/react_actions.py:191:    name="trigger_finalize",
+novaic-agent-runtime/task_queue/sagas/react_actions.py:193:    build_payload=_build_trigger_finalize_payload,
+novaic-agent-runtime/task_queue/sagas/react_actions.py:194:    condition=lambda d: d.get("should_finalize", d.get("stack_empty", False)),
+novaic-agent-runtime/tests/test_pr112_business_client_boundary.py:46:def test_business_client_init_has_no_ignored_backcompat_parameters():
+novaic-agent-runtime/task_queue/client.py:476:    def session_ended(
+novaic-agent-runtime/task_queue/client.py:482:        finalize_reason: str,
+novaic-agent-runtime/task_queue/client.py:497:            "finalize_reason": finalize_reason,
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:153:    restarted = repo.session_ended(
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:157:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:212:    restarted = repo.session_ended(
+novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py:216:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:1:"""Runtime finalize must not synthesize durable summaries."""
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:6:from task_queue.sagas.react_actions import _build_trigger_finalize_payload
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:7:from task_queue.sagas.wake_finalize import _build_cortex_scope_end_payload
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:23:def test_trigger_finalize_payload_does_not_propagate_im_reply_summary():
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:32:    decision = {"force_finalize_reason": None, "round_num": 3}
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:33:    payload = _build_trigger_finalize_payload(ctx, decision)
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:45:        "finalize_reason": "reply_no_followup",
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:56:def test_cortex_scope_end_payload_records_finalize_reason_only():
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:62:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_finalize_summary_boundary.py:69:    assert out["finalize_reason"] == "stack_empty"
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:82:def test_active_queue_coordinators_have_no_legacy_dual_path_language():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:90:        "legacy",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:91:        "compat",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:92:        "fallback",
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:100:def test_generation_must_come_from_fsm_state_not_projection_fallback():
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:106:    assert "fallback" not in queue_source
+novaic-agent-runtime/tests/test_pr315_queue_fsm_final_residue_guard.py:107:    assert "fallback" not in saga_source
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:25:            "reason": "wake_finalize_failed",
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:59:        finalize_metadata={"finalize_reason": "stack_empty"},
+novaic-agent-runtime/tests/test_pr280_session_wake_plan_boundary.py:66:    assert plan.saga_context["finalize"] == {"finalize_reason": "stack_empty"}
+novaic-agent-runtime/tests/test_pr284_session_event_vocabulary.py:88:    assert 'event_type="session_finalized"' not in source
+novaic-agent-runtime/tests/test_pr83_no_legacy_summary_paths.py:1:"""PR-83: active Runtime must not expose legacy summary producers."""
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:163:    restarted = repo.session_ended(
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:167:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:208:def test_restart_pending_is_recorded_inside_session_ended_transaction():
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:211:        source.index("    def session_ended("):
+novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:212:        source.index("    def rebuild(", source.index("    def session_ended("))
+novaic-agent-runtime/task_queue/contracts/react_think.py:79:    max_rounds_before_force_finalize: int
+novaic-agent-runtime/task_queue/contracts/react_think.py:266:    if source.round_num >= decision_input.max_rounds_before_force_finalize:
+novaic-agent-runtime/task_queue/contracts/react_think.py:276:            "finalize_reason": "round_cap",
+novaic-agent-runtime/task_queue/contracts/react_think.py:305:            "finalize_reason": "stack_nonempty_after_retry",
+novaic-agent-runtime/task_queue/contracts/react_think.py:319:        "finalize_reason": "no_tool_exhausted",
+novaic-agent-runtime/task_queue/contracts/react_think.py:372:def build_trigger_finalize(source: ReactThinkInput, decision: dict[str, Any]) -> dict[str, Any]:
+novaic-agent-runtime/task_queue/contracts/react_think.py:374:    finalize_reason = decision.get("finalize_reason", "no_tool_exhausted")
+novaic-agent-runtime/task_queue/contracts/react_think.py:378:        "saga_type": "wake_finalize",
+novaic-agent-runtime/task_queue/contracts/react_think.py:387:            "finalize_reason": finalize_reason,
+novaic-agent-runtime/task_queue/contracts/react_think.py:389:            "stack_depth_at_finalize": stack_depth,
+novaic-agent-runtime/task_queue/contracts/react_think.py:390:            "stack_known_at_finalize": stack_known,
+novaic-agent-runtime/task_queue/contracts/react_think.py:397:        "idempotency_key": f"wake-finalize-{source.scope_id}-r{round_num}-{finalize_reason}",
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:1:"""PR-43 legacy ``previous_scope_id`` transport retired by PR-69."""
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:7:def test_session_init_payload_drops_previous_scope_id_even_when_present():
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:14:        "previous_scope_id": "scp-prev",
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:17:    assert "previous_scope_id" not in payload
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:20:def test_scheduler_wake_metadata_does_not_promote_last_scope_id():
+novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py:25:        "last_scope_id": "scp-prev",
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:129:        finalize_reason: str | None = None,
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:146:        if finalize_reason is not None:
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:147:            payload["finalize_reason"] = finalize_reason
+novaic-agent-runtime/task_queue/utils/cortex_bridge.py:552:        treating stack as unknown and refusing to finalize.
+novaic-agent-runtime/task_queue/contracts/react_saga_config.py:17:    max_rounds_before_force_finalize: int
+novaic-agent-runtime/task_queue/contracts/react_saga_config.py:21:        if isinstance(self.max_rounds_before_force_finalize, bool):
+novaic-agent-runtime/task_queue/contracts/react_saga_config.py:22:            raise ValueError("max_rounds_before_force_finalize must be positive")
+novaic-agent-runtime/task_queue/contracts/react_saga_config.py:23:        if int(self.max_rounds_before_force_finalize) < 1:
+novaic-agent-runtime/task_queue/contracts/react_saga_config.py:24:            raise ValueError("max_rounds_before_force_finalize must be positive")
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:28:            "failed_saga_id": "saga-finalize",
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:29:            "reason": "wake_finalize_failed",
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:53:    assert marker["failed_saga_id"] == "saga-finalize"
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:54:    assert marker["reason"] == "wake_finalize_failed"
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:89:    assert recovery.metadata["recovery_failed_saga_id"] == "saga-finalize"
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:120:            "finalize_reason": "recovery:wake_finalize_failed",
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:176:    event["payload"]["stack_depth_at_finalize"] = True
+novaic-agent-runtime/tests/test_pr266_session_recovery_boundary.py:185:    with pytest.raises(ValueError, match="stack_depth_at_finalize"):
+novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py:78:            "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:134:        {"role": "user", "content": "legacy context.read projection"},
+novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py:159:    assert "legacy context.read projection" not in contents
+novaic-agent-runtime/task_queue/contracts/react_actions.py:285:def decide_finalize_or_continue(
+novaic-agent-runtime/task_queue/contracts/react_actions.py:289:    max_rounds_before_force_finalize: int,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:320:            "should_finalize": True,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:321:            "force_finalize_reason": "reply_no_followup",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:332:            "should_finalize": True,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:333:            "force_finalize_reason": "repeated_scope_mismatch",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:336:    if source.round_num >= max_rounds_before_force_finalize:
+novaic-agent-runtime/task_queue/contracts/react_actions.py:340:            "should_finalize": True,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:341:            "force_finalize_reason": "round_cap",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:348:            "should_finalize": False,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:349:            "force_finalize_reason": None,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:356:        "should_finalize": stack_empty,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:357:        "force_finalize_reason": None,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:402:def build_trigger_finalize_payload(
+novaic-agent-runtime/task_queue/contracts/react_actions.py:406:    reason = decision.get("force_finalize_reason") or "stack_empty"
+novaic-agent-runtime/task_queue/contracts/react_actions.py:409:        "saga_type": "wake_finalize",
+novaic-agent-runtime/task_queue/contracts/react_actions.py:418:            "finalize_reason": reason,
+novaic-agent-runtime/task_queue/contracts/react_actions.py:420:            "stack_depth_at_finalize": decision.get("stack_depth", 0),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:421:            "stack_known_at_finalize": decision.get("stack_known", True),
+novaic-agent-runtime/task_queue/contracts/react_actions.py:425:        "idempotency_key": f"wake-finalize-{source.scope_id}-r{round_num}",
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:9:    build_trigger_finalize_payload,
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:11:    decide_finalize_or_continue,
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:74:    decision = decide_finalize_or_continue(
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:77:        max_rounds_before_force_finalize=10,
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:82:    assert decision["should_finalize"] is False
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:84:    assert decision["force_finalize_reason"] is None
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:94:def test_second_identical_scope_mismatch_forces_recovery_finalize() -> None:
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:103:    decision = decide_finalize_or_continue(
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:106:        max_rounds_before_force_finalize=10,
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:111:    assert decision["should_finalize"] is True
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:113:    assert decision["force_finalize_reason"] == "repeated_scope_mismatch"
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:116:    payload = build_trigger_finalize_payload(source, decision)
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:117:    assert payload["context"]["finalize_reason"] == "repeated_scope_mismatch"
+novaic-agent-runtime/tests/test_pr234_repeated_scope_mismatch.py:118:    assert payload["context"]["stack_depth_at_finalize"] == 1
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:143:    restarted = repo.session_ended(
+novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py:147:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:15:def test_runtime_has_no_legacy_recap_builder_or_env_flags() -> None:
+novaic-agent-runtime/tests/test_pr57_prev_scope_history_inject.py:23:def test_runtime_handler_source_no_longer_mentions_legacy_recap_blocks() -> None:
+novaic-agent-runtime/tests/test_pr288_session_observed_event_handler.py:154:def test_wake_created_observation_rejects_stale_generation_and_scope(tmp_path):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:85:def _simulate_failed_finalize(repo, orchestrator):
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:94:    finalize_saga_id = orchestrator.create(
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:95:        "wake_finalize",
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:105:        idempotency_key="finalize-pr247",
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:107:    orchestrator.mark_failed(finalize_saga_id, "scope_end failed")
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:113:    return first, finalize_saga_id
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:141:    first, finalize_saga_id = _simulate_failed_finalize(repo, orchestrator)
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:154:    assert saga["context"]["recovery_failed_saga_id"] == finalize_saga_id
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:171:    assert archive_payload["finalize_reason"] == "recovery:wake_finalize_failed"
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:196:        "finalize_reason": "recovery:wake_finalize_failed",
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:224:                "finalize_reason": "recovery:wake_finalize_failed",
+novaic-agent-runtime/tests/test_pr247_recovery_outbox_cutover.py:239:    first, _finalize_saga_id = _simulate_failed_finalize(repo, orchestrator)
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:16:from task_queue.sagas.wake_finalize import (
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:18:    _build_session_ended_payload,
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:58:def test_wake_saga_failure_commits_finalize_creation_effect_before_publish(tmp_path):
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:77:    assert orchestrator.get_by_idempotency_key("wake-finalize-scope-1-comp") is None
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:80:        "create_wake_finalize_saga",
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:97:    session_payload = _build_session_ended_payload(context)
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:107:    finalize = orchestrator.get_by_idempotency_key("wake-finalize-scope-1-comp")
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:108:    assert finalize["saga_type"] == "wake_finalize"
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:109:    assert finalize["context"]["agent_root_scope_id"] == "agent-root-main"
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:110:    assert finalize["context"]["wake_scope_path"] == (
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:113:    assert finalize["context"]["session_generation"] == 7
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:123:def test_wake_saga_failure_without_positive_generation_does_not_create_finalize_effect(
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:149:    assert orchestrator.get_by_idempotency_key("wake-finalize-scope-1-comp") is None
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:154:def test_wake_finalize_failure_commits_suspected_dead_effect_before_publish(tmp_path):
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:167:    finalize_saga_id = orchestrator.create(
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:168:        "wake_finalize",
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:180:    orchestrator.mark_failed(finalize_saga_id, "scope_end failed")
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:186:    pending = saga_ledger.list_pending_outbox(saga_id=finalize_saga_id)
+novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py:204:    assert suspected_events[0]["payload"]["failed_saga_id"] == finalize_saga_id
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:105:                "effect_type": "create_wake_finalize_saga",
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:107:                "idempotency_key": "wake-finalize-scope-1",
+novaic-agent-runtime/tests/test_pr310_saga_repository_fsm_cutover.py:115:        "create_wake_finalize_saga",
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:50:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:83:    assert bridge.scope_end.call_args.kwargs["finalize_reason"] == "stack_empty"
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:246:        finalize_reason="reply_no_followup",
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:262:            "finalize_reason": "reply_no_followup",
+novaic-agent-runtime/tests/test_scope_end_environment_notifications.py:283:            finalize_reason="reply_no_followup",
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:1:"""PR-43 legacy ``last_scope_id`` path retired by PR-69."""
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:13:from task_queue.sagas.wake_finalize import (
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:33:    assert "last_scope_id" not in payload
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:52:    assert "last_scope_id" not in payload
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:67:            assert "wake_finalize.session_generation is required" in str(exc)
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:91:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:98:    assert "last_scope_id" not in updates
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:113:            "last_scope_id": "legacy-scope",
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:121:    assert "last_scope_id" not in updates
+novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py:152:def test_terminal_status_handlers_require_finalize_identity_before_business_mutation(
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:159:    restarted = repo.session_ended(
+novaic-agent-runtime/tests/test_pr240_input_consumption.py:163:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:117:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr65_agent_root_scope.py:128:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:19:    decide_finalize_or_continue,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:105:        max_rounds_before_force_finalize=10,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:132:            max_rounds_before_force_finalize=10,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:137:    assert no_retry_decision["finalize_reason"] == "stack_nonempty_after_retry"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:143:            max_rounds_before_force_finalize=10,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:276:def test_react_actions_finalize_decision_is_explicit_and_config_injected():
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:290:    decision = decide_finalize_or_continue(
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:293:        max_rounds_before_force_finalize=10,
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:297:    assert decision["force_finalize_reason"] == "reply_no_followup"
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:299:    from task_queue.contracts.react_actions import build_trigger_finalize_payload
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:301:    payload = build_trigger_finalize_payload(source, decision)
+novaic-agent-runtime/tests/test_runtime_explicit_contracts.py:335:    actions_decision_source = inspect.getsource(react_actions._decide_finalize_or_continue)
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:156:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr67_wake_child_scope.py:171:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:137:                    "effect_type": "create_wake_finalize_saga",
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:139:                    "idempotency_key": "wake-finalize-scope-1",
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:150:    assert effect.effect_type == "create_wake_finalize_saga"
+novaic-agent-runtime/tests/test_pr308_saga_lifecycle_fsm.py:152:    assert effect.idempotency_key == "wake-finalize-scope-1"
+novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py:184:def test_session_attach_input_rejects_stale_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:26:    assert "legacy" not in combined
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:46:    assert 'event_type="session_finalize_rejected"' not in source
+novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:47:    assert 'event_type="session_finalized"' not in source
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:1:"""PR-270 - finalize ledger facts and state mutation live in ledger boundary."""
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:33:def _finalize_metadata(scope_id: str = "scope-1"):
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:35:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:36:        "finalize_generation": 3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:42:def test_rejected_finalize_event_payload_is_owned_by_session_ledger(tmp_path):
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:58:        event_id = ledger.record_session_finalize_rejected(
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:64:            finalize_metadata=_finalize_metadata(scope_id="stale-scope"),
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:66:                "action": "finalize_rejected",
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:73:            finalize_generation=3,
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:74:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:81:    assert events[0]["event_type"] == "session_finalize_rejected"
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:84:        "finalize-rejected:agent-1:main:stale-scope:3:"
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:98:def test_accepted_finalize_event_and_state_are_owned_by_session_ledger(tmp_path):
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:114:        event_id = ledger.record_session_finalized(
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:122:            finalize_metadata=_finalize_metadata(),
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:124:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:127:        duplicate_id = ledger.record_session_finalized(
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:135:            finalize_metadata=_finalize_metadata(),
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:137:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:145:        if event["event_type"] == "session_finalized"
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:147:    finalized = events[0]
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:148:    assert finalized["event_type"] == "session_finalized"
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:149:    assert finalized["idempotency_key"] == (
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:150:        "finalize:agent-1:main:scope-1:3:stack_empty"
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:152:    assert finalized["payload"] == _finalize_metadata()
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:163:def test_session_repository_no_longer_owns_finalize_ledger_shape():
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:166:    assert 'event_type="session_finalize_rejected"' not in source
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:167:    assert 'event_type="session_finalized"' not in source
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:168:    assert "finalize-rejected:" not in source
+novaic-agent-runtime/tests/test_pr270_session_finalize_ledger_boundary.py:169:    assert "finalize:{session_key}" not in source
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:1:"""PR-254 - finalize is an explicit session FSM event."""
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:18:from task_queue.handlers.session_handlers import handle_session_ended
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:19:from task_queue.sagas.wake_finalize import (
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:23:    _build_session_ended_payload,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:92:def test_session_ended_requires_explicit_finalize_contract(tmp_path):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:96:    with pytest.raises(ValueError, match="finalize_reason is required"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:97:        repo.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:106:        repo.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:110:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:115:        repo.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:119:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:125:        repo.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:129:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:135:        repo.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:139:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:146:def test_session_finalized_event_persists_reason_generation_and_stack(tmp_path):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:151:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:152:        "finalize_generation": 1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:157:    closed = repo.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:161:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:167:    finalized = _events_of_type(ledger, session_key, "session_finalized")
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:168:    assert len(finalized) == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:169:    assert int(finalized[0]["generation"]) == 1
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:170:    assert finalized[0]["payload"] == expected_metadata
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:182:def test_generation_mismatch_rejects_finalize_without_clearing_active(tmp_path):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:188:    rejected = repo.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:192:        finalize_reason="stale_finalize",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:198:        "action": "finalize_rejected",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:212:    assert _events_of_type(ledger, session_key, "session_finalized") == []
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:213:    reject_events = _events_of_type(ledger, session_key, "session_finalize_rejected")
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:217:        "finalize_reason": "stale_finalize",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:218:        "finalize_generation": 99,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:227:def test_scope_mismatch_rejects_finalize_without_clearing_active(tmp_path):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:233:    rejected = repo.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:237:        finalize_reason="stale_finalize",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:243:        "action": "finalize_rejected",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:257:    assert _events_of_type(ledger, session_key, "session_finalized") == []
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:258:    reject_events = _events_of_type(ledger, session_key, "session_finalize_rejected")
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:262:        "finalize_reason": "stale_finalize",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:263:        "finalize_generation": 1,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:272:def test_wake_finalize_payload_carries_finalize_contract():
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:280:        "finalize_reason": "stack_nonempty_after_retry",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:281:        "stack_depth_at_finalize": 2,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:282:        "stack_known_at_finalize": True,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:285:    payload = _build_session_ended_payload(ctx)
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:287:    assert payload["finalize_reason"] == "stack_nonempty_after_retry"
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:293:    assert scope_end_payload["finalize_reason"] == "stack_nonempty_after_retry"
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:319:def test_wake_finalize_payload_rejects_missing_or_zero_generation():
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:324:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:325:        "stack_depth_at_finalize": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:326:        "stack_known_at_finalize": True,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:330:        _build_session_ended_payload(dict(base_context))
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:339:        _build_session_ended_payload({
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:345:def test_wake_finalize_payload_rejects_bool_round_and_stack_depth():
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:351:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:352:        "stack_known_at_finalize": True,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:355:    with pytest.raises(ValueError, match="stack_depth_at_finalize"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:356:        _build_session_ended_payload({
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:358:            "stack_depth_at_finalize": True,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:364:            "stack_depth_at_finalize": 0,
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:388:    def session_ended(self, **kwargs):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:394:    def session_ended(self, **kwargs):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:396:            "action": "finalize_rejected",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:402:def test_session_ended_handler_requires_and_forwards_finalize_contract():
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:405:    result = handle_session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:410:            "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:422:        "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:427:    with pytest.raises(ValidationError, match="finalize_reason"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:428:        handle_session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:440:        handle_session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:445:                "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:454:def test_session_ended_handler_rejected_finalize_fails_task_gate():
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:455:    with pytest.raises(BusinessError, match="session_ended finalize_rejected: generation_mismatch"):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:456:        handle_session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:461:                "finalize_reason": "stale_finalize",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:469:def test_saga_client_rejects_non_positive_session_ended_generation(monkeypatch):
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:480:        client.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:484:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:490:    result = client.session_ended(
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:494:        finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:506:            "finalize_reason": "stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:513:def test_session_ended_route_rejects_non_positive_generation():
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:519:            finalize_reason="stack_empty",
+novaic-agent-runtime/tests/test_pr254_finalize_ownership.py:528:        finalize_reason="stack_empty",

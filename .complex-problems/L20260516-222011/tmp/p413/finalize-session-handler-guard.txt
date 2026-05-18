@@ -1,0 +1,74 @@
+# P413 finalize saga/session handler guard
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:13:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:17:    return (ctx.get("step_results") or {}).get("session_init") or {}
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:22:        ctx.get("agent_root_scope_id")
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:29:    return ctx.get("wake_scope_path") or _session_init_result(ctx).get("wake_scope_path")
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:37:        "user_id": ctx.get("user_id", ""),
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:38:        "trigger_type": ctx.get("trigger_type", "user_message"),
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:40:    if ctx.get("initial_context"):
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:42:    if ctx.get("user_message"):
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:54:    if ctx.get("message_ids"):
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:56:    payload["session_generation"] = require_positive_session_generation(
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:62:    if ctx.get("wake_reason"):
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:86:            "user_id": ctx.get("user_id", ""),
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:88:            "model": ctx.get("model", "gpt-4o"),
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py:89:            "tools": ctx.get("tools", []),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:6:2. Notify Session Coordinator with the expected session generation
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:17:from ..contracts.session_generation import require_positive_session_generation
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:26:    """Feed finalize_reason + round_num into archival for audit logs.
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:32:        "agent_root_scope_id": ctx.get("agent_root_scope_id"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:33:        "wake_scope_path": ctx.get("wake_scope_path"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:35:        "user_id": ctx.get("user_id", ""),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:36:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:38:        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:39:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:40:        "round_num": _non_negative_int(ctx.get("round_num"), "round_num"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:65:    return not _is_sub_subagent(ctx.get("subagent_id", "main"))
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:69:    return _is_sub_subagent(ctx.get("subagent_id", "main"))
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:72:def _session_generation(ctx) -> int:
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:73:    return require_positive_session_generation(ctx, "wake_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:76:def _non_negative_int(value, owner: str) -> int:
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:82:        parsed = int(value)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:93:        "session_generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:97:def _remaining_stack_snapshot(ctx):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:98:    remaining_stack = ctx.get("remaining_stack")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:99:    if isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:100:        return dict(remaining_stack)
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:102:    stack_known = ctx.get("stack_known_at_finalize")
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:105:    stack_depth = _non_negative_int(
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:106:        ctx.get("stack_depth_at_finalize"), "stack_depth_at_finalize"
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:120:        "agent_root_scope_id": ctx.get("agent_root_scope_id"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:121:        "wake_scope_path": ctx.get("wake_scope_path"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:122:        "finalize_reason": ctx.get("finalize_reason", "stack_empty"),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:123:        "generation": _session_generation(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:124:        "remaining_stack": _remaining_stack_snapshot(ctx),
+novaic-agent-runtime/task_queue/sagas/wake_finalize.py:125:        "round_num": _non_negative_int(ctx.get("round_num"), "round_num"),
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:14:def _positive_generation(value: Any) -> int:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:16:        raise ValidationError("Missing required field: generation")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:18:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:20:        generation = value
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:22:        generation = int(value.strip())
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:24:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:25:    if generation < 1:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:26:        raise ValidationError("generation must be a positive integer")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:27:    return generation
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:42:        finalize_reason: str
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:43:        generation: int
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:44:        remaining_stack: dict
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:46:    agent_id = payload.get("agent_id")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:47:    subagent_id = payload.get("subagent_id")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:48:    scope_id = payload.get("scope_id")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:49:    finalize_reason = payload.get("finalize_reason")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:50:    generation = payload.get("generation")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:51:    remaining_stack = payload.get("remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:59:    if not finalize_reason:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:60:        raise ValidationError("Missing required field: finalize_reason")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:61:    generation = _positive_generation(generation)
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:62:    if remaining_stack is None:
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:63:        raise ValidationError("Missing required field: remaining_stack")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:64:    if not isinstance(remaining_stack, dict):
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:65:        raise ValidationError("remaining_stack must be an object")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:67:    saga_client = ctx.get("saga_client")
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:75:        finalize_reason=str(finalize_reason),
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:76:        generation=generation,
+novaic-agent-runtime/task_queue/handlers/session_handlers.py:77:        remaining_stack=remaining_stack,

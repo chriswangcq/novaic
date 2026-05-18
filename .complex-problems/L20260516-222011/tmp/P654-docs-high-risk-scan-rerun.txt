@@ -1,0 +1,22 @@
+docs/cortex-architecture.md:76:| `registry.py` | `WorkspaceRegistry`：按 user 缓存 LogicalFS Blob object adapter，按 `(user, agent)` 缓存 `Workspace(LogicalFS authority)` |
+docs/cortex/state-authority-implementation-plan.md:34:| RO/RW files | LogicalFS/Workspace | Blob below LogicalFS | File operations should not bypass LogicalFS. |
+docs/cortex/state-authority-implementation-plan.md:36:| Large payload bytes | Blob | SQLite/Workspace manifest | Blob stores bytes; manifest stores meaning. |
+docs/roadmap/backend-architecture-optimization-recommendations.md:34:| Gateway | Auth, App WS push/signaling, Entangled endpoint discovery, TURN, Blob edge | Agent wake, entity schema authority, tool registry, business orchestration |
+docs/architecture/data-ownership.md:28:| Workspace / 上下文 | **Cortex + LogicalFS file authority**（HTTP 默认 19996） | scope、steps、payload manifest/status 等语义归 Cortex；实时 `/ro`/`/rw` 文件语义走 LogicalFS/Cortex file authority；Blob 只承担下层字节/对象持久化 |
+docs/architecture/logicalfs-realtime-file-authority.md:33:Blob object APIs, Cortex-local file authority wrappers, or sandbox scratch state.
+docs/architecture/logicalfs-realtime-file-authority.md:153:- Document LogicalFS as the Cortex/shell RO/RW authority.
+docs/architecture/logicalfs-realtime-file-authority.md:188:- Remove direct live RO/RW file use of Blob object APIs outside LogicalFS.
+docs/architecture/logicalfs-realtime-file-authority.md:191:- Add residue scans for accidental direct Blob object calls in live RO/RW paths.
+docs/cortex/object-keys.md:16:| `StoreBackedLogicalFileAuthority` | live `/ro` / `/rw` 文件边界 |
+docs/cortex/object-keys.md:46:Blob Service 决定物理后端是本地磁盘、OSS 还是 S3。这个映射是持久化细节，不是 live `/ro` / `/rw` 权威边界。
+docs/roadmap/tickets/README.md:337:| PR-207 | `[closed]` | [Cortex Blob-backed Store Cutover](PR-207-cortex-blob-store-cutover.md) | PR-206 | Storage boundary cleanup | multi-step | Cortex direct S3/OSS store removed; Blob Service owns object storage |
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:18:Cortex currently writes payload records into its own scope-local payload store through `Workspace.write_payload`. This means Cortex owns large payload storage directly unless it externalizes large bytes to Blob Service.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:24:- [x] PR-202C — Update payload read/search/summarize/qa resolver to support BlobRef through `Workspace.read_payload`.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:45:- `Workspace.write_payload` now serializes payloads to JSON bytes, keeps small payloads in the existing scope-local store, and externalizes payloads larger than `CORTEX_PAYLOAD_BLOB_THRESHOLD_BYTES` to Blob Service.
+docs/roadmap/tickets/PR-202-cortex-payload-blob-externalization.md:48:- `Workspace.read_payload` resolves external BlobRefs explicitly through Blob Service, so payload read/search/summarize/qa continue to use the same Cortex payload API.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:1:# PR-207 — Cortex Blob-backed Store Cutover
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:5:> live `/ro` / `/rw` authority and a LogicalFS Blob object adapter below that
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:18:workspace/scope objects only through Blob Service.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:29:### 2. Cortex Blob-backed Store
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:31:- Add `BlobCortexStore` implementing `CortexStore` over Blob Service object APIs.
+docs/roadmap/tickets/PR-207-cortex-blob-store-cutover.md:32:- Switch `WorkspaceRegistry` to create `BlobCortexStore` per user.

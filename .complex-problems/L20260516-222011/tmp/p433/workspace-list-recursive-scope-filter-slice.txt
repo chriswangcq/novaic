@@ -1,0 +1,26 @@
+            total=len(existing),
+        )
+        return existing
+
+    async def append_input_message_ids_projection(
+        self,
+        root_scope_path: str,
+        new_message_ids: List[str],
+    ) -> List[str]:
+        """Materialize the notification inbox projection after attach events."""
+        return await self.append_input_message_ids(root_scope_path, new_message_ids)
+
+    # ── Initialization ──
+
+    async def initialize(self) -> None:
+        await self._files.initialize_layout(
+            (
+                "/ro/active",
+                "/ro/scopes",
+                "/ro/config",
+                "/ro/config/tools",
+                "/ro/skills",
+                "/ro/knowledge",
+                "/rw/scratch",
+            )
+        )

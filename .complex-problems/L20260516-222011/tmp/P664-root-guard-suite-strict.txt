@@ -1,0 +1,56 @@
+=== lint_dispatch ===
+dispatch lint OK
+=== lint_httpx ===
+httpx lint OK
+=== check_no_internal_async ===
+check_no_internal_async: 8 files clean
+=== lint_lifecycle ===
+lifecycle lint OK
+=== lint_subagent_status ===
+subagent_status lint OK (status writes + retired endpoint)
+=== lint_scope_phase ===
+scope_phase lint OK
+=== lint_retired_message_columns ===
+retired_message_columns lint OK
+=== lint_chat_messages_read ===
+chat_messages_read lint OK
+=== lint_wake_continuity_contract ===
+wake_continuity_contract lint OK (minimal Cortex continuity)
+=== lint_cortex_boundary ===
+Cortex boundary guard passed.
+=== lint_blob_workspace_boundary ===
+Blob workspace boundary OK
+=== lint_retired_service_residue ===
+RETIRED_SERVICE_RESIDUE_LINT=PASS
+=== lint_frontend_phantom_tools ===
+FRONTEND_PHANTOM_TOOLS_LINT=PASS
+=== lint_agent_loop_path ===
+AGENT_LOOP_PATH_LINT=PASS
+=== lint_entangled_schema_ssot ===
+=== lint_current_docs_residue ===
+=== lint_roadmap_ticket_archaeology ===
+lint_roadmap_ticket_archaeology: historical retired-path tickets are fenced
+=== lint_docs_status_consistency ===
+lint_docs_status_consistency: architecture and roadmap status markers are aligned
+=== lint_deploy_fresh_smoke ===
+lint_deploy_fresh_smoke OK
+=== lint_runtime_worker_supervision ===
+lint_runtime_worker_supervision OK
+=== lint_retired_runtime_vocabulary ===
+retired runtime vocabulary lint OK
+=== check_start_config_contract ===
+start_config_contract OK
+=== lint_agent_main_path_acceptance ===
+AGENT_MAIN_PATH_ACCEPTANCE_LINT=PASS
+=== lint_retired_agent_paths ===
+RETIRED_AGENT_PATHS_LINT=PASS
+=== lint_lifecycle_loop_ownership ===
+chat_messages_read lint OK
+LIFECYCLE_LOOP_OWNERSHIP_LINT=PASS
+=== lint_generated_artifacts ===
+GENERATED_ARTIFACTS_LINT=PASS
+=== test_no_legacy_file_hot_paths ===
+.                                                                        [100%]
+1 passed in 0.01s
+=== final generated artifacts ===
+GENERATED_ARTIFACTS_LINT=PASS

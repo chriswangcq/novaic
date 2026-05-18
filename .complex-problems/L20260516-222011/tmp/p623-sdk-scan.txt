@@ -1,0 +1,73 @@
+=== package files ===
+novaic-sandbox-sdk/.gitignore
+novaic-sandbox-sdk/README.md
+novaic-sandbox-sdk/pyproject.toml
+novaic-sandbox-sdk/sandbox_sdk/__init__.py
+novaic-sandbox-sdk/sandbox_sdk/__pycache__/__init__.cpython-311.pyc
+novaic-sandbox-sdk/sandbox_sdk/__pycache__/__init__.cpython-313.pyc
+novaic-sandbox-sdk/sandbox_sdk/__pycache__/client.cpython-311.pyc
+novaic-sandbox-sdk/sandbox_sdk/__pycache__/client.cpython-313.pyc
+novaic-sandbox-sdk/sandbox_sdk/__pycache__/contracts.cpython-311.pyc
+novaic-sandbox-sdk/sandbox_sdk/__pycache__/contracts.cpython-313.pyc
+novaic-sandbox-sdk/sandbox_sdk/__pycache__/types.cpython-311.pyc
+novaic-sandbox-sdk/sandbox_sdk/__pycache__/types.cpython-313.pyc
+novaic-sandbox-sdk/sandbox_sdk/client.py
+novaic-sandbox-sdk/sandbox_sdk/contracts.py
+novaic-sandbox-sdk/sandbox_sdk/types.py
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py
+
+=== risky term scan ===
+novaic-sandbox-sdk/sandbox_sdk/types.py:16:    mount_point: str
+novaic-sandbox-sdk/sandbox_sdk/types.py:27:    mount: SandboxBindMount | None = None
+novaic-sandbox-sdk/sandbox_sdk/types.py:32:    stdout: bytes
+novaic-sandbox-sdk/sandbox_sdk/types.py:33:    stderr: bytes
+novaic-sandbox-sdk/README.md:11:It must not execute processes, create mount namespaces, inspect local host
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:18:def test_execute_request_roundtrips_spec() -> None:
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:25:        mount=SandboxBindMount(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:27:            mount_point="/cortex",
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:39:def test_execute_response_roundtrips_bytes() -> None:
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:41:        stdout=b"\x00ok\n",
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:42:        stderr="错误".encode(),
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:58:        stdout=b"done",
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:59:        stderr=b"",
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:83:        "http://sandboxd.local",
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:85:    ).execute(
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py:95:    assert seen["url"] == "http://sandboxd.local/v1/execute"
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:5:import base64
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:42:    mount: SandboxBindMount | None = None
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:52:            mount=spec.mount,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:66:        mount_raw = data.get("mount")
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:67:        mount: SandboxBindMount | None = None
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:68:        if mount_raw is not None:
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:69:            if not isinstance(mount_raw, Mapping):
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:70:                raise ValueError("mount must be an object or null")
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:71:            mount = SandboxBindMount(
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:72:                source_root=_require_str(mount_raw, "source_root"),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:73:                mount_point=_require_str(mount_raw, "mount_point"),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:74:                stable_cwd=_require_str(mount_raw, "stable_cwd"),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:83:            mount=mount,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:93:            mount=self.mount,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:97:        mount: JsonObject | None = None
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:98:        if self.mount is not None:
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:99:            mount = {
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:100:                "source_root": self.mount.source_root,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:101:                "mount_point": self.mount.mount_point,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:102:                "stable_cwd": self.mount.stable_cwd,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:110:            "mount": mount,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:116:    stdout: bytes
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:117:    stderr: bytes
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:124:            stdout=result.stdout,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:125:            stderr=result.stderr,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:136:            stdout=base64.b64decode(_require_str(data, "stdout_b64")),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:137:            stderr=base64.b64decode(_require_str(data, "stderr_b64")),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:144:            stdout=self.stdout,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:145:            stderr=self.stderr,
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:152:            "stdout_b64": base64.b64encode(self.stdout).decode("ascii"),
+novaic-sandbox-sdk/sandbox_sdk/contracts.py:153:            "stderr_b64": base64.b64encode(self.stderr).decode("ascii"),
+novaic-sandbox-sdk/sandbox_sdk/client.py:24:    async def execute(self, spec: SandboxExecSpec) -> SandboxExecResult:
+novaic-sandbox-sdk/sandbox_sdk/client.py:25:        return await asyncio.to_thread(self._execute_sync, spec)
+novaic-sandbox-sdk/sandbox_sdk/client.py:27:    def _execute_sync(self, spec: SandboxExecSpec) -> SandboxExecResult:
+novaic-sandbox-sdk/sandbox_sdk/client.py:28:        url = self.base_url.rstrip("/") + "/v1/execute"
+
+=== tests inventory ===
+novaic-sandbox-sdk/tests/test_sandbox_sdk.py

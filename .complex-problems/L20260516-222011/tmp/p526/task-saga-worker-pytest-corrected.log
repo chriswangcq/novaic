@@ -1,0 +1,36 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.7, pytest-9.0.2, pluggy-1.6.0
+rootdir: /Users/wangchaoqun/new-build-novaic/novaic-agent-runtime
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-4.1.0, asyncio-1.3.0, mock-3.12.0, langsmith-0.3.42
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 124 items
+
+tests/integration/test_saga_dag_refactor.py .....                        [  4%]
+tests/test_pr258_generic_fsm_substrate.py ...                            [  6%]
+tests/test_pr259_generic_fsm_store_outbox.py .......                     [ 12%]
+tests/test_pr261_generic_fsm_residue_cleanup.py .                        [ 12%]
+tests/test_pr304_task_lifecycle_fsm.py ...............                   [ 25%]
+tests/test_pr305_task_fsm_store_ledger.py ...                            [ 27%]
+tests/test_pr306_taskqueue_fsm_cutover.py ...                            [ 29%]
+tests/test_pr307_taskqueue_old_sql_residue_cleanup.py ..                 [ 31%]
+tests/test_pr308_saga_lifecycle_fsm.py .......                           [ 37%]
+tests/test_pr309_saga_fsm_store_ledger.py ...                            [ 39%]
+tests/test_pr310_saga_repository_fsm_cutover.py ...                      [ 41%]
+tests/test_pr311_saga_compensation_outbox_cutover.py ..........          [ 50%]
+tests/test_pr312_saga_old_sql_residue_cleanup.py ......                  [ 54%]
+tests/test_pr313_worker_lease_fsm.py ....                                [ 58%]
+tests/test_pr314_queue_control_plane_audit_replay.py ......              [ 62%]
+tests/test_pr315_queue_fsm_final_residue_guard.py ....                   [ 66%]
+tests/test_pr316_taskqueue_state_candidate_cutover.py .....              [ 70%]
+tests/test_pr317_sagarepository_state_candidate_cutover.py ....          [ 73%]
+tests/test_pr326_session_outbox_generic_worker.py ..                     [ 75%]
+tests/test_pr327_saga_outbox_generic_worker.py .....                     [ 79%]
+tests/test_pr333_saga_worker_handler_cutover.py .....                    [ 83%]
+tests/test_pr340_saga_launch_plans.py ....                               [ 86%]
+tests/test_pr342_generic_fsm_transition_runner.py ....                   [ 89%]
+tests/test_pr344_queue_claim_busy_handling.py ....                       [ 92%]
+tests/test_pr345_recovery_background_defer.py ...                        [ 95%]
+tests/test_saga_creation_policy_boundary.py ......                       [100%]
+
+============================= 124 passed in 0.98s ==============================
