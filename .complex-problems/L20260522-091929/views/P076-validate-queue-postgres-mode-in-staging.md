@@ -1,6 +1,6 @@
 # P076: Validate Queue Postgres Mode In Staging
 
-Status: todo
+Status: done
 Parent: P028
 Root: P000
 Source Ticket: T072 (split)
@@ -27,14 +27,16 @@ Before production cutover, Queue Postgres mode must be exercised with the queue 
 - P108: Record Queue Postgres Staging Validation Report
 
 ## Results
-- none
+- R117
 
 ## Latest Check
-none
+C132
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/README.md
 - Ticket T103: problems/P000/children/P024/children/P028/children/P076/tickets/T103.md
+- Result R117: problems/P000/children/P024/children/P028/children/P076/results/R117.md
+- Check C132: problems/P000/children/P024/children/P028/children/P076/checks/C132.md
 
 ## Follow-ups
 - none

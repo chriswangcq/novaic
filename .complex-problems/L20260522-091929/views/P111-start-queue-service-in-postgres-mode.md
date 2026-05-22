@@ -1,6 +1,6 @@
 # P111: Start Queue Service In Postgres Mode
 
-Status: todo
+Status: done
 Parent: P109
 Root: P000
 Source Ticket: T106 (split)
@@ -24,14 +24,16 @@ After a safe target is confirmed, Queue Service must start as a real runtime in 
 - P115: Start Queue Service With Confirmed Postgres Target
 
 ## Results
-- none
+- R111
 
 ## Latest Check
-none
+C125
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/README.md
 - Ticket T108: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/tickets/T108.md
+- Result R111: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/results/R111.md
+- Check C125: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/checks/C125.md
 
 ## Follow-ups
 - none

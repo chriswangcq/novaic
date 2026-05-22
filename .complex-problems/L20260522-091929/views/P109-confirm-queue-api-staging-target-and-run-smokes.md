@@ -1,6 +1,6 @@
 # P109: Confirm Queue API Staging Target And Run Smokes
 
-Status: followup
+Status: done
 Parent: P106
 Root: P000
 Source Ticket: none (none)
@@ -29,14 +29,16 @@ P106 cannot be closed until Queue Service is started against a confirmed non-pro
 - P113: Record Queue Postgres Post-Smoke Counts
 
 ## Results
-- none
+- R114
 
 ## Latest Check
-none
+C128
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/README.md
 - Ticket T106: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/tickets/T106.md
+- Result R114: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/results/R114.md
+- Check C128: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/checks/C128.md
 
 ## Follow-ups
 - none

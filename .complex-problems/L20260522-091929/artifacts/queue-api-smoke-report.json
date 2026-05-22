@@ -1,0 +1,324 @@
+{
+  "base_url": "http://127.0.0.1:19987",
+  "counts": {
+    "tq_idempotency_ledger": "1",
+    "tq_saga_state": "2",
+    "tq_sagas": "2",
+    "tq_session_events": "6",
+    "tq_session_outbox": "2",
+    "tq_session_state": "1",
+    "tq_task_state": "2",
+    "tq_tasks": "2"
+  },
+  "ids": {
+    "saga_complete": "saga-f519342dd9bc",
+    "saga_fail": "saga-ae59c8bf41d5",
+    "session_scope": "14eb188d-3cee-4660-b7b9-b635453ade26",
+    "task_complete": "task-8f685ec27023",
+    "task_fail": "task-b845a81df119"
+  },
+  "internal_key_used": true,
+  "ok": true,
+  "operations": [
+    {
+      "method": "GET",
+      "name": "health",
+      "path": "/health",
+      "response": {
+        "database_backend": "postgres",
+        "service": "queue-service",
+        "status": "healthy"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "GET",
+      "name": "ready",
+      "path": "/ready",
+      "response": {
+        "checks": {
+          "database_backend": "postgres",
+          "session_outbox": "ok",
+          "session_state": "ok"
+        },
+        "database_backend": "postgres",
+        "service": "queue-service",
+        "session_outbox": {
+          "dead_letter_count": 0,
+          "oldest_pending_created_at": null,
+          "pending_count": 0
+        },
+        "session_state": {
+          "oldest_starting_updated_at": null,
+          "starting_count": 0
+        },
+        "status": "ok"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "task_publish_complete",
+      "path": "/api/queue/tasks/publish",
+      "response": {
+        "task_id": "task-8f685ec27023"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "task_claim_complete",
+      "path": "/api/queue/tasks/claim",
+      "response": {
+        "keys": [
+          "task"
+        ]
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "task_complete",
+      "path": "/api/queue/tasks/task-8f685ec27023/complete",
+      "response": {
+        "success": true
+      },
+      "status_code": 200
+    },
+    {
+      "method": "GET",
+      "name": "task_get_complete",
+      "path": "/api/queue/tasks/task-8f685ec27023",
+      "response": {
+        "keys": [
+          "task"
+        ]
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "task_publish_fail",
+      "path": "/api/queue/tasks/publish",
+      "response": {
+        "task_id": "task-b845a81df119"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "task_claim_fail",
+      "path": "/api/queue/tasks/claim",
+      "response": {
+        "keys": [
+          "task"
+        ]
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "task_fail",
+      "path": "/api/queue/tasks/task-b845a81df119/fail",
+      "response": {
+        "final_status": "failed"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "idempotency_acquire_first",
+      "path": "/api/queue/tasks/smoke-idem-task-20260522T165950Z-74bc8a64/idempotency/acquire",
+      "response": {
+        "action": "acquired",
+        "result": null
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "idempotency_acquire_duplicate_in_progress",
+      "path": "/api/queue/tasks/smoke-idem-task-20260522T165950Z-74bc8a64/idempotency/acquire",
+      "response": {
+        "action": "in_progress",
+        "result": null
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "idempotency_complete",
+      "path": "/api/queue/tasks/smoke-idem-task-20260522T165950Z-74bc8a64/idempotency/complete",
+      "response": {
+        "success": true
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "idempotency_acquire_completed_result",
+      "path": "/api/queue/tasks/smoke-idem-task-20260522T165950Z-74bc8a64/idempotency/acquire",
+      "response": {
+        "action": "completed",
+        "result": {
+          "keys": [
+            "ok",
+            "smoke_run_id"
+          ]
+        }
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "saga_create_complete",
+      "path": "/api/queue/sagas/create",
+      "response": {
+        "saga_id": "saga-f519342dd9bc"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "saga_claim_complete",
+      "path": "/api/queue/sagas/claim",
+      "response": {
+        "keys": [
+          "saga"
+        ]
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "saga_launched",
+      "path": "/api/queue/sagas/saga-f519342dd9bc/launched",
+      "response": {
+        "success": true
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "saga_complete",
+      "path": "/api/queue/sagas/saga-f519342dd9bc/complete",
+      "response": {
+        "success": true
+      },
+      "status_code": 200
+    },
+    {
+      "method": "GET",
+      "name": "saga_get_complete",
+      "path": "/api/queue/sagas/saga-f519342dd9bc",
+      "response": {
+        "keys": [
+          "saga"
+        ]
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "saga_create_fail",
+      "path": "/api/queue/sagas/create",
+      "response": {
+        "saga_id": "saga-ae59c8bf41d5"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "saga_claim_fail",
+      "path": "/api/queue/sagas/claim",
+      "response": {
+        "keys": [
+          "saga"
+        ]
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "saga_fail",
+      "path": "/api/queue/sagas/saga-ae59c8bf41d5/fail",
+      "response": {
+        "success": true
+      },
+      "status_code": 200
+    },
+    {
+      "method": "GET",
+      "name": "saga_get_fail",
+      "path": "/api/queue/sagas/saga-ae59c8bf41d5",
+      "response": {
+        "keys": [
+          "saga"
+        ]
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "session_dispatch",
+      "path": "/api/queue/dispatch",
+      "response": {
+        "action": "wake_start_queued",
+        "outbox_id": "seff-3672746760ad",
+        "scope_id": "14eb188d-3cee-4660-b7b9-b635453ade26"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "GET",
+      "name": "session_list_before_end",
+      "path": "/api/queue/sessions",
+      "response": {
+        "sessions": []
+      },
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "name": "session_ended",
+      "path": "/api/queue/session-ended",
+      "response": {
+        "action": "restart_pending",
+        "outbox_id": "seff-5660fd90dd1c",
+        "scope_id": "e3685a8a-247a-456a-bef1-a7ca1576f7f4"
+      },
+      "status_code": 200
+    },
+    {
+      "method": "GET",
+      "name": "session_pending_after_end",
+      "path": "/api/queue/pending",
+      "response": {
+        "inputs": [
+          {
+            "consumed_at": null,
+            "created_at": "2026-05-22T16:59:50.286000+00:00",
+            "id": "sevt-c174ce4e0b05",
+            "payload": {
+              "metadata": {
+                "keys": [
+                  "message_ids",
+                  "smoke_run_id"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "status_code": 200
+    }
+  ],
+  "run_id": "20260522T165950Z-74bc8a64",
+  "session": {
+    "dispatch_action": "wake_start_queued",
+    "end_action": "restart_pending",
+    "pending_after_end_count": 1,
+    "sessions_before_end_count": 0
+  },
+  "skips": []
+}

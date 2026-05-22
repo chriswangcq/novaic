@@ -4651,14 +4651,728 @@
       "status": "not_success",
       "stress_test": [],
       "summary": "P115 is not successful. R105 correctly avoided unsafe startup, but Queue Service did not start against a confirmed non-production Postgres target and health/readiness did not run."
+    },
+    "C115": {
+      "blocking_gaps": [
+        "`NOVAIC_QUEUE_POSTGRES_DSN_FILE` is unset.",
+        "`NOVAIC_QUEUE_POSTGRES_DSN` is unset.",
+        "No confirmed non-production Queue Postgres target is available.",
+        "Queue Service was not started with `NOVAIC_QUEUE_DB_BACKEND=postgres`.",
+        "Health/readiness endpoints were not called."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/checks/C115.md",
+      "created_at": "2026-05-22T16:21:11+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P117",
+      "id": "C115",
+      "problem_id": "P116",
+      "residual_risk": [],
+      "result_ids": [
+        "R106"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "P116 is not successful. R106 correctly avoided unsafe startup, but the original problem required Queue Service to start after a staging DSN is supplied. No staging DSN or DSN file is present in the current environment, so no startup or health/readiness evidence exists."
+    },
+    "C116": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P117/checks/C116.md",
+      "created_at": "2026-05-22T16:26:40+00:00",
+      "criteria_map": [
+        "A Queue Postgres DSN file or direct DSN is available to the runner: satisfied for the remote startup runner by `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "The target is confirmed non-production before any write: satisfied by dedicated staging naming, dedicated container/volume, and separate port.",
+        "DSNs/secrets are not printed into artifacts: satisfied; only the path and redacted public identity are recorded.",
+        "The next Queue Service startup attempt has exact environment variables to use: satisfied; use `NOVAIC_QUEUE_DB_BACKEND=postgres` and `NOVAIC_QUEUE_POSTGRES_DSN_FILE=/opt/novaic/queue-staging-postgres/queue-postgres.dsn` on `api.gradievo.com`."
+      ],
+      "evidence": [
+        "R107 records a dedicated container named `novaic-queue-staging-postgres`.",
+        "R107 records staging-specific database and user names: `novaic_queue_staging`.",
+        "R107 records a localhost-only remote bind: `127.0.0.1:15432`.",
+        "R107 records a dedicated remote DSN file path: `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "R107 records the container health status as `healthy` and `pg_isready` as passing.",
+        "R107 does not include the DSN value or password."
+      ],
+      "execution_map": [
+        "Discovered Docker on the api host.",
+        "Avoided reusing the existing `novaic-postgres` container.",
+        "Provisioned a separate staging container and persisted the DSN file with restrictive permissions.",
+        "Verified health before recording the result."
+      ],
+      "followup_problem_id": null,
+      "id": "C116",
+      "problem_id": "P117",
+      "residual_risk": [
+        "P116 still needs to start Queue Service and verify health/readiness against this target. P117 only closes the DSN supply prerequisite."
+      ],
+      "result_ids": [
+        "R107"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: accidentally using a shared or production database. R107 used a separate container, database, user, volume, and localhost-only staging port.",
+        "Plausible failure mode: leaking a password into the ledger. R107 records only the DSN file path and public identifiers.",
+        "Plausible failure mode: downstream local runner cannot read the remote file. R107 makes this explicit; startup should run on `api.gradievo.com` or establish a tunnel without printing the secret."
+      ],
+      "summary": "P117 is successful. R107 supplies a confirmed non-production Queue Postgres target through a remote DSN file, keeps secrets out of artifacts, and gives downstream Queue Service startup enough information to proceed on `api.gradievo.com` or through a safe tunnel."
+    },
+    "C117": {
+      "blocking_gaps": [
+        "Queue Service was not started on `api.gradievo.com` with `NOVAIC_QUEUE_DB_BACKEND=postgres`.",
+        "Queue Service was not pointed at `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "Startup evidence proving the active backend is Postgres was not produced.",
+        "Health/readiness endpoints were not verified."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/checks/C117.md",
+      "created_at": "2026-05-22T16:27:09+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P118",
+      "id": "C117",
+      "problem_id": "P116",
+      "residual_risk": [],
+      "result_ids": [
+        "R106",
+        "R107"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "P116 is still not successful. R107 closes the DSN prerequisite, but Queue Service has not yet been started with that DSN and health/readiness evidence is still missing."
+    },
+    "C118": {
+      "blocking_gaps": [
+        "Acceptance criterion \"Queue Service starts on `api.gradievo.com` with Postgres backend\" is not met because the process did not become reachable on `127.0.0.1:19987`.",
+        "Acceptance criterion \"Health/readiness endpoint passes\" is not met because `/health` failed to connect during the probe window.",
+        "The startup log indicates the staging DSN file is syntactically unsafe for libpq URI parsing: the client attempted to resolve `novaic_queue_staging` as a host.",
+        "The remaining work is narrow: regenerate the staging DSN file in a parse-safe form, restart Queue Service, and verify `/health` plus `/ready`."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/checks/C118.md",
+      "created_at": "2026-05-22T16:35:31+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P119",
+      "id": "C118",
+      "problem_id": "P118",
+      "residual_risk": [],
+      "result_ids": [
+        "R108"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "`P118` is not successful yet. `R108` proves the runtime checkout, common dependency boundary, loopback port, and DSN file source were used, but the service did not reach `/health` or `/ready`."
+    },
+    "C119": {
+      "blocking_gaps": [
+        "Acceptance criterion \"Queue Service starts with Postgres backend using the DSN file\" is not met because the process exits during fresh Postgres schema initialization.",
+        "Acceptance criterion \"`/health` passes\" is not met because the service never binds the staging loopback port.",
+        "Acceptance criterion \"`/ready` passes\" is not met for the same reason.",
+        "The remaining blocking gap is a code defect in `init_postgres_schema`: the expected missing `config` table probe on a fresh database leaves the Postgres transaction aborted because the exception path does not roll back before the DDL loop."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/checks/C119.md",
+      "created_at": "2026-05-22T16:39:47+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P120",
+      "id": "C119",
+      "problem_id": "P119",
+      "residual_risk": [],
+      "result_ids": [
+        "R109"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "`P119` is not successful yet. `R109` satisfies the DSN repair and Postgres container criteria, but Queue Service still does not start and `/health` plus `/ready` do not pass."
+    },
+    "C120": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/children/P120/checks/C120.md",
+      "created_at": "2026-05-22T16:42:49+00:00",
+      "criteria_map": [
+        "`init_postgres_schema` rolls back after missing `config` probe: satisfied by the code patch and regression test.",
+        "Focused test covers fresh missing-`config` behavior: satisfied by `test_init_postgres_schema_rolls_back_after_missing_config_probe`.",
+        "Existing Queue Service schema tests still pass: satisfied by the full `tests/test_queue_postgres_boundary.py` run.",
+        "Fix deployed to api staging checkout: satisfied by copying patched `schema.py`, compiling it remotely, and restarting the service.",
+        "Queue Service starts using staging DSN file: satisfied by `/health`, `/ready`, and log evidence.",
+        "`/health` and `/ready` pass on `127.0.0.1:19987`: satisfied."
+      ],
+      "evidence": [
+        "Code changed in `novaic-agent-runtime/queue_service/db/schema.py`.",
+        "Regression test added in `novaic-agent-runtime/tests/test_queue_postgres_boundary.py`.",
+        "Focused local test result: `12 passed in 0.10s`.",
+        "Api staging Queue Service is running on `127.0.0.1:19987` with pid `3602792`.",
+        "Remote `/health` reports `status=healthy` and `database_backend=postgres`.",
+        "Remote `/ready` reports `status=ok` and all listed database/table/session checks are `ok`.",
+        "Remote database has schema version `18` and `16` public tables."
+      ],
+      "execution_map": [
+        "`R110` covers the local code fix, regression test, remote deployment, and staging service verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C120",
+      "problem_id": "P120",
+      "residual_risk": [
+        "The staging checkout was patched directly for runtime validation; the local submodule commit still needs to be committed and pushed so future clean deploys include the fix."
+      ],
+      "result_ids": [
+        "R110"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The regression simulates the exact fresh Postgres failure mode where the first `config` probe raises before any baseline table exists, then asserts rollback occurs before the first `CREATE TABLE`.",
+        "Remote staging exercised the real psycopg/Postgres path on a fresh staging database and initialized schema version `18`."
+      ],
+      "summary": "`P120` is successful. `R110` fixed the transaction-abort bug, added focused regression coverage, deployed the fix to api staging, and proved Queue Service can initialize a fresh Postgres schema and pass health/readiness."
+    },
+    "C121": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/checks/C121.md",
+      "created_at": "2026-05-22T16:43:14+00:00",
+      "criteria_map": [
+        "DSN file regenerated safely without secret exposure: satisfied by `R109`.",
+        "Staging Postgres container remains healthy: satisfied by `R109`.",
+        "Queue Service starts using `NOVAIC_QUEUE_POSTGRES_DSN_FILE`: satisfied by `R110`.",
+        "`/health` passes and reports Postgres: satisfied by `R110`.",
+        "`/ready` passes: satisfied by `R110`.",
+        "Production config/public ports untouched: satisfied; all changes were under `/opt/novaic/queue-service-staging` and loopback ports."
+      ],
+      "evidence": [
+        "`R109`:",
+        "DSN file regenerated without printing the secret.",
+        "DSN file mode verified as `0600`.",
+        "`novaic-queue-staging-postgres` verified `healthy`.",
+        "`pg_isready` verified accepting connections.",
+        "`R110`:",
+        "Fresh Postgres transaction fix deployed to staging.",
+        "Queue Service running on `127.0.0.1:19987`, pid `3602792`.",
+        "`/health` reports `status=healthy`, `database_backend=postgres`.",
+        "`/ready` reports `status=ok`, with database/table/session checks `ok`.",
+        "Schema version `18`; public table count `16`."
+      ],
+      "execution_map": [
+        "`R109` completed the DSN repair and identified the fresh schema init code bug.",
+        "`R110` fixed the code bug, deployed it to staging, and completed the service restart verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C121",
+      "problem_id": "P119",
+      "residual_risk": [
+        "The staging process is a host-level loopback smoke process rather than a permanent Dockerized service. That is acceptable for this follow-up, but production-style containerization may be a separate deployment hardening ticket if the higher-level ledger asks for it.",
+        "Local submodule changes still need commit/push before they are durable outside this workspace."
+      ],
+      "result_ids": [
+        "R109",
+        "R110"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The DSN repair was validated against the real psycopg connection path, which advanced from host parse failure to the intended `127.0.0.1:15432` endpoint.",
+        "The follow-up exercised real schema initialization against the staging Postgres container and verified both shallow and deep health endpoints."
+      ],
+      "summary": "`P119` is successful after `R109` and follow-up result `R110`. The staging DSN file was regenerated safely, the Postgres container remained healthy, the code defect uncovered during restart was fixed, and Queue Service now passes `/health` and `/ready` on the api staging loopback port."
+    },
+    "C122": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/checks/C122.md",
+      "created_at": "2026-05-22T16:43:37+00:00",
+      "criteria_map": [
+        "Queue Service starts on api with Postgres backend: satisfied by `R110`.",
+        "DSN source is the staging DSN file and no direct secret is printed: satisfied by `R109` and `R110`.",
+        "Health/readiness endpoints pass: satisfied by `R110`.",
+        "Startup artifacts/log summaries do not expose DSN secrets: satisfied; artifacts cite only the DSN file path and redacted/public endpoint evidence.",
+        "Production Queue/Gateway services are not reconfigured: satisfied; the work used `/opt/novaic/queue-service-staging` and loopback port `19987`."
+      ],
+      "evidence": [
+        "`R108` established the staging runtime layout and resolved the missing `novaic-common` import boundary.",
+        "`R109` regenerated the staging DSN file in a safe URI form and verified Postgres container health.",
+        "`R110` fixed fresh Postgres schema initialization and verified the running service.",
+        "Current verified runtime:",
+        "Host: `api.gradievo.com`.",
+        "Bind: `127.0.0.1:19987`.",
+        "DSN file: `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "Backend: Postgres.",
+        "`/health`: healthy.",
+        "`/ready`: ok.",
+        "Schema version: `18`."
+      ],
+      "execution_map": [
+        "`R108` exposed the initial DSN parse blocker.",
+        "`R109` closed the DSN parse blocker and exposed the fresh schema init code blocker.",
+        "`R110` closed the code blocker and completed live staging verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C122",
+      "problem_id": "P118",
+      "residual_risk": [
+        "The process is intentionally loopback-only staging, not a production service replacement.",
+        "The code fix must still be committed/pushed so future clean checkouts include it."
+      ],
+      "result_ids": [
+        "R108",
+        "R109",
+        "R110"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The service was verified through the real startup path, including `main_novaic.py`, `queue_service.main`, psycopg, schema creation, and the `/ready` deep dependency checks.",
+        "`/ready` checked `SELECT 1`, core queue tables, session outbox, and session state."
+      ],
+      "summary": "`P118` is successful after `R108`, `R109`, and `R110`. The service startup attempt found two real blockers, both were closed, and Queue Service now runs on the api host with the staging Postgres DSN file and passing health/readiness endpoints."
+    },
+    "C123": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/checks/C123.md",
+      "created_at": "2026-05-22T16:44:04+00:00",
+      "criteria_map": [
+        "Staging DSN supplied before service start: satisfied by `R107`.",
+        "Queue Service uses Postgres rather than SQLite: satisfied by `R110` health/readiness evidence.",
+        "Queue Service starts successfully on api host: satisfied by `R110`.",
+        "Readiness confirms schema/table access: satisfied by `/ready` in `R110`.",
+        "No production reconfiguration: satisfied; work was isolated to staging container, staging DSN file, and loopback staging process."
+      ],
+      "evidence": [
+        "`R106`: initial execution established that Queue Service could not be verified until a non-production DSN existed.",
+        "`R107`: provisioned the dedicated staging Postgres container and DSN file on `api.gradievo.com`.",
+        "`R108`: started the real Queue Service path far enough to expose DSN parse failure and confirmed production config was not changed.",
+        "`R109`: regenerated the DSN file safely and confirmed the staging Postgres container remained healthy.",
+        "`R110`: fixed the fresh Postgres initialization bug, deployed it to staging, and verified the running service.",
+        "Final live evidence:",
+        "Queue Service pid `3602792`.",
+        "Bind `127.0.0.1:19987`.",
+        "DSN file `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "`/health` healthy with `database_backend=postgres`.",
+        "`/ready` ok with all table/session checks ok."
+      ],
+      "execution_map": [
+        "`R106` found the original missing-DSN gap.",
+        "`R107` supplied the dependency.",
+        "`R108`, `R109`, and `R110` progressively closed the actual startup blockers and completed verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C123",
+      "problem_id": "P116",
+      "residual_risk": [
+        "The service is running as an intentionally isolated loopback staging process. Production deployment hardening and Dockerizing the service process should be handled by the remaining higher-level ledger items if required.",
+        "Local code changes still need commit/push."
+      ],
+      "result_ids": [
+        "R106",
+        "R107",
+        "R108",
+        "R109",
+        "R110"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The final check uses the real staging Postgres Docker container and the real Queue Service process, not just unit-level mocks.",
+        "`/ready` covers `SELECT 1`, core queue tables, session outbox, and session state."
+      ],
+      "summary": "`P116` is successful. The missing staging DSN was supplied, Queue Service was started on the api host against that DSN, and real `/health` plus `/ready` verification passed after closing the discovered DSN-format and fresh Postgres initialization blockers."
+    },
+    "C124": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/checks/C124.md",
+      "created_at": "2026-05-22T16:44:26+00:00",
+      "criteria_map": [
+        "Confirmed Postgres target: satisfied by `R105` and `R107`.",
+        "Target is non-production and isolated: satisfied by the dedicated `novaic-queue-staging-postgres` container and loopback bind.",
+        "Queue Service starts using that target: satisfied by `R110`.",
+        "Health/readiness passes: satisfied by `R110`.",
+        "No production config/public port changes: satisfied across `R108` through `R110`."
+      ],
+      "evidence": [
+        "`R105`: confirmed the Queue Service Postgres target needed an explicit non-production/staging database target before startup.",
+        "`R106`: showed service startup could not be completed without supplying that target.",
+        "`R107`: provisioned the dedicated staging Postgres Docker container and DSN file.",
+        "`R108`: started the Queue Service staging process without production config changes and identified DSN parse failure.",
+        "`R109`: fixed the DSN file safely and verified container health.",
+        "`R110`: fixed fresh Postgres schema initialization and verified live service health/readiness."
+      ],
+      "execution_map": [
+        "`R105` and `R106` established the need for a safe target.",
+        "`R107` supplied the target.",
+        "`R108` through `R110` handled startup, repaired blockers, and verified completion."
+      ],
+      "followup_problem_id": null,
+      "id": "C124",
+      "problem_id": "P115",
+      "residual_risk": [
+        "Staging process lifecycle is currently managed by pidfile/log paths under `/opt/novaic/queue-service-staging`; a later hardening ticket can make it a permanent Docker/systemd unit if needed.",
+        "Local submodule changes still need to be committed and pushed."
+      ],
+      "result_ids": [
+        "R105",
+        "R106",
+        "R107",
+        "R108",
+        "R109",
+        "R110"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The final verification uses real Docker Postgres, the real DSN file, the real runtime entrypoint, and `/ready` deep checks."
+      ],
+      "summary": "`P115` is successful. The Queue Service was not pointed at an ambiguous or production database; a dedicated staging Postgres target was confirmed and used, and the service now passes live health/readiness against that target."
+    },
+    "C125": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/checks/C125.md",
+      "created_at": "2026-05-22T16:45:33+00:00",
+      "criteria_map": [
+        "Startup should not silently validate SQLite: satisfied by `P114/C113`.",
+        "Startup must use a confirmed non-production Postgres target: satisfied by `P115/C124`.",
+        "Queue Service must actually start in Postgres mode: satisfied by `R110` and summarized in `R111`.",
+        "Health/readiness must pass: satisfied by `R110`."
+      ],
+      "evidence": [
+        "`R111` summarizes closed split children `P114` and `P115`.",
+        "`P114/C113` closed the startup-default cleanup.",
+        "`P115/C124` closed the confirmed-target startup path.",
+        "Final live staging evidence:",
+        "api host Queue Service bind `127.0.0.1:19987`.",
+        "DSN file `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "`/health` healthy with `database_backend=postgres`.",
+        "`/ready` ok."
+      ],
+      "execution_map": [
+        "`T108` split the problem into startup-default cleanup and service startup with a confirmed target.",
+        "`R111` rolls up both closed child paths."
+      ],
+      "followup_problem_id": null,
+      "id": "C125",
+      "problem_id": "P111",
+      "residual_risk": [
+        "Durable repository state still requires committing/pushing the local `novaic-agent-runtime` fix.",
+        "Downstream API smokes remain separate from this startup-mode problem."
+      ],
+      "result_ids": [
+        "R111"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The final verification is not only code inspection: it started the real runtime entrypoint on api host, initialized real Postgres schema, and passed `/ready` deep checks."
+      ],
+      "summary": "`P111` is successful. Queue Service startup is now unambiguously Postgres-mode for staging smokes: the stale SQLite-default concern was cleaned up, a confirmed non-production Postgres target exists, and the real service runs against it with passing health/readiness checks."
+    },
+    "C126": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/checks/C126.md",
+      "created_at": "2026-05-22T17:01:07+00:00",
+      "criteria_map": [
+        "Health/readiness smoke passes: satisfied by operations `health` and `ready`.",
+        "Task publish/claim/complete/fail passes: satisfied by task complete and task fail operation groups.",
+        "Saga create/claim/launch/complete/fail passes: satisfied by saga complete and saga fail operation groups.",
+        "Session dispatch/finalize/rebuild or safe equivalent passes: satisfied by `session_dispatch`, `session_ended`, sessions diagnostics, pending diagnostics, and the earlier startup rebuild evidence from `P111`.",
+        "Idempotency duplicate/in-progress/completed-result passes: satisfied by idempotency acquire duplicate and completed replay operations.",
+        "Skipped operations have explicit reasons: no skipped operations."
+      ],
+      "evidence": [
+        "Final smoke report: `.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`.",
+        "Smoke report `ok=true`, operation count `26`, skips `[]`.",
+        "Staging service endpoint: `http://127.0.0.1:19987`.",
+        "Internal key was used by the smoke script without printing it.",
+        "Post-smoke counts show writes landed in Postgres tables:",
+        "`tq_tasks=2`;",
+        "`tq_task_state=2`;",
+        "`tq_sagas=2`;",
+        "`tq_saga_state=2`;",
+        "`tq_session_events=6`;",
+        "`tq_session_state=1`;",
+        "`tq_session_outbox=2`;",
+        "`tq_idempotency_ledger=1`.",
+        "Focused regression tests for discovered Postgres JSONB binding defects passed: `49 passed in 0.14s`."
+      ],
+      "execution_map": [
+        "`R112` contains the smoke execution, discovered Postgres JSONB fixes, focused tests, remote deployment, final smoke report, and DB counts."
+      ],
+      "followup_problem_id": null,
+      "id": "C126",
+      "problem_id": "P112",
+      "residual_risk": [
+        "The smoke rows remain in the dedicated staging database; this is acceptable for test evidence and can be cleaned in a later staging maintenance task if desired.",
+        "Local code fixes still need commit/push."
+      ],
+      "result_ids": [
+        "R112"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The smoke used real HTTP calls against the api-host service and real Postgres writes, not mocked repositories.",
+        "The run included both success and terminal-failure paths for tasks and sagas plus duplicate idempotency contention."
+      ],
+      "summary": "`P112` is successful. `R112` exercised the real staging Queue Service in Postgres mode across health, readiness, task lifecycle, saga lifecycle, session dispatch/finalize, idempotency, and post-smoke database counts. No operation was skipped."
+    },
+    "C127": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P113/checks/C127.md",
+      "created_at": "2026-05-22T17:05:03+00:00",
+      "criteria_map": [
+        "Post-smoke counts recorded for Queue migration tables: satisfied by 16 count keys including task, saga, worker lease, idempotency, and session tables.",
+        "Target public info recorded with secrets redacted: satisfied by `target_public_info`.",
+        "Counts tied to smoke run artifact: satisfied by `smoke_report` and `smoke_run_id`.",
+        "Count query failure recorded if any: no failure occurred; report generation returned `ok=true`."
+      ],
+      "evidence": [
+        "Count report: `.complex-problems/L20260522-091929/artifacts/queue-post-smoke-count-report.json`.",
+        "Smoke report: `.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`.",
+        "Count report cites smoke run id `20260522T165950Z-74bc8a64`.",
+        "Target public info records DSN file path only and marks DSN secret `redacted`.",
+        "Container health is `healthy`."
+      ],
+      "execution_map": [
+        "`R113` generated and summarized the redacted count report."
+      ],
+      "followup_problem_id": null,
+      "id": "C127",
+      "problem_id": "P113",
+      "residual_risk": [
+        "Counts are staging evidence and include smoke rows; they are not a production baseline."
+      ],
+      "result_ids": [
+        "R113"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Counts were queried directly from the staging Postgres container after the successful smoke, not inferred from HTTP responses alone."
+      ],
+      "summary": "`P113` is successful. `R113` records post-smoke Queue Postgres counts, status histograms, target public identity, and ties the evidence to the successful API smoke run without exposing secrets."
+    },
+    "C128": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/checks/C128.md",
+      "created_at": "2026-05-22T17:06:13+00:00",
+      "criteria_map": [
+        "Non-production Queue Postgres target confirmed before writes: satisfied by the dedicated staging container/DSN path.",
+        "Queue Service starts with `NOVAIC_QUEUE_DB_BACKEND=postgres`: satisfied by `P111/C125`.",
+        "Health/readiness endpoints pass: satisfied by `P111/C125` and `P112/C126`.",
+        "Task publish/claim/complete/fail passes: satisfied by `P112/C126`.",
+        "Saga create/claim/launch/complete/fail passes: satisfied by `P112/C126`.",
+        "Session dispatch/finalize/rebuild or safe equivalent passes: satisfied by `P112/C126`.",
+        "Idempotency duplicate/in-progress/completed-result smoke passes: satisfied by `P112/C126`.",
+        "Post-smoke DB counts recorded with DSNs/secrets redacted: satisfied by `P113/C127`."
+      ],
+      "evidence": [
+        "`R114` summarizes closed children `P110`, `P111`, `P112`, and `P113`.",
+        "Queue Service runs on api staging loopback `127.0.0.1:19987`.",
+        "Staging Postgres is `novaic-queue-staging-postgres`, database/user `novaic_queue_staging`.",
+        "`/health` and `/ready` passed.",
+        "API smoke report `ok=true`, 26 operations, skips `[]`.",
+        "Post-smoke count report records 16 count keys and target public identity with DSN secret redacted."
+      ],
+      "execution_map": [
+        "`T106` split the work into target, startup, smoke, and count reporting.",
+        "`R114` rolls up all closed children into this parent result."
+      ],
+      "followup_problem_id": null,
+      "id": "C128",
+      "problem_id": "P109",
+      "residual_risk": [
+        "Staging process/container evidence is not a production cutover. It is sufficient for this non-production smoke closure.",
+        "Code changes still need commit/push."
+      ],
+      "result_ids": [
+        "R114"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The final proof uses real remote Docker Postgres, real Queue Service HTTP endpoints, real API writes, and direct Postgres count queries.",
+        "The smoke included both success and failure lifecycle paths plus idempotency contention."
+      ],
+      "summary": "`P109` is successful. `R114` proves a non-production Queue Postgres target exists, Queue Service starts against it in Postgres mode, representative APIs pass, and post-smoke counts are recorded with secrets redacted."
+    },
+    "C129": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/checks/C129.md",
+      "created_at": "2026-05-22T17:06:39+00:00",
+      "criteria_map": [
+        "Queue Service Postgres target exists: satisfied by `R114`.",
+        "Queue Service starts in Postgres mode: satisfied by `R114`.",
+        "Health/readiness passes: satisfied by `R114`.",
+        "Representative task/saga/session/idempotency APIs pass: satisfied by `R114`.",
+        "Counts and redacted target info recorded: satisfied by `R114`."
+      ],
+      "evidence": [
+        "`R102`: initial staging-smoke attempt/analysis that could not close without a safe target.",
+        "`R114`: completed target confirmation, service startup, API smokes, and count reporting.",
+        "Successful smoke run:",
+        "report `ok=true`;",
+        "26 operations;",
+        "no skips;",
+        "run id `20260522T165950Z-74bc8a64`.",
+        "Post-smoke counts:",
+        "`config_version=18`;",
+        "`tq_tasks=2`;",
+        "`tq_sagas=2`;",
+        "`tq_session_events=6`;",
+        "`tq_idempotency_ledger=1`."
+      ],
+      "execution_map": [
+        "`R102` identified the blocker and led to follow-up `P109`.",
+        "`R114` solved that follow-up completely."
+      ],
+      "followup_problem_id": null,
+      "id": "C129",
+      "problem_id": "P106",
+      "residual_risk": [
+        "The code fixes discovered by the smoke must still be committed and pushed.",
+        "This is staging evidence, not a production traffic migration."
+      ],
+      "result_ids": [
+        "R102",
+        "R114"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The final smoke used real api-host service + real Docker Postgres + direct count queries, and included both success/failure lifecycle paths."
+      ],
+      "summary": "`P106` is successful after `R102` plus follow-up result `R114`. The earlier missing-target gap is closed: a staging Queue Postgres target was provisioned, Queue Service ran in Postgres mode, representative APIs passed, and post-smoke counts were recorded."
+    },
+    "C130": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P107/checks/C130.md",
+      "created_at": "2026-05-22T17:25:02+00:00",
+      "criteria_map": [
+        "Representative task worker starts against staging Queue Service: satisfied by `task-worker` in the report, with startup line present, Queue Service URL `http://127.0.0.1:19987`, clean bounded shutdown, return code `0`, no traceback, and no error marker.",
+        "Saga worker or safe saga worker equivalent starts: satisfied by `saga-worker` in the report, with registered saga definitions, startup line present, clean bounded shutdown, return code `0`, no traceback, and no error marker.",
+        "Session/saga outbox worker or safe drain equivalent runs: satisfied by `session-outbox-worker` and `saga-outbox-worker`, both started in Postgres mode and shut down cleanly. Session outbox drained two pending rows to published; saga outbox ran against an empty outbox without errors.",
+        "No new sqlite `queue.db` holder: satisfied by empty before/after sqlite file scans under `/opt/novaic/queue-service-staging` and `lsof +D /opt/novaic/queue-service-staging/data` showing no `queue.db` or sqlite matches.",
+        "Worker/outbox outcomes and DB counts recorded: satisfied by the JSON artifact, including count deltas and histograms before and after the run."
+      ],
+      "evidence": [
+        "`R115` records the final smoke run `20260522T172306Z` with `ok=true`.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-worker-postgres-smoke-report.json` contains the captured worker process results, before/after DB counts, histograms, sqlite file scan, and `lsof` holder scan.",
+        "Local regression tests passed: 72 focused tests covering Postgres queue boundaries, worker shutdown, outbox worker DB selection, placeholder conversion, and prior Queue Service Postgres mutation paths.",
+        "The api staging Queue Service health endpoint returned `database_backend=postgres` after redeploy and restart."
+      ],
+      "execution_map": [
+        "Initial smoke found: direct sqlite construction in outbox worker assemblies, shutdown method shadowing, and Postgres placeholder conversion failure around `LIMIT ? FOR UPDATE SKIP LOCKED`.",
+        "Fixes were implemented and tested locally before redeployment.",
+        "Staging was updated and Queue Service was restarted with Postgres backend.",
+        "Final smoke launched the four worker commands with bounded time windows and captured logs/DB state.",
+        "Final DB outcome: `tq_session_outbox` moved from `pending=2` to `published=2`; saga rows increased from `2` to `4`; saga events increased from `7` to `10`; no sqlite files appeared."
+      ],
+      "followup_problem_id": null,
+      "id": "C130",
+      "problem_id": "P107",
+      "residual_risk": [
+        "Residual risk is non-blocking: the smoke uses bounded idle or low-impact drains rather than a full production business workload. That is appropriate for this staging criterion because the original problem required representative worker startup, outbox drain behavior, Postgres mode DB counts, and sqlite residue checks, all of which are evidenced."
+      ],
+      "result_ids": [
+        "R115"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check covered a plausible migration failure mode: worker processes that are not part of HTTP API smokes still attempted direct sqlite access and had signal-shutdown/runtime SQL issues. The final rerun proved those worker paths now use the Postgres boundary and survive controlled shutdown without stack traces."
+      ],
+      "summary": "Success. Result `R115` solves the original worker/outbox Postgres staging smoke problem. The first failed run exposed real worker-path defects, but the final rerun after fixes proved task, saga, session outbox, and saga outbox worker paths against the api staging Postgres target with no sqlite residue."
+    },
+    "C131": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P108/checks/C131.md",
+      "created_at": "2026-05-22T17:28:56+00:00",
+      "criteria_map": [
+        "Redacted report under artifacts: satisfied by `queue-postgres-staging-validation-report.md`.",
+        "Commands, timestamps, target identity redaction, health checks, API smoke, worker/outbox smoke, DB counts, residual risks: satisfied by the report sections `Generated`, `Target Summary`, `Commands Run`, `API Smoke Evidence`, `Worker And Outbox Smoke Evidence`, `Failures Found And Fixed`, and `Residual Risks`.",
+        "Production cutover readiness or blocker: satisfied by `Decision`, which says P076 is ready for the next production-cutover preparation gate within the Queue Postgres staging validation scope.",
+        "No DSNs, passwords, tokens, or secret file paths: satisfied by the redaction scan recorded in `R116`."
+      ],
+      "evidence": [
+        "Report artifact exists at `.complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`.",
+        "The report cites API smoke run `20260522T165950Z-74bc8a64` and worker smoke run `20260522T172306Z`.",
+        "The report includes health/readiness, API coverage, worker/outbox outcomes, DB counts/deltas, failures found/fixed, residual risks, and readiness decision.",
+        "Sensitive-pattern scan returned no matches for connection string, credential path, password/token, known credential filename, internal staging credential path, or direct credential environment variable markers."
+      ],
+      "execution_map": [
+        "Existing API, count, and worker smoke artifacts were read and summarized rather than copied verbatim.",
+        "Credential-bearing source fields were paraphrased as redacted credential configuration.",
+        "The final report was scanned for sensitive markers and reviewed for scope-limited wording."
+      ],
+      "followup_problem_id": null,
+      "id": "C131",
+      "problem_id": "P108",
+      "residual_risk": [
+        "Residual risk is non-blocking: the scan is pattern-based and cannot prove arbitrary secret absence, but it covered the known connection-string, credential-file, and environment-variable markers present in the source artifacts. Manual review found no copied credential path."
+      ],
+      "result_ids": [
+        "R116"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check specifically tested the most likely failure mode for a validation report: accidentally copying credential-bearing target fields from JSON artifacts. The report avoided direct source copying and the pattern scan found no credential strings or credential paths."
+      ],
+      "summary": "Success. Result `R116` solves P108 by creating a durable redacted validation report and verifying both factual coverage and redaction requirements."
+    },
+    "C132": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/checks/C132.md",
+      "created_at": "2026-05-22T17:30:54+00:00",
+      "criteria_map": [
+        "Staging/test Queue Postgres database prepared without touching production data: satisfied by P105/P109 evidence for an isolated staging Postgres target and later smoke counts.",
+        "Queue Service starts in Postgres mode and reports healthy/ready: satisfied by P106/P109 and the API smoke health/readiness operations showing `database_backend=postgres`, `healthy`, and `ready=ok`.",
+        "Representative task publish/claim/complete/retry or safe equivalents pass: satisfied by API smoke task complete and task fail flows.",
+        "Representative saga/session/outbox/idempotency smokes pass: satisfied by API smoke saga complete/fail, session dispatch/session-ended/pending, idempotency acquire/duplicate/complete/replay, plus P107 session outbox drain from pending to published.",
+        "Worker/outbox processes can run against Postgres mode without SQLite file holders: satisfied by P107 worker smoke `ok=true`, four worker processes cleanly starting/shutting down, no sqlite files, and no sqlite holder matches.",
+        "Staging report records commands, checks, counts, and secret redaction: satisfied by P108 report and redaction scan."
+      ],
+      "evidence": [
+        "P105 is done with check `C110`.",
+        "P106 is done with latest check `C129`; its follow-up P109 is done with check `C128`.",
+        "P107 is done with check `C130`.",
+        "P108 is done with check `C131`.",
+        "API smoke artifact: `.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`, `ok=true`.",
+        "Worker smoke artifact: `.complex-problems/L20260522-091929/artifacts/queue-worker-postgres-smoke-report.json`, `ok=true`.",
+        "Validation report artifact: `.complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`."
+      ],
+      "execution_map": [
+        "Initial local staging attempts correctly stopped when no non-production target was available.",
+        "The api host staging target was then prepared and Queue Service was started in Postgres mode.",
+        "API smokes exposed and drove fixes for Postgres schema transaction and JSON binding paths.",
+        "Worker/outbox smokes exposed and drove fixes for outbox DB selection, generic worker shutdown, and Postgres limit placeholder conversion.",
+        "Final artifacts were generated and redacted after successful reruns."
+      ],
+      "followup_problem_id": null,
+      "id": "C132",
+      "problem_id": "P076",
+      "residual_risk": [
+        "Non-blocking. The staging worker run is bounded and isolated, not a production load test. Code changes still need commit/push, but that is a source-control closure step outside P076's staging validation success criteria."
+      ],
+      "result_ids": [
+        "R117"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The validation went beyond unit tests by starting real service and worker processes against a live non-production Postgres target. It also exercised likely hidden failure modes: missing sqlite boundary cleanup in outbox workers, signal shutdown, JSONB binding, pending outbox drains, and SQL placeholder conversion under `FOR UPDATE SKIP LOCKED`."
+      ],
+      "summary": "Success. Result `R117` closes P076's Queue Postgres staging validation scope. All four split children are done with checks, and their combined evidence covers the staging database, Queue Service runtime, API flows, worker/outbox flows, sqlite residue checks, and redacted validation reporting."
     }
   },
   "counters": {
-    "check": 115,
-    "event": 1327,
-    "problem": 117,
-    "result": 106,
-    "ticket": 112
+    "check": 133,
+    "event": 1476,
+    "problem": 128,
+    "result": 118,
+    "ticket": 122
   },
   "created_at": "2026-05-22T01:19:29+00:00",
   "ledger_id": "L20260522-091929",
@@ -7395,7 +8109,9 @@
     },
     "P076": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C132"
+      ],
       "created_at": "2026-05-22T12:24:27+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T072",
@@ -7405,9 +8121,11 @@
       "id": "P076",
       "package_path": "problems/P000/children/P024/children/P028/children/P076",
       "parent_id": "P028",
-      "result_ids": [],
+      "result_ids": [
+        "R117"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [
         "P105",
         "P106",
@@ -7426,7 +8144,7 @@
         "T103"
       ],
       "title": "Validate Queue Postgres Mode In Staging",
-      "updated_at": "2026-05-22T12:24:27+00:00"
+      "updated_at": "2026-05-22T17:30:54+00:00"
     },
     "P077": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/README.md",
@@ -7443,7 +8161,15 @@
       "result_ids": [],
       "root_id": "P000",
       "status": "todo",
-      "subproblem_ids": [],
+      "subproblem_ids": [
+        "P121",
+        "P122",
+        "P123",
+        "P124",
+        "P125",
+        "P126",
+        "P127"
+      ],
       "success_criteria": [
         "All production queue writers/workers using `/opt/novaic/data/queue.db` are identified and stopped/frozen before final backup.",
         "Final SQLite backup is archived with checksums.",
@@ -7453,7 +8179,9 @@
         "No process holds `/opt/novaic/data/queue.db` after cutover.",
         "Old `queue.db` is archived/rollback-only and central SQLite classification/rollback notes are updated."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T120"
+      ],
       "title": "Execute Queue Production Postgres Cutover And Cleanup",
       "updated_at": "2026-05-22T12:24:27+00:00"
     },
@@ -8433,7 +9161,8 @@
     "P106": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/README.md",
       "check_ids": [
-        "C111"
+        "C111",
+        "C129"
       ],
       "created_at": "2026-05-22T15:39:10+00:00",
       "created_from_check_id": null,
@@ -8450,7 +9179,7 @@
         "R102"
       ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P109"
       ],
@@ -8467,11 +9196,13 @@
         "T105"
       ],
       "title": "Run Queue Service Postgres API Staging Smokes",
-      "updated_at": "2026-05-22T15:46:08+00:00"
+      "updated_at": "2026-05-22T17:06:39+00:00"
     },
     "P107": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P107/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C130"
+      ],
       "created_at": "2026-05-22T15:39:10+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T103",
@@ -8481,9 +9212,11 @@
       "id": "P107",
       "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P107",
       "parent_id": "P076",
-      "result_ids": [],
+      "result_ids": [
+        "R115"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Representative task worker process starts against the staging Queue Service.",
@@ -8492,13 +9225,17 @@
         "Logs/process checks show no new SQLite `queue.db` holder for the staging queue path.",
         "Worker/outbox outcomes and DB counts are recorded."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T118"
+      ],
       "title": "Run Queue Worker And Outbox Postgres Staging Smokes",
-      "updated_at": "2026-05-22T15:39:10+00:00"
+      "updated_at": "2026-05-22T17:25:02+00:00"
     },
     "P108": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P108/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C131"
+      ],
       "created_at": "2026-05-22T15:39:10+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T103",
@@ -8508,9 +9245,11 @@
       "id": "P108",
       "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P108",
       "parent_id": "P076",
-      "result_ids": [],
+      "result_ids": [
+        "R116"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "A redacted report artifact is created under the ledger artifacts directory.",
@@ -8518,13 +9257,17 @@
         "Report explicitly states whether P076 is ready for production cutover or blocked.",
         "No DSNs, passwords, tokens, or secret file paths are present in the report."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T119"
+      ],
       "title": "Record Queue Postgres Staging Validation Report",
-      "updated_at": "2026-05-22T15:39:10+00:00"
+      "updated_at": "2026-05-22T17:28:56+00:00"
     },
     "P109": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C128"
+      ],
       "created_at": "2026-05-22T15:46:08+00:00",
       "created_from_check_id": "C111",
       "created_from_ticket_id": null,
@@ -8534,9 +9277,11 @@
       "id": "P109",
       "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109",
       "parent_id": "P106",
-      "result_ids": [],
+      "result_ids": [
+        "R114"
+      ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P110",
         "P111",
@@ -8557,7 +9302,7 @@
         "T106"
       ],
       "title": "Confirm Queue API Staging Target And Run Smokes",
-      "updated_at": "2026-05-22T15:46:08+00:00"
+      "updated_at": "2026-05-22T17:06:13+00:00"
     },
     "P110": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P110/README.md",
@@ -8593,7 +9338,9 @@
     },
     "P111": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C125"
+      ],
       "created_at": "2026-05-22T15:47:31+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T106",
@@ -8603,9 +9350,11 @@
       "id": "P111",
       "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111",
       "parent_id": "P109",
-      "result_ids": [],
+      "result_ids": [
+        "R111"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [
         "P114",
         "P115"
@@ -8621,11 +9370,13 @@
         "T108"
       ],
       "title": "Start Queue Service In Postgres Mode",
-      "updated_at": "2026-05-22T15:47:31+00:00"
+      "updated_at": "2026-05-22T16:45:33+00:00"
     },
     "P112": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C126"
+      ],
       "created_at": "2026-05-22T15:47:31+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T106",
@@ -8635,9 +9386,11 @@
       "id": "P112",
       "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112",
       "parent_id": "P109",
-      "result_ids": [],
+      "result_ids": [
+        "R112"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Health/readiness smoke passes.",
@@ -8647,13 +9400,17 @@
         "Idempotency duplicate/in-progress/completed-result smoke passes.",
         "Each skipped operation has an explicit safety or environment reason."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T116"
+      ],
       "title": "Run Queue Service API Smokes",
-      "updated_at": "2026-05-22T15:47:31+00:00"
+      "updated_at": "2026-05-22T17:01:07+00:00"
     },
     "P113": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P113/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C127"
+      ],
       "created_at": "2026-05-22T15:47:31+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T106",
@@ -8663,9 +9420,11 @@
       "id": "P113",
       "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P113",
       "parent_id": "P109",
-      "result_ids": [],
+      "result_ids": [
+        "R113"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Post-smoke counts are recorded for Queue migration tables.",
@@ -8673,9 +9432,11 @@
         "Counts are tied to the smoke run artifact or command evidence.",
         "Any count query failure is recorded with enough detail to diagnose without exposing secrets."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T117"
+      ],
       "title": "Record Queue Postgres Post-Smoke Counts",
-      "updated_at": "2026-05-22T15:47:31+00:00"
+      "updated_at": "2026-05-22T17:05:03+00:00"
     },
     "P114": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P114/README.md",
@@ -8712,7 +9473,8 @@
     "P115": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/README.md",
       "check_ids": [
-        "C114"
+        "C114",
+        "C124"
       ],
       "created_at": "2026-05-22T15:50:12+00:00",
       "created_from_check_id": null,
@@ -8729,7 +9491,7 @@
         "R105"
       ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P116"
       ],
@@ -8744,24 +9506,36 @@
         "T110"
       ],
       "title": "Start Queue Service With Confirmed Postgres Target",
-      "updated_at": "2026-05-22T15:54:31+00:00"
+      "updated_at": "2026-05-22T16:44:26+00:00"
     },
     "P116": {
       "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C115",
+        "C117",
+        "C123"
+      ],
       "created_at": "2026-05-22T15:54:31+00:00",
       "created_from_check_id": "C114",
       "created_from_ticket_id": null,
       "created_from_ticket_mode": null,
       "description": "P115 cannot close until a confirmed non-production Queue Postgres target is supplied to the runner and Queue Service starts in Postgres mode. The startup default code path is now clean, but the environment prerequisite is still missing.",
-      "followup_ids": [],
+      "followup_ids": [
+        "P117",
+        "P118"
+      ],
       "id": "P116",
       "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116",
       "parent_id": "P115",
-      "result_ids": [],
+      "result_ids": [
+        "R106"
+      ],
       "root_id": "P000",
-      "status": "followup",
-      "subproblem_ids": [],
+      "status": "done",
+      "subproblem_ids": [
+        "P117",
+        "P118"
+      ],
       "success_criteria": [
         "A confirmed non-production Queue Postgres DSN or DSN file is supplied.",
         "Queue Service starts with `NOVAIC_QUEUE_DB_BACKEND=postgres`.",
@@ -8773,7 +9547,342 @@
         "T111"
       ],
       "title": "Start Queue Service After Staging DSN Is Supplied",
-      "updated_at": "2026-05-22T15:54:31+00:00"
+      "updated_at": "2026-05-22T16:44:04+00:00"
+    },
+    "P117": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P117/README.md",
+      "check_ids": [
+        "C116"
+      ],
+      "created_at": "2026-05-22T16:21:11+00:00",
+      "created_from_check_id": "C115",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "Queue Service runtime smoke validation cannot proceed until a confirmed non-production Queue Postgres DSN or DSN file is available to the runner. This follow-up should close the external test-environment prerequisite before attempting service startup again.",
+      "followup_ids": [],
+      "id": "P117",
+      "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P117",
+      "parent_id": "P116",
+      "result_ids": [
+        "R107"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "A non-production Queue Postgres target is supplied via `NOVAIC_QUEUE_POSTGRES_DSN_FILE` or `NOVAIC_QUEUE_POSTGRES_DSN`.",
+        "The target is confirmed staging/test/non-production before any write.",
+        "DSNs/secrets are not printed into artifacts.",
+        "Queue Service startup can be retried with `NOVAIC_QUEUE_DB_BACKEND=postgres`."
+      ],
+      "ticket_ids": [
+        "T112"
+      ],
+      "title": "Supply Non-Production Queue Postgres DSN",
+      "updated_at": "2026-05-22T16:26:40+00:00"
+    },
+    "P118": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/README.md",
+      "check_ids": [
+        "C118",
+        "C122"
+      ],
+      "created_at": "2026-05-22T16:27:09+00:00",
+      "created_from_check_id": "C117",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The staging Queue Postgres DSN now exists on `api.gradievo.com`, but Queue Service still needs to be started against it and health/readiness verified. This follow-up should run the service on the api host or an equivalent safe remote runner using the staging DSN file.",
+      "followup_ids": [
+        "P119"
+      ],
+      "id": "P118",
+      "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118",
+      "parent_id": "P116",
+      "result_ids": [
+        "R108"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P119"
+      ],
+      "success_criteria": [
+        "Queue Service starts with `NOVAIC_QUEUE_DB_BACKEND=postgres`.",
+        "Queue Service uses `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "Startup evidence proves the active backend is Postgres.",
+        "Health/readiness endpoints pass.",
+        "DSNs/secrets are redacted from artifacts."
+      ],
+      "ticket_ids": [
+        "T113"
+      ],
+      "title": "Start Queue Service On Api With Staging DSN",
+      "updated_at": "2026-05-22T16:43:37+00:00"
+    },
+    "P119": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/README.md",
+      "check_ids": [
+        "C119",
+        "C121"
+      ],
+      "created_at": "2026-05-22T16:35:31+00:00",
+      "created_from_check_id": "C118",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "Queue Service on `api.gradievo.com` cannot complete startup against the staging Postgres DSN file because the current DSN URI is not safely parseable when credentials contain reserved URL characters. The DSN source must remain a file, but its contents need to be regenerated without exposing the secret, then Queue Service must be restarted on the loopback staging port.",
+      "followup_ids": [
+        "P120"
+      ],
+      "id": "P119",
+      "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119",
+      "parent_id": "P118",
+      "result_ids": [
+        "R109"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P120"
+      ],
+      "success_criteria": [
+        "`/opt/novaic/queue-staging-postgres/queue-postgres.dsn` is regenerated in a libpq-safe form without printing or committing the secret.",
+        "The existing `novaic-queue-staging-postgres` Docker container remains healthy and reachable on its intended loopback port.",
+        "Queue Service starts on `api.gradievo.com` using `NOVAIC_QUEUE_POSTGRES_DSN_FILE=/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "`http://127.0.0.1:19987/health` passes and reports the Postgres backend.",
+        "`http://127.0.0.1:19987/ready` passes.",
+        "Production service configuration and public ports are not modified."
+      ],
+      "ticket_ids": [
+        "T114"
+      ],
+      "title": "Fix Queue Staging DSN And Restart Service",
+      "updated_at": "2026-05-22T16:43:14+00:00"
+    },
+    "P120": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/children/P120/README.md",
+      "check_ids": [
+        "C120"
+      ],
+      "created_at": "2026-05-22T16:39:47+00:00",
+      "created_from_check_id": "C119",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "Queue Service cannot initialize a fresh Postgres database because `init_postgres_schema` catches the expected missing `config` table error but does not roll back the failed transaction before running baseline DDL. Postgres then rejects subsequent DDL with `InFailedSqlTransaction`.",
+      "followup_ids": [],
+      "id": "P120",
+      "package_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/children/P120",
+      "parent_id": "P119",
+      "result_ids": [
+        "R110"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`init_postgres_schema` rolls back after the initial version probe fails on a fresh Postgres database.",
+        "A focused test covers fresh Postgres missing-`config` behavior or an equivalent fake connection that proves rollback happens before baseline DDL.",
+        "Existing Queue Service schema tests still pass.",
+        "The fix is deployed to the api staging checkout.",
+        "Queue Service starts on `api.gradievo.com` using the staging DSN file.",
+        "`/health` and `/ready` pass on `127.0.0.1:19987`."
+      ],
+      "ticket_ids": [
+        "T115"
+      ],
+      "title": "Fix Fresh Postgres Schema Init Transaction Handling",
+      "updated_at": "2026-05-22T16:42:49+00:00"
+    },
+    "P121": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P121/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:32:43+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T120",
+      "created_from_ticket_mode": "split",
+      "description": "Production cutover must not depend on a dirty local workspace or an ad hoc patched staging checkout. The Queue Postgres fixes discovered during staging need to be committed, pushed, and made available to the production runtime before any production migration or restart.",
+      "followup_ids": [],
+      "id": "P121",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P121",
+      "parent_id": "P077",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "doing",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Queue-related source changes are reviewed, tested, committed, and pushed in the relevant submodule/repo.",
+        "Root repository pointers or ledger artifacts required for reproducibility are committed or explicitly separated from runtime deploy commits.",
+        "The api production/staging runtime checkout can fetch the pushed commit.",
+        "The deployed runtime source matches the committed code that passed tests.",
+        "Unrelated dirty workspace changes are left untouched and explicitly not mixed into the cutover commit."
+      ],
+      "ticket_ids": [
+        "T121"
+      ],
+      "title": "Commit Push And Deploy Queue Postgres Cutover Code",
+      "updated_at": "2026-05-22T17:33:44+00:00"
+    },
+    "P122": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P122/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:32:43+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T120",
+      "created_from_ticket_mode": "split",
+      "description": "Before touching production Queue data, all processes, configs, and credential inputs that can read or write `/opt/novaic/data/queue.db` must be identified. The production Postgres target and rollback plan must be confirmed without exposing credentials.",
+      "followup_ids": [],
+      "id": "P122",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P122",
+      "parent_id": "P077",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Production Queue Service, workers, outbox workers, schedulers, and other possible queue writers are listed with process IDs, commands, and owners.",
+        "Current Queue runtime configuration is captured with credential values and credential-file paths redacted.",
+        "Production Postgres target identity is confirmed as intended and non-staging.",
+        "Rollback plan is documented, including SQLite restore/config revert steps and conditions.",
+        "A go/no-go preflight decision is recorded before freeze or backup."
+      ],
+      "ticket_ids": [],
+      "title": "Inventory Production Queue Runtime And Cutover Preconditions",
+      "updated_at": "2026-05-22T17:32:43+00:00"
+    },
+    "P123": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:32:43+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T120",
+      "created_from_ticket_mode": "split",
+      "description": "The final SQLite queue backup must be taken while production queue writers and workers are frozen or stopped, otherwise migration can miss writes or produce inconsistent state.",
+      "followup_ids": [],
+      "id": "P123",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123",
+      "parent_id": "P077",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "All identified Queue writers/workers are stopped, frozen, or otherwise prevented from writing.",
+        "`/opt/novaic/data/queue.db` is backed up to a timestamped rollback archive.",
+        "Backup checksum and file metadata are recorded.",
+        "A post-backup check confirms no writer process still holds or mutates the active SQLite queue file.",
+        "The backup location is recorded without exposing unrelated credentials."
+      ],
+      "ticket_ids": [],
+      "title": "Freeze Queue Writers And Archive Final SQLite Backup",
+      "updated_at": "2026-05-22T17:32:43+00:00"
+    },
+    "P124": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:32:44+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T120",
+      "created_from_ticket_mode": "split",
+      "description": "The production SQLite queue contents must be copied into `novaic_queue` with schema version, row counts, JSON payloads, FSM projections, outbox state, lease state, and idempotency semantics verified before services restart on Postgres.",
+      "followup_ids": [],
+      "id": "P124",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P124",
+      "parent_id": "P077",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Migration tooling runs against the frozen SQLite backup/source and production Postgres target.",
+        "Row counts match expected source-to-target mappings for all Queue tables.",
+        "Semantic invariant checks cover task state, saga state, session/outbox rows, worker lease rows, and idempotency completed/in-progress rows.",
+        "Any migration warnings or skipped rows are recorded and resolved or block cutover.",
+        "A redacted migration report is saved under ledger artifacts."
+      ],
+      "ticket_ids": [],
+      "title": "Migrate Queue SQLite Data To Production Postgres And Verify",
+      "updated_at": "2026-05-22T17:32:44+00:00"
+    },
+    "P125": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P125/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:32:44+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T120",
+      "created_from_ticket_mode": "split",
+      "description": "After migration, Queue Service and related worker/outbox processes must be restarted in Postgres mode with the production credential source, and must not resume using `/opt/novaic/data/queue.db`.",
+      "followup_ids": [],
+      "id": "P125",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P125",
+      "parent_id": "P077",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Queue Service is restarted with `NOVAIC_QUEUE_DB_BACKEND=postgres` and redacted production credential configuration.",
+        "Task worker, saga worker, session outbox worker, saga outbox worker, and relevant scheduler/health processes are restarted or explicitly declared out of scope.",
+        "`/health` and `/ready` pass after restart.",
+        "Runtime process commands show Postgres mode or Queue Service URL usage as appropriate.",
+        "No process opens `/opt/novaic/data/queue.db` after restart."
+      ],
+      "ticket_ids": [],
+      "title": "Restart Production Queue Services In Postgres Mode",
+      "updated_at": "2026-05-22T17:32:44+00:00"
+    },
+    "P126": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P126/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:32:44+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T120",
+      "created_from_ticket_mode": "split",
+      "description": "Production Postgres mode must be verified with safe smoke checks after restart. The checks must prove health/readiness, representative Queue APIs, worker startup, and outbox drain behavior without unsafe business side effects.",
+      "followup_ids": [],
+      "id": "P126",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P126",
+      "parent_id": "P077",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Health/readiness checks pass in production Postgres mode.",
+        "Safe task API smoke covers publish/claim/complete/fail or an approved production-safe equivalent.",
+        "Safe saga/session/idempotency smoke covers representative lifecycle behavior or documented safe equivalents.",
+        "Worker and outbox process checks show startup and no tracebacks/error loops.",
+        "Post-smoke DB counts and outbox histograms are recorded.",
+        "Smoke artifacts are redacted."
+      ],
+      "ticket_ids": [],
+      "title": "Run Production Queue Postgres Health API Worker And Outbox Smokes",
+      "updated_at": "2026-05-22T17:32:44+00:00"
+    },
+    "P127": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:32:44+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T120",
+      "created_from_ticket_mode": "split",
+      "description": "After production Postgres mode passes smokes, the old SQLite queue file must stop looking like an active runtime path. It should remain available only for rollback until retirement, and central cleanup notes must reflect the new source of truth.",
+      "followup_ids": [],
+      "id": "P127",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P127",
+      "parent_id": "P077",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`/opt/novaic/data/queue.db` is moved, renamed, permissioned, or otherwise marked rollback-only according to the rollback plan.",
+        "No production process holds the old SQLite file after cleanup.",
+        "Central SQLite classification and rollback notes are updated to say Queue runtime source of truth is Postgres.",
+        "Cleanup preserves the final backup and checksum.",
+        "The report states whether the rollback-only SQLite artifact can be retired later or must be retained for a defined window."
+      ],
+      "ticket_ids": [],
+      "title": "Archive Old Queue SQLite Residue And Update Cleanup Notes",
+      "updated_at": "2026-05-22T17:32:44+00:00"
     }
   },
   "results": {
@@ -12536,6 +13645,536 @@
         "`NOVAIC_QUEUE_INTERNAL_KEY=unset`",
         "P114 verification passed focused startup-default tests: `python -m pytest tests/test_queue_runtime_postgres_default.py` returned 4 passed."
       ]
+    },
+    "R106": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/P116-T111-result.md`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/results/R106.md",
+      "created_at": "2026-05-22T16:20:28+00:00",
+      "done": [
+        "Confirmed the root worktree is now on `main` and synced with `origin/main`.",
+        "Re-checked the current shell for Queue startup inputs.",
+        "Confirmed no direct Queue Postgres DSN is set.",
+        "Confirmed no Queue Postgres DSN file path is set.",
+        "Confirmed no internal key is set for protected smoke calls.",
+        "Did not start Queue Service, call health/readiness, initialize schema, or mutate a database."
+      ],
+      "id": "R106",
+      "known_gaps": [
+        "Queue Service has not been started in Postgres mode.",
+        "Health/readiness endpoints have not been verified.",
+        "Downstream Queue API smokes remain blocked until a non-production Postgres target is available.",
+        "A test environment is required for the runtime smoke portion. Code-level tests can continue without it, but service startup/API validation cannot.",
+        "Minimum test-environment input needed:",
+        "```bash",
+        "cd /Users/wangchaoqun/new-build-novaic/novaic-agent-runtime",
+        "export NOVAIC_QUEUE_DB_BACKEND=postgres",
+        "export NOVAIC_QUEUE_POSTGRES_DSN_FILE=/absolute/path/to/non-production-queue-postgres.dsn",
+        "```",
+        "Direct DSN fallback if a file is unavailable:",
+        "```bash",
+        "export NOVAIC_QUEUE_POSTGRES_DSN='postgresql://...redacted...'",
+        "```",
+        "Optional, if the smoke runtime should enforce internal-key auth:",
+        "```bash",
+        "export NOVAIC_QUEUE_INTERNAL_KEY='redacted-non-production-key'",
+        "```"
+      ],
+      "problem_id": "P116",
+      "root_id": "P000",
+      "summary": "Queue Service startup was not attempted because the current `main` worktree still has no confirmed non-production Queue Postgres DSN or DSN file. This records the exact test-environment prerequisite needed from the user or deployment environment.",
+      "ticket_id": "T111",
+      "verification": [
+        "Current env status:",
+        "`NOVAIC_QUEUE_DB_BACKEND=unset`",
+        "`NOVAIC_QUEUE_POSTGRES_DSN=unset`",
+        "`NOVAIC_QUEUE_POSTGRES_DSN_FILE=unset`",
+        "`NOVAIC_QUEUE_INTERNAL_KEY=unset`",
+        "Current ledger next action before this result was `execute-ticket` for `P116/T111`, whose prerequisite is a supplied staging DSN."
+      ]
+    },
+    "R107": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/P117-T112-result.md`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P117/results/R107.md",
+      "created_at": "2026-05-22T16:26:13+00:00",
+      "done": [
+        "Connected to `api.gradievo.com` as `root` and confirmed Docker is available.",
+        "Observed an existing `novaic-postgres` container but did not reuse it for Queue staging.",
+        "Created or reused a separate staging-only Postgres container:",
+        "container: `novaic-queue-staging-postgres`",
+        "image: `postgres:16-alpine`",
+        "host bind: `127.0.0.1:15432`",
+        "database: `novaic_queue_staging`",
+        "user: `novaic_queue_staging`",
+        "volume: `novaic_queue_staging_pgdata`",
+        "restart policy: `unless-stopped`",
+        "Created secret files on the remote host with `0600` permissions:",
+        "env file: `/opt/novaic/queue-staging-postgres/postgres.env`",
+        "DSN file: `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`",
+        "Confirmed the container health status is `healthy`.",
+        "Confirmed `pg_isready` passes inside the container."
+      ],
+      "id": "R107",
+      "known_gaps": [
+        "This closes the target-supply prerequisite only. Queue Service has not yet been started against this DSN in the P117 ticket.",
+        "The DSN file is on the remote `api.gradievo.com` host. Follow-up startup/smoke execution should either run on that host or establish a safe tunnel and local DSN file without printing the secret."
+      ],
+      "problem_id": "P117",
+      "root_id": "P000",
+      "summary": "Provisioned an independent non-production Queue Postgres target on `api.gradievo.com` for staging validation. The target is a dedicated Docker container with a dedicated database, user, volume, and DSN file. No DSN secret value was printed into this artifact.",
+      "ticket_id": "T112",
+      "verification": [
+        "`docker --version` succeeded on `api.gradievo.com`.",
+        "`docker ps` showed existing production-ish/shared services; Queue staging uses a separate container and volume.",
+        "Final setup output:",
+        "`container=novaic-queue-staging-postgres`",
+        "`status=healthy`",
+        "`host_bind=127.0.0.1:15432`",
+        "`database=novaic_queue_staging`",
+        "`user=novaic_queue_staging`",
+        "`dsn_file=/opt/novaic/queue-staging-postgres/queue-postgres.dsn`",
+        "`env_file=/opt/novaic/queue-staging-postgres/postgres.env`",
+        "`volume=novaic_queue_staging_pgdata`"
+      ]
+    },
+    "R108": {
+      "artifacts": [
+        "Remote log: `/opt/novaic/queue-service-staging/queue-service.log`.",
+        "Remote pidfile path used for the smoke process: `/opt/novaic/queue-service-staging/queue-service.pid`.",
+        "Staging DSN file path: `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/results/R108.md",
+      "created_at": "2026-05-22T16:35:09+00:00",
+      "done": [
+        "Confirmed `T113` should use the staging DSN file at `/opt/novaic/queue-staging-postgres/queue-postgres.dsn` without printing its secret contents.",
+        "Reused the clean staging runtime checkout under `/opt/novaic/queue-service-staging/runtime`.",
+        "Added a clean staging `novaic-common` checkout under `/opt/novaic/queue-service-staging/novaic-common`.",
+        "Started Queue Service on `127.0.0.1:19987` with:",
+        "`NOVAIC_QUEUE_DB_BACKEND=postgres`",
+        "`NOVAIC_QUEUE_POSTGRES_DSN_FILE=/opt/novaic/queue-staging-postgres/queue-postgres.dsn`",
+        "`PYTHONPATH=/opt/novaic/queue-service-staging/runtime:/opt/novaic/queue-service-staging/novaic-common`",
+        "Avoided changing production service configuration or public ports."
+      ],
+      "id": "R108",
+      "known_gaps": [
+        "The DSN file needs to be regenerated in a libpq-safe form, either with URL-encoded credentials or a keyword connection string.",
+        "Queue Service must be restarted after the DSN fix and verified through `/health` and `/ready`."
+      ],
+      "problem_id": "P118",
+      "root_id": "P000",
+      "summary": "The api host staging Queue Service startup attempt used the real `novaic-agent-runtime` `main` checkout, the staging Postgres DSN file path, and a loopback-only port. The first import failure was resolved by adding a clean `novaic-common` checkout to the staging layout and starting with the same sibling `PYTHONPATH` boundary used by the project start script.\n\nThe service still did not reach `/health` or `/ready`: the Postgres client could not parse/connect with the current staging DSN file because the URI credentials are not safely encoded. The log shows the client trying to resolve `novaic_queue_staging` as a host instead of connecting to the loopback Postgres container endpoint.",
+      "ticket_id": "T113",
+      "verification": [
+        "Runtime checkout evidence: `novaic-agent-runtime` commit `9af254c`.",
+        "Common checkout evidence: `novaic-common` commit `e0cc9df`.",
+        "Import boundary verification: the second startup passed the earlier `ModuleNotFoundError: No module named 'common'` failure and reached Queue Service initialization.",
+        "Startup failure evidence from `/opt/novaic/queue-service-staging/queue-service.log`:",
+        "Queue Service recognized `backend=postgres`.",
+        "Queue Service recognized DSN source file `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "Postgres connection failed with `failed to resolve host 'novaic_queue_staging': [Errno -8] Servname not supported for ai_socktype`.",
+        "`/health` on `http://127.0.0.1:19987/health` did not become reachable during the startup probe."
+      ]
+    },
+    "R109": {
+      "artifacts": [
+        "Remote log: `/opt/novaic/queue-service-staging/queue-service.log`.",
+        "Staging DSN file path: `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "Diagnostic replay used `POSTGRES_SCHEMA_STATEMENTS` from `/opt/novaic/queue-service-staging/runtime/queue_service/db/schema.py`."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/results/R109.md",
+      "created_at": "2026-05-22T16:39:28+00:00",
+      "done": [
+        "Regenerated `/opt/novaic/queue-staging-postgres/queue-postgres.dsn` from `/opt/novaic/queue-staging-postgres/postgres.env` using URL-encoded credentials.",
+        "Preserved the DSN file as the secret source; the DSN contents were not printed in logs, chat, or artifacts.",
+        "Confirmed DSN file mode is `0600`.",
+        "Confirmed Docker container `novaic-queue-staging-postgres` health is `healthy`.",
+        "Confirmed `pg_isready` reports Postgres accepting connections inside the container.",
+        "Restarted staging Queue Service on `127.0.0.1:19987` with the DSN file and sibling `novaic-common` import path.",
+        "Confirmed the previous parse failure is gone: logs now show connection attempts to `host=127.0.0.1 port=15432 database=novaic_queue_staging`."
+      ],
+      "id": "R109",
+      "known_gaps": [
+        "`init_postgres_schema` must roll back after the initial missing-`config` probe fails on a fresh Postgres database.",
+        "After the code fix is deployed to the staging checkout, Queue Service must be restarted and `/health` plus `/ready` must pass."
+      ],
+      "problem_id": "P119",
+      "root_id": "P000",
+      "summary": "The staging DSN file on `api.gradievo.com` was regenerated in a libpq-safe URI form without printing the secret. The Queue Service startup moved past the previous host-resolution failure and connected to the intended loopback Postgres endpoint. Startup is still not successful because fresh Postgres schema initialization exposes a runtime code bug: after the expected missing `config` table probe fails, the transaction is not rolled back before running baseline DDL.",
+      "ticket_id": "T114",
+      "verification": [
+        "Remote output:",
+        "`dsn_rewritten=1`",
+        "`dsn_target=127.0.0.1:15432/novaic_queue_staging`",
+        "`dsn_mode=600`",
+        "`container_health=healthy`",
+        "`pg_isready=/var/run/postgresql:5432 - accepting connections`",
+        "Queue Service startup failure after DSN fix:",
+        "`psycopg.errors.InFailedSqlTransaction: current transaction is aborted, commands ignored until end of transaction block`",
+        "Failure occurs in `queue_service/db/schema.py:init_postgres_schema`.",
+        "Diagnostic schema replay:",
+        "`POSTGRES_SCHEMA_STATEMENTS` completed in a clean debug schema: `schema_debug_ok=58`.",
+        "This indicates the baseline DDL is valid and the failure is caused by transaction state handling before the DDL loop."
+      ]
+    },
+    "R110": {
+      "artifacts": [
+        "Code: `novaic-agent-runtime/queue_service/db/schema.py`.",
+        "Test: `novaic-agent-runtime/tests/test_queue_postgres_boundary.py`.",
+        "Remote staging log: `/opt/novaic/queue-service-staging/queue-service.log`."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/children/P120/results/R110.md",
+      "created_at": "2026-05-22T16:42:26+00:00",
+      "done": [
+        "Patched `novaic-agent-runtime/queue_service/db/schema.py`.",
+        "`init_postgres_schema` now calls `conn.rollback()` when the initial `SELECT value FROM config` probe fails.",
+        "`_existing_postgres_table_names` also rolls back if the catalog read fails before returning an empty set.",
+        "Added regression coverage in `novaic-agent-runtime/tests/test_queue_postgres_boundary.py`.",
+        "The fake Postgres connection can now simulate a missing `config` relation.",
+        "The new test proves rollback happens before the first `CREATE TABLE`.",
+        "Synced the patched `schema.py` into `/opt/novaic/queue-service-staging/runtime/queue_service/db/schema.py`.",
+        "Restarted the staging Queue Service process on `127.0.0.1:19987`."
+      ],
+      "id": "R110",
+      "known_gaps": [
+        "The patched submodule code is local and synced to staging; it still needs to be committed and pushed with the ledger changes when the current closure pass is ready."
+      ],
+      "problem_id": "P120",
+      "root_id": "P000",
+      "summary": "Fixed the Queue Service fresh Postgres initialization bug by rolling back after the initial missing-`config` version probe fails. Added a focused regression test that models the fresh Postgres transaction-abort behavior. Deployed the patched runtime file to the api staging checkout, restarted Queue Service, and verified both health endpoints against the staging Postgres DSN file.",
+      "ticket_id": "T115",
+      "verification": [
+        "Local focused tests:",
+        "`PYTHONPATH=.:../novaic-common python3 -m pytest -q tests/test_queue_postgres_boundary.py`",
+        "Result: `12 passed in 0.10s`.",
+        "Remote staging verification on `api.gradievo.com`:",
+        "Process pid: `3602792`.",
+        "Port: `127.0.0.1:19987`.",
+        "DSN source: `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "Schema version: `18`.",
+        "Public table count: `16`.",
+        "`/health`: `{\"status\":\"healthy\",\"service\":\"queue-service\",\"version\":\"1.0.0\",\"database\":\"postgres:/opt/novaic/queue-staging-postgres/queue-postgres.dsn\",\"database_backend\":\"postgres\"}`.",
+        "`/ready`: `status=ok`, `database_backend=postgres`, checks for `database`, `postgres`, `tq_tasks`, `tq_sagas`, `tq_session_state`, `tq_session_outbox`, `session_outbox`, and `session_state` all `ok`.",
+        "Remote log confirms:",
+        "`Postgres connected and initialized`.",
+        "`Queue Service Startup complete`.",
+        "`Ready to accept requests`."
+      ]
+    },
+    "R111": {
+      "artifacts": [
+        "`R104`, `C113`: Queue startup default cleanup.",
+        "`R105`, `R106`, `R107`, `R108`, `R109`, `R110`: staging target and service startup path.",
+        "`C124`: final `P115` success check."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/results/R111.md",
+      "created_at": "2026-05-22T16:45:13+00:00",
+      "done": [
+        "Closed `P114: Clean Queue Startup Postgres Default`.",
+        "Result `R104`.",
+        "Success check `C113`.",
+        "Closed `P115: Start Queue Service With Confirmed Postgres Target`.",
+        "Initial result `R105`.",
+        "Follow-up path `P116` through `P120`.",
+        "Final success check `C124`.",
+        "Live staging Queue Service now runs with:",
+        "`NOVAIC_QUEUE_DB_BACKEND=postgres`.",
+        "DSN file `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`.",
+        "Loopback bind `127.0.0.1:19987`.",
+        "Passing `/health` and `/ready`."
+      ],
+      "id": "R111",
+      "known_gaps": [
+        "The local `novaic-agent-runtime` code fix still needs commit/push.",
+        "Higher-level API smokes are outside `P111` and are expected to continue under the next ledger frontier."
+      ],
+      "problem_id": "P111",
+      "root_id": "P000",
+      "summary": "`T108` split `P111` into two child problems and both are now closed:\n\n- `P114` cleaned the misleading Queue Service startup default so runtime startup is unambiguously Postgres-first instead of silently validating SQLite.\n- `P115` supplied/confirmed a non-production Postgres target, started Queue Service against it on the api host, and verified `/health` plus `/ready`.",
+      "ticket_id": "T108",
+      "verification": [
+        "`P114` success proves startup defaults/code contract no longer steer Queue Service toward SQLite by default.",
+        "`P115` success proves a confirmed staging Postgres target exists and Queue Service can start against it.",
+        "Final remote evidence from `R110`:",
+        "Queue Service pid `3602792`.",
+        "`/health` healthy with `database_backend=postgres`.",
+        "`/ready` ok with core queue/session checks ok.",
+        "Postgres schema version `18` and `16` public tables.",
+        "Focused code regression verification from `R110`:",
+        "`PYTHONPATH=.:../novaic-common python3 -m pytest -q tests/test_queue_postgres_boundary.py`",
+        "`12 passed in 0.10s`."
+      ]
+    },
+    "R112": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`",
+        "`novaic-agent-runtime/queue_service/queue_db.py`",
+        "`novaic-agent-runtime/queue_service/saga_repo.py`",
+        "`novaic-agent-runtime/queue_service/fsm/sqlite_store.py`",
+        "`novaic-agent-runtime/tests/test_queue_postgres_task_mutations.py`",
+        "`novaic-agent-runtime/tests/test_queue_postgres_saga_mutations.py`",
+        "`novaic-agent-runtime/tests/test_queue_postgres_idempotency_complete_release.py`",
+        "`novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/results/R112.md",
+      "created_at": "2026-05-22T17:00:41+00:00",
+      "done": [
+        "Verified `/health` and `/ready` against the running staging service.",
+        "Exercised task APIs:",
+        "publish, claim, complete, get;",
+        "publish, claim, terminal fail.",
+        "Exercised idempotency APIs:",
+        "first acquire -> `acquired`;",
+        "duplicate acquire while leased -> `in_progress`;",
+        "complete;",
+        "acquire after completion -> `completed`.",
+        "Exercised saga APIs:",
+        "create, claim, launched, complete, get completed saga;",
+        "create, claim, fail, get failed saga.",
+        "Exercised session APIs:",
+        "dispatch -> `wake_start_queued`;",
+        "session-ended -> `restart_pending`;",
+        "sessions and pending diagnostics.",
+        "Queried post-smoke row counts from the staging Postgres container.",
+        "Fixed Postgres JSONB binding issues found by the smoke:",
+        "`queue_service/queue_db.py`: bind JSON values as JSON text instead of raw Python dict/list.",
+        "`queue_service/saga_repo.py`: bind saga JSON values as JSON text.",
+        "`queue_service/fsm/sqlite_store.py`: bind generic FSM payloads as JSON text for Postgres too."
+      ],
+      "id": "R112",
+      "known_gaps": [
+        "Code fixes are local and deployed to staging; they still need to be committed and pushed.",
+        "The smoke uses the dedicated staging Queue Service and Postgres container, not production traffic."
+      ],
+      "problem_id": "P112",
+      "root_id": "P000",
+      "summary": "Ran representative Queue Service API smokes against the real api-host staging service at `http://127.0.0.1:19987`. The first smoke attempts uncovered two additional Postgres JSONB binding defects; both were fixed locally, deployed to the staging checkout, and covered by focused tests. The final smoke passed 26 HTTP operations with no skipped operations.",
+      "ticket_id": "T116",
+      "verification": [
+        "Focused local tests:",
+        "`PYTHONPATH=.:../novaic-common python3 -m pytest -q tests/test_queue_postgres_task_mutations.py tests/test_queue_postgres_saga_mutations.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_boundary.py tests/test_pr342_generic_fsm_transition_runner.py`",
+        "Result: `49 passed in 0.14s`.",
+        "Remote staging restart after fixes:",
+        "pid `3607615`;",
+        "`/health` healthy with `database_backend=postgres`;",
+        "`/ready` ok.",
+        "Final API smoke:",
+        "report file: `.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`;",
+        "`ok=true`;",
+        "run id `20260522T165950Z-74bc8a64`;",
+        "operation count `26`;",
+        "skips `[]`.",
+        "Post-smoke counts:",
+        "`tq_tasks=2`;",
+        "`tq_task_state=2`;",
+        "`tq_sagas=2`;",
+        "`tq_saga_state=2`;",
+        "`tq_session_events=6`;",
+        "`tq_session_state=1`;",
+        "`tq_session_outbox=2`;",
+        "`tq_idempotency_ledger=1`."
+      ]
+    },
+    "R113": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-post-smoke-count-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P113/results/R113.md",
+      "created_at": "2026-05-22T17:04:40+00:00",
+      "done": [
+        "Re-queried the staging Postgres container from `api.gradievo.com`.",
+        "Wrote a redacted count report to `.complex-problems/L20260522-091929/artifacts/queue-post-smoke-count-report.json`.",
+        "Tied the count report to the successful smoke report `.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`.",
+        "Recorded target identity without raw DSN or internal key exposure."
+      ],
+      "id": "R113",
+      "known_gaps": [
+        "Counts include staging smoke rows and are not production metrics.",
+        "Some empty outbox tables remain `0`, which is expected for this smoke shape."
+      ],
+      "problem_id": "P113",
+      "root_id": "P000",
+      "summary": "Recorded post-smoke Queue Postgres counts and redacted target public info after the successful API smoke run `20260522T165950Z-74bc8a64`.",
+      "ticket_id": "T117",
+      "verification": [
+        "Count report generation returned `ok=true`, `count_keys=16`, `histogram_keys=6`.",
+        "Target public info:",
+        "host alias `api.gradievo.com`;",
+        "container `novaic-queue-staging-postgres`;",
+        "container health `healthy`;",
+        "host bind `127.0.0.1:15432`;",
+        "database/user `novaic_queue_staging`;",
+        "DSN file path `/opt/novaic/queue-staging-postgres/queue-postgres.dsn`;",
+        "secret marked `redacted`.",
+        "Key counts:",
+        "`config_version=18`;",
+        "`tq_tasks=2`;",
+        "`tq_task_events=6`;",
+        "`tq_task_state=2`;",
+        "`tq_sagas=2`;",
+        "`tq_saga_events=7`;",
+        "`tq_saga_state=2`;",
+        "`tq_worker_lease_events=8`;",
+        "`tq_worker_lease_state=4`;",
+        "`tq_idempotency_ledger=1`;",
+        "`tq_session_events=6`;",
+        "`tq_session_state=1`;",
+        "`tq_session_outbox=2`.",
+        "Histograms:",
+        "`task_status_done=1`;",
+        "`task_status_failed=1`;",
+        "`saga_status_completed=1`;",
+        "`saga_status_failed=1`;",
+        "`session_state_starting=1`;",
+        "`session_outbox_pending=2`."
+      ]
+    },
+    "R114": {
+      "artifacts": [
+        "`R111`, `C125`: Queue Service Postgres-mode startup.",
+        "`R112`, `C126`: API smoke success.",
+        "`R113`, `C127`: Post-smoke count report.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-post-smoke-count-report.json`."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/results/R114.md",
+      "created_at": "2026-05-22T17:05:43+00:00",
+      "done": [
+        "Closed `P110: Confirm Non-Production Queue Postgres Target`.",
+        "Early result `R103` showed no safe target was available in the original local runner and correctly prevented writes.",
+        "Later child path provisioned the safe staging target under `P117/R107`.",
+        "Closed `P111: Start Queue Service In Postgres Mode`.",
+        "Result `R111`, check `C125`.",
+        "Final running service: `http://127.0.0.1:19987`, backend Postgres, DSN file path only.",
+        "Closed `P112: Run Queue Service API Smokes`.",
+        "Result `R112`, check `C126`.",
+        "Final smoke report `ok=true`, 26 operations, no skips.",
+        "Closed `P113: Record Queue Postgres Post-Smoke Counts`.",
+        "Result `R113`, check `C127`.",
+        "Count report recorded target identity and table counts with secrets redacted."
+      ],
+      "id": "R114",
+      "known_gaps": [
+        "The fixes discovered during staging must still be committed and pushed.",
+        "The staging service is intentionally isolated and loopback-only; production cutover remains governed by higher-level ledger work."
+      ],
+      "problem_id": "P109",
+      "root_id": "P000",
+      "summary": "`T106` split `P109` into target confirmation, Queue Service startup, API smokes, and post-smoke count reporting. All four child problems are now closed with evidence. The final state is a dedicated non-production Queue Postgres target on `api.gradievo.com`, a running Postgres-mode Queue Service, successful API smokes, and redacted post-smoke counts.",
+      "ticket_id": "T106",
+      "verification": [
+        "Queue Service startup:",
+        "`/health` healthy.",
+        "`/ready` ok.",
+        "schema version `18`.",
+        "API smoke report:",
+        "`.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`.",
+        "run id `20260522T165950Z-74bc8a64`.",
+        "task complete/fail, saga complete/fail, session dispatch/session-ended, and idempotency contention/completed replay all passed.",
+        "Count report:",
+        "`.complex-problems/L20260522-091929/artifacts/queue-post-smoke-count-report.json`.",
+        "target `api.gradievo.com`, `novaic-queue-staging-postgres`, `127.0.0.1:15432`, database/user `novaic_queue_staging`, DSN secret redacted.",
+        "key counts include `tq_tasks=2`, `tq_sagas=2`, `tq_session_events=6`, `tq_idempotency_ledger=1`.",
+        "Local focused regression tests for discovered Postgres runtime defects:",
+        "`49 passed in 0.14s`."
+      ]
+    },
+    "R115": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-worker-postgres-smoke-report.json`",
+        "Local source changes: `novaic-agent-runtime/task_queue/workers/assembly_factories.py`, `novaic-agent-runtime/queue_service/worker/generic_worker.py`, `novaic-agent-runtime/queue_service/worker/concurrent_worker.py`, `novaic-agent-runtime/queue_service/db/postgres.py`, plus earlier Postgres JSON/schema fixes in Queue Service modules."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P107/results/R115.md",
+      "created_at": "2026-05-22T17:24:27+00:00",
+      "done": [
+        "Updated session and saga outbox worker assembly to build the Queue database through the shared queue DB boundary, using `NOVAIC_QUEUE_DB_BACKEND=postgres` and the staging DSN file instead of directly creating `data/queue.db`.",
+        "Fixed `GenericWorker` and `ConcurrentGenericWorker` shutdown handling so SIGTERM calls the callable `shutdown()` method instead of a shadowed `ShutdownController` object.",
+        "Fixed Postgres qmark conversion so `LIMIT ? FOR UPDATE SKIP LOCKED` binds the limit parameter correctly while preserving JSONB `?` operators.",
+        "Restarted the api staging Queue Service on `127.0.0.1:19987` with Postgres backend healthy.",
+        "Ran bounded `task-worker`, `saga-worker`, `session-outbox-worker`, and `saga-outbox-worker` processes against the api staging target.",
+        "Saved the full smoke report to `.complex-problems/L20260522-091929/artifacts/queue-worker-postgres-smoke-report.json`."
+      ],
+      "id": "R115",
+      "known_gaps": [
+        "None for this ticket. The workers were intentionally bounded by the smoke harness, so `timed_out=true` in the JSON report means the harness sent SIGTERM after the startup/drain window; the processes handled that cleanly."
+      ],
+      "problem_id": "P107",
+      "root_id": "P000",
+      "summary": "The api host staging Queue Service worker smoke was completed against Postgres mode. During the first attempt, the smoke exposed three worker-path defects: outbox workers still constructed the sqlite `Database` directly, generic worker shutdown was shadowed by a same-named controller attribute, and the Postgres placeholder converter preserved the `LIMIT ? FOR UPDATE SKIP LOCKED` placeholder incorrectly. Those defects were fixed locally, covered by regression tests, deployed to the api staging checkout, and the worker smoke was rerun successfully.",
+      "ticket_id": "T118",
+      "verification": [
+        "Local regression suite: `PYTHONPATH=.:../novaic-common python3 -m pytest -q tests/test_queue_postgres_boundary.py tests/test_pr324_generic_worker_loop.py tests/test_pr332_concurrent_generic_worker.py tests/test_pr339_worker_startup_db_retry.py tests/test_pr302_session_outbox_worker_production_wiring.py tests/test_pr337_worker_command_registry.py tests/test_queue_postgres_task_mutations.py tests/test_queue_postgres_saga_mutations.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_pr342_generic_fsm_transition_runner.py` passed with `72 passed in 0.22s`.",
+        "Staging smoke run `20260522T172306Z` returned `ok=true`.",
+        "Worker outcomes: task-worker, saga-worker, session-outbox-worker, and saga-outbox-worker all printed startup lines, received bounded shutdown, printed shutdown complete, had return code `0`, were not killed, and had no traceback or error marker.",
+        "DB count deltas: `tq_session_outbox` stayed at `2` rows but histogram moved from `pending=2` to `published=2`; `tq_sagas` moved from `2` to `4`; `tq_saga_events` moved from `7` to `10`; `tq_saga_state` moved from completed/failed only to `completed=1`, `failed=1`, `cancelled=1`, `pending=1`.",
+        "SQLite residue check: before and after smoke, no `*.db`, `*.sqlite`, or `*.sqlite3` files existed under `/opt/novaic/queue-service-staging`; `lsof +D /opt/novaic/queue-service-staging/data` found no `queue.db` or sqlite holders."
+      ]
+    },
+    "R116": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P108/results/R116.md",
+      "created_at": "2026-05-22T17:28:32+00:00",
+      "done": [
+        "Wrote `.complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`.",
+        "Summarized staging target identity with credential values and credential-file paths omitted.",
+        "Included commands run, timestamps, Queue Service health/readiness, API smoke coverage, worker/outbox smoke coverage, DB counts and deltas, failures found/fixed, residual risks, and source artifacts.",
+        "Ran a sensitive-pattern scan against the report for connection strings, password/token words, known credential file suffixes, internal staging credential paths, and direct credential environment variable names."
+      ],
+      "id": "R116",
+      "known_gaps": [
+        "None for this ticket."
+      ],
+      "problem_id": "P108",
+      "root_id": "P000",
+      "summary": "Created a redacted staging validation report for P076 and verified it against the completed API, count, and worker smoke artifacts. The report states that the Queue Postgres staging validation scope is ready to proceed to the production-cutover preparation gate.",
+      "ticket_id": "T119",
+      "verification": [
+        "Compared report facts against `queue-api-smoke-report.json`, `queue-post-smoke-count-report.json`, and `queue-worker-postgres-smoke-report.json`.",
+        "Redaction scan command: `rg -n -i 'postgresql://|password|token|secret|queue-postgres\\\\.dsn|/opt/novaic|dsn_file|NOVAIC_QUEUE_POSTGRES_DSN|credential-file path:|credential-file paths?: /' .complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`.",
+        "Redaction scan returned no matches.",
+        "Report decision is scoped to P076 staging validation and does not claim blanket production traffic approval."
+      ]
+    },
+    "R117": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-post-smoke-count-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-worker-postgres-smoke-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/results/R117.md",
+      "created_at": "2026-05-22T17:30:26+00:00",
+      "done": [
+        "Closed `P105: Prepare Queue Postgres Staging Target` with a safe staging target path after the initial local no-target blocker was correctly recorded.",
+        "Closed `P106: Run Queue Service Postgres API Staging Smokes` through follow-up `P109`, with Queue Service running at `http://127.0.0.1:19987`, health/readiness passing, and the API smoke report `ok=true`.",
+        "Closed `P107: Run Queue Worker And Outbox Postgres Staging Smokes`, including fixes for worker DB boundary, generic worker shutdown, and Postgres limit placeholder conversion discovered by the first staging smoke.",
+        "Closed `P108: Record Queue Postgres Staging Validation Report` with a redacted report artifact and a successful redaction scan.",
+        "Captured DB counts after API smokes and after worker/outbox smokes."
+      ],
+      "id": "R117",
+      "known_gaps": [
+        "Code changes discovered during staging still need to be committed and pushed.",
+        "Production cutover itself is not performed by P076; this result only closes the staging validation gate."
+      ],
+      "problem_id": "P076",
+      "root_id": "P000",
+      "summary": "P076's staging validation split is complete. The final state is a dedicated non-production Queue Postgres target on `api.gradievo.com`, a Queue Service runtime healthy in Postgres mode, successful API smokes, successful worker/outbox smokes with no sqlite queue residue, and a redacted staging validation report that states the Queue Postgres staging scope is ready for the production-cutover preparation gate.",
+      "ticket_id": "T103",
+      "verification": [
+        "P105 latest check: `C110`.",
+        "P106 latest check: `C129`, with follow-up P109 check `C128`.",
+        "P107 latest check: `C130`.",
+        "P108 latest check: `C131`.",
+        "API smoke run `20260522T165950Z-74bc8a64`: 26 operations passed.",
+        "Worker smoke run `20260522T172306Z`: task-worker, saga-worker, session-outbox-worker, and saga-outbox-worker all started, handled bounded shutdown, returned `0`, and had no traceback/error marker.",
+        "Worker smoke sqlite scan: no `*.db`, `*.sqlite`, or `*.sqlite3` files under the staging runtime tree and no sqlite queue holders from `lsof`.",
+        "Staging validation report: `.complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`."
+      ]
     }
   },
   "root_id": "P000",
@@ -16292,15 +17931,17 @@
       "problem_definition": "The Queue repositories and migration tooling are implemented, but unit tests do not prove the actual Queue Service process, workers, outbox workers, and representative APIs run correctly against a non-production Postgres target. P076 must create and execute a staging validation plan that avoids production data and records a redacted evidence report.",
       "problem_id": "P076",
       "proposed_solution": "1. Prepare a staging/test `novaic_queue` Postgres target:\n   - use a non-production DSN;\n   - initialize current Queue schema;\n   - optionally run the migration tool against a sanitized SQLite fixture or copied staging queue DB.\n2. Start Queue Service in Postgres mode:\n   - `NOVAIC_QUEUE_DB_BACKEND=postgres`;\n   - DSN via file or redacted env;\n   - verify health/readiness.\n3. Run representative API smokes:\n   - task publish/claim/complete/fail/retry or safe equivalents;\n   - saga create/claim/launch/complete/fail safe path;\n   - session dispatch/finalize/rebuild smoke where available;\n   - outbox drain/retry smoke;\n   - idempotency duplicate/in-progress/completed-result smoke.\n4. Start representative workers/outbox workers against the staging Queue Service and verify they do not create/use SQLite queue file holders.\n5. Record a redacted staging report with commands, counts, health checks, DB counts, and failures.",
-      "result_ids": [],
+      "result_ids": [
+        "R117"
+      ],
       "risks": [
         "This step may be blocked by missing non-production Postgres credentials or by lack of a safe staging runtime on the local machine.",
         "Do not run against production data or production Queue Service during P076."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Validate Queue Postgres Mode In Staging",
-      "updated_at": "2026-05-22T15:39:09+00:00",
+      "updated_at": "2026-05-22T17:30:26+00:00",
       "verification_plan": "- Prefer an executable staging smoke script/report artifact if staging credentials are available.\n- If credentials are not available in this environment, produce the smallest blocker child that records the missing dependency and exact command plan.\n- Reuse P075 migration report format where useful."
     },
     "T104": {
@@ -16390,16 +18031,18 @@
       "problem_definition": "P109 must close the P106 gap by first confirming a safe non-production Queue Postgres target, then running Queue Service API smokes against the real service runtime. Current evidence says the local shell has no Queue Postgres DSN/DSN file and Docker is unavailable, so target confirmation is a separate prerequisite from smoke execution.",
       "problem_id": "P109",
       "proposed_solution": "1. Split the work into explicit closure units:\n   - confirm or provision a non-production Queue Postgres DSN/DSN file;\n   - prepare and start Queue Service in Postgres mode;\n   - run health/readiness and representative API smokes;\n   - record post-smoke DB counts and redacted config identity.\n2. Enforce a fail-closed gate before any write:\n   - no production-looking host/database/user;\n   - no raw DSN in artifacts;\n   - no SQLite fallback for smoke runtime.\n3. Use the running service as the acceptance surface, while using existing repository tests/helpers only as implementation references.\n4. If the target remains unavailable, record an explicit blocker at the target-confirmation child instead of pretending smoke validation happened.",
-      "result_ids": [],
+      "result_ids": [
+        "R114"
+      ],
       "risks": [
         "Missing staging credentials will block the first child.",
         "A broad one-shot execution would hide whether the blocker is target setup, service startup, or a specific API path.",
         "`main_novaic.py` still exposes a SQLite CLI default, so smoke commands must pin Postgres explicitly until that residue is cleaned."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Queue API Staging Target And Smoke Closure Ticket",
-      "updated_at": "2026-05-22T15:47:31+00:00",
+      "updated_at": "2026-05-22T17:05:43+00:00",
       "verification_plan": "- Re-check required environment variables using set/unset status only.\n- Validate DSN file presence and target identity without printing secrets.\n- Start Queue Service with explicit `NOVAIC_QUEUE_DB_BACKEND=postgres`.\n- Exercise real HTTP/API endpoints or a documented local smoke harness that talks to the running service.\n- Query counts through the existing Postgres database boundary after smokes."
     },
     "T107": {
@@ -16454,15 +18097,17 @@
       "problem_definition": "P111 must make Queue Service startup unambiguously Postgres-mode for staging smokes. Current target confirmation (P110/R103) says no non-production DSN is available, and code inspection found a stale-looking `main_novaic.py` CLI default that still falls back to `sqlite`.",
       "problem_id": "P111",
       "proposed_solution": "1. Clean the startup boundary so Queue Service runtime entrypoints default to Postgres rather than SQLite.\n2. Keep SQLite only as an explicit adapter/test mode, not as an accidental service default.\n3. Add or update tests that guard the startup default and prevent future fallback drift.\n4. If a confirmed non-production DSN is unavailable, record a startup blocker without launching the service.\n5. If a DSN is later supplied, start Queue Service with `NOVAIC_QUEUE_DB_BACKEND=postgres` and record startup/health evidence.",
-      "result_ids": [],
+      "result_ids": [
+        "R111"
+      ],
       "risks": [
         "Changing defaults can affect local developer scripts that relied on implicit SQLite.",
         "Starting without a confirmed DSN could either fail noisily or accidentally hit the wrong target; fail closed."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Queue Service Postgres Startup Ticket",
-      "updated_at": "2026-05-22T15:50:12+00:00",
+      "updated_at": "2026-05-22T16:45:13+00:00",
       "verification_plan": "- Inspect startup entrypoints for `NOVAIC_QUEUE_DB_BACKEND` defaults.\n- Patch stale SQLite startup default if present.\n- Run focused startup/default tests.\n- Check current DSN env presence without printing secrets.\n- Start the service only after a confirmed non-production DSN exists."
     },
     "T109": {
@@ -16547,17 +18192,350 @@
       "problem_definition": "P116 is the explicit unblock point for Queue Service startup. Code cleanup is complete, but the runner still needs a confirmed non-production Queue Postgres DSN/DSN file before starting the service and checking health/readiness.",
       "problem_id": "P116",
       "proposed_solution": "1. Wait for or receive a confirmed non-production Queue Postgres target via:\n   - `NOVAIC_QUEUE_POSTGRES_DSN_FILE`, preferred; or\n   - `NOVAIC_QUEUE_POSTGRES_DSN`, direct fallback.\n2. Verify the target identity is staging/test/non-production without printing secrets.\n3. Start Queue Service with `NOVAIC_QUEUE_DB_BACKEND=postgres`.\n4. Verify startup evidence and health/readiness.\n5. Record redacted startup evidence and any failure output.",
-      "result_ids": [],
+      "result_ids": [
+        "R106"
+      ],
       "risks": [
         "This ticket cannot complete in the current runner until a staging DSN is supplied.",
         "Direct DSN usage risks shell history leakage; DSN file is safer."
       ],
       "root_id": "P000",
-      "status": "classified",
+      "status": "done",
       "title": "Start Queue Service After DSN Ticket",
-      "updated_at": "2026-05-22T15:55:07+00:00",
+      "updated_at": "2026-05-22T16:20:28+00:00",
       "verification_plan": "- Check env var set/unset status first.\n- Confirm DSN file path existence if using file-based credentials.\n- Start service only after non-production confirmation.\n- Call health/readiness endpoints and summarize responses."
+    },
+    "T112": {
+      "acceptance_criteria": [
+        "A Queue Postgres DSN file or direct DSN is available to the runner.",
+        "The target is confirmed non-production before any write.",
+        "DSNs/secrets are not printed into artifacts.",
+        "The next Queue Service startup attempt has exact environment variables to use."
+      ],
+      "assumptions": [
+        "The user can provide either a DSN file path on this machine or a confirmed staging/test database connection string."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P117/tickets/T112.md",
+      "classification": "one_go",
+      "classification_reason": "Supplying or confirming a DSN is a narrow prerequisite check: either a non-production target is available and redacted, or execution remains blocked waiting for user-provided test environment.",
+      "created_at": "2026-05-22T16:21:36+00:00",
+      "id": "T112",
+      "problem_definition": "Queue Service Postgres runtime validation is blocked because the runner does not have a confirmed non-production Queue Postgres target. P117 exists to acquire or confirm that target before service startup is retried.",
+      "problem_id": "P117",
+      "proposed_solution": "1. Prefer a DSN file to avoid shell-history leakage:\n   - set `NOVAIC_QUEUE_POSTGRES_DSN_FILE=/absolute/path/to/non-production-queue-postgres.dsn`.\n2. If a DSN file is not practical, use direct DSN:\n   - set `NOVAIC_QUEUE_POSTGRES_DSN`.\n3. Require explicit non-production confirmation:\n   - database/host name clearly indicates staging/test/dev; or\n   - the user confirms the target is non-production.\n4. Record only redacted public identity and set/unset status.\n5. Once supplied, hand control back to the startup/smoke ticket with `NOVAIC_QUEUE_DB_BACKEND=postgres`.",
+      "result_ids": [
+        "R107"
+      ],
+      "risks": [
+        "Direct DSN can leak through shell history; file-based input is preferred.",
+        "A staging-looking name is not enough if the user/deployment context says otherwise."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Supply Queue Staging DSN Ticket",
+      "updated_at": "2026-05-22T16:26:13+00:00",
+      "verification_plan": "- Check env var set/unset status without printing values.\n- If using `NOVAIC_QUEUE_POSTGRES_DSN_FILE`, verify the file path exists without dumping contents.\n- Confirm non-production identity by safe public fields or explicit user confirmation.\n- Do not start Queue Service in this ticket; only close the target prerequisite."
+    },
+    "T113": {
+      "acceptance_criteria": [
+        "Queue Service starts on `api.gradievo.com` with Postgres backend.",
+        "The DSN source is the staging DSN file, not a direct printed secret.",
+        "Health/readiness endpoint passes.",
+        "Startup artifacts/log summaries do not expose DSN secrets.",
+        "Production Queue/Gateway services are not reconfigured by this ticket."
+      ],
+      "assumptions": [
+        "Running a loopback-only staging Queue Service process on the api host is acceptable for validation.",
+        "`/opt/novaic/queue-staging-postgres/queue-postgres.dsn` is the staging DSN file created by P117."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/tickets/T113.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded remote startup smoke: use existing staging DSN, start Queue Service on a loopback port, verify health/readiness, and record blocker if remote environment is missing dependencies.",
+      "created_at": "2026-05-22T16:27:42+00:00",
+      "id": "T113",
+      "problem_definition": "Queue staging Postgres is available on `api.gradievo.com`, but Queue Service has not yet been started against it. P118 must start the real service runtime on the api host using the staging DSN file and verify health/readiness.",
+      "problem_id": "P118",
+      "proposed_solution": "1. Inspect the api host for an existing `new-build-novaic` checkout or service layout.\n2. Use the current merged `main` code for `novaic-agent-runtime`.\n3. Start Queue Service on a non-public loopback port with:\n   - `NOVAIC_QUEUE_DB_BACKEND=postgres`\n   - `NOVAIC_QUEUE_POSTGRES_DSN_FILE=/opt/novaic/queue-staging-postgres/queue-postgres.dsn`\n4. Prefer a disposable smoke process or dedicated staging container; do not alter production service config.\n5. Verify health/readiness endpoints and record redacted startup evidence.",
+      "result_ids": [
+        "R108"
+      ],
+      "risks": [
+        "Python dependencies may be missing on the api host.",
+        "Existing production ports must not be reused.",
+        "If service import/startup expects local monorepo paths, startup may require environment setup before the smoke can run."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Start Queue Service On Api Ticket",
+      "updated_at": "2026-05-22T16:35:09+00:00",
+      "verification_plan": "- Confirm remote checkout or clone/pull `novaic-agent-runtime` main.\n- Start service on a loopback staging port.\n- Query health/readiness locally from the api host.\n- Stop disposable process if it is only needed for smoke, unless a dedicated staging service is intentionally left running."
+    },
+    "T114": {
+      "acceptance_criteria": [
+        "The DSN file is regenerated without exposing the secret in logs, chat, or artifacts.",
+        "Postgres container `novaic-queue-staging-postgres` remains healthy.",
+        "Queue Service starts with Postgres backend using the DSN file.",
+        "`/health` passes on the staging loopback port and reports Postgres.",
+        "`/ready` passes on the staging loopback port.",
+        "Production service config and public ports remain untouched."
+      ],
+      "assumptions": [
+        "The staging DSN should target the host loopback bind `127.0.0.1:15432`, not the container DNS name, because Queue Service is running as a host process for this smoke."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/tickets/T114.md",
+      "classification": "one_go",
+      "classification_reason": "Narrow staging-environment repair: rewrite one DSN file without printing secrets, restart one loopback Queue Service process, verify two HTTP endpoints, and leave production config untouched.",
+      "created_at": "2026-05-22T16:35:55+00:00",
+      "id": "T114",
+      "problem_definition": "The staging Queue Service process on `api.gradievo.com` reaches Queue Service initialization but cannot connect to Postgres because `/opt/novaic/queue-staging-postgres/queue-postgres.dsn` is not safe for libpq URI parsing when the generated password contains reserved URL characters.",
+      "problem_id": "P119",
+      "proposed_solution": "1. Read the existing staging Postgres environment file on the api host without printing secret values.\n2. Regenerate `/opt/novaic/queue-staging-postgres/queue-postgres.dsn` using URL-encoded credentials and the loopback endpoint `127.0.0.1:15432`.\n3. Keep the DSN file at mode `0600` and owner `root`.\n4. Confirm the `novaic-queue-staging-postgres` Docker container is healthy.\n5. Restart the loopback-only staging Queue Service on `127.0.0.1:19987` using the DSN file.\n6. Verify `/health` and `/ready`, recording only redacted evidence.",
+      "result_ids": [
+        "R109"
+      ],
+      "risks": [
+        "The existing process may need to be killed by pidfile or port if it is stuck in retry.",
+        "Health endpoints may require the service to finish schema initialization before becoming reachable."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Fix Queue Staging DSN And Restart Service Ticket",
+      "updated_at": "2026-05-22T16:39:28+00:00",
+      "verification_plan": "- Use a remote Python snippet to load `postgres.env`, URL-encode credentials, and rewrite the DSN file without printing it.\n- Use `docker inspect` and `pg_isready` for container health.\n- Restart Queue Service with the clean staging checkout and sibling `novaic-common` `PYTHONPATH`.\n- Query `/health` and `/ready` locally on api host, redacting any DSN-like values in output."
+    },
+    "T115": {
+      "acceptance_criteria": [
+        "Fresh Postgres initialization no longer leaves the transaction aborted after a missing `config` probe.",
+        "The regression test fails without the rollback fix and passes with it.",
+        "Focused Queue Postgres tests pass locally.",
+        "Api staging Queue Service starts on `127.0.0.1:19987` with Postgres backend.",
+        "Api staging `/health` and `/ready` pass."
+      ],
+      "assumptions": [
+        "The baseline DDL statements are valid because remote diagnostic replay completed all `POSTGRES_SCHEMA_STATEMENTS` in a clean debug schema."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/children/P118/children/P119/children/P120/tickets/T115.md",
+      "classification": "one_go",
+      "classification_reason": "Small, isolated Postgres init transaction fix with an existing focused boundary test file and direct staging verification path.",
+      "created_at": "2026-05-22T16:40:21+00:00",
+      "id": "T115",
+      "problem_definition": "Fresh Queue Service Postgres initialization fails because `init_postgres_schema` probes `config` before it exists, catches the exception, and then continues without rolling back the failed transaction. Postgres keeps the transaction in an aborted state, so the baseline DDL loop fails immediately with `InFailedSqlTransaction`.",
+      "problem_id": "P120",
+      "proposed_solution": "1. Patch `queue_service/db/schema.py` so the expected missing-version probe failure rolls back before checking existing tables or running baseline DDL.\n2. Add a focused fake-connection test proving rollback happens before the first DDL statement when the initial `config` probe fails.\n3. Run the focused Postgres boundary tests.\n4. Deploy the patched runtime file to the api staging checkout.\n5. Restart Queue Service against the staging DSN file and verify `/health` and `/ready`.",
+      "result_ids": [
+        "R110"
+      ],
+      "risks": [
+        "The fake connection must model Postgres transaction failure tightly enough to guard the actual behavior.",
+        "Existing schema-version rejection for non-empty unversioned databases must remain intact."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Fresh Postgres Schema Init Transaction Ticket",
+      "updated_at": "2026-05-22T16:42:26+00:00",
+      "verification_plan": "- Run `PYTHONPATH=.:../novaic-common python3 -m pytest -q tests/test_queue_postgres_boundary.py`.\n- On api host, sync or patch `queue_service/db/schema.py` into the clean staging checkout.\n- Restart the staging service and capture redacted health/readiness output."
+    },
+    "T116": {
+      "acceptance_criteria": [
+        "Health/readiness smoke passes.",
+        "Task publish/claim/complete/fail smoke passes.",
+        "Saga create/claim/launch/complete/fail smoke passes, or skipped steps have explicit safety/environment reasons.",
+        "Session dispatch/finalize/rebuild or safe equivalent passes, or skipped steps have explicit reasons.",
+        "Idempotency duplicate/in-progress/completed-result smoke passes.",
+        "No raw DSN or internal key is printed or written to artifacts."
+      ],
+      "assumptions": [
+        "The running staging process from `P111` remains available on `127.0.0.1:19987`.",
+        "Writing test rows into the dedicated staging Postgres database is safe."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/tickets/T116.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded staging smoke against a running loopback Queue Service: one script can exercise health, task, saga, session, idempotency, and DB counts with explicit skip/failure evidence.",
+      "created_at": "2026-05-22T16:47:34+00:00",
+      "id": "T116",
+      "problem_definition": "Queue Service is now running in Postgres mode on `api.gradievo.com` with a dedicated staging DSN. `P112` must exercise representative HTTP APIs against the real service runtime and record redacted evidence without using SQLite fallback.",
+      "problem_id": "P112",
+      "proposed_solution": "1. Run a remote smoke script on `api.gradievo.com` against `http://127.0.0.1:19987`.\n2. Obtain the internal queue API key from runtime config inside the remote process without printing it.\n3. Exercise:\n   - `/health` and `/ready`;\n   - task publish, claim, complete, fail;\n   - saga create, claim, launched, complete, fail;\n   - session dispatch, session-ended, sessions, pending diagnostics;\n   - task idempotency acquire, duplicate in-progress acquire, complete, completed-result acquire.\n4. Query post-smoke row counts from the staging Postgres container.\n5. Store a redacted JSON smoke report under the ledger artifacts directory.",
+      "result_ids": [
+        "R112"
+      ],
+      "risks": [
+        "Some session finalize behavior may require worker-side saga creation; use the safest route-level equivalent if no live worker exists.",
+        "Saga lifecycle may require separate saga instances for complete and fail paths.",
+        "Internal key must be used but never shown."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Queue Service API Smoke Ticket",
+      "updated_at": "2026-05-22T17:00:41+00:00",
+      "verification_plan": "- Execute the remote Python smoke script with `requests`.\n- Fail the script on unexpected HTTP status or unexpected response shape.\n- Write a compact JSON report containing operation names, public ids/statuses, counts, and any explicit skips.\n- Confirm post-smoke DB counts through `psql` inside `novaic-queue-staging-postgres`."
+    },
+    "T117": {
+      "acceptance_criteria": [
+        "Queue table counts are recorded after the successful smoke.",
+        "Target public info is recorded with secrets redacted.",
+        "Counts cite `.complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json`.",
+        "Query failures, if any, are recorded without secret exposure."
+      ],
+      "assumptions": [
+        "The final successful smoke run id is `20260522T165950Z-74bc8a64`."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P113/tickets/T117.md",
+      "classification": "one_go",
+      "classification_reason": "Small reporting task: re-query staging Postgres counts, write one redacted report, and verify it references the successful smoke artifact.",
+      "created_at": "2026-05-22T17:03:07+00:00",
+      "id": "T117",
+      "problem_definition": "After the Queue API smoke run, the ledger needs durable post-smoke table counts and redacted target identity evidence so parent problems can prove the smoke wrote to the intended staging Postgres database.",
+      "problem_id": "P113",
+      "proposed_solution": "1. Re-query the staging Postgres container for table counts after the final successful smoke.\n2. Record target public identity without printing DSN secret contents:\n   - host alias `api.gradievo.com`;\n   - container `novaic-queue-staging-postgres`;\n   - DSN file path only;\n   - Queue Service loopback URL only.\n3. Tie the counts to the successful smoke report run id.\n4. Store a compact JSON count report under ledger artifacts.",
+      "result_ids": [
+        "R113"
+      ],
+      "risks": [
+        "Staging rows may include prior failed attempts; record counts as observed rather than pretending exact per-run deltas."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Queue Postgres Post-Smoke Counts Ticket",
+      "updated_at": "2026-05-22T17:04:40+00:00",
+      "verification_plan": "- Use `docker exec novaic-queue-staging-postgres psql ...` from api host.\n- Query `config.version`, table counts, and selected status histograms.\n- Copy the redacted JSON report into ledger artifacts."
+    },
+    "T118": {
+      "acceptance_criteria": [
+        "A representative task worker starts against `http://127.0.0.1:19987` and exits only because of the bounded smoke timeout or a controlled idle path.",
+        "A representative saga worker or safe saga worker equivalent starts against the same staging Queue Service target.",
+        "Session and saga outbox worker paths, or documented safe drain equivalents, run with `NOVAIC_QUEUE_DB_BACKEND=postgres` and the staging DSN file.",
+        "Before/after Postgres counts and relevant outbox/task/saga/session outcomes are saved as an artifact.",
+        "The staging runtime is checked for new `queue.db` or sqlite queue holders, with any residue explicitly recorded.",
+        "Any discovered Postgres worker bug is fixed, tested locally, redeployed to staging, and rerun before success is claimed."
+      ],
+      "assumptions": [
+        "The api host staging Queue Service at `127.0.0.1:19987` remains the active test target.",
+        "The staging Postgres DSN is supplied by `/opt/novaic/queue-staging-postgres/queue-postgres.dsn` and should not be printed into artifacts.",
+        "It is acceptable to use the isolated staging Postgres container for safe smoke rows and outbox drains."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P107/tickets/T118.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded staging smoke against isolated Postgres target; worker commands, outbox drains, logs, DB counts, and sqlite residue checks can be executed and verified in one controlled pass, with runtime follow-up problems spawned if code defects appear.",
+      "created_at": "2026-05-22T17:09:21+00:00",
+      "id": "T118",
+      "problem_definition": "Queue Service API smokes have proven HTTP endpoints and Postgres writes, but they do not prove representative worker processes and outbox workers can operate in the same Postgres staging runtime. The remaining risk is that workers still assume a local sqlite queue path, fail to start against the Queue Service URL, or leave outbox rows undrained.",
+      "problem_id": "P107",
+      "proposed_solution": "Use the existing api host staging deployment as the verification target. Start bounded task-worker and saga-worker processes against the staging Queue Service URL with Postgres queue environment variables. Then run the session and saga outbox worker paths, or a documented safe drain equivalent if a long-running worker loop is not appropriate for staging. Capture before/after Postgres counts, worker logs, exit behavior, and filesystem checks for sqlite queue residue.",
+      "result_ids": [
+        "R115"
+      ],
+      "risks": [
+        "A task worker may need a live business or cortex endpoint for non-idle work; if so, keep the task-worker check to startup/connectivity and avoid staging-unsafe payload execution.",
+        "Outbox drains may create additional saga/session rows; record the exact count deltas and keep the operation on the isolated staging Postgres container.",
+        "Worker loops may run forever by design; use bounded timeouts and inspect logs rather than expecting natural process exit."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify Queue Workers And Outbox On Postgres Staging",
+      "updated_at": "2026-05-22T17:24:27+00:00",
+      "verification_plan": "Inspect the worker entrypoints and required flags, run the bounded worker commands on api with log capture, query the staging Postgres counts before and after, inspect the staging data directory for sqlite files before and after, and save a JSON or Markdown report under the ledger artifacts directory. Treat timeout from an intentionally bounded idle worker as acceptable only when logs show startup without stack traces."
+    },
+    "T119": {
+      "acceptance_criteria": [
+        "A redacted validation report artifact is created under `.complex-problems/L20260522-091929/artifacts/`.",
+        "The report includes staging target summary, commands run, timestamps, Queue Service health, API smoke result, worker/outbox smoke result, DB count deltas, fixed failures, and residual risks.",
+        "The report states a cutover readiness decision for P076.",
+        "The report contains no DSN values, passwords, tokens, or secret file paths."
+      ],
+      "assumptions": [
+        "Existing artifacts from P111/P112/P113/P107 are sufficient to compile the report without rerunning staging smokes.",
+        "Internal hostnames, loopback ports, commit IDs, and non-secret command names are safe to include."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P076/children/P108/tickets/T119.md",
+      "classification": "one_go",
+      "classification_reason": "Report synthesis from already-closed staging artifacts is narrow, low-risk, and immediately verifiable by source comparison plus redaction search.",
+      "created_at": "2026-05-22T17:26:02+00:00",
+      "id": "T119",
+      "problem_definition": "P076 needs one durable, redacted staging validation report before production cutover. Existing artifacts prove separate slices such as database setup, Queue Service health, API smoke, post-smoke counts, and worker/outbox smoke, but the evidence is spread across multiple result files and may include operational paths that should not appear in the final cutover-facing report.",
+      "problem_id": "P108",
+      "proposed_solution": "Read the completed Queue Postgres staging artifacts and synthesize a single Markdown validation report under the ledger artifacts directory. Include the commands and timestamps at a safe level, summarize target identity without secrets or DSN paths, map health/API/worker/count evidence, document failures that were found and fixed, and clearly state whether P076 is ready for production cutover or blocked.",
+      "result_ids": [
+        "R116"
+      ],
+      "risks": [
+        "Source artifacts may include DSN file paths; the synthesized report must paraphrase them as a redacted DSN-file configuration rather than copying those paths.",
+        "A readiness statement could overreach beyond Queue Service staging evidence; limit the decision to P076's Queue Postgres staging validation scope."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Compile Queue Postgres Staging Validation Report",
+      "updated_at": "2026-05-22T17:28:32+00:00",
+      "verification_plan": "Inspect the report with text searches for known secret/path markers, compare its facts against the API smoke, count, and worker smoke JSON artifacts, and record the report path plus redaction check result in the ticket result."
+    },
+    "T120": {
+      "acceptance_criteria": [
+        "Production queue writers/workers touching `/opt/novaic/data/queue.db` are identified and frozen/stopped before backup.",
+        "Final SQLite backup and checksum artifacts are created.",
+        "Migration into `novaic_queue` completes with row-count and semantic invariant checks.",
+        "Queue Service and worker/outbox processes restart in Postgres mode.",
+        "Health, API, worker, and outbox smokes pass after cutover.",
+        "No process holds `/opt/novaic/data/queue.db` after cutover.",
+        "Old SQLite file is archived as rollback-only and central SQLite cleanup notes are updated."
+      ],
+      "assumptions": [
+        "The production target database is `novaic_queue`, but credentials and credential-file paths must remain redacted in artifacts.",
+        "Production cutover should only use committed/pushed code, not an ad hoc dirty staging checkout.",
+        "Rollback remains file-restore plus config revert until the old SQLite file is explicitly retired after verification."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/tickets/T120.md",
+      "classification": "split",
+      "classification_reason": "Production cutover has independent operational gates with different rollback and verification surfaces: source-control readiness, writer freeze, backup, migration, restart, smokes, and cleanup must each close explicitly.",
+      "created_at": "2026-05-22T17:31:31+00:00",
+      "id": "T120",
+      "problem_definition": "Queue Postgres implementation and staging validation are complete, but production still needs a controlled cutover from the legacy SQLite queue file to the production Postgres database. This is a high-risk operational change because active writers/workers can mutate `/opt/novaic/data/queue.db`, data must be migrated with invariants checked, services must restart in Postgres mode, and the old SQLite file must become rollback-only residue rather than an active path.",
+      "problem_id": "P077",
+      "proposed_solution": "Split the production cutover into explicit child problems: preflight and source-control readiness, production inventory/freeze, final SQLite backup with checksums, migration and invariant verification, Postgres-mode restart for Queue Service and workers, production smokes, and rollback-only cleanup/documentation. Do not execute destructive cleanup or production restarts until preflight proves the target, processes, backup path, and rollback plan.",
+      "result_ids": [],
+      "risks": [
+        "Production writers may mutate SQLite during backup if freeze is incomplete.",
+        "A migration may pass row counts but fail semantic invariants such as lifecycle state projections or idempotency replay behavior.",
+        "Restarting Queue workers in Postgres mode before the service is healthy can create partial failure loops.",
+        "Cleanup can erase rollback capability if performed before the Postgres runtime is verified."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Execute Queue Production Postgres Cutover Safely",
+      "updated_at": "2026-05-22T17:32:43+00:00",
+      "verification_plan": "Use child checks for each operational gate. Require explicit command output artifacts for process inventory, backup checksums, migration report, service health/readiness, smoke results, `lsof` checks, and cleanup notes. Treat missing production credentials, unknown process owners, failing invariant checks, or uncommitted cutover code as blockers rather than proceeding."
+    },
+    "T121": {
+      "acceptance_criteria": [
+        "`novaic-agent-runtime` Queue Postgres source changes are committed and pushed to the active branch.",
+        "Focused tests pass before commit.",
+        "The api runtime checkout can fetch and is updated to the pushed commit.",
+        "Root repository unrelated dirty changes are not staged or reverted.",
+        "Any remaining root-level ledger/submodule pointer state is reported explicitly."
+      ],
+      "assumptions": [
+        "The active runtime branch is the correct branch to continue from unless git status shows otherwise.",
+        "Ledger artifacts may remain root-local until a separate root commit is intentionally made."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P121/tickets/T121.md",
+      "classification": "one_go",
+      "classification_reason": "Narrow source-control/deploy closure for already-tested Queue Postgres runtime fixes; verification is immediate via focused tests, git status, push confirmation, and api checkout HEAD comparison.",
+      "created_at": "2026-05-22T17:33:28+00:00",
+      "id": "T121",
+      "problem_definition": "The staging validation fixes currently live in the local `novaic-agent-runtime` working tree and the api staging checkout. Production cutover must not rely on uncommitted patches, and unrelated dirty root workspace changes must not be mixed into the cutover commit.",
+      "problem_id": "P121",
+      "proposed_solution": "Review the runtime diff, run the focused regression tests, commit only the Queue Postgres runtime fixes in `novaic-agent-runtime`, push the submodule branch, then update the api runtime checkout to the pushed commit. In the root repo, record or separate ledger/submodule pointer state without staging unrelated dirty files.",
+      "result_ids": [],
+      "risks": [
+        "Accidentally staging unrelated user changes in the root workspace.",
+        "Pushing runtime code before all staging-discovered regression tests pass.",
+        "The api checkout may have local patches; update must preserve or replace only the patches now represented by the pushed commit."
+      ],
+      "root_id": "P000",
+      "status": "executing",
+      "title": "Commit Push And Deploy Queue Postgres Cutover Code",
+      "updated_at": "2026-05-22T17:33:44+00:00",
+      "verification_plan": "Use `git diff` and `git status --short` before staging, stage only intended runtime files, run the focused pytest set, commit and push, verify remote branch contains the commit, then update api runtime checkout and confirm its `HEAD` matches the pushed commit."
     }
   },
-  "updated_at": "2026-05-22T15:55:07+00:00"
+  "updated_at": "2026-05-22T17:33:44+00:00"
 }

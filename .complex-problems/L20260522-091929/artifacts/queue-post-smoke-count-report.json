@@ -1,0 +1,42 @@
+{
+  "counts": {
+    "config_version": "18",
+    "tq_idempotency_ledger": "1",
+    "tq_saga_events": "7",
+    "tq_saga_outbox": "0",
+    "tq_saga_state": "2",
+    "tq_sagas": "2",
+    "tq_session_events": "6",
+    "tq_session_outbox": "2",
+    "tq_session_state": "1",
+    "tq_task_events": "6",
+    "tq_task_outbox": "0",
+    "tq_task_state": "2",
+    "tq_tasks": "2",
+    "tq_worker_lease_events": "8",
+    "tq_worker_lease_outbox": "0",
+    "tq_worker_lease_state": "4"
+  },
+  "generated_at": "2026-05-22T17:04:00.321329+00:00",
+  "histograms": {
+    "saga_status_completed": "1",
+    "saga_status_failed": "1",
+    "session_outbox_pending": "2",
+    "session_state_starting": "1",
+    "task_status_done": "1",
+    "task_status_failed": "1"
+  },
+  "smoke_report": ".complex-problems/L20260522-091929/artifacts/queue-api-smoke-report.json",
+  "smoke_run_id": "20260522T165950Z-74bc8a64",
+  "target_public_info": {
+    "database": "novaic_queue_staging",
+    "dsn_file": "/opt/novaic/queue-staging-postgres/queue-postgres.dsn",
+    "dsn_secret": "redacted",
+    "host_alias": "api.gradievo.com",
+    "postgres_container": "novaic-queue-staging-postgres",
+    "postgres_container_health": "healthy",
+    "postgres_host_bind": "127.0.0.1:15432",
+    "queue_service_url": "http://127.0.0.1:19987",
+    "user": "novaic_queue_staging"
+  }
+}

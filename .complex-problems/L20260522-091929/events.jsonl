@@ -1327,3 +1327,152 @@
 {"at": "2026-05-22T15:54:58+00:00", "id": "E1324", "payload": {"from": "created", "id": "T111", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
 {"at": "2026-05-22T15:55:07+00:00", "id": "E1325", "payload": {"from": "defined", "id": "T111", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
 {"at": "2026-05-22T15:55:07+00:00", "id": "E1326", "payload": {"classification": "one_go", "reason": "Once a confirmed staging DSN is supplied, startup plus health/readiness is a narrow bounded execution; without it, execution should stop with the explicit external blocker.", "ticket_id": "T111"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T16:20:03+00:00", "id": "E1327", "payload": {"from": "followup", "id": "P116", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:20:03+00:00", "id": "E1328", "payload": {"from": "classified", "id": "T111", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:20:28+00:00", "id": "E1329", "payload": {"from": "executing", "id": "T111", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:20:28+00:00", "id": "E1330", "payload": {"result_id": "R106", "ticket_id": "T111"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T16:21:11+00:00", "id": "E1331", "payload": {"from": "doing", "id": "P116", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:21:11+00:00", "id": "E1332", "payload": {"from": "checking", "id": "P116", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:21:11+00:00", "id": "E1333", "payload": {"check_id": "C115", "followup_id": "P117", "problem_id": "P116", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:21:36+00:00", "id": "E1334", "payload": {"problem_id": "P117", "ticket_id": "T112", "title": "Supply Queue Staging DSN Ticket"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T16:21:36+00:00", "id": "E1335", "payload": {"from": "created", "id": "T112", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:21:54+00:00", "id": "E1336", "payload": {"from": "defined", "id": "T112", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:21:54+00:00", "id": "E1337", "payload": {"classification": "one_go", "reason": "Supplying or confirming a DSN is a narrow prerequisite check: either a non-production target is available and redacted, or execution remains blocked waiting for user-provided test environment.", "ticket_id": "T112"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T16:24:34+00:00", "id": "E1338", "payload": {"from": "followup", "id": "P117", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:24:34+00:00", "id": "E1339", "payload": {"from": "classified", "id": "T112", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:26:13+00:00", "id": "E1340", "payload": {"from": "executing", "id": "T112", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:26:13+00:00", "id": "E1341", "payload": {"result_id": "R107", "ticket_id": "T112"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T16:26:40+00:00", "id": "E1342", "payload": {"from": "doing", "id": "P117", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:26:40+00:00", "id": "E1343", "payload": {"from": "checking", "id": "P117", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:26:40+00:00", "id": "E1344", "payload": {"check_id": "C116", "followup_id": null, "problem_id": "P117", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:27:09+00:00", "id": "E1345", "payload": {"from": "followup", "id": "P116", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:27:09+00:00", "id": "E1346", "payload": {"from": "checking", "id": "P116", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:27:09+00:00", "id": "E1347", "payload": {"check_id": "C117", "followup_id": "P118", "problem_id": "P116", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:27:42+00:00", "id": "E1348", "payload": {"problem_id": "P118", "ticket_id": "T113", "title": "Start Queue Service On Api Ticket"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T16:27:42+00:00", "id": "E1349", "payload": {"from": "created", "id": "T113", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:27:51+00:00", "id": "E1350", "payload": {"from": "defined", "id": "T113", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:27:51+00:00", "id": "E1351", "payload": {"classification": "one_go", "reason": "Bounded remote startup smoke: use existing staging DSN, start Queue Service on a loopback port, verify health/readiness, and record blocker if remote environment is missing dependencies.", "ticket_id": "T113"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T16:28:05+00:00", "id": "E1352", "payload": {"from": "followup", "id": "P118", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:28:06+00:00", "id": "E1353", "payload": {"from": "classified", "id": "T113", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:35:09+00:00", "id": "E1354", "payload": {"from": "executing", "id": "T113", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:35:09+00:00", "id": "E1355", "payload": {"result_id": "R108", "ticket_id": "T113"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T16:35:31+00:00", "id": "E1356", "payload": {"from": "doing", "id": "P118", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:35:31+00:00", "id": "E1357", "payload": {"from": "checking", "id": "P118", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:35:31+00:00", "id": "E1358", "payload": {"check_id": "C118", "followup_id": "P119", "problem_id": "P118", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:35:55+00:00", "id": "E1359", "payload": {"problem_id": "P119", "ticket_id": "T114", "title": "Fix Queue Staging DSN And Restart Service Ticket"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T16:35:55+00:00", "id": "E1360", "payload": {"from": "created", "id": "T114", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:36:01+00:00", "id": "E1361", "payload": {"from": "defined", "id": "T114", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:36:01+00:00", "id": "E1362", "payload": {"classification": "one_go", "reason": "Narrow staging-environment repair: rewrite one DSN file without printing secrets, restart one loopback Queue Service process, verify two HTTP endpoints, and leave production config untouched.", "ticket_id": "T114"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T16:36:11+00:00", "id": "E1363", "payload": {"from": "followup", "id": "P119", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:36:11+00:00", "id": "E1364", "payload": {"from": "classified", "id": "T114", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:39:28+00:00", "id": "E1365", "payload": {"from": "executing", "id": "T114", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:39:28+00:00", "id": "E1366", "payload": {"result_id": "R109", "ticket_id": "T114"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T16:39:47+00:00", "id": "E1367", "payload": {"from": "doing", "id": "P119", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:39:47+00:00", "id": "E1368", "payload": {"from": "checking", "id": "P119", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:39:47+00:00", "id": "E1369", "payload": {"check_id": "C119", "followup_id": "P120", "problem_id": "P119", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:40:21+00:00", "id": "E1370", "payload": {"problem_id": "P120", "ticket_id": "T115", "title": "Fresh Postgres Schema Init Transaction Ticket"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T16:40:21+00:00", "id": "E1371", "payload": {"from": "created", "id": "T115", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:40:28+00:00", "id": "E1372", "payload": {"from": "defined", "id": "T115", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:40:28+00:00", "id": "E1373", "payload": {"classification": "one_go", "reason": "Small, isolated Postgres init transaction fix with an existing focused boundary test file and direct staging verification path.", "ticket_id": "T115"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T16:40:36+00:00", "id": "E1374", "payload": {"from": "followup", "id": "P120", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:40:36+00:00", "id": "E1375", "payload": {"from": "classified", "id": "T115", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:42:26+00:00", "id": "E1376", "payload": {"from": "executing", "id": "T115", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:42:26+00:00", "id": "E1377", "payload": {"result_id": "R110", "ticket_id": "T115"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T16:42:49+00:00", "id": "E1378", "payload": {"from": "doing", "id": "P120", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:42:49+00:00", "id": "E1379", "payload": {"from": "checking", "id": "P120", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:42:49+00:00", "id": "E1380", "payload": {"check_id": "C120", "followup_id": null, "problem_id": "P120", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:43:14+00:00", "id": "E1381", "payload": {"from": "followup", "id": "P119", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:43:14+00:00", "id": "E1382", "payload": {"from": "checking", "id": "P119", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:43:14+00:00", "id": "E1383", "payload": {"check_id": "C121", "followup_id": null, "problem_id": "P119", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:43:37+00:00", "id": "E1384", "payload": {"from": "followup", "id": "P118", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:43:37+00:00", "id": "E1385", "payload": {"from": "checking", "id": "P118", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:43:37+00:00", "id": "E1386", "payload": {"check_id": "C122", "followup_id": null, "problem_id": "P118", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:44:04+00:00", "id": "E1387", "payload": {"from": "followup", "id": "P116", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:44:04+00:00", "id": "E1388", "payload": {"from": "checking", "id": "P116", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:44:04+00:00", "id": "E1389", "payload": {"check_id": "C123", "followup_id": null, "problem_id": "P116", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:44:26+00:00", "id": "E1390", "payload": {"from": "followup", "id": "P115", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:44:26+00:00", "id": "E1391", "payload": {"from": "checking", "id": "P115", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:44:26+00:00", "id": "E1392", "payload": {"check_id": "C124", "followup_id": null, "problem_id": "P115", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:45:13+00:00", "id": "E1393", "payload": {"from": "todo", "id": "P111", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:45:13+00:00", "id": "E1394", "payload": {"from": "splitting", "id": "T108", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:45:13+00:00", "id": "E1395", "payload": {"result_id": "R111", "ticket_id": "T108"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T16:45:33+00:00", "id": "E1396", "payload": {"from": "doing", "id": "P111", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:45:33+00:00", "id": "E1397", "payload": {"from": "checking", "id": "P111", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:45:33+00:00", "id": "E1398", "payload": {"check_id": "C125", "followup_id": null, "problem_id": "P111", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T16:47:34+00:00", "id": "E1399", "payload": {"problem_id": "P112", "ticket_id": "T116", "title": "Queue Service API Smoke Ticket"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T16:47:34+00:00", "id": "E1400", "payload": {"from": "created", "id": "T116", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:47:46+00:00", "id": "E1401", "payload": {"from": "defined", "id": "T116", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T16:47:46+00:00", "id": "E1402", "payload": {"classification": "one_go", "reason": "Bounded staging smoke against a running loopback Queue Service: one script can exercise health, task, saga, session, idempotency, and DB counts with explicit skip/failure evidence.", "ticket_id": "T116"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T16:47:56+00:00", "id": "E1403", "payload": {"from": "todo", "id": "P112", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T16:47:56+00:00", "id": "E1404", "payload": {"from": "classified", "id": "T116", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:00:41+00:00", "id": "E1405", "payload": {"from": "executing", "id": "T116", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:00:41+00:00", "id": "E1406", "payload": {"result_id": "R112", "ticket_id": "T116"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:01:07+00:00", "id": "E1407", "payload": {"from": "doing", "id": "P112", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:01:07+00:00", "id": "E1408", "payload": {"from": "checking", "id": "P112", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:01:07+00:00", "id": "E1409", "payload": {"check_id": "C126", "followup_id": null, "problem_id": "P112", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:03:07+00:00", "id": "E1410", "payload": {"problem_id": "P113", "ticket_id": "T117", "title": "Queue Postgres Post-Smoke Counts Ticket"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:03:07+00:00", "id": "E1411", "payload": {"from": "created", "id": "T117", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:03:17+00:00", "id": "E1412", "payload": {"from": "defined", "id": "T117", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:03:17+00:00", "id": "E1413", "payload": {"classification": "one_go", "reason": "Small reporting task: re-query staging Postgres counts, write one redacted report, and verify it references the successful smoke artifact.", "ticket_id": "T117"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:03:28+00:00", "id": "E1414", "payload": {"from": "todo", "id": "P113", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:03:29+00:00", "id": "E1415", "payload": {"from": "classified", "id": "T117", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:04:40+00:00", "id": "E1416", "payload": {"from": "executing", "id": "T117", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:04:40+00:00", "id": "E1417", "payload": {"result_id": "R113", "ticket_id": "T117"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:05:03+00:00", "id": "E1418", "payload": {"from": "doing", "id": "P113", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:05:03+00:00", "id": "E1419", "payload": {"from": "checking", "id": "P113", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:05:03+00:00", "id": "E1420", "payload": {"check_id": "C127", "followup_id": null, "problem_id": "P113", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:05:43+00:00", "id": "E1421", "payload": {"from": "followup", "id": "P109", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:05:43+00:00", "id": "E1422", "payload": {"from": "splitting", "id": "T106", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:05:43+00:00", "id": "E1423", "payload": {"result_id": "R114", "ticket_id": "T106"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:06:13+00:00", "id": "E1424", "payload": {"from": "doing", "id": "P109", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:06:13+00:00", "id": "E1425", "payload": {"from": "checking", "id": "P109", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:06:13+00:00", "id": "E1426", "payload": {"check_id": "C128", "followup_id": null, "problem_id": "P109", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:06:39+00:00", "id": "E1427", "payload": {"from": "followup", "id": "P106", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:06:39+00:00", "id": "E1428", "payload": {"from": "checking", "id": "P106", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:06:39+00:00", "id": "E1429", "payload": {"check_id": "C129", "followup_id": null, "problem_id": "P106", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:09:21+00:00", "id": "E1430", "payload": {"problem_id": "P107", "ticket_id": "T118", "title": "Verify Queue Workers And Outbox On Postgres Staging"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:09:21+00:00", "id": "E1431", "payload": {"from": "created", "id": "T118", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:09:34+00:00", "id": "E1432", "payload": {"from": "defined", "id": "T118", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:09:34+00:00", "id": "E1433", "payload": {"classification": "one_go", "reason": "Bounded staging smoke against isolated Postgres target; worker commands, outbox drains, logs, DB counts, and sqlite residue checks can be executed and verified in one controlled pass, with runtime follow-up problems spawned if code defects appear.", "ticket_id": "T118"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:09:45+00:00", "id": "E1434", "payload": {"from": "todo", "id": "P107", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:09:45+00:00", "id": "E1435", "payload": {"from": "classified", "id": "T118", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:24:27+00:00", "id": "E1436", "payload": {"from": "executing", "id": "T118", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:24:27+00:00", "id": "E1437", "payload": {"result_id": "R115", "ticket_id": "T118"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:25:02+00:00", "id": "E1438", "payload": {"from": "doing", "id": "P107", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:25:02+00:00", "id": "E1439", "payload": {"from": "checking", "id": "P107", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:25:02+00:00", "id": "E1440", "payload": {"check_id": "C130", "followup_id": null, "problem_id": "P107", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:26:02+00:00", "id": "E1441", "payload": {"problem_id": "P108", "ticket_id": "T119", "title": "Compile Queue Postgres Staging Validation Report"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:26:02+00:00", "id": "E1442", "payload": {"from": "created", "id": "T119", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:26:10+00:00", "id": "E1443", "payload": {"from": "defined", "id": "T119", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:26:10+00:00", "id": "E1444", "payload": {"classification": "one_go", "reason": "Report synthesis from already-closed staging artifacts is narrow, low-risk, and immediately verifiable by source comparison plus redaction search.", "ticket_id": "T119"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:26:22+00:00", "id": "E1445", "payload": {"from": "todo", "id": "P108", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:26:22+00:00", "id": "E1446", "payload": {"from": "classified", "id": "T119", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:28:32+00:00", "id": "E1447", "payload": {"from": "executing", "id": "T119", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:28:32+00:00", "id": "E1448", "payload": {"result_id": "R116", "ticket_id": "T119"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:28:56+00:00", "id": "E1449", "payload": {"from": "doing", "id": "P108", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:28:56+00:00", "id": "E1450", "payload": {"from": "checking", "id": "P108", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:28:56+00:00", "id": "E1451", "payload": {"check_id": "C131", "followup_id": null, "problem_id": "P108", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:30:26+00:00", "id": "E1452", "payload": {"from": "todo", "id": "P076", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:30:26+00:00", "id": "E1453", "payload": {"from": "splitting", "id": "T103", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:30:26+00:00", "id": "E1454", "payload": {"result_id": "R117", "ticket_id": "T103"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:30:54+00:00", "id": "E1455", "payload": {"from": "doing", "id": "P076", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:30:54+00:00", "id": "E1456", "payload": {"from": "checking", "id": "P076", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:30:54+00:00", "id": "E1457", "payload": {"check_id": "C132", "followup_id": null, "problem_id": "P076", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:31:31+00:00", "id": "E1458", "payload": {"problem_id": "P077", "ticket_id": "T120", "title": "Execute Queue Production Postgres Cutover Safely"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:31:31+00:00", "id": "E1459", "payload": {"from": "created", "id": "T120", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:31:41+00:00", "id": "E1460", "payload": {"from": "defined", "id": "T120", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:31:41+00:00", "id": "E1461", "payload": {"classification": "split", "reason": "Production cutover has independent operational gates with different rollback and verification surfaces: source-control readiness, writer freeze, backup, migration, restart, smokes, and cleanup must each close explicitly.", "ticket_id": "T120"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:32:43+00:00", "id": "E1462", "payload": {"from": "classified", "id": "T120", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:32:43+00:00", "id": "E1463", "payload": {"parent_id": "P077", "problem_id": "P121", "source": "split", "title": "Commit Push And Deploy Queue Postgres Cutover Code"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:32:43+00:00", "id": "E1464", "payload": {"parent_id": "P077", "problem_id": "P122", "source": "split", "title": "Inventory Production Queue Runtime And Cutover Preconditions"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:32:43+00:00", "id": "E1465", "payload": {"parent_id": "P077", "problem_id": "P123", "source": "split", "title": "Freeze Queue Writers And Archive Final SQLite Backup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:32:44+00:00", "id": "E1466", "payload": {"parent_id": "P077", "problem_id": "P124", "source": "split", "title": "Migrate Queue SQLite Data To Production Postgres And Verify"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:32:44+00:00", "id": "E1467", "payload": {"parent_id": "P077", "problem_id": "P125", "source": "split", "title": "Restart Production Queue Services In Postgres Mode"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:32:44+00:00", "id": "E1468", "payload": {"parent_id": "P077", "problem_id": "P126", "source": "split", "title": "Run Production Queue Postgres Health API Worker And Outbox Smokes"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:32:44+00:00", "id": "E1469", "payload": {"parent_id": "P077", "problem_id": "P127", "source": "split", "title": "Archive Old Queue SQLite Residue And Update Cleanup Notes"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:33:28+00:00", "id": "E1470", "payload": {"problem_id": "P121", "ticket_id": "T121", "title": "Commit Push And Deploy Queue Postgres Cutover Code"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:33:28+00:00", "id": "E1471", "payload": {"from": "created", "id": "T121", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:33:36+00:00", "id": "E1472", "payload": {"from": "defined", "id": "T121", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:33:36+00:00", "id": "E1473", "payload": {"classification": "one_go", "reason": "Narrow source-control/deploy closure for already-tested Queue Postgres runtime fixes; verification is immediate via focused tests, git status, push confirmation, and api checkout HEAD comparison.", "ticket_id": "T121"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:33:44+00:00", "id": "E1474", "payload": {"from": "todo", "id": "P121", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:33:44+00:00", "id": "E1475", "payload": {"from": "classified", "id": "T121", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}

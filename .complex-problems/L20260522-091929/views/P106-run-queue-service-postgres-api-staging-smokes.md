@@ -1,6 +1,6 @@
 # P106: Run Queue Service Postgres API Staging Smokes
 
-Status: followup
+Status: done
 Parent: P076
 Root: P000
 Source Ticket: T103 (split)
@@ -28,13 +28,14 @@ After the staging Postgres target exists, Queue Service must start in Postgres m
 - R102
 
 ## Latest Check
-C111
+C129
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/children/P106/README.md
 - Ticket T105: problems/P000/children/P024/children/P028/children/P076/children/P106/tickets/T105.md
 - Result R102: problems/P000/children/P024/children/P028/children/P076/children/P106/results/R102.md
 - Check C111: problems/P000/children/P024/children/P028/children/P076/children/P106/checks/C111.md
+- Check C129: problems/P000/children/P024/children/P028/children/P076/children/P106/checks/C129.md
 
 ## Follow-ups
 - P109: Confirm Queue API Staging Target And Run Smokes

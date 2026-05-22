@@ -4,7 +4,7 @@ Ledger: L20260522-091929
 Schema: v6
 Root: P000 - Unify NovAIC persistent state on Postgres and remove stale database residue
 Status: doing
-Updated: 2026-05-22T15:55:07+00:00
+Updated: 2026-05-22T17:33:44+00:00
 
 ## Problem Tree
 - [followup] P000: Unify NovAIC persistent state on Postgres and remove stale database residue
@@ -110,36 +110,44 @@ Updated: 2026-05-22T15:55:07+00:00
           - [done] P102: Add Queue Migration Semantic Aggregate Validation
           - [done] P103: Add Queue Migration CLI And Report Writing
         - [done] P104: Validate Queue Migration Timestamp Binding
-      - [todo] P076: Validate Queue Postgres Mode In Staging
+      - [done] P076: Validate Queue Postgres Mode In Staging
         - [done] P105: Prepare Queue Postgres Staging Target
-        - [followup] P106: Run Queue Service Postgres API Staging Smokes
-          - [followup] P109: Confirm Queue API Staging Target And Run Smokes
+        - [done] P106: Run Queue Service Postgres API Staging Smokes
+          - [done] P109: Confirm Queue API Staging Target And Run Smokes
             - [done] P110: Confirm Non-Production Queue Postgres Target
-            - [todo] P111: Start Queue Service In Postgres Mode
+            - [done] P111: Start Queue Service In Postgres Mode
               - [done] P114: Clean Queue Startup Postgres Default
-              - [followup] P115: Start Queue Service With Confirmed Postgres Target
-                - [followup] P116: Start Queue Service After Staging DSN Is Supplied
-            - [todo] P112: Run Queue Service API Smokes
-            - [todo] P113: Record Queue Postgres Post-Smoke Counts
-        - [todo] P107: Run Queue Worker And Outbox Postgres Staging Smokes
-        - [todo] P108: Record Queue Postgres Staging Validation Report
+              - [done] P115: Start Queue Service With Confirmed Postgres Target
+                - [done] P116: Start Queue Service After Staging DSN Is Supplied
+                  - [done] P117: Supply Non-Production Queue Postgres DSN
+                  - [done] P118: Start Queue Service On Api With Staging DSN
+                    - [done] P119: Fix Queue Staging DSN And Restart Service
+                      - [done] P120: Fix Fresh Postgres Schema Init Transaction Handling
+            - [done] P112: Run Queue Service API Smokes
+            - [done] P113: Record Queue Postgres Post-Smoke Counts
+        - [done] P107: Run Queue Worker And Outbox Postgres Staging Smokes
+        - [done] P108: Record Queue Postgres Staging Validation Report
       - [todo] P077: Execute Queue Production Postgres Cutover And Cleanup
+        - [doing] P121: Commit Push And Deploy Queue Postgres Cutover Code
+        - [todo] P122: Inventory Production Queue Runtime And Cutover Preconditions
+        - [todo] P123: Freeze Queue Writers And Archive Final SQLite Backup
+        - [todo] P124: Migrate Queue SQLite Data To Production Postgres And Verify
+        - [todo] P125: Restart Production Queue Services In Postgres Mode
+        - [todo] P126: Run Production Queue Postgres Health API Worker And Outbox Smokes
+        - [todo] P127: Archive Old Queue SQLite Residue And Update Cleanup Notes
 
 ## Active
 - [ ] P000: Unify NovAIC persistent state on Postgres and remove stale database residue (followup)
 - [ ] P024: Implement Remaining Service Postgres Cutovers (followup)
 - [ ] P028: Implement Queue Postgres Cutover (todo)
-- [ ] P076: Validate Queue Postgres Mode In Staging (todo)
 - [ ] P077: Execute Queue Production Postgres Cutover And Cleanup (todo)
-- [ ] P106: Run Queue Service Postgres API Staging Smokes (followup)
-- [ ] P107: Run Queue Worker And Outbox Postgres Staging Smokes (todo)
-- [ ] P108: Record Queue Postgres Staging Validation Report (todo)
-- [ ] P109: Confirm Queue API Staging Target And Run Smokes (followup)
-- [ ] P111: Start Queue Service In Postgres Mode (todo)
-- [ ] P112: Run Queue Service API Smokes (todo)
-- [ ] P113: Record Queue Postgres Post-Smoke Counts (todo)
-- [ ] P115: Start Queue Service With Confirmed Postgres Target (followup)
-- [ ] P116: Start Queue Service After Staging DSN Is Supplied (followup)
+- [ ] P121: Commit Push And Deploy Queue Postgres Cutover Code (doing)
+- [ ] P122: Inventory Production Queue Runtime And Cutover Preconditions (todo)
+- [ ] P123: Freeze Queue Writers And Archive Final SQLite Backup (todo)
+- [ ] P124: Migrate Queue SQLite Data To Production Postgres And Verify (todo)
+- [ ] P125: Restart Production Queue Services In Postgres Mode (todo)
+- [ ] P126: Run Production Queue Postgres Health API Worker And Outbox Smokes (todo)
+- [ ] P127: Archive Old Queue SQLite Residue And Update Cleanup Notes (todo)
 
 ## Blocked
 
@@ -217,6 +225,7 @@ Updated: 2026-05-22T15:55:07+00:00
 - [x] P073: Implement Queue Postgres Schema And Database Boundary
 - [x] P074: Port Queue Repositories And FSM Semantics To Postgres
 - [x] P075: Build Queue SQLite To Postgres Migration Tooling
+- [x] P076: Validate Queue Postgres Mode In Staging
 - [x] P078: Add Queue Postgres JSON Expression Indexes
 - [x] P079: Build Queue Postgres Dialect And FSM Store Foundation
 - [x] P080: Port Task Queue And Idempotency Paths To Postgres
@@ -245,8 +254,21 @@ Updated: 2026-05-22T15:55:07+00:00
 - [x] P103: Add Queue Migration CLI And Report Writing
 - [x] P104: Validate Queue Migration Timestamp Binding
 - [x] P105: Prepare Queue Postgres Staging Target
+- [x] P106: Run Queue Service Postgres API Staging Smokes
+- [x] P107: Run Queue Worker And Outbox Postgres Staging Smokes
+- [x] P108: Record Queue Postgres Staging Validation Report
+- [x] P109: Confirm Queue API Staging Target And Run Smokes
 - [x] P110: Confirm Non-Production Queue Postgres Target
+- [x] P111: Start Queue Service In Postgres Mode
+- [x] P112: Run Queue Service API Smokes
+- [x] P113: Record Queue Postgres Post-Smoke Counts
 - [x] P114: Clean Queue Startup Postgres Default
+- [x] P115: Start Queue Service With Confirmed Postgres Target
+- [x] P116: Start Queue Service After Staging DSN Is Supplied
+- [x] P117: Supply Non-Production Queue Postgres DSN
+- [x] P118: Start Queue Service On Api With Staging DSN
+- [x] P119: Fix Queue Staging DSN And Restart Service
+- [x] P120: Fix Fresh Postgres Schema Init Transaction Handling
 
 ## Tickets
 - [done] T000: Phased Postgres unification with residue cleanup -> P000 (split)
@@ -352,24 +374,34 @@ Updated: 2026-05-22T15:55:07+00:00
 - [done] T100: Add Queue Migration Semantic Aggregate Validation -> P102 (one_go)
 - [done] T101: Add Queue Migration CLI And Report Writing -> P103 (one_go)
 - [done] T102: Validate Queue Migration Timestamp Binding -> P104 (one_go)
-- [splitting] T103: Validate Queue Postgres Mode In Staging -> P076 (split)
+- [done] T103: Validate Queue Postgres Mode In Staging -> P076 (split)
 - [done] T104: Prepare Queue Postgres Staging Target -> P105 (one_go)
 - [done] T105: Queue Service Postgres API Staging Smoke Ticket -> P106 (one_go)
-- [splitting] T106: Queue API Staging Target And Smoke Closure Ticket -> P109 (split)
+- [done] T106: Queue API Staging Target And Smoke Closure Ticket -> P109 (split)
 - [done] T107: Queue Postgres Target Confirmation Ticket -> P110 (one_go)
-- [splitting] T108: Queue Service Postgres Startup Ticket -> P111 (split)
+- [done] T108: Queue Service Postgres Startup Ticket -> P111 (split)
 - [done] T109: Clean Queue Startup Default Ticket -> P114 (one_go)
 - [done] T110: Queue Service Confirmed-Target Startup Ticket -> P115 (one_go)
-- [classified] T111: Start Queue Service After DSN Ticket -> P116 (one_go)
+- [done] T111: Start Queue Service After DSN Ticket -> P116 (one_go)
+- [done] T112: Supply Queue Staging DSN Ticket -> P117 (one_go)
+- [done] T113: Start Queue Service On Api Ticket -> P118 (one_go)
+- [done] T114: Fix Queue Staging DSN And Restart Service Ticket -> P119 (one_go)
+- [done] T115: Fresh Postgres Schema Init Transaction Ticket -> P120 (one_go)
+- [done] T116: Queue Service API Smoke Ticket -> P112 (one_go)
+- [done] T117: Queue Postgres Post-Smoke Counts Ticket -> P113 (one_go)
+- [done] T118: Verify Queue Workers And Outbox On Postgres Staging -> P107 (one_go)
+- [done] T119: Compile Queue Postgres Staging Validation Report -> P108 (one_go)
+- [splitting] T120: Execute Queue Production Postgres Cutover Safely -> P077 (split)
+- [executing] T121: Commit Push And Deploy Queue Postgres Cutover Code -> P121 (one_go)
 
 ## Latest Checks
-- [success] C105: P103 P103 is solved. The Queue migration CLI exists, exposes the required options, writes redacted reports, keeps dry-run read-only at the copy layer, executes copy plus validation in normal mode, and returns non-zero for blocked/error statuses.
-- [success] C106: P101 P101 is solved. Semantic validation and the operator CLI are both implemented through closed split children, and the combined migration command now supports dry-run planning/preflight, execution copy plus validation, and redacted report writing.
-- [not_success] C107: P075 R099 completes the planner, copy execution, semantic validation, and CLI/reporting pieces, but P075's original success criteria are not fully proven. JSON conversion is explicitly tested, but representative timestamp preservation/binding is not directly asserted despite the criterion requiring JSON/time conversion validation.
-- [success] C108: P104 P104 is solved. Timestamp handling is now explicitly tested and documented as ISO string pass-through for Postgres TIMESTAMPTZ binding.
-- [success] C109: P075 P075 is solved after R099 plus timestamp follow-up R100. The Queue migration tooling now includes a planner, copy execution, semantic validation, CLI/report writing, redaction, and representative JSON/time fixture coverage.
-- [success] C110: P105 P105 is successful by its blocker-allowed acceptance path. R101 did not prepare a staging database, but it proved that no safe non-production Queue Postgres target is currently available in the workspace/shell/Docker context, avoided production writes, redacted secret handling, and recorded exact prerequisites for the next P076 child.
-- [not_success] C111: P106 P106 is not successful. R102 correctly stopped before unsafe startup, but none of the required Queue Service Postgres API staging smokes ran because the current environment still lacks a confirmed non-production Queue Postgres DSN/DSN file.
-- [success] C112: P110 P110 is successful by its explicit blocker path. R103 did not confirm a usable target, but it correctly proved that the current runner lacks a non-production Queue Postgres DSN/DSN file, avoided secret exposure and writes, and recorded the exact prerequisite required by downstream smoke work.
-- [success] C113: P114 P114 is successful. R104 removed the misleading Queue CLI wrapper SQLite default, preserved explicit SQLite opt-in, and added focused regression coverage for both Queue startup entrypoints.
-- [not_success] C114: P115 P115 is not successful. R105 correctly avoided unsafe startup, but Queue Service did not start against a confirmed non-production Postgres target and health/readiness did not run.
+- [success] C123: P116 `P116` is successful. The missing staging DSN was supplied, Queue Service was started on the api host against that DSN, and real `/health` plus `/ready` verification passed after closing the discovered DSN-format and fresh Postgres initialization blockers.
+- [success] C124: P115 `P115` is successful. The Queue Service was not pointed at an ambiguous or production database; a dedicated staging Postgres target was confirmed and used, and the service now passes live health/readiness against that target.
+- [success] C125: P111 `P111` is successful. Queue Service startup is now unambiguously Postgres-mode for staging smokes: the stale SQLite-default concern was cleaned up, a confirmed non-production Postgres target exists, and the real service runs against it with passing health/readiness checks.
+- [success] C126: P112 `P112` is successful. `R112` exercised the real staging Queue Service in Postgres mode across health, readiness, task lifecycle, saga lifecycle, session dispatch/finalize, idempotency, and post-smoke database counts. No operation was skipped.
+- [success] C127: P113 `P113` is successful. `R113` records post-smoke Queue Postgres counts, status histograms, target public identity, and ties the evidence to the successful API smoke run without exposing secrets.
+- [success] C128: P109 `P109` is successful. `R114` proves a non-production Queue Postgres target exists, Queue Service starts against it in Postgres mode, representative APIs pass, and post-smoke counts are recorded with secrets redacted.
+- [success] C129: P106 `P106` is successful after `R102` plus follow-up result `R114`. The earlier missing-target gap is closed: a staging Queue Postgres target was provisioned, Queue Service ran in Postgres mode, representative APIs passed, and post-smoke counts were recorded.
+- [success] C130: P107 Success. Result `R115` solves the original worker/outbox Postgres staging smoke problem. The first failed run exposed real worker-path defects, but the final rerun after fixes proved task, saga, session outbox, and saga outbox worker paths against the api staging Postgres target with no sqlite residue.
+- [success] C131: P108 Success. Result `R116` solves P108 by creating a durable redacted validation report and verifying both factual coverage and redaction requirements.
+- [success] C132: P076 Success. Result `R117` closes P076's Queue Postgres staging validation scope. All four split children are done with checks, and their combined evidence covers the staging database, Queue Service runtime, API flows, worker/outbox flows, sqlite residue checks, and redacted validation reporting.

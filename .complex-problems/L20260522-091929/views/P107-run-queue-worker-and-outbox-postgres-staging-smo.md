@@ -1,13 +1,13 @@
 # P107: Run Queue Worker And Outbox Postgres Staging Smokes
 
-Status: todo
+Status: done
 Parent: P076
 Root: P000
 Source Ticket: T103 (split)
 Source Check: none
 Package: problems/P000/children/P024/children/P028/children/P076/children/P107
 Body: problems/P000/children/P024/children/P028/children/P076/children/P107/README.md
-Ticket(s): none
+Ticket(s): T118
 
 ## Problem
 Queue Service API smokes do not prove workers and outbox workers can run against Postgres mode. Representative worker processes must connect through Queue Service, avoid SQLite queue file usage, and successfully process or drain staging-safe work.
@@ -23,13 +23,16 @@ Queue Service API smokes do not prove workers and outbox workers can run against
 - none
 
 ## Results
-- none
+- R115
 
 ## Latest Check
-none
+C130
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/children/P107/README.md
+- Ticket T118: problems/P000/children/P024/children/P028/children/P076/children/P107/tickets/T118.md
+- Result R115: problems/P000/children/P024/children/P028/children/P076/children/P107/results/R115.md
+- Check C130: problems/P000/children/P024/children/P028/children/P076/children/P107/checks/C130.md
 
 ## Follow-ups
 - none

@@ -1,13 +1,13 @@
 # P108: Record Queue Postgres Staging Validation Report
 
-Status: todo
+Status: done
 Parent: P076
 Root: P000
 Source Ticket: T103 (split)
 Source Check: none
 Package: problems/P000/children/P024/children/P028/children/P076/children/P108
 Body: problems/P000/children/P024/children/P028/children/P076/children/P108/README.md
-Ticket(s): none
+Ticket(s): T119
 
 ## Problem
 P076 needs a durable staging evidence artifact that can be reviewed before production cutover. The report must summarize database preparation, service/API smokes, worker/outbox smokes, command outputs, counts, failures, and secret redaction.
@@ -22,13 +22,16 @@ P076 needs a durable staging evidence artifact that can be reviewed before produ
 - none
 
 ## Results
-- none
+- R116
 
 ## Latest Check
-none
+C131
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/children/P108/README.md
+- Ticket T119: problems/P000/children/P024/children/P028/children/P076/children/P108/tickets/T119.md
+- Result R116: problems/P000/children/P024/children/P028/children/P076/children/P108/results/R116.md
+- Check C131: problems/P000/children/P024/children/P028/children/P076/children/P108/checks/C131.md
 
 ## Follow-ups
 - none

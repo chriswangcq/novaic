@@ -1,6 +1,6 @@
 # P115: Start Queue Service With Confirmed Postgres Target
 
-Status: followup
+Status: done
 Parent: P111
 Root: P000
 Source Ticket: T108 (split)
@@ -26,13 +26,14 @@ After startup defaults are clean and a non-production Queue Postgres target is a
 - R105
 
 ## Latest Check
-C114
+C124
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/README.md
 - Ticket T110: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/tickets/T110.md
 - Result R105: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/results/R105.md
 - Check C114: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/checks/C114.md
+- Check C124: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/checks/C124.md
 
 ## Follow-ups
 - P116: Start Queue Service After Staging DSN Is Supplied

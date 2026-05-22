@@ -1,13 +1,13 @@
 # P112: Run Queue Service API Smokes
 
-Status: todo
+Status: done
 Parent: P109
 Root: P000
 Source Ticket: T106 (split)
 Source Check: none
 Package: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112
 Body: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/README.md
-Ticket(s): none
+Ticket(s): T116
 
 ## Problem
 With Queue Service running in Postgres mode, representative Queue APIs must be exercised against the real service runtime. This child belongs under T106 because API behavior failures should be diagnosed separately from startup and database target setup.
@@ -24,13 +24,16 @@ With Queue Service running in Postgres mode, representative Queue APIs must be e
 - none
 
 ## Results
-- none
+- R112
 
 ## Latest Check
-none
+C126
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/README.md
+- Ticket T116: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/tickets/T116.md
+- Result R112: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/results/R112.md
+- Check C126: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P112/checks/C126.md
 
 ## Follow-ups
 - none

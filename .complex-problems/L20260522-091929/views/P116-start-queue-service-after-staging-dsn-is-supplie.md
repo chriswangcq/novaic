@@ -1,6 +1,6 @@
 # P116: Start Queue Service After Staging DSN Is Supplied
 
-Status: followup
+Status: done
 Parent: P115
 Root: P000
 Source Ticket: none (none)
@@ -20,17 +20,23 @@ P115 cannot close until a confirmed non-production Queue Postgres target is supp
 - DSNs/secrets are redacted from all artifacts.
 
 ## Subproblems
-- none
+- P117: Supply Non-Production Queue Postgres DSN
+- P118: Start Queue Service On Api With Staging DSN
 
 ## Results
-- none
+- R106
 
 ## Latest Check
-none
+C123
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/README.md
 - Ticket T111: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/tickets/T111.md
+- Result R106: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/results/R106.md
+- Check C115: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/checks/C115.md
+- Check C117: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/checks/C117.md
+- Check C123: problems/P000/children/P024/children/P028/children/P076/children/P106/children/P109/children/P111/children/P115/children/P116/checks/C123.md
 
 ## Follow-ups
-- none
+- P117: Supply Non-Production Queue Postgres DSN
+- P118: Start Queue Service On Api With Staging DSN

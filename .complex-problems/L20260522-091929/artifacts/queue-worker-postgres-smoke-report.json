@@ -1,0 +1,161 @@
+{
+  "db_after": {
+    "config_version": null,
+    "counts": {
+      "tq_idempotency_ledger": 1,
+      "tq_saga_events": 10,
+      "tq_saga_outbox": 0,
+      "tq_saga_state": 4,
+      "tq_sagas": 4,
+      "tq_session_events": 7,
+      "tq_session_outbox": 2,
+      "tq_session_state": 1,
+      "tq_task_events": 6,
+      "tq_task_outbox": 0,
+      "tq_task_state": 2,
+      "tq_tasks": 2,
+      "tq_worker_lease_events": 8,
+      "tq_worker_lease_outbox": 0,
+      "tq_worker_lease_state": 4
+    },
+    "histograms": {
+      "tq_saga_outbox": {},
+      "tq_saga_state": {
+        "cancelled": 1,
+        "completed": 1,
+        "failed": 1,
+        "pending": 1
+      },
+      "tq_session_outbox": {
+        "published": 2
+      },
+      "tq_task_outbox": {},
+      "tq_task_state": {
+        "done": 1,
+        "failed": 1
+      },
+      "tq_worker_lease_state": {
+        "released": 4
+      }
+    }
+  },
+  "db_before": {
+    "config_version": null,
+    "counts": {
+      "tq_idempotency_ledger": 1,
+      "tq_saga_events": 7,
+      "tq_saga_outbox": 0,
+      "tq_saga_state": 2,
+      "tq_sagas": 2,
+      "tq_session_events": 6,
+      "tq_session_outbox": 2,
+      "tq_session_state": 1,
+      "tq_task_events": 6,
+      "tq_task_outbox": 0,
+      "tq_task_state": 2,
+      "tq_tasks": 2,
+      "tq_worker_lease_events": 8,
+      "tq_worker_lease_outbox": 0,
+      "tq_worker_lease_state": 4
+    },
+    "histograms": {
+      "tq_saga_outbox": {},
+      "tq_saga_state": {
+        "completed": 1,
+        "failed": 1
+      },
+      "tq_session_outbox": {
+        "pending": 2
+      },
+      "tq_task_outbox": {},
+      "tq_task_state": {
+        "done": 1,
+        "failed": 1
+      },
+      "tq_worker_lease_state": {
+        "released": 4
+      }
+    }
+  },
+  "ended_at": "2026-05-22T17:23:33.677047+00:00",
+  "lsof_after": {
+    "available": true,
+    "matches": [],
+    "returncode": 1,
+    "stderr": ""
+  },
+  "lsof_before": {
+    "available": true,
+    "matches": [],
+    "returncode": 1,
+    "stderr": ""
+  },
+  "ok": true,
+  "run_id": "20260522T172306Z",
+  "sqlite_files_after": [],
+  "sqlite_files_before": [],
+  "started_at": "2026-05-22T17:23:06.290140+00:00",
+  "target": {
+    "dsn_file": "/opt/novaic/queue-staging-postgres/queue-postgres.dsn",
+    "host": "api.gradievo.com",
+    "queue_service_url": "http://127.0.0.1:19987"
+  },
+  "workers": [
+    {
+      "ended_at": "2026-05-22T17:23:12.657596+00:00",
+      "has_error_word": false,
+      "has_shutdown_line": true,
+      "has_starting_line": true,
+      "has_traceback": false,
+      "killed": false,
+      "log_path": "/opt/novaic/queue-service-staging/worker-smokes/20260522T172306Z/task-worker.log",
+      "log_tail": "2026-05-23 01:23:06,615 [INFO] common.strict_config scope_id= agent_id= user_id= caller=runtime - runtime_switches overlay applied: source=/opt/novaic/etc/runtime_switches.json keys=['health_check_interval_seconds', 'scheduler_poll_interval_seconds']\n[task-worker] Pool=control, subscribed to 3 topics: ['saga.decision', 'saga.parallel', 'saga.trigger']\n[task-worker] Starting...\n[task-worker] Worker ID: task-worker-3390d46a\n[task-worker] Pool: control\n[task-worker] Business URL: http://127.0.0.1:9\n[task-worker] Queue Service URL: http://127.0.0.1:19987\n[task-worker] Num workers: 1 (reserved)\n[task-worker] Received shutdown signal\n[task-worker] Shutdown complete",
+      "name": "task-worker",
+      "returncode": 0,
+      "started_at": "2026-05-22T17:23:06.572222+00:00",
+      "timed_out": true
+    },
+    {
+      "ended_at": "2026-05-22T17:23:18.713603+00:00",
+      "has_error_word": false,
+      "has_shutdown_line": true,
+      "has_starting_line": true,
+      "has_traceback": false,
+      "killed": false,
+      "log_path": "/opt/novaic/queue-service-staging/worker-smokes/20260522T172306Z/saga-worker.log",
+      "log_tail": "2026-05-23 01:23:12,704 [INFO] common.strict_config scope_id= agent_id= user_id= caller=runtime - runtime_switches overlay applied: source=/opt/novaic/etc/runtime_switches.json keys=['health_check_interval_seconds', 'scheduler_poll_interval_seconds']\n[Saga Registry] Registered 4 saga types:\n  - react_actions: 6 steps\n  - react_think: 8 steps\n  - subagent_wake: 3 steps\n  - wake_finalize: 4 steps\n[saga-worker] Registered: react_actions (6 steps)\n[saga-worker] Registered: react_think (8 steps)\n[saga-worker] Registered: subagent_wake (3 steps)\n[saga-worker] Registered: wake_finalize (4 steps)\n[saga-worker] Starting...\n[saga-worker] Worker ID: saga-worker-d9ee87a1\n[saga-worker] Queue Service URL: http://127.0.0.1:19987\n[saga-worker] Saga types: ['react_actions', 'react_think', 'subagent_wake', 'wake_finalize']\n[saga-worker] Max concurrent: 1\n[saga-worker] Received shutdown signal\n[saga-worker] Shutdown complete",
+      "name": "saga-worker",
+      "returncode": 0,
+      "started_at": "2026-05-22T17:23:12.657828+00:00",
+      "timed_out": true
+    },
+    {
+      "ended_at": "2026-05-22T17:23:27.124584+00:00",
+      "has_error_word": false,
+      "has_shutdown_line": true,
+      "has_starting_line": true,
+      "has_traceback": false,
+      "killed": false,
+      "log_path": "/opt/novaic/queue-service-staging/worker-smokes/20260522T172306Z/session-outbox-worker.log",
+      "log_tail": "2026-05-23 01:23:18,756 [INFO] common.strict_config scope_id= agent_id= user_id= caller=runtime - runtime_switches overlay applied: source=/opt/novaic/etc/runtime_switches.json keys=['health_check_interval_seconds', 'scheduler_poll_interval_seconds']\n2026-05-23 01:23:18,882 [INFO] queue_service.db.postgres scope_id= agent_id= user_id= caller=runtime - [Queue DB] Connecting to Postgres\n2026-05-23 01:23:19,016 [INFO] queue_service.db.postgres scope_id= agent_id= user_id= caller=runtime - [Queue DB] Postgres connected and initialized\n2026-05-23 01:23:27,078 [INFO] queue_service.db.postgres scope_id= agent_id= user_id= caller=runtime - [Queue DB] Postgres connection pool closed\n[session-outbox-worker] Starting...\n[session-outbox-worker] Database: {'backend': 'postgres', 'dsn_source': 'file', 'dsn_file': '/opt/novaic/queue-staging-postgres/queue-postgres.dsn'}\n[session-outbox-worker] Batch size: 10\n[session-outbox-worker] Poll interval: 0.5s\n[session-outbox-worker] job=session_outbox_drain status=success payload={'published': 2, 'failed': 0, 'dead_letter': 0}\n[session-outbox-worker] Received shutdown signal\n[session-outbox-worker] Shutdown complete",
+      "name": "session-outbox-worker",
+      "returncode": 0,
+      "started_at": "2026-05-22T17:23:18.713857+00:00",
+      "timed_out": true
+    },
+    {
+      "ended_at": "2026-05-22T17:23:33.501782+00:00",
+      "has_error_word": false,
+      "has_shutdown_line": true,
+      "has_starting_line": true,
+      "has_traceback": false,
+      "killed": false,
+      "log_path": "/opt/novaic/queue-service-staging/worker-smokes/20260522T172306Z/saga-outbox-worker.log",
+      "log_tail": "2026-05-23 01:23:27,179 [INFO] common.strict_config scope_id= agent_id= user_id= caller=runtime - runtime_switches overlay applied: source=/opt/novaic/etc/runtime_switches.json keys=['health_check_interval_seconds', 'scheduler_poll_interval_seconds']\n2026-05-23 01:23:27,302 [INFO] queue_service.db.postgres scope_id= agent_id= user_id= caller=runtime - [Queue DB] Connecting to Postgres\n2026-05-23 01:23:27,430 [INFO] queue_service.db.postgres scope_id= agent_id= user_id= caller=runtime - [Queue DB] Postgres connected and initialized\n2026-05-23 01:23:33,460 [INFO] queue_service.db.postgres scope_id= agent_id= user_id= caller=runtime - [Queue DB] Postgres connection pool closed\n[saga-outbox-worker] Starting...\n[saga-outbox-worker] Database: {'backend': 'postgres', 'dsn_source': 'file', 'dsn_file': '/opt/novaic/queue-staging-postgres/queue-postgres.dsn'}\n[saga-outbox-worker] Batch size: 10\n[saga-outbox-worker] Poll interval: 0.5s\n[saga-outbox-worker] Received shutdown signal\n[saga-outbox-worker] Shutdown complete",
+      "name": "saga-outbox-worker",
+      "returncode": 0,
+      "started_at": "2026-05-22T17:23:27.124803+00:00",
+      "timed_out": true
+    }
+  ]
+}
