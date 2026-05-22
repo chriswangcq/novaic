@@ -4,7 +4,7 @@ Ledger: L20260522-091929
 Schema: v6
 Root: P000 - Unify NovAIC persistent state on Postgres and remove stale database residue
 Status: doing
-Updated: 2026-05-22T17:33:44+00:00
+Updated: 2026-05-22T17:49:45+00:00
 
 ## Problem Tree
 - [followup] P000: Unify NovAIC persistent state on Postgres and remove stale database residue
@@ -128,9 +128,13 @@ Updated: 2026-05-22T17:33:44+00:00
         - [done] P107: Run Queue Worker And Outbox Postgres Staging Smokes
         - [done] P108: Record Queue Postgres Staging Validation Report
       - [todo] P077: Execute Queue Production Postgres Cutover And Cleanup
-        - [doing] P121: Commit Push And Deploy Queue Postgres Cutover Code
-        - [todo] P122: Inventory Production Queue Runtime And Cutover Preconditions
+        - [done] P121: Commit Push And Deploy Queue Postgres Cutover Code
+        - [done] P122: Inventory Production Queue Runtime And Cutover Preconditions
         - [todo] P123: Freeze Queue Writers And Archive Final SQLite Backup
+          - [done] P128: Prepare Queue Freeze And Backup Runbook
+          - [todo] P129: Execute Queue Freeze And Final SQLite Backup
+            - [todo] P130: Confirm Queue Freeze Window Approval
+            - [todo] P131: Execute Approved Queue Freeze And Backup
         - [todo] P124: Migrate Queue SQLite Data To Production Postgres And Verify
         - [todo] P125: Restart Production Queue Services In Postgres Mode
         - [todo] P126: Run Production Queue Postgres Health API Worker And Outbox Smokes
@@ -141,13 +145,14 @@ Updated: 2026-05-22T17:33:44+00:00
 - [ ] P024: Implement Remaining Service Postgres Cutovers (followup)
 - [ ] P028: Implement Queue Postgres Cutover (todo)
 - [ ] P077: Execute Queue Production Postgres Cutover And Cleanup (todo)
-- [ ] P121: Commit Push And Deploy Queue Postgres Cutover Code (doing)
-- [ ] P122: Inventory Production Queue Runtime And Cutover Preconditions (todo)
 - [ ] P123: Freeze Queue Writers And Archive Final SQLite Backup (todo)
 - [ ] P124: Migrate Queue SQLite Data To Production Postgres And Verify (todo)
 - [ ] P125: Restart Production Queue Services In Postgres Mode (todo)
 - [ ] P126: Run Production Queue Postgres Health API Worker And Outbox Smokes (todo)
 - [ ] P127: Archive Old Queue SQLite Residue And Update Cleanup Notes (todo)
+- [ ] P129: Execute Queue Freeze And Final SQLite Backup (todo)
+- [ ] P130: Confirm Queue Freeze Window Approval (todo)
+- [ ] P131: Execute Approved Queue Freeze And Backup (todo)
 
 ## Blocked
 
@@ -269,6 +274,9 @@ Updated: 2026-05-22T17:33:44+00:00
 - [x] P118: Start Queue Service On Api With Staging DSN
 - [x] P119: Fix Queue Staging DSN And Restart Service
 - [x] P120: Fix Fresh Postgres Schema Init Transaction Handling
+- [x] P121: Commit Push And Deploy Queue Postgres Cutover Code
+- [x] P122: Inventory Production Queue Runtime And Cutover Preconditions
+- [x] P128: Prepare Queue Freeze And Backup Runbook
 
 ## Tickets
 - [done] T000: Phased Postgres unification with residue cleanup -> P000 (split)
@@ -392,12 +400,14 @@ Updated: 2026-05-22T17:33:44+00:00
 - [done] T118: Verify Queue Workers And Outbox On Postgres Staging -> P107 (one_go)
 - [done] T119: Compile Queue Postgres Staging Validation Report -> P108 (one_go)
 - [splitting] T120: Execute Queue Production Postgres Cutover Safely -> P077 (split)
-- [executing] T121: Commit Push And Deploy Queue Postgres Cutover Code -> P121 (one_go)
+- [done] T121: Commit Push And Deploy Queue Postgres Cutover Code -> P121 (one_go)
+- [done] T122: Inventory Production Queue Runtime And Cutover Preconditions -> P122 (one_go)
+- [splitting] T123: Freeze Queue Writers And Archive Final SQLite Backup -> P123 (split)
+- [done] T124: Prepare Queue Freeze And Backup Runbook -> P128 (one_go)
+- [splitting] T125: Execute Queue Freeze And Final SQLite Backup -> P129 (split)
+- [classified] T126: Confirm Queue Freeze Window Approval -> P130 (one_go)
 
 ## Latest Checks
-- [success] C123: P116 `P116` is successful. The missing staging DSN was supplied, Queue Service was started on the api host against that DSN, and real `/health` plus `/ready` verification passed after closing the discovered DSN-format and fresh Postgres initialization blockers.
-- [success] C124: P115 `P115` is successful. The Queue Service was not pointed at an ambiguous or production database; a dedicated staging Postgres target was confirmed and used, and the service now passes live health/readiness against that target.
-- [success] C125: P111 `P111` is successful. Queue Service startup is now unambiguously Postgres-mode for staging smokes: the stale SQLite-default concern was cleaned up, a confirmed non-production Postgres target exists, and the real service runs against it with passing health/readiness checks.
 - [success] C126: P112 `P112` is successful. `R112` exercised the real staging Queue Service in Postgres mode across health, readiness, task lifecycle, saga lifecycle, session dispatch/finalize, idempotency, and post-smoke database counts. No operation was skipped.
 - [success] C127: P113 `P113` is successful. `R113` records post-smoke Queue Postgres counts, status histograms, target public identity, and ties the evidence to the successful API smoke run without exposing secrets.
 - [success] C128: P109 `P109` is successful. `R114` proves a non-production Queue Postgres target exists, Queue Service starts against it in Postgres mode, representative APIs pass, and post-smoke counts are recorded with secrets redacted.
@@ -405,3 +415,6 @@ Updated: 2026-05-22T17:33:44+00:00
 - [success] C130: P107 Success. Result `R115` solves the original worker/outbox Postgres staging smoke problem. The first failed run exposed real worker-path defects, but the final rerun after fixes proved task, saga, session outbox, and saga outbox worker paths against the api staging Postgres target with no sqlite residue.
 - [success] C131: P108 Success. Result `R116` solves P108 by creating a durable redacted validation report and verifying both factual coverage and redaction requirements.
 - [success] C132: P076 Success. Result `R117` closes P076's Queue Postgres staging validation scope. All four split children are done with checks, and their combined evidence covers the staging database, Queue Service runtime, API flows, worker/outbox flows, sqlite residue checks, and redacted validation reporting.
+- [success] C133: P121 Success. Result `R118` satisfies P121: the Queue Postgres runtime fixes are committed, pushed, and deployed to the api runtime checkout, with tests and health verification. Root unrelated dirty files were not staged or reverted.
+- [success] C134: P122 Success. Result `R119` solves the production inventory/preflight problem with read-only evidence, sanitized artifacts, production Queue writer identification, active SQLite holder evidence, production Postgres target confirmation, and a clear next-gate decision.
+- [success] C135: P128 Success. Result `R120` solves P128 by producing a redacted, executable Queue freeze/final-backup runbook that is grounded in P122 inventory and explicitly stops before production execution.

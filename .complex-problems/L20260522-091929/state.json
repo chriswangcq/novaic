@@ -5365,14 +5365,131 @@
         "The validation went beyond unit tests by starting real service and worker processes against a live non-production Postgres target. It also exercised likely hidden failure modes: missing sqlite boundary cleanup in outbox workers, signal shutdown, JSONB binding, pending outbox drains, and SQL placeholder conversion under `FOR UPDATE SKIP LOCKED`."
       ],
       "summary": "Success. Result `R117` closes P076's Queue Postgres staging validation scope. All four split children are done with checks, and their combined evidence covers the staging database, Queue Service runtime, API flows, worker/outbox flows, sqlite residue checks, and redacted validation reporting."
+    },
+    "C133": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P121/checks/C133.md",
+      "created_at": "2026-05-22T17:38:29+00:00",
+      "criteria_map": [
+        "Runtime source changes committed and pushed: satisfied by `dc9d108` pushed to `novaic-agent-runtime/main`.",
+        "Focused tests pass before commit: satisfied by the 72-test focused run recorded in `R118`.",
+        "Api runtime checkout can fetch and is updated to pushed commit: satisfied by fast-forward to `dc9d108` and health verification.",
+        "Root unrelated dirty changes are not staged or reverted: satisfied by the selective root commit and remaining unrelated dirty status.",
+        "Remaining root-level ledger/submodule pointer state is reported: satisfied by `R118`, which records root commit `f021d635` and the ledger-only state created after P121 result/check."
+      ],
+      "evidence": [
+        "Runtime commit `dc9d108 Fix queue postgres worker cutover paths` exists on `novaic-agent-runtime/main` and was pushed to origin.",
+        "Root commit `f021d635 Record queue postgres staging ledger` exists on `novaic/main` and was pushed to origin with the submodule pointer and ledger state.",
+        "Api runtime checkout reports `HEAD=dc9d108`, clean status count `0`, and Queue Service health `database_backend=postgres`.",
+        "Focused test suite passed with `72 passed in 0.22s`.",
+        "Root `git status --short` after commit shows only unrelated docs/scripts/config dirty files outside the staged cutover commit."
+      ],
+      "execution_map": [
+        "Reviewed runtime status and diff.",
+        "Ran focused tests.",
+        "Staged only intended runtime files and committed/pushed.",
+        "On api, stashed matching local patches, fast-forwarded to origin/main, restarted Queue Service, and checked health.",
+        "In root, staged only `.complex-problems` ledger files and `novaic-agent-runtime` submodule pointer, committed and pushed."
+      ],
+      "followup_problem_id": null,
+      "id": "C133",
+      "problem_id": "P121",
+      "residual_risk": [
+        "Non-blocking. A duplicate api stash remains as a conservative backup of the pre-fast-forward staging patches. The P121 result/check themselves create new ledger-only root dirt that should be committed in a later ledger housekeeping commit, but this does not affect runtime deploy readiness."
+      ],
+      "result_ids": [
+        "R118"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check covers a plausible failure mode for this ticket: production cutover accidentally relying on a dirty staging checkout. Api now runs from a clean pushed runtime commit, and the root repository records the matching submodule pointer."
+      ],
+      "summary": "Success. Result `R118` satisfies P121: the Queue Postgres runtime fixes are committed, pushed, and deployed to the api runtime checkout, with tests and health verification. Root unrelated dirty files were not staged or reverted."
+    },
+    "C134": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P122/checks/C134.md",
+      "created_at": "2026-05-22T17:44:08+00:00",
+      "criteria_map": [
+        "Visible Queue Service/worker/outbox/scheduler processes listed: satisfied by `queue-production-preflight-inventory.md` and JSON process inventory.",
+        "Active queue DB metadata and holders recorded without modifying the file: satisfied by file stat and `lsof` holder evidence.",
+        "Runtime configuration sources summarized with secrets redacted: satisfied by sanitized process commands and redaction scan.",
+        "Production Postgres target confirmed or blocker recorded: satisfied by `novaic-postgres` database list including `novaic_queue`.",
+        "Rollback plan and go/no-go decision documented: satisfied by the report's rollback plan and conditional go for P123 freeze/backup only."
+      ],
+      "evidence": [
+        "Inventory JSON and Markdown artifacts exist under `.complex-problems/L20260522-091929/artifacts/`.",
+        "Production Queue Service health/readiness on port `19997` shows active sqlite mode with `/opt/novaic/data/queue.db`.",
+        "`lsof` evidence shows active holders for Queue Service and outbox workers.",
+        "Process inventory lists Queue Service, task workers, saga workers, outbox workers, health worker, scheduler, business subscriber, and gateway dependency.",
+        "Docker/Postgres inventory confirms `novaic-postgres` is healthy and includes `novaic_queue`.",
+        "Sensitive-pattern scans returned no matches for the generated artifacts."
+      ],
+      "execution_map": [
+        "Ran read-only process, Docker, file metadata, `lsof`, health, and database-name inspections.",
+        "Re-ran the inventory after strengthening redaction rules for CLI secret/key arguments and health outputs.",
+        "Produced Markdown and JSON artifacts and scanned both for sensitive markers."
+      ],
+      "followup_problem_id": null,
+      "id": "C134",
+      "problem_id": "P122",
+      "residual_risk": [
+        "Non-blocking. Process inventory is a point-in-time snapshot; P123 must re-check process holders immediately before and after freeze/backup."
+      ],
+      "result_ids": [
+        "R119"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check targets the main preflight failure mode: missing a live SQLite writer before backup. `lsof` directly identified live holders, so P123 has an explicit freeze list instead of relying on service naming assumptions."
+      ],
+      "summary": "Success. Result `R119` solves the production inventory/preflight problem with read-only evidence, sanitized artifacts, production Queue writer identification, active SQLite holder evidence, production Postgres target confirmation, and a clear next-gate decision."
+    },
+    "C135": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P128/checks/C135.md",
+      "created_at": "2026-05-22T17:47:54+00:00",
+      "criteria_map": [
+        "Runbook lists target process roles and stop order: satisfied.",
+        "Runbook defines stop order, verification commands, backup destination, checksum commands, and rollback notes: satisfied.",
+        "Runbook includes pre-execution go/no-go checklist: satisfied by `Pre-Execution Checklist` and block conditions.",
+        "Runbook is redacted and contains no credential values or credential-file paths: satisfied by scan."
+      ],
+      "evidence": [
+        "Runbook artifact exists at `.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-runbook.md`.",
+        "Runbook lists stop/freeze order, pre-checks, freeze commands, backup/checksum/integrity commands, post-backup checks, rollback notes, and expected P129 artifacts.",
+        "Sensitive-pattern scan returned no matches."
+      ],
+      "execution_map": [
+        "Used P122 inventory to identify production Queue runtime and holder processes.",
+        "Wrote a runbook that refreshes PIDs before execution and avoids trusting stale snapshot IDs.",
+        "Verified redaction and did not execute freeze or backup commands."
+      ],
+      "followup_problem_id": null,
+      "id": "C135",
+      "problem_id": "P128",
+      "residual_risk": [
+        "Non-blocking. The runbook still requires human/operator acceptance of a freeze window before P129 executes."
+      ],
+      "result_ids": [
+        "R120"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The runbook handles the likely failure mode where PIDs change between inventory and execution: it requires a fresh `ps` and `lsof` check immediately before stopping processes."
+      ],
+      "summary": "Success. Result `R120` solves P128 by producing a redacted, executable Queue freeze/final-backup runbook that is grounded in P122 inventory and explicitly stops before production execution."
     }
   },
   "counters": {
-    "check": 133,
-    "event": 1476,
-    "problem": 128,
-    "result": 118,
-    "ticket": 122
+    "check": 136,
+    "event": 1521,
+    "problem": 132,
+    "result": 121,
+    "ticket": 127
   },
   "created_at": "2026-05-22T01:19:29+00:00",
   "ledger_id": "L20260522-091929",
@@ -9694,7 +9811,9 @@
     },
     "P121": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P121/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C133"
+      ],
       "created_at": "2026-05-22T17:32:43+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T120",
@@ -9704,9 +9823,11 @@
       "id": "P121",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P121",
       "parent_id": "P077",
-      "result_ids": [],
+      "result_ids": [
+        "R118"
+      ],
       "root_id": "P000",
-      "status": "doing",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Queue-related source changes are reviewed, tested, committed, and pushed in the relevant submodule/repo.",
@@ -9719,11 +9840,13 @@
         "T121"
       ],
       "title": "Commit Push And Deploy Queue Postgres Cutover Code",
-      "updated_at": "2026-05-22T17:33:44+00:00"
+      "updated_at": "2026-05-22T17:38:29+00:00"
     },
     "P122": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P122/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C134"
+      ],
       "created_at": "2026-05-22T17:32:43+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T120",
@@ -9733,9 +9856,11 @@
       "id": "P122",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P122",
       "parent_id": "P077",
-      "result_ids": [],
+      "result_ids": [
+        "R119"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Production Queue Service, workers, outbox workers, schedulers, and other possible queue writers are listed with process IDs, commands, and owners.",
@@ -9744,9 +9869,11 @@
         "Rollback plan is documented, including SQLite restore/config revert steps and conditions.",
         "A go/no-go preflight decision is recorded before freeze or backup."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T122"
+      ],
       "title": "Inventory Production Queue Runtime And Cutover Preconditions",
-      "updated_at": "2026-05-22T17:32:43+00:00"
+      "updated_at": "2026-05-22T17:44:08+00:00"
     },
     "P123": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/README.md",
@@ -9763,7 +9890,10 @@
       "result_ids": [],
       "root_id": "P000",
       "status": "todo",
-      "subproblem_ids": [],
+      "subproblem_ids": [
+        "P128",
+        "P129"
+      ],
       "success_criteria": [
         "All identified Queue writers/workers are stopped, frozen, or otherwise prevented from writing.",
         "`/opt/novaic/data/queue.db` is backed up to a timestamped rollback archive.",
@@ -9771,7 +9901,9 @@
         "A post-backup check confirms no writer process still holds or mutates the active SQLite queue file.",
         "The backup location is recorded without exposing unrelated credentials."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T123"
+      ],
       "title": "Freeze Queue Writers And Archive Final SQLite Backup",
       "updated_at": "2026-05-22T17:32:43+00:00"
     },
@@ -9883,6 +10015,124 @@
       "ticket_ids": [],
       "title": "Archive Old Queue SQLite Residue And Update Cleanup Notes",
       "updated_at": "2026-05-22T17:32:44+00:00"
+    },
+    "P128": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P128/README.md",
+      "check_ids": [
+        "C135"
+      ],
+      "created_at": "2026-05-22T17:45:13+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T123",
+      "created_from_ticket_mode": "split",
+      "description": "Before production Queue writers are stopped, the exact freeze order, commands, backup paths, checksum commands, and rollback notes must be written from the P122 inventory so the execution step is short and auditable.",
+      "followup_ids": [],
+      "id": "P128",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P128",
+      "parent_id": "P123",
+      "result_ids": [
+        "R120"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runbook lists Queue writer/worker PIDs or service patterns to stop/freeze.",
+        "Runbook defines stop order, verification commands, backup destination, checksum commands, and rollback notes.",
+        "Runbook includes a pre-execution go/no-go checklist.",
+        "Runbook is redacted and contains no credential values or credential-file paths."
+      ],
+      "ticket_ids": [
+        "T124"
+      ],
+      "title": "Prepare Queue Freeze And Backup Runbook",
+      "updated_at": "2026-05-22T17:47:54+00:00"
+    },
+    "P129": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:45:13+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T123",
+      "created_from_ticket_mode": "split",
+      "description": "The production Queue writers must be frozen and the active SQLite queue file backed up with checksum evidence before migration. This is the actual downtime gate and must follow the prepared runbook.",
+      "followup_ids": [],
+      "id": "P129",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129",
+      "parent_id": "P123",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [
+        "P130",
+        "P131"
+      ],
+      "success_criteria": [
+        "Queue writers/workers listed in the runbook are stopped or frozen.",
+        "A timestamped backup of `/opt/novaic/data/queue.db` is created.",
+        "Backup checksum and file metadata are recorded.",
+        "`lsof /opt/novaic/data/queue.db` after freeze/backup shows no active Queue writer holders, or any remaining holder is explained and blocks migration.",
+        "Queue writer restart remains blocked until migration or rollback decision is recorded."
+      ],
+      "ticket_ids": [
+        "T125"
+      ],
+      "title": "Execute Queue Freeze And Final SQLite Backup",
+      "updated_at": "2026-05-22T17:45:13+00:00"
+    },
+    "P130": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:49:10+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T125",
+      "created_from_ticket_mode": "split",
+      "description": "Executing the final SQLite backup requires stopping production Queue writers and creates a brief Queue write freeze. The operator must explicitly approve that freeze window before execution.",
+      "followup_ids": [],
+      "id": "P130",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130",
+      "parent_id": "P129",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Operator approval is recorded in the ledger.",
+        "Approval includes permission to stop Queue Service, workers, outbox workers, scheduler/health, and Queue-dependent ingress listed in the runbook.",
+        "If approval is denied or deferred, the freeze/backup execution remains blocked and no production process is stopped."
+      ],
+      "ticket_ids": [
+        "T126"
+      ],
+      "title": "Confirm Queue Freeze Window Approval",
+      "updated_at": "2026-05-22T17:49:10+00:00"
+    },
+    "P131": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P131/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-22T17:49:10+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T125",
+      "created_from_ticket_mode": "split",
+      "description": "After approval, run the prepared freeze/backup runbook, create the final SQLite backup, and prove the backup is valid and no Queue writer still holds the active SQLite file.",
+      "followup_ids": [],
+      "id": "P131",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P131",
+      "parent_id": "P129",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Refreshed pre-freeze process and holder inventory is saved.",
+        "Approved Queue writer/worker processes are stopped or frozen.",
+        "Timestamped backup of `/opt/novaic/data/queue.db` is created with checksum/stat/integrity artifacts.",
+        "Post-backup `lsof` and process checks are saved.",
+        "Migration is blocked if backup validation fails or holders remain."
+      ],
+      "ticket_ids": [],
+      "title": "Execute Approved Queue Freeze And Backup",
+      "updated_at": "2026-05-22T17:49:10+00:00"
     }
   },
   "results": {
@@ -14174,6 +14424,105 @@
         "Worker smoke run `20260522T172306Z`: task-worker, saga-worker, session-outbox-worker, and saga-outbox-worker all started, handled bounded shutdown, returned `0`, and had no traceback/error marker.",
         "Worker smoke sqlite scan: no `*.db`, `*.sqlite`, or `*.sqlite3` files under the staging runtime tree and no sqlite queue holders from `lsof`.",
         "Staging validation report: `.complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`."
+      ]
+    },
+    "R118": {
+      "artifacts": [
+        "Runtime commit: `dc9d108`",
+        "Root commit: `f021d635`",
+        "Api runtime target: `dc9d108`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P121/results/R118.md",
+      "created_at": "2026-05-22T17:38:02+00:00",
+      "done": [
+        "Reran the focused Queue Postgres regression suite in `novaic-agent-runtime`.",
+        "Committed runtime fixes in `novaic-agent-runtime` on `main`: `dc9d108 Fix queue postgres worker cutover paths`.",
+        "Pushed `novaic-agent-runtime/main` to origin.",
+        "Updated api runtime checkout to `dc9d108` through a safe `git stash` plus `git merge --ff-only origin/main`, avoiding destructive reset.",
+        "Restarted the api Queue Service from checkout `dc9d108`; `/health` returned `database_backend=postgres`.",
+        "Committed root repository ledger/submodule pointer state on `main`: `f021d635 Record queue postgres staging ledger`.",
+        "Pushed root `novaic/main` to origin.",
+        "Left unrelated root dirty files unstaged and unreverted."
+      ],
+      "id": "R118",
+      "known_gaps": [
+        "The api runtime has a preserved stash named `codex-queue-postgres-staging-patches-before-dc9d108`; it is duplicate safety backup of the pre-fast-forward local patches and can be dropped later after production cutover confidence.",
+        "Root ledger state changed again when recording this P121 result/check; that follow-up ledger-only state still needs a later root commit."
+      ],
+      "problem_id": "P121",
+      "root_id": "P000",
+      "summary": "Queue Postgres staging-discovered runtime fixes were committed, pushed, and deployed to the api runtime checkout. The root repository now points at the pushed runtime commit and records the staging ledger state up through P077 planning.",
+      "ticket_id": "T121",
+      "verification": [
+        "Focused tests: `72 passed in 0.22s`.",
+        "Runtime push: `9af254c..dc9d108 main -> main`.",
+        "Root push: `e39e1ff5..f021d635 main -> main`.",
+        "Api runtime verification:",
+        "`git rev-parse --short HEAD` returned `dc9d108`.",
+        "`git status --short | wc -l` returned `0`.",
+        "Queue Service health returned `healthy` with `database_backend=postgres`.",
+        "Local `novaic-agent-runtime` working tree is clean after commit.",
+        "Root working tree still has unrelated pre-existing docs/scripts/config dirty files; these were not staged in the root commit."
+      ]
+    },
+    "R119": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-preflight-inventory.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-preflight-inventory.md`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P122/results/R119.md",
+      "created_at": "2026-05-22T17:43:45+00:00",
+      "done": [
+        "Captured production Queue Service health/readiness for `http://127.0.0.1:19997`.",
+        "Captured active SQLite queue file metadata.",
+        "Captured `lsof` holder evidence for `/opt/novaic/data/queue.db`.",
+        "Listed visible Queue writers/workers and related Queue-dependent processes.",
+        "Listed Docker containers and Postgres database names without credential values.",
+        "Wrote `.complex-problems/L20260522-091929/artifacts/queue-production-preflight-inventory.json`.",
+        "Wrote `.complex-problems/L20260522-091929/artifacts/queue-production-preflight-inventory.md`.",
+        "Ran sensitive-pattern scans against both artifacts."
+      ],
+      "id": "R119",
+      "known_gaps": [
+        "None for this inventory ticket. P123 must perform the actual freeze/backup and must not proceed until the listed writers are stopped or frozen."
+      ],
+      "problem_id": "P122",
+      "root_id": "P000",
+      "summary": "Completed a read-only production Queue cutover preflight inventory on `api.gradievo.com`. Production Queue is still running from `/opt/novaic/data/queue.db` on port `19997`; all visible Queue Service/worker/outbox/scheduler processes were identified; active SQLite holders are present; production Postgres container `novaic-postgres` is healthy and contains the intended `novaic_queue` database. The go/no-go decision is conditional go for P123 freeze/backup, not migration.",
+      "ticket_id": "T122",
+      "verification": [
+        "Production `/health` returned healthy with database `/opt/novaic/data/queue.db`.",
+        "Production `/ready` returned ok with sqlite/session checks ok.",
+        "`lsof` returned active holders for Queue Service PID `3533620`, session-outbox-worker PID `3533691`, and saga-outbox-worker PID `3533692`.",
+        "Docker showed `novaic-postgres` healthy on `127.0.0.1:5432`.",
+        "Database listing from `novaic-postgres` included `novaic_queue`.",
+        "Redaction scans returned no matches for connection strings, secret CLI values, credential paths, known DSN markers, or direct credential environment markers."
+      ]
+    },
+    "R120": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-runbook.md`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P128/results/R120.md",
+      "created_at": "2026-05-22T17:47:30+00:00",
+      "done": [
+        "Wrote `.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-runbook.md`.",
+        "Included stop/freeze target order for gateway/subscriber/scheduler/health, task workers, saga workers, outbox workers, and Queue Service.",
+        "Included pre-execution checks, freeze commands, backup/checksum/integrity commands, post-backup holder checks, rollback notes, and P129 artifact expectations.",
+        "Ran a sensitive-pattern scan against the runbook."
+      ],
+      "id": "R120",
+      "known_gaps": [
+        "None for runbook preparation. P129 remains the actual production freeze and backup execution gate."
+      ],
+      "problem_id": "P128",
+      "root_id": "P000",
+      "summary": "Prepared the production Queue freeze/final-backup runbook from the P122 inventory. No production process was stopped and no backup was taken in this ticket.",
+      "ticket_id": "T124",
+      "verification": [
+        "Runbook was checked against P122 inventory.",
+        "Sensitive-pattern scan returned no matches for connection strings, credential paths, secret CLI values, or direct credential markers.",
+        "The runbook explicitly blocks migration if holders remain, Queue Service restarts in sqlite mode, or backup checksum/integrity fails."
       ]
     }
   },
@@ -18524,18 +18873,180 @@
       "problem_definition": "The staging validation fixes currently live in the local `novaic-agent-runtime` working tree and the api staging checkout. Production cutover must not rely on uncommitted patches, and unrelated dirty root workspace changes must not be mixed into the cutover commit.",
       "problem_id": "P121",
       "proposed_solution": "Review the runtime diff, run the focused regression tests, commit only the Queue Postgres runtime fixes in `novaic-agent-runtime`, push the submodule branch, then update the api runtime checkout to the pushed commit. In the root repo, record or separate ledger/submodule pointer state without staging unrelated dirty files.",
-      "result_ids": [],
+      "result_ids": [
+        "R118"
+      ],
       "risks": [
         "Accidentally staging unrelated user changes in the root workspace.",
         "Pushing runtime code before all staging-discovered regression tests pass.",
         "The api checkout may have local patches; update must preserve or replace only the patches now represented by the pushed commit."
       ],
       "root_id": "P000",
-      "status": "executing",
+      "status": "done",
       "title": "Commit Push And Deploy Queue Postgres Cutover Code",
-      "updated_at": "2026-05-22T17:33:44+00:00",
+      "updated_at": "2026-05-22T17:38:02+00:00",
       "verification_plan": "Use `git diff` and `git status --short` before staging, stage only intended runtime files, run the focused pytest set, commit and push, verify remote branch contains the commit, then update api runtime checkout and confirm its `HEAD` matches the pushed commit."
+    },
+    "T122": {
+      "acceptance_criteria": [
+        "All visible Queue Service/worker/outbox/scheduler processes are listed with commands and PIDs.",
+        "Active `/opt/novaic/data/queue.db` metadata and holders are recorded without modifying the file.",
+        "Runtime configuration sources are summarized with secrets and credential-file paths redacted.",
+        "Production Postgres target identity is confirmed or a blocker is recorded.",
+        "Rollback plan and go/no-go preflight decision are documented."
+      ],
+      "assumptions": [
+        "The api host is the production runtime host for this Queue cutover inventory.",
+        "This ticket is read-only and does not stop services, write to Queue data, or migrate state."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P122/tickets/T122.md",
+      "classification": "one_go",
+      "classification_reason": "Read-only production inventory and preflight reporting is narrow, reversible, and immediately verifiable through sanitized process/config/file-holder evidence.",
+      "created_at": "2026-05-22T17:38:58+00:00",
+      "id": "T122",
+      "problem_definition": "Production cutover needs a reliable inventory of Queue Service, workers, outbox workers, scheduler/health processes, runtime configuration, active SQLite holders, production Postgres target identity, and rollback plan before any freeze, backup, migration, or restart can safely happen.",
+      "problem_id": "P122",
+      "proposed_solution": "Run read-only inspections on the api host and local repo: process lists, Docker/container status, Queue Service health where available, filesystem metadata for the active SQLite queue file, `lsof` holder checks, sanitized runtime environment/config discovery, and production Postgres target confirmation without printing credentials. Save a redacted preflight report and make a go/no-go recommendation for the next freeze/backup child.",
+      "result_ids": [
+        "R119"
+      ],
+      "risks": [
+        "Runtime credentials may be stored in files; commands must avoid printing file contents.",
+        "Multiple services may use the same data directory; process filtering must be broad enough to avoid missing writers.",
+        "If production Postgres target cannot be confirmed, the correct outcome is a blocker/no-go report, not proceeding."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Inventory Production Queue Runtime And Cutover Preconditions",
+      "updated_at": "2026-05-22T17:43:45+00:00",
+      "verification_plan": "Cross-check `ps`, `docker ps`, `lsof`, runtime directories, service health endpoints, and sanitized config/environment output. Run a sensitive-pattern scan on the generated report before recording success."
+    },
+    "T123": {
+      "acceptance_criteria": [
+        "Freeze/backup runbook lists exact target PIDs/services and stop order.",
+        "Queue writers/workers are stopped or frozen before final backup.",
+        "`/opt/novaic/data/queue.db` is copied to a timestamped archive.",
+        "Backup checksum, size, mode, owner, and mtime are recorded.",
+        "Post-backup holder check is recorded.",
+        "Queue writer restart remains blocked until migration or rollback decision."
+      ],
+      "assumptions": [
+        "The operator accepts a brief Queue writer freeze for the execution child.",
+        "The active SQLite path remains `/opt/novaic/data/queue.db`.",
+        "Rollback uses the final backup plus config/service restart back to sqlite mode until Postgres migration is verified."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/tickets/T123.md",
+      "classification": "split",
+      "classification_reason": "Production freeze/backup has separate preparation and execution gates; the execution gate creates write downtime and must not be bundled with runbook preparation.",
+      "created_at": "2026-05-22T17:44:41+00:00",
+      "id": "T123",
+      "problem_definition": "Production Queue is still active on `/opt/novaic/data/queue.db`, and `lsof` shows Queue Service plus outbox workers holding the file. A final SQLite backup must be taken only after writers/workers are frozen or stopped, with checksums and metadata recorded for rollback.",
+      "problem_id": "P123",
+      "proposed_solution": "Split this work into a command-preparation gate and an execution gate. First create a freeze/backup runbook from the P122 process inventory, including exact stop order, backup path, checksum commands, and rollback notes. Then execute the freeze and final backup in a bounded window, verifying that no Queue writer holds or mutates the SQLite file before proceeding to migration.",
+      "result_ids": [],
+      "risks": [
+        "This creates a brief production Queue write freeze.",
+        "Stopping workers without stopping Queue Service first may allow new claims or outbox writes.",
+        "Restarting writers prematurely could invalidate the backup before migration."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Freeze Queue Writers And Archive Final SQLite Backup",
+      "updated_at": "2026-05-22T17:45:12+00:00",
+      "verification_plan": "Before backup, run process and `lsof` checks from P122 again. Stop/freeze the listed Queue writers in a documented order. Copy the SQLite file to an archive directory, compute checksum, stat both source and backup, and run `lsof` again. If any writer remains, record a blocker and do not migrate."
+    },
+    "T124": {
+      "acceptance_criteria": [
+        "Runbook lists stop/freeze targets and order.",
+        "Runbook includes commands for pre-check, stop, backup, checksum, post-check, and rollback.",
+        "Runbook explicitly blocks migration if holders remain or backup checksum fails.",
+        "Runbook is redacted and passes a sensitive-pattern scan."
+      ],
+      "assumptions": [
+        "The execution child will run the commands after confirming operator acceptance of the freeze window."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P128/tickets/T124.md",
+      "classification": "one_go",
+      "classification_reason": "Runbook preparation is a read-only Markdown artifact derived from P122 inventory and can be verified immediately by source comparison and redaction scan.",
+      "created_at": "2026-05-22T17:45:38+00:00",
+      "id": "T124",
+      "problem_definition": "The production Queue freeze/backup step must be short and auditable. The stop order, commands, backup path, checksum commands, no-holder checks, and rollback notes need to be written before any production process is stopped.",
+      "problem_id": "P128",
+      "proposed_solution": "Use P122 inventory to write a redacted Markdown runbook. Include exact process roles and PIDs from the latest inventory as examples, but make commands resilient by matching process command patterns. Include preflight re-checks to refresh PIDs immediately before execution.",
+      "result_ids": [
+        "R120"
+      ],
+      "risks": [
+        "PIDs can change; runbook must refresh process inventory before execution.",
+        "Too broad a process kill pattern could stop unrelated services; commands must be explicit and reviewable."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Prepare Queue Freeze And Backup Runbook",
+      "updated_at": "2026-05-22T17:47:30+00:00",
+      "verification_plan": "Review runbook against P122 inventory and scan it for secret/credential path markers. Do not execute stop or backup commands in this ticket."
+    },
+    "T125": {
+      "acceptance_criteria": [
+        "Operator freeze-window confirmation is recorded.",
+        "Refreshed pre-freeze process and `lsof` evidence is saved.",
+        "Queue writer/worker processes are stopped or frozen according to the runbook.",
+        "Timestamped backup of `/opt/novaic/data/queue.db` is created.",
+        "Backup checksum, stat metadata, and sqlite integrity check are recorded.",
+        "Post-backup holder/process checks are recorded.",
+        "Migration is explicitly allowed or blocked based on backup and holder evidence."
+      ],
+      "assumptions": [
+        "Freeze execution must wait for explicit operator approval in this thread.",
+        "The next migration ticket will keep Queue writers stopped until Postgres mode is verified or rollback is chosen."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/tickets/T125.md",
+      "classification": "split",
+      "classification_reason": "Actual production freeze creates Queue write downtime, so operator approval and execution evidence should be separate gates rather than one unreviewed action.",
+      "created_at": "2026-05-22T17:48:28+00:00",
+      "id": "T125",
+      "problem_definition": "The production Queue SQLite file is active and has live holders. To proceed toward Postgres migration, Queue writers/workers must be frozen in a controlled window and `/opt/novaic/data/queue.db` must be archived with checksum and integrity evidence. This step creates production Queue write downtime.",
+      "problem_id": "P129",
+      "proposed_solution": "Execute the prepared runbook only after operator confirmation of the freeze window. Refresh process and holder inventory, stop/freeze Queue ingress, workers, outbox workers, scheduler/health, and Queue Service in order, copy the SQLite file to a timestamped backup directory, compute checksums and integrity output, and record post-backup process/holder state. Do not proceed to migration if any holder remains or backup validation fails.",
+      "result_ids": [],
+      "risks": [
+        "Queue-dependent user workflows may fail during the freeze.",
+        "If an external supervisor restarts Queue Service in sqlite mode, the backup can become stale and migration must be blocked.",
+        "Force-killing a stuck process may need careful review to avoid corrupting the file."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Execute Queue Freeze And Final SQLite Backup",
+      "updated_at": "2026-05-22T17:49:10+00:00",
+      "verification_plan": "Compare refreshed process inventory to P122/P128, run stop commands, verify holders, copy and checksum the file, run sqlite integrity check on the backup, and store a redacted execution report under ledger artifacts."
+    },
+    "T126": {
+      "acceptance_criteria": [
+        "Operator answer is recorded.",
+        "Approval clearly covers stopping Queue Service, task workers, saga workers, outbox workers, scheduler/health worker, gateway Queue ingress, and business subscriber Queue ingress.",
+        "No production process is stopped during this confirmation ticket."
+      ],
+      "assumptions": [
+        "A short Queue write freeze is acceptable only when explicitly confirmed now."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/tickets/T126.md",
+      "classification": "one_go",
+      "classification_reason": "Approval capture is a single bounded interaction: record explicit approval or a deferral without changing production state.",
+      "created_at": "2026-05-22T17:49:34+00:00",
+      "id": "T126",
+      "problem_definition": "The next operational step will stop production Queue writers and create a brief write freeze. This requires explicit operator approval before any process is stopped.",
+      "problem_id": "P130",
+      "proposed_solution": "Ask the operator to approve or defer the freeze window. Record the answer in the ledger. If approved, unblock the execution child; if deferred, record the blocker without changing production state.",
+      "result_ids": [],
+      "risks": [
+        "Ambiguous approval could lead to unintended downtime; require a clear yes before proceeding."
+      ],
+      "root_id": "P000",
+      "status": "classified",
+      "title": "Confirm Queue Freeze Window Approval",
+      "updated_at": "2026-05-22T17:49:45+00:00",
+      "verification_plan": "Use the user's explicit response in this thread as evidence. If the response is not explicit approval, treat the execution as blocked/deferred."
     }
   },
-  "updated_at": "2026-05-22T17:33:44+00:00"
+  "updated_at": "2026-05-22T17:49:45+00:00"
 }

@@ -1476,3 +1476,48 @@
 {"at": "2026-05-22T17:33:36+00:00", "id": "E1473", "payload": {"classification": "one_go", "reason": "Narrow source-control/deploy closure for already-tested Queue Postgres runtime fixes; verification is immediate via focused tests, git status, push confirmation, and api checkout HEAD comparison.", "ticket_id": "T121"}, "root_id": "P000", "type": "ticket_classified"}
 {"at": "2026-05-22T17:33:44+00:00", "id": "E1474", "payload": {"from": "todo", "id": "P121", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
 {"at": "2026-05-22T17:33:44+00:00", "id": "E1475", "payload": {"from": "classified", "id": "T121", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:38:02+00:00", "id": "E1476", "payload": {"from": "executing", "id": "T121", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:38:02+00:00", "id": "E1477", "payload": {"result_id": "R118", "ticket_id": "T121"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:38:29+00:00", "id": "E1478", "payload": {"from": "doing", "id": "P121", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:38:29+00:00", "id": "E1479", "payload": {"from": "checking", "id": "P121", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:38:29+00:00", "id": "E1480", "payload": {"check_id": "C133", "followup_id": null, "problem_id": "P121", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:38:58+00:00", "id": "E1481", "payload": {"problem_id": "P122", "ticket_id": "T122", "title": "Inventory Production Queue Runtime And Cutover Preconditions"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:38:58+00:00", "id": "E1482", "payload": {"from": "created", "id": "T122", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:39:07+00:00", "id": "E1483", "payload": {"from": "defined", "id": "T122", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:39:07+00:00", "id": "E1484", "payload": {"classification": "one_go", "reason": "Read-only production inventory and preflight reporting is narrow, reversible, and immediately verifiable through sanitized process/config/file-holder evidence.", "ticket_id": "T122"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:39:31+00:00", "id": "E1485", "payload": {"from": "todo", "id": "P122", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:39:31+00:00", "id": "E1486", "payload": {"from": "classified", "id": "T122", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:43:45+00:00", "id": "E1487", "payload": {"from": "executing", "id": "T122", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:43:45+00:00", "id": "E1488", "payload": {"result_id": "R119", "ticket_id": "T122"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:44:08+00:00", "id": "E1489", "payload": {"from": "doing", "id": "P122", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:44:08+00:00", "id": "E1490", "payload": {"from": "checking", "id": "P122", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:44:08+00:00", "id": "E1491", "payload": {"check_id": "C134", "followup_id": null, "problem_id": "P122", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:44:41+00:00", "id": "E1492", "payload": {"problem_id": "P123", "ticket_id": "T123", "title": "Freeze Queue Writers And Archive Final SQLite Backup"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:44:41+00:00", "id": "E1493", "payload": {"from": "created", "id": "T123", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:44:49+00:00", "id": "E1494", "payload": {"from": "defined", "id": "T123", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:44:49+00:00", "id": "E1495", "payload": {"classification": "split", "reason": "Production freeze/backup has separate preparation and execution gates; the execution gate creates write downtime and must not be bundled with runbook preparation.", "ticket_id": "T123"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:45:12+00:00", "id": "E1496", "payload": {"from": "classified", "id": "T123", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:45:13+00:00", "id": "E1497", "payload": {"parent_id": "P123", "problem_id": "P128", "source": "split", "title": "Prepare Queue Freeze And Backup Runbook"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:45:13+00:00", "id": "E1498", "payload": {"parent_id": "P123", "problem_id": "P129", "source": "split", "title": "Execute Queue Freeze And Final SQLite Backup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:45:38+00:00", "id": "E1499", "payload": {"problem_id": "P128", "ticket_id": "T124", "title": "Prepare Queue Freeze And Backup Runbook"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:45:38+00:00", "id": "E1500", "payload": {"from": "created", "id": "T124", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:45:47+00:00", "id": "E1501", "payload": {"from": "defined", "id": "T124", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:45:47+00:00", "id": "E1502", "payload": {"classification": "one_go", "reason": "Runbook preparation is a read-only Markdown artifact derived from P122 inventory and can be verified immediately by source comparison and redaction scan.", "ticket_id": "T124"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:45:56+00:00", "id": "E1503", "payload": {"from": "todo", "id": "P128", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:45:56+00:00", "id": "E1504", "payload": {"from": "classified", "id": "T124", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:47:30+00:00", "id": "E1505", "payload": {"from": "executing", "id": "T124", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:47:30+00:00", "id": "E1506", "payload": {"result_id": "R120", "ticket_id": "T124"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-22T17:47:54+00:00", "id": "E1507", "payload": {"from": "doing", "id": "P128", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:47:54+00:00", "id": "E1508", "payload": {"from": "checking", "id": "P128", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-22T17:47:54+00:00", "id": "E1509", "payload": {"check_id": "C135", "followup_id": null, "problem_id": "P128", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-22T17:48:28+00:00", "id": "E1510", "payload": {"problem_id": "P129", "ticket_id": "T125", "title": "Execute Queue Freeze And Final SQLite Backup"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:48:28+00:00", "id": "E1511", "payload": {"from": "created", "id": "T125", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:48:46+00:00", "id": "E1512", "payload": {"from": "defined", "id": "T125", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:48:46+00:00", "id": "E1513", "payload": {"classification": "split", "reason": "Actual production freeze creates Queue write downtime, so operator approval and execution evidence should be separate gates rather than one unreviewed action.", "ticket_id": "T125"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-22T17:49:10+00:00", "id": "E1514", "payload": {"from": "classified", "id": "T125", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:49:10+00:00", "id": "E1515", "payload": {"parent_id": "P129", "problem_id": "P130", "source": "split", "title": "Confirm Queue Freeze Window Approval"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:49:10+00:00", "id": "E1516", "payload": {"parent_id": "P129", "problem_id": "P131", "source": "split", "title": "Execute Approved Queue Freeze And Backup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-22T17:49:34+00:00", "id": "E1517", "payload": {"problem_id": "P130", "ticket_id": "T126", "title": "Confirm Queue Freeze Window Approval"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-22T17:49:34+00:00", "id": "E1518", "payload": {"from": "created", "id": "T126", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:49:45+00:00", "id": "E1519", "payload": {"from": "defined", "id": "T126", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-22T17:49:45+00:00", "id": "E1520", "payload": {"classification": "one_go", "reason": "Approval capture is a single bounded interaction: record explicit approval or a deferral without changing production state.", "ticket_id": "T126"}, "root_id": "P000", "type": "ticket_classified"}

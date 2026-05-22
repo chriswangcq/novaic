@@ -7,7 +7,7 @@ Source Ticket: T120 (split)
 Source Check: none
 Package: problems/P000/children/P024/children/P028/children/P077/children/P123
 Body: problems/P000/children/P024/children/P028/children/P077/children/P123/README.md
-Ticket(s): none
+Ticket(s): T123
 
 ## Problem
 The final SQLite queue backup must be taken while production queue writers and workers are frozen or stopped, otherwise migration can miss writes or produce inconsistent state.
@@ -20,7 +20,8 @@ The final SQLite queue backup must be taken while production queue writers and w
 - The backup location is recorded without exposing unrelated credentials.
 
 ## Subproblems
-- none
+- P128: Prepare Queue Freeze And Backup Runbook
+- P129: Execute Queue Freeze And Final SQLite Backup
 
 ## Results
 - none
@@ -30,6 +31,7 @@ none
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P077/children/P123/README.md
+- Ticket T123: problems/P000/children/P024/children/P028/children/P077/children/P123/tickets/T123.md
 
 ## Follow-ups
 - none

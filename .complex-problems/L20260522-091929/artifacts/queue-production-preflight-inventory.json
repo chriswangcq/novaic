@@ -1,0 +1,403 @@
+{
+  "docker": {
+    "containers": [
+      {
+        "image": "postgres:16-alpine",
+        "name": "novaic-queue-staging-postgres",
+        "ports": "127.0.0.1:15432->5432/tcp",
+        "status": "Up About an hour (healthy)"
+      },
+      {
+        "image": "novaic/llm-factory:local",
+        "name": "novaic-llm-factory",
+        "ports": "127.0.0.1:19990->19990/tcp",
+        "status": "Up 16 hours (healthy)"
+      },
+      {
+        "image": "postgres:16-alpine",
+        "name": "novaic-postgres",
+        "ports": "127.0.0.1:5432->5432/tcp",
+        "status": "Up 16 hours (healthy)"
+      }
+    ],
+    "returncode": 0,
+    "stderr": ""
+  },
+  "generated_at": "2026-05-22T17:42:09.363483+00:00",
+  "health": {
+    "production_queue_ready_19997": {
+      "cmd": "curl -fsS http://127.0.0.1:19997/ready",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "{\"status\":\"ok\",\"service\":\"queue-service\",\"checks\":{\"sqlite\":\"ok\",\"sqlite_path\":\"/opt/novaic/data/queue.db\",\"tq_tasks\":\"ok\",\"tq_sagas\":\"ok\",\"tq_session_state\":\"ok\",\"tq_session_outbox\":\"ok\",\"session_outbox\":\"ok\",\"session_state\":\"ok\"},\"session_outbox\":{\"pending_count\":0,\"oldest_pending_created_at\":null,\"dead_letter_count\":0},\"session_state\":{\"starting_count\":0,\"oldest_starting_updated_at\":null}}"
+    },
+    "production_queue_service_19997": {
+      "cmd": "curl -fsS http://127.0.0.1:19997/health",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "{\"status\":\"healthy\",\"service\":\"queue-service\",\"version\":\"1.0.0\",\"database\":\"/opt/novaic/data/queue.db\"}"
+    },
+    "staging_queue_ready_19987": {
+      "cmd": "curl -fsS http://127.0.0.1:19987/ready",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "{\"status\":\"ok\",\"service\":\"queue-service\",\"database_backend\":\"postgres\",\"checks\":{\"database\":\"ok\",\"database_backend\":\"postgres\",\"postgres\":\"ok\",\"postgres_dsn_file\":\"<redacted-credential-path>:\"ok\",\"tq_sagas\":\"ok\",\"tq_session_state\":\"ok\",\"tq_session_outbox\":\"ok\",\"session_outbox\":\"ok\",\"session_state\":\"ok\"},\"session_outbox\":{\"pending_count\":0,\"oldest_pending_created_at\":null,\"dead_letter_count\":0},\"session_state\":{\"starting_count\":0,\"oldest_starting_updated_at\":null}}"
+    },
+    "staging_queue_service_19987": {
+      "cmd": "curl -fsS http://127.0.0.1:19987/health",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "{\"status\":\"healthy\",\"service\":\"queue-service\",\"version\":\"1.0.0\",\"database\":\"postgres:<redacted-credential-path>:\"postgres\"}"
+    }
+  },
+  "host_alias": "api.gradievo.com",
+  "postgres_databases": [
+    {
+      "container": "novaic-queue-staging-postgres",
+      "names": [
+        "novaic_queue_staging",
+        "postgres"
+      ],
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "container": "novaic-postgres",
+      "names": [
+        "novaic_cortex",
+        "novaic_entangled",
+        "novaic_entangled_rest_staging",
+        "novaic_gateway",
+        "novaic_llm_factory",
+        "novaic_queue",
+        "postgres"
+      ],
+      "returncode": 0,
+      "stderr": ""
+    }
+  ],
+  "postgres_env_names": [
+    {
+      "container": "novaic-queue-staging-postgres",
+      "env": [
+        {
+          "name": "POSTGRES_DB",
+          "value": "<omitted>"
+        },
+        {
+          "name": "POSTGRES_USER",
+          "value": "<omitted>"
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "value": "<redacted>"
+        },
+        {
+          "name": "PATH",
+          "value": "<omitted>"
+        },
+        {
+          "name": "GOSU_VERSION",
+          "value": "<omitted>"
+        },
+        {
+          "name": "LANG",
+          "value": "<omitted>"
+        },
+        {
+          "name": "PG_MAJOR",
+          "value": "<omitted>"
+        },
+        {
+          "name": "PG_VERSION",
+          "value": "<omitted>"
+        },
+        {
+          "name": "PG_SHA256",
+          "value": "<omitted>"
+        },
+        {
+          "name": "DOCKER_PG_LLVM_DEPS",
+          "value": "<omitted>"
+        },
+        {
+          "name": "PGDATA",
+          "value": "<omitted>"
+        }
+      ],
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "container": "novaic-postgres",
+      "env": [
+        {
+          "name": "POSTGRES_DB",
+          "value": "<omitted>"
+        },
+        {
+          "name": "POSTGRES_PASSWORD_FILE",
+          "value": "<redacted>"
+        },
+        {
+          "name": "PGDATA",
+          "value": "<omitted>"
+        },
+        {
+          "name": "POSTGRES_USER",
+          "value": "<omitted>"
+        },
+        {
+          "name": "PATH",
+          "value": "<omitted>"
+        },
+        {
+          "name": "GOSU_VERSION",
+          "value": "<omitted>"
+        },
+        {
+          "name": "LANG",
+          "value": "<omitted>"
+        },
+        {
+          "name": "PG_MAJOR",
+          "value": "<omitted>"
+        },
+        {
+          "name": "PG_VERSION",
+          "value": "<omitted>"
+        },
+        {
+          "name": "PG_SHA256",
+          "value": "<omitted>"
+        },
+        {
+          "name": "DOCKER_PG_LLVM_DEPS",
+          "value": "<omitted>"
+        }
+      ],
+      "returncode": 0,
+      "stderr": ""
+    }
+  ],
+  "preflight_decision": "go_for_freeze_backup_if production target novaic_queue is confirmed and operator accepts brief Queue writer freeze; otherwise no-go",
+  "processes": [
+    {
+      "cmd": "/opt/novaic/novaic-quic-service/novaic-quic-service",
+      "pid": "3291218",
+      "ppid": "1",
+      "started": "Wed May 20 20:56:36 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "postgres: novaic_llm_factory novaic_llm_factory 172.20.0.3(46756) idle in transaction",
+      "pid": "3470581",
+      "ppid": "3461766",
+      "started": "Fri May 22 09:53:12 2026",
+      "user": "70"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-gateway/main_gateway.py --host 127.0.0.1 --port 19999 --data-dir /opt/novaic/data --queue-service-url http://127.0.0.1:19997 --blob-service-url http://127.0.0.1:19995 --blob-upload-url http://127.0.0.1:19995 --db-backend postgres --postgres-dsn-file <redacted-credential-path>",
+      "pid": "3533550",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:44 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "postgres: novaic_gateway novaic_gateway 172.20.0.1(37954) idle",
+      "pid": "3533562",
+      "ppid": "3461766",
+      "started": "Fri May 22 16:41:45 2026",
+      "user": "70"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-device/main_device.py --host 127.0.0.1 --port 19993 --data-dir /opt/novaic/data --gateway-url http://127.0.0.1:19999 --business-url http://127.0.0.1:19998",
+      "pid": "3533604",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:46 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py queue-service --host 127.0.0.1 --port 19997 --data-dir /opt/novaic/data",
+      "pid": "3533620",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:47 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-blob-service/.venv/bin/python /opt/novaic/services/novaic-blob-service/main_blob_service.py --host 127.0.0.1 --port 19995 --data-dir /opt/novaic/data",
+      "pid": "3533635",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:48 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-sandbox-service/.venv/bin/python /opt/novaic/services/novaic-sandbox-service/main_sandbox_service.py --host 127.0.0.1 --port 19994",
+      "pid": "3533652",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:49 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-cortex/.venv/bin/python -m novaic_cortex.main_cortex --host 127.0.0.1 --port 19996 --jwt-secret <redacted> --internal-key <redacted> --blob-service-url http://127.0.0.1:19995 --sandboxd-url http://127.0.0.1:19994 --cortex-api-url http://127.0.0.1:19996 --operational-sqlite-path /opt/novaic/data/cortex/operational.sqlite3 --operational-store-backend postgres --operational-postgres-dsn-file <redacted> --redis-url redis://127.0.0.1:6379/0 --redis-lock-ttl-seconds 300",
+      "pid": "3533662",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:49 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool control --num-workers 1",
+      "pid": "3533685",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool control --num-workers 1",
+      "pid": "3533686",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool execution --num-workers 1",
+      "pid": "3533687",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool execution --num-workers 1",
+      "pid": "3533688",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py saga-worker --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --max-concurrent 4",
+      "pid": "3533689",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py saga-worker --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --max-concurrent 4",
+      "pid": "3533690",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py session-outbox-worker --data-dir /opt/novaic/data",
+      "pid": "3533691",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py saga-outbox-worker --data-dir /opt/novaic/data",
+      "pid": "3533692",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py health --queue-service-url http://127.0.0.1:19997 --data-dir /opt/novaic/data",
+      "pid": "3533693",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime/.venv/bin/python /opt/novaic/services/novaic-agent-runtime/main_novaic.py scheduler --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data",
+      "pid": "3533694",
+      "ppid": "1",
+      "started": "Fri May 22 16:41:50 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python -m entangled.app.main --host 127.0.0.1 --port 19900 --db-backend postgres --postgres-dsn-file <redacted-credential-path> --service-token-file <redacted> --log-level info",
+      "pid": "3566057",
+      "ppid": "1",
+      "started": "Fri May 22 20:01:14 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "postgres: novaic_entangled novaic_entangled 172.20.0.1(59112) idle in transaction",
+      "pid": "3566071",
+      "ppid": "3461766",
+      "started": "Fri May 22 20:01:15 2026",
+      "user": "70"
+    },
+    {
+      "cmd": "postgres: novaic_entangled novaic_entangled 172.20.0.1(54916) idle in transaction",
+      "pid": "3566868",
+      "ppid": "3461766",
+      "started": "Fri May 22 20:06:35 2026",
+      "user": "70"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-business/main_business.py --host 127.0.0.1 --port 19998 --data-dir /opt/novaic/data --entangled-url http://127.0.0.1:19900 --gateway-url http://127.0.0.1:19999",
+      "pid": "3569203",
+      "ppid": "1",
+      "started": "Fri May 22 20:18:53 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-business/main_subscriber.py --data-dir /opt/novaic/data --entangled-url http://127.0.0.1:19900 --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997",
+      "pid": "3569211",
+      "ppid": "1",
+      "started": "Fri May 22 20:18:54 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "postgres: novaic_entangled novaic_entangled 172.20.0.1(46244) idle in transaction",
+      "pid": "3570023",
+      "ppid": "3461766",
+      "started": "Fri May 22 20:25:02 2026",
+      "user": "70"
+    },
+    {
+      "cmd": "/opt/novaic/queue-service-staging/.venv/bin/python /opt/novaic/queue-service-staging/runtime/main_novaic.py queue-service --host 127.0.0.1 --port 19987 --data-dir /opt/novaic/queue-service-staging/data --db-backend postgres --postgres-dsn-file <redacted-credential-path>",
+      "pid": "3617976",
+      "ppid": "1",
+      "started": "Sat May 23 01:35:34 2026",
+      "user": "root"
+    },
+    {
+      "cmd": "postgres: novaic_queue_staging novaic_queue_staging 172.18.0.1(43880) idle in transaction",
+      "pid": "3617986",
+      "ppid": "3597687",
+      "started": "Sat May 23 01:35:35 2026",
+      "user": "70"
+    },
+    {
+      "cmd": "postgres: novaic_queue_staging novaic_queue_staging 172.18.0.1(43886) idle",
+      "pid": "3617987",
+      "ppid": "3597687",
+      "started": "Sat May 23 01:35:35 2026",
+      "user": "70"
+    }
+  ],
+  "queue_db": {
+    "exists": true,
+    "gid": 0,
+    "mode": "0o644",
+    "mtime_utc": "2026-05-20T14:13:52.513230+00:00",
+    "path": "/opt/novaic/data/queue.db",
+    "size_bytes": 378683392,
+    "uid": 0
+  },
+  "queue_db_lsof": {
+    "available": true,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "COMMAND     PID USER   FD   TYPE DEVICE  SIZE/OFF   NODE NAME\npython  3533620 root   13ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   21ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   23ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   26ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   29ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   32ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   34ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   37ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   39ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   41ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533620 root   43ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533691 root    4ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533692 root    4ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\npython  3533692 root    7ur  REG  259,2 378683392 405039 /opt/novaic/data/queue.db\n"
+  },
+  "rollback_plan": [
+    "Before migration, stop/freeze queue writers and copy active SQLite queue file to timestamped backup.",
+    "If Postgres cutover fails before cleanup, stop Postgres-mode Queue services, restore config to sqlite mode, restore the backup over the active queue file, and restart prior workers.",
+    "Do not delete the SQLite backup during the cutover window."
+  ],
+  "scope": "read-only production Queue cutover preflight inventory"
+}
