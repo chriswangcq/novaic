@@ -1,0 +1,40 @@
+{
+  "ticket": "T076",
+  "problem": "P079",
+  "scope": "Queue FSM store Postgres dialect foundation only; repository claim/recovery ports remain later P074 children.",
+  "changed_files": [
+    "novaic-agent-runtime/queue_service/fsm/sqlite_store.py",
+    "novaic-agent-runtime/tests/test_queue_postgres_fsm_store.py"
+  ],
+  "done": [
+    "Added backend-aware FSM store behavior using db.backend_name, defaulting to sqlite.",
+    "Kept sqlite JSON text behavior and standalone commit behavior intact.",
+    "Added Postgres path that preserves native JSON-compatible payload values for JSONB binding.",
+    "Added Postgres path that requires explicit transactions for mutating FSM operations.",
+    "Added Postgres deterministic ordering helpers using created_at/id instead of rowid.",
+    "Added Postgres unique-violation detection via SQLSTATE 23505 or UniqueViolation class name.",
+    "Ensured Postgres path does not retry SQLite busy-looking errors."
+  ],
+  "verification": [
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_fsm_store.py tests/test_pr259_generic_fsm_store_outbox.py tests/test_pr342_generic_fsm_transition_runner.py",
+      "result": "15 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_boundary.py tests/test_queue_postgres_fsm_store.py tests/test_queue_explicit_dependencies.py tests/test_pr344_queue_claim_busy_handling.py tests/test_pr305_task_fsm_store_ledger.py tests/test_pr309_saga_fsm_store_ledger.py tests/test_pr313_worker_lease_ledger.py tests/test_pr235_session_ledger.py tests/test_pr315_queue_fsm_final_residue_guard.py tests/test_pr342_generic_fsm_transition_runner.py tests/test_pr259_generic_fsm_store_outbox.py",
+      "result": "50 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/fsm/sqlite_store.py tests/test_queue_postgres_fsm_store.py",
+      "result": "compileall succeeded"
+    },
+    {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/fsm/sqlite_store.py tests/test_queue_postgres_fsm_store.py",
+      "result": "no whitespace errors"
+    }
+  ],
+  "known_gaps": [
+    "Task, saga, session, lease, outbox claim, and route-level Postgres repository ports remain P080-P083.",
+    "No real Postgres integration run was performed in this foundation ticket."
+  ]
+}

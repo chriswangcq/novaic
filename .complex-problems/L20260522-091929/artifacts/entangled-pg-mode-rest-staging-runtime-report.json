@@ -1,0 +1,51 @@
+{
+  "target_label": "novaic_entangled_rest_staging",
+  "host": "api.gradievo.com",
+  "port": 19910,
+  "pid": 3548952,
+  "log_path": "/opt/novaic/logs/entangled-rest-staging.log",
+  "pid_file": "/opt/novaic/entangled-rest-staging.pid",
+  "db_backend": "postgres",
+  "dsn_file": "/opt/novaic/postgres/secrets/novaic_entangled_rest_staging_dsn",
+  "service_token_file": "/opt/novaic/postgres/secrets/entangled_rest_staging_service_token",
+  "service_token_file_mode": "600 root:root",
+  "schema_registration": {
+    "registered": [
+      "rest-smoke-events"
+    ],
+    "total": 1,
+    "status": "success"
+  },
+  "health": {
+    "status": "ok",
+    "entities": 1,
+    "entity_names": [
+      "rest-smoke-events"
+    ]
+  },
+  "ready": {
+    "status": "ready",
+    "entities": 1,
+    "entity_names": [
+      "rest-smoke-events"
+    ],
+    "missing": []
+  },
+  "sqlite_file_handles": [],
+  "log_evidence": [
+    "Postgres connected and initialized",
+    "state_transitions schema ensured",
+    "Loaded 1 version entries",
+    "Registered: rest-smoke-events -> rest_smoke_events",
+    "GET /v1/ready HTTP/1.1 200 OK"
+  ],
+  "lifecycle": {
+    "status": "left_running_for_next_rest_smoke_child",
+    "stop_command": "ssh root@api.gradievo.com 'kill $(cat /opt/novaic/entangled-rest-staging.pid)'"
+  },
+  "secret_policy": {
+    "raw_dsn_recorded": false,
+    "raw_service_token_recorded": false,
+    "process_args_use_secret_files": true
+  }
+}

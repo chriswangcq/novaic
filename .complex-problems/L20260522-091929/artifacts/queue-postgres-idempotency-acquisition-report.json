@@ -1,0 +1,34 @@
+{
+  "problem": "P087",
+  "ticket": "T081",
+  "status": "implemented",
+  "code_changes": [
+    "Added backend-aware idempotency acquisition select SQL with Postgres FOR UPDATE locking.",
+    "Moved Postgres lease-active detection to native timestamptz SQL comparison.",
+    "Added idempotency result normalization for native JSONB values and legacy sqlite JSON text.",
+    "Kept sqlite acquisition behavior compatible, including Python ISO lease parsing on the sqlite branch."
+  ],
+  "tests": {
+    "focused": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "10 passed"
+    },
+    "selected": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_idempotency_acquisition.py tests/test_queue_postgres_task_mutations.py tests/test_queue_postgres_task_query_dialect.py tests/test_queue_postgres_boundary.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_high_concurrency_retry_replay.py tests/unit/task_queue/test_dedup_guard_failure_path.py tests/test_pr340_task_execution_policies.py",
+      "result": "53 passed"
+    },
+    "compileall": {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/queue_db.py tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "succeeded"
+    },
+    "diff_check": {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/queue_db.py tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "succeeded"
+    }
+  },
+  "known_gaps": [
+    "Completion and release ownership semantics remain P088.",
+    "Diagnostics row-shape normalization remains P089.",
+    "Real Postgres concurrency validation remains a later staging validation problem."
+  ]
+}

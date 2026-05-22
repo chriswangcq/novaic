@@ -1,0 +1,51 @@
+{
+  "ticket": "T064",
+  "problem": "P065",
+  "timestamp": "2026-05-22T19:50:00+08:00",
+  "host": "api.gradievo.com",
+  "runtime_state": {
+    "entangled_process": {
+      "running": true,
+      "pid": 3564015,
+      "port": 19900,
+      "bind": "127.0.0.1",
+      "db_backend_arg_present": true,
+      "postgres_dsn_file_arg_present": true,
+      "service_token_file_arg_present": true,
+      "raw_dsn_or_token_in_process_args": false
+    },
+    "health": {
+      "http_status": 200,
+      "status": "ok",
+      "entities": 0
+    },
+    "ready": {
+      "http_status": 503,
+      "status": "not_ready",
+      "entities": 0
+    },
+    "sqlite_holders": {
+      "checked_paths": [
+        "/opt/novaic/data/entangled.db",
+        "/opt/novaic/data/entangled.db-wal",
+        "/opt/novaic/data/entangled.db-shm"
+      ],
+      "holders_observed": 0
+    },
+    "business_writers": {
+      "business_api_running": false,
+      "business_subscriber_running": false,
+      "freeze_preserved": true
+    }
+  },
+  "failure": {
+    "phase": "schema registration",
+    "log_message": "[SchemaRegistry] Failed schema registration batch: only '%s', '%b', '%t' are allowed as placeholders, got '%''",
+    "suspected_root_cause": "The Postgres placeholder converter preserves literal percent signs from SQLite-style DDL. psycopg treats the percent in CHECK(locator LIKE 'blob://%') as a placeholder marker unless it is escaped to '%%'."
+  },
+  "rollback": {
+    "available": true,
+    "backup_dir": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z",
+    "note": "Rollback can stop the current PG process and relaunch the SQLite command against the P063 backup/freeze artifacts if the follow-up repair cannot make PG ready."
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "problem": "P091",
+  "ticket": "T086",
+  "status": "implemented",
+  "code_changes": [
+    "Added backend-aware saga JSON binding helper.",
+    "Added saga JSON row normalization for native Postgres JSONB values and sqlite JSON text.",
+    "Added backend-aware saga FOR UPDATE select helper.",
+    "Wired _get_saga_for_update through the helper.",
+    "Wired append_step_result and check_saga_complete through _get_saga_for_update.",
+    "Saga create now binds native context values in Postgres mode and JSON text in sqlite mode."
+  ],
+  "tests": {
+    "focused": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_saga_mutations.py",
+      "result": "13 passed"
+    },
+    "selected": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_saga_mutations.py tests/test_queue_postgres_saga_query_dialect.py tests/test_pr309_saga_fsm_store_ledger.py tests/test_pr313_worker_lease_ledger.py tests/test_pr310_saga_repository_fsm_cutover.py tests/test_pr308_saga_lifecycle_fsm.py tests/test_queue_postgres_boundary.py tests/test_queue_postgres_idempotency_diagnostics.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "72 passed"
+    },
+    "compileall": {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/saga_repo.py tests/test_queue_postgres_saga_mutations.py tests/test_queue_postgres_saga_query_dialect.py",
+      "result": "succeeded"
+    },
+    "diff_check": {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/saga_repo.py tests/test_queue_postgres_saga_mutations.py tests/test_queue_postgres_saga_query_dialect.py",
+      "result": "succeeded"
+    }
+  },
+  "known_gaps": [
+    "Worker lease ledger Postgres semantics remain P092.",
+    "Live Postgres runtime validation remains a later staging validation problem."
+  ]
+}

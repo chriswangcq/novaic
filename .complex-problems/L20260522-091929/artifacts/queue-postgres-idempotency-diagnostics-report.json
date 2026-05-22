@@ -1,0 +1,31 @@
+{
+  "problem": "P089",
+  "ticket": "T083",
+  "status": "implemented",
+  "code_changes": [
+    "Diagnostics now read public fields through the shared row helper.",
+    "Tuple-backed sqlite rows and dict-like Postgres rows produce the same public shape.",
+    "Existing only_contended filter, ordering, and limit clamping were preserved."
+  ],
+  "tests": {
+    "focused": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_idempotency_diagnostics.py",
+      "result": "5 passed"
+    },
+    "selected": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_idempotency_diagnostics.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_idempotency_acquisition.py tests/test_queue_postgres_task_mutations.py tests/test_queue_postgres_task_query_dialect.py tests/test_queue_postgres_boundary.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_high_concurrency_retry_replay.py tests/unit/task_queue/test_dedup_guard_failure_path.py tests/test_pr340_task_execution_policies.py",
+      "result": "66 passed"
+    },
+    "compileall": {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/queue_db.py tests/test_queue_postgres_idempotency_diagnostics.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "succeeded"
+    },
+    "diff_check": {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/queue_db.py tests/test_queue_postgres_idempotency_diagnostics.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "succeeded"
+    }
+  },
+  "known_gaps": [
+    "Real Postgres runtime validation remains a later staging validation problem."
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "problem": "P088",
+  "ticket": "T082",
+  "status": "implemented",
+  "code_changes": [
+    "Completion now binds result values through the backend-aware JSON helper.",
+    "Postgres completion receives native JSONB-compatible result values while sqlite keeps JSON text.",
+    "Completion fallback now inserts only absent idempotency keys with ON CONFLICT DO NOTHING.",
+    "Existing conflicting idempotency rows are no longer overwritten after a guarded update miss.",
+    "Release predicates remain scoped to matching in-progress owner and task rows and now have focused coverage."
+  ],
+  "tests": {
+    "focused": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_idempotency_complete_release.py",
+      "result": "8 passed"
+    },
+    "selected": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_idempotency_acquisition.py tests/test_queue_postgres_task_mutations.py tests/test_queue_postgres_task_query_dialect.py tests/test_queue_postgres_boundary.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_high_concurrency_retry_replay.py tests/unit/task_queue/test_dedup_guard_failure_path.py tests/test_pr340_task_execution_policies.py",
+      "result": "61 passed"
+    },
+    "compileall": {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/queue_db.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "succeeded"
+    },
+    "diff_check": {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/queue_db.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "succeeded"
+    }
+  },
+  "known_gaps": [
+    "Diagnostics row-shape normalization remains P089.",
+    "Real Postgres concurrent completion/release validation remains a later staging validation problem."
+  ]
+}

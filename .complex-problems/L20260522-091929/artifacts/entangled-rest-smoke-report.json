@@ -1,0 +1,300 @@
+{
+  "all_required_ok": true,
+  "append_id": "2",
+  "cleanup": {
+    "port_listening_after": false,
+    "stopped": true
+  },
+  "endpoint": "127.0.0.1:19910",
+  "entity": "rest-smoke-events",
+  "secret_policy": {
+    "raw_dsn_recorded": false,
+    "raw_token_recorded": false,
+    "token_file_used": true
+  },
+  "steps": [
+    {
+      "body": {
+        "entities": 1,
+        "entity_names": [
+          "rest-smoke-events"
+        ],
+        "status": "ok"
+      },
+      "method": "GET",
+      "name": "health",
+      "ok": true,
+      "path": "/v1/health",
+      "status": 200
+    },
+    {
+      "body": {
+        "entities": 1,
+        "entity_names": [
+          "rest-smoke-events"
+        ],
+        "missing": [],
+        "status": "ready"
+      },
+      "method": "GET",
+      "name": "ready",
+      "ok": true,
+      "path": "/v1/ready",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": [
+          {
+            "blob_data": "\u0000\u0001fixture",
+            "created_at": "2026-05-22T12:00:00Z",
+            "entangled_rowid": 1,
+            "id": 1,
+            "is_enabled": true,
+            "item_count": 7,
+            "payload_json": {
+              "kind": "rest-smoke",
+              "n": 1
+            },
+            "score": 3.5
+          }
+        ],
+        "total": 1
+      },
+      "method": "GET",
+      "name": "list_initial",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": {
+          "blob_data": "\u0000\u0001fixture",
+          "created_at": "2026-05-22T12:00:00Z",
+          "entangled_rowid": 1,
+          "id": 1,
+          "is_enabled": true,
+          "item_count": 7,
+          "payload_json": {
+            "kind": "rest-smoke",
+            "n": 1
+          },
+          "score": 3.5
+        }
+      },
+      "method": "GET",
+      "name": "read_fixture",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/1",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": {
+          "blob_data": null,
+          "created_at": "2026-05-22T12:10:00Z",
+          "entangled_rowid": 2,
+          "id": 9001,
+          "is_enabled": false,
+          "item_count": 8,
+          "payload_json": {
+            "kind": "upsert",
+            "n": 2
+          },
+          "score": 4.25
+        }
+      },
+      "method": "PUT",
+      "name": "upsert_9001",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/9001",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": {
+          "blob_data": null,
+          "created_at": "2026-05-22T12:10:00Z",
+          "entangled_rowid": 2,
+          "id": 9001,
+          "is_enabled": false,
+          "item_count": 8,
+          "payload_json": {
+            "kind": "upsert",
+            "n": 2
+          },
+          "score": 4.25
+        }
+      },
+      "method": "GET",
+      "name": "read_9001",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/9001",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": {
+          "blob_data": null,
+          "created_at": "2026-05-22T12:11:00Z",
+          "entangled_rowid": 3,
+          "id": 2,
+          "is_enabled": true,
+          "item_count": 9,
+          "payload_json": {
+            "kind": "append",
+            "n": 3
+          },
+          "score": 5.25
+        }
+      },
+      "method": "POST",
+      "name": "append",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/append",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": [
+          {
+            "blob_data": "\u0000\u0001fixture",
+            "created_at": "2026-05-22T12:00:00Z",
+            "entangled_rowid": 1,
+            "id": 1,
+            "is_enabled": true,
+            "item_count": 7,
+            "payload_json": {
+              "kind": "rest-smoke",
+              "n": 1
+            },
+            "score": 3.5
+          },
+          {
+            "blob_data": null,
+            "created_at": "2026-05-22T12:10:00Z",
+            "entangled_rowid": 2,
+            "id": 9001,
+            "is_enabled": false,
+            "item_count": 8,
+            "payload_json": {
+              "kind": "upsert",
+              "n": 2
+            },
+            "score": 4.25
+          },
+          {
+            "blob_data": null,
+            "created_at": "2026-05-22T12:11:00Z",
+            "entangled_rowid": 3,
+            "id": 2,
+            "is_enabled": true,
+            "item_count": 9,
+            "payload_json": {
+              "kind": "append",
+              "n": 3
+            },
+            "score": 5.25
+          }
+        ],
+        "has_more": false
+      },
+      "method": "POST",
+      "name": "query",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/query",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": {
+          "blob_data": null,
+          "created_at": "2026-05-22T12:10:00Z",
+          "entangled_rowid": 2,
+          "id": 9001,
+          "is_enabled": false,
+          "item_count": 10,
+          "payload_json": {
+            "kind": "upsert",
+            "n": 2
+          },
+          "score": 4.5
+        }
+      },
+      "method": "PATCH",
+      "name": "patch_9001",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/9001",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": {
+          "blob_data": null,
+          "created_at": "2026-05-22T12:10:00Z",
+          "entangled_rowid": 2,
+          "id": 9001,
+          "is_enabled": false,
+          "item_count": 10,
+          "payload_json": {
+            "kind": "upsert",
+            "n": 2
+          },
+          "score": 4.75
+        }
+      },
+      "method": "POST",
+      "name": "cas_9001",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/cas-update",
+      "status": 200
+    },
+    {
+      "body": {
+        "deleted": true
+      },
+      "method": "DELETE",
+      "name": "delete_9001",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/9001",
+      "status": 200
+    },
+    {
+      "body": {
+        "deleted": true
+      },
+      "method": "DELETE",
+      "name": "delete_append",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events/2",
+      "status": 200
+    },
+    {
+      "body": {
+        "data": [
+          {
+            "blob_data": "\u0000\u0001fixture",
+            "created_at": "2026-05-22T12:00:00Z",
+            "entangled_rowid": 1,
+            "id": 1,
+            "is_enabled": true,
+            "item_count": 7,
+            "payload_json": {
+              "kind": "rest-smoke",
+              "n": 1
+            },
+            "score": 3.5
+          }
+        ],
+        "total": 1
+      },
+      "method": "GET",
+      "name": "list_final",
+      "ok": true,
+      "path": "/v1/entities/rest-smoke-events",
+      "status": 200
+    }
+  ],
+  "target_label": "novaic_entangled_rest_staging"
+}

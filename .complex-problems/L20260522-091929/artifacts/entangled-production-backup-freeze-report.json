@@ -1,0 +1,84 @@
+{
+  "archive_dir": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z",
+  "backup_files": [
+    {
+      "source": "/opt/novaic/data/entangled.db",
+      "archive": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db",
+      "size_bytes": 7106560,
+      "sha256": "96107a55533acb5aa98d41b9dea2cb4ddf9ffad126b095a090642898e0e77974"
+    },
+    {
+      "source": "/opt/novaic/data/entangled.db-shm",
+      "archive": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-shm",
+      "size_bytes": 32768,
+      "sha256": "eb4106e7e27230ddf2d92116a341b2e8166affe5416583e4da832ff1951c2a27"
+    },
+    {
+      "source": "/opt/novaic/data/entangled.db-wal",
+      "archive": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-wal",
+      "size_bytes": 4169472,
+      "sha256": "829dbdf7278421e6754dc02b6614d230237379a3926189a9c1c46c197dfd9f1f"
+    }
+  ],
+  "consistent_sqlite_backup": {
+    "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.sqlite-backup",
+    "size_bytes": 7106560,
+    "sha256": "110b8dd073323d20c65d289beb873b95673556d753922e322a6dc25264de1c15"
+  },
+  "production_entangled": {
+    "pid": 3533537,
+    "port": "19900",
+    "db_path": "/opt/novaic/data/entangled.db",
+    "still_sqlite": true,
+    "has_postgres_backend": false,
+    "sanitized_command_has_raw_token_redacted": true
+  },
+  "service_token_file": {
+    "path": "/opt/novaic/postgres/secrets/entangled_production_service_token",
+    "mode": "600",
+    "owner": "root:root",
+    "raw_token_recorded": false
+  },
+  "writers_identified": [
+    {
+      "pid": 3533569,
+      "role": "business-api"
+    },
+    {
+      "pid": 3533696,
+      "role": "business-subscriber"
+    }
+  ],
+  "writers_stopped": [
+    {
+      "pid": 3533569,
+      "role": "business-api",
+      "signal": "TERM"
+    },
+    {
+      "pid": 3533696,
+      "role": "business-subscriber",
+      "signal": "TERM"
+    }
+  ],
+  "remaining_writers": [],
+  "health_after_freeze": {
+    "status_code": 200,
+    "status": "ok",
+    "entities": 22
+  },
+  "ready_after_freeze": {
+    "status_code": 200,
+    "status": "ready",
+    "entities": 22,
+    "missing": []
+  },
+  "secret_policy": {
+    "raw_token_recorded": false,
+    "raw_process_args_recorded": false
+  },
+  "restart_notes": {
+    "business_api": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-business/main_business.py --host 127.0.0.1 --port 19998 --data-dir /opt/novaic/data --entangled-url http://127.0.0.1:19900 --gateway-url http://127.0.0.1:19999",
+    "business_subscriber": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-business/main_subscriber.py --data-dir /opt/novaic/data --entangled-url http://127.0.0.1:19900 --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997"
+  }
+}

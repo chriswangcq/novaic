@@ -1,0 +1,83 @@
+{
+  "business_api": {
+    "error_tail": [
+      "2026-05-22 20:18:54,065 [INFO] business.schema_push scope_id= agent_id= user_id= caller=business - [BizSchemaPush] Registered 20 entities (http://127.0.0.1:19900/v1/schema/register); errors: none"
+    ],
+    "health": {
+      "body": {
+        "service": "business",
+        "status": "healthy",
+        "version": "0.3.0"
+      },
+      "status_code": 200
+    },
+    "listener_has_19998": true,
+    "log": "/opt/novaic/data/logs/business-20260522.log",
+    "processes": [
+      "3569203 /opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-business/main_business.py --host 127.0.0.1 --port 19998 --data-dir /opt/novaic/data --entangled-url http://127.0.0.1:19900 --gateway-url http://127.0.0.1:19999"
+    ],
+    "uses_entangled_url_19900": true
+  },
+  "business_subscriber": {
+    "error_tail": [],
+    "log": "/opt/novaic/data/logs/business-subscriber-20260522.log",
+    "metrics": {
+      "body": {
+        "text_prefix": "# TYPE internal_requests_total counter\ninternal_requests_total{caller=\"business\",status=\"200\",target=\"127.0.0.1:19900\"} "
+      },
+      "status_code": 200
+    },
+    "metrics_listener_has_19985": true,
+    "processes": [
+      "3569211 /opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-business/main_subscriber.py --data-dir /opt/novaic/data --entangled-url http://127.0.0.1:19900 --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997"
+    ],
+    "uses_entangled_url_19900": true
+  },
+  "entangled": {
+    "active_sqlite_files": [],
+    "ready": {
+      "body": {
+        "entities": 22,
+        "entity_names": [
+          "agent-activity-participants",
+          "agent-activity-records",
+          "agent-binding",
+          "agent-skills",
+          "agent-state",
+          "agent-tools",
+          "agents",
+          "api-key-models",
+          "api-keys",
+          "available-models",
+          "devices",
+          "environment-events",
+          "environment-im-messages",
+          "environment-notifications",
+          "environment-resource-refs",
+          "files",
+          "messages",
+          "models",
+          "skills",
+          "subagents",
+          "user-preferences",
+          "vm-users"
+        ],
+        "missing": [],
+        "status": "ready"
+      },
+      "status_code": 200
+    },
+    "sqlite_holders_count": 0
+  },
+  "secret_policy": {
+    "raw_dsn_recorded": false,
+    "raw_jwt_recorded": false,
+    "raw_token_recorded": false,
+    "report_contains_secret": false
+  },
+  "started": {
+    "business_api_pid": 3569203,
+    "business_subscriber_pid": 3569211
+  },
+  "timestamp": "2026-05-22T20:48:00+08:00"
+}

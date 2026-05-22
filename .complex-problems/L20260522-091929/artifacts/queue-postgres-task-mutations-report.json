@@ -1,0 +1,40 @@
+{
+  "ticket": "T079",
+  "problem": "P085",
+  "scope": "TaskQueue mutation JSON binding and task-state lock SQL; idempotency remains P086.",
+  "changed_files": [
+    "novaic-agent-runtime/queue_service/queue_db.py",
+    "novaic-agent-runtime/tests/test_queue_postgres_task_mutations.py"
+  ],
+  "done": [
+    "Added backend-aware JSON value helper so Postgres task payload/result/depends_on values remain native JSON-compatible values while sqlite keeps JSON text.",
+    "Added backend-aware unique violation helper for task publish idempotency-key handling.",
+    "Added task-state read-for-update SQL helper with FOR UPDATE OF ts in Postgres mode.",
+    "Wired complete/fail/heartbeat/release paths through the Postgres FOR UPDATE helper via _get_task_for_update.",
+    "Added FOR UPDATE OF ts SKIP LOCKED to Postgres cancel candidate SQL.",
+    "Updated result projection to bind native JSON values in Postgres mode.",
+    "Added tests for native JSON binding, FOR UPDATE SQL, cancel locking, mutation no-op paths, and unique violation detection."
+  ],
+  "verification": [
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_task_mutations.py tests/test_queue_postgres_task_query_dialect.py tests/test_pr316_taskqueue_state_candidate_cutover.py tests/test_queue_explicit_dependencies.py",
+      "result": "24 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_boundary.py tests/test_queue_postgres_fsm_store.py tests/test_queue_postgres_task_query_dialect.py tests/test_queue_postgres_task_mutations.py tests/test_queue_explicit_dependencies.py tests/test_pr344_queue_claim_busy_handling.py tests/test_pr305_task_fsm_store_ledger.py tests/test_pr309_saga_fsm_store_ledger.py tests/test_pr313_worker_lease_ledger.py tests/test_pr235_session_ledger.py tests/test_pr315_queue_fsm_final_residue_guard.py tests/test_pr342_generic_fsm_transition_runner.py tests/test_pr259_generic_fsm_store_outbox.py tests/test_pr316_taskqueue_state_candidate_cutover.py",
+      "result": "72 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/queue_db.py tests/test_queue_postgres_task_mutations.py tests/test_queue_postgres_task_query_dialect.py queue_service/db/postgres.py tests/test_queue_postgres_boundary.py",
+      "result": "compileall succeeded"
+    },
+    {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/queue_db.py tests/test_queue_postgres_task_mutations.py tests/test_queue_postgres_task_query_dialect.py queue_service/db/postgres.py tests/test_queue_postgres_boundary.py",
+      "result": "no whitespace errors"
+    }
+  ],
+  "known_gaps": [
+    "Task idempotency ledger Postgres acquisition/completion/release remains P086.",
+    "No real Postgres concurrency run was performed; staging validation remains a later ticket."
+  ]
+}

@@ -1,0 +1,169 @@
+{
+  "report": {
+    "checks": {
+      "rowid_copy_complete": "passed",
+      "sync_versions_match": "passed",
+      "target_counts_match": "passed",
+      "transition_ids_match": "passed"
+    },
+    "clean_target_allowed": true,
+    "cleaned_tables": [
+      "entangled_sync_versions",
+      "semantic_events",
+      "subagent_state_transitions"
+    ],
+    "connection_label": "fixture-target",
+    "prepared_tables": [
+      "entangled_sync_versions",
+      "semantic_events",
+      "subagent_state_transitions"
+    ],
+    "schema_statement_count": 4,
+    "sequence_resets": [
+      {
+        "column": "entangled_rowid",
+        "restart_with": 2,
+        "source_max": 1,
+        "table": "semantic_events"
+      },
+      {
+        "column": "id",
+        "restart_with": 2,
+        "source_max": 1,
+        "table": "semantic_events"
+      },
+      {
+        "column": "id",
+        "restart_with": 2,
+        "source_max": 1,
+        "table": "subagent_state_transitions"
+      }
+    ],
+    "skipped_tables": [
+      {
+        "reason": "internal_or_ignored_table",
+        "table": "sqlite_sequence"
+      }
+    ],
+    "source_counts": {
+      "entangled_sync_versions": 1,
+      "semantic_events": 1,
+      "sqlite_sequence": 2,
+      "subagent_state_transitions": 1
+    },
+    "source_path": "/var/folders/n3/_7qrtb716jg07p9d71216l3m0000gn/T/tmpe253owew/semantic.sqlite3",
+    "table_plans": [
+      {
+        "copy_rowid_to_entangled_rowid": false,
+        "kind": "sync_versions",
+        "source_columns": [
+          "state_key",
+          "version"
+        ],
+        "source_count": 1,
+        "table": "entangled_sync_versions",
+        "target_columns": [
+          "state_key",
+          "version"
+        ]
+      },
+      {
+        "copy_rowid_to_entangled_rowid": true,
+        "kind": "dynamic",
+        "source_columns": [
+          "rowid",
+          "id",
+          "payload_json",
+          "is_enabled",
+          "blob_data",
+          "item_count",
+          "score",
+          "created_at"
+        ],
+        "source_count": 1,
+        "table": "semantic_events",
+        "target_columns": [
+          "entangled_rowid",
+          "id",
+          "payload_json",
+          "is_enabled",
+          "blob_data",
+          "item_count",
+          "score",
+          "created_at"
+        ]
+      },
+      {
+        "copy_rowid_to_entangled_rowid": false,
+        "kind": "transitions",
+        "source_columns": [
+          "id",
+          "subagent_id",
+          "agent_id",
+          "from_state",
+          "to_state",
+          "reason",
+          "actor",
+          "scope_id",
+          "metadata_json",
+          "created_at"
+        ],
+        "source_count": 1,
+        "table": "subagent_state_transitions",
+        "target_columns": [
+          "id",
+          "subagent_id",
+          "agent_id",
+          "from_state",
+          "to_state",
+          "reason",
+          "actor",
+          "scope_id",
+          "metadata_json",
+          "created_at"
+        ]
+      }
+    ],
+    "target_counts": {
+      "entangled_sync_versions": 1,
+      "semantic_events": 1,
+      "subagent_state_transitions": 1
+    }
+  },
+  "secret_scan": {
+    "contains_dsn_scheme": false,
+    "contains_password": false,
+    "contains_token": false
+  },
+  "sequence_checks": [
+    {
+      "column": "entangled_rowid",
+      "restart_with": 2,
+      "source_max": 1,
+      "table": "semantic_events"
+    },
+    {
+      "column": "id",
+      "restart_with": 2,
+      "source_max": 1,
+      "table": "semantic_events"
+    },
+    {
+      "column": "id",
+      "restart_with": 2,
+      "source_max": 1,
+      "table": "subagent_state_transitions"
+    }
+  ],
+  "source": "temporary sqlite fixture",
+  "target": "in-memory fake target adapter implementing Entangled DB boundary",
+  "validation_scope": "fixture-backed-postgres-compatible-target",
+  "value_shape_checks": {
+    "blob": true,
+    "bool": true,
+    "integer": true,
+    "json": true,
+    "real": true,
+    "timestamp": true
+  }
+}

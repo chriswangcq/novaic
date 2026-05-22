@@ -1,0 +1,28 @@
+{
+  "problem": "P069",
+  "ticket": "T066",
+  "timestamp": "2026-05-22T20:05:00+08:00",
+  "changed_files": [
+    "Entangled/packages/server-python/entangled/sql/database.py",
+    "Entangled/packages/server-python/tests/test_postgres_database_boundary.py"
+  ],
+  "change_summary": {
+    "placeholder_conversion": "PostgresDatabase._convert_placeholders now escapes literal percent signs as '%%' while preserving unquoted '?' to '%s' conversion.",
+    "regression_tests": [
+      "DDL with CHECK(locator LIKE 'blob://%') converts to psycopg-safe SQL.",
+      "Parameter placeholders still convert while quoted question marks remain literal."
+    ]
+  },
+  "verification": [
+    {
+      "command": "python -m pytest tests/test_postgres_database_boundary.py tests/test_schema_and_notifier.py tests/test_ws_smoke_client.py",
+      "cwd": "Entangled/packages/server-python",
+      "result": "25 passed"
+    },
+    {
+      "command": "python -m pytest",
+      "cwd": "Entangled/packages/server-python",
+      "result": "133 passed"
+    }
+  ]
+}

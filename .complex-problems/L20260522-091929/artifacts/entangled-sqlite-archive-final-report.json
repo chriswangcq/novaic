@@ -1,0 +1,99 @@
+{
+  "archive": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z",
+  "classification_mentions_archived": true,
+  "classification_mentions_postgres": true,
+  "classification_note": "/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md",
+  "existing_before": [
+    "/opt/novaic/data/entangled.db",
+    "/opt/novaic/data/entangled.db-wal",
+    "/opt/novaic/data/entangled.db-shm"
+  ],
+  "health_after": {
+    "body": {
+      "entities": 22,
+      "entity_names": [
+        "skills",
+        "api-keys",
+        "agents",
+        "subagents",
+        "files",
+        "user-preferences",
+        "agent-skills",
+        "models",
+        "api-key-models",
+        "available-models",
+        "agent-binding",
+        "agent-tools",
+        "agent-state",
+        "messages",
+        "agent-activity-records",
+        "agent-activity-participants",
+        "environment-events",
+        "environment-im-messages",
+        "environment-notifications",
+        "environment-resource-refs",
+        "devices",
+        "vm-users"
+      ],
+      "status": "ok"
+    },
+    "status_code": 200
+  },
+  "holders_after_count": 0,
+  "holders_before_count": 0,
+  "moved": [
+    {
+      "archive": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.removed-from-active-path-20260522T121320Z",
+      "mode": "0o644",
+      "size": 7106560,
+      "source": "/opt/novaic/data/entangled.db"
+    },
+    {
+      "archive": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-wal.removed-from-active-path-20260522T121320Z",
+      "mode": "0o644",
+      "size": 4169472,
+      "source": "/opt/novaic/data/entangled.db-wal"
+    },
+    {
+      "archive": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-shm.removed-from-active-path-20260522T121320Z",
+      "mode": "0o644",
+      "size": 32768,
+      "source": "/opt/novaic/data/entangled.db-shm"
+    }
+  ],
+  "ready_after": {
+    "body": {
+      "entities": 22,
+      "entity_names": [
+        "agent-activity-participants",
+        "agent-activity-records",
+        "agent-binding",
+        "agent-skills",
+        "agent-state",
+        "agent-tools",
+        "agents",
+        "api-key-models",
+        "api-keys",
+        "available-models",
+        "devices",
+        "environment-events",
+        "environment-im-messages",
+        "environment-notifications",
+        "environment-resource-refs",
+        "files",
+        "messages",
+        "models",
+        "skills",
+        "subagents",
+        "user-preferences",
+        "vm-users"
+      ],
+      "missing": [],
+      "status": "ready"
+    },
+    "status_code": 200
+  },
+  "remaining_active_path": [],
+  "rollback_note": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/ENTANGLED_POSTGRES_CUTOVER.md",
+  "timestamp": "2026-05-22T20:38:00+08:00"
+}

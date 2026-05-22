@@ -1,0 +1,33 @@
+# Session Outbox Idempotency Replay Mapping Result
+
+## Summary
+
+Completed the P016 design mapping for Queue session coordination, durable outbox replay, and task idempotency ledger semantics under Postgres. The result identifies the required session row-lock rule, outbox claim/lease requirement, idempotency conflict behavior, live pending outbox cutover choices, and crash-window outcomes.
+
+## Done
+
+- Mapped session dispatch, start wake, buffer, attach, suspected-dead recovery, finalization, restart, close, and rebuild flows to Postgres transaction patterns.
+- Defined the row-present-first lock rule for `tq_session_state` so new sessions can be serialized without SQLite's global lock.
+- Mapped session input append, event consumption, generation behavior, and pending projection authority.
+- Mapped session/saga/task/lease generic outbox behavior and identified the need for PG-safe claim/lease metadata or a strict single-worker runtime constraint.
+- Mapped task idempotency acquire, completed-result return, in-progress contention, lease expiry, complete fallback upsert, and release behavior.
+- Stated cutover requirements for live pending `tq_saga_outbox=6` and `tq_session_outbox=31` rows.
+- Documented crash windows for publish-before-ack, ack retry, failure/retry races, duplicate idempotency keys, session input during finalization, and attach races.
+
+## Verification
+
+- Read and cited source evidence from `session_repo.py`, `session_ledger.py`, `session_outbox.py`, `saga_repo.py`, `fsm/sqlite_store.py`, `queue_db.py`, and the P012 inventory artifact.
+- Verified the mapping artifact exists at `.complex-problems/L20260522-091929/artifacts/queue-pg-session-outbox-idempotency-semantics.md`.
+- Verified the artifact contains sections for session dispatch, session finalization, outbox mapping, idempotency mapping, crash windows, and implementation blockers.
+- No runtime code, production service, or production database was changed.
+
+## Known Gaps
+
+- Timestamp type choice and PG exception/defer policy are deferred to P017.
+- Task/saga/lease claim/recovery concurrency was already handled by P015.
+- The generic outbox claim metadata requirement implies schema/code changes in later implementation tickets.
+
+## Artifacts
+
+- `.complex-problems/L20260522-091929/artifacts/queue-pg-session-outbox-idempotency-semantics.md`
+

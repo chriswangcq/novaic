@@ -1,0 +1,12 @@
+{
+  "remote_report": "/opt/novaic/logs/entangled-ws-smoke-client-dryrun.json",
+  "schema_seen": true,
+  "list_skipped": true,
+  "stream_sync_mode": "head_n",
+  "delta_seen": true,
+  "reconnect_sync_mode": "up_to_date",
+  "report_contains_secret": false,
+  "query_string_token_used": false,
+  "stream_count": 3,
+  "stream_entangled_rowid_max": 3
+}

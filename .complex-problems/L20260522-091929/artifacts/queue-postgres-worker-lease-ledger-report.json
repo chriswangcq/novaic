@@ -1,0 +1,30 @@
+{
+  "problem": "P092",
+  "ticket": "T087",
+  "status": "validated",
+  "code_changes": [
+    "Added lease-adapter Postgres fake-store tests.",
+    "No production code changes were required for lease ledger semantics."
+  ],
+  "tests": {
+    "focused": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_worker_lease_ledger.py",
+      "result": "5 passed"
+    },
+    "selected": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_worker_lease_ledger.py tests/test_queue_postgres_fsm_store.py tests/test_pr313_worker_lease_ledger.py tests/test_queue_postgres_saga_mutations.py tests/test_queue_postgres_saga_query_dialect.py tests/test_pr309_saga_fsm_store_ledger.py tests/test_pr310_saga_repository_fsm_cutover.py tests/test_pr308_saga_lifecycle_fsm.py tests/test_queue_postgres_boundary.py",
+      "result": "58 passed"
+    },
+    "compileall": {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/lease_ledger.py tests/test_queue_postgres_worker_lease_ledger.py",
+      "result": "succeeded"
+    },
+    "diff_check": {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/lease_ledger.py tests/test_queue_postgres_worker_lease_ledger.py",
+      "result": "succeeded"
+    }
+  },
+  "known_gaps": [
+    "Live Postgres runtime validation remains a later staging validation problem."
+  ]
+}

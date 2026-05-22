@@ -1,0 +1,44 @@
+{
+  "ticket": "T078",
+  "problem": "P084",
+  "scope": "TaskQueue claim/recovery/cancel query dialect only; task mutation locking and idempotency remain later P080 children.",
+  "changed_files": [
+    "novaic-agent-runtime/queue_service/queue_db.py",
+    "novaic-agent-runtime/queue_service/db/postgres.py",
+    "novaic-agent-runtime/tests/test_queue_postgres_task_query_dialect.py",
+    "novaic-agent-runtime/tests/test_queue_postgres_boundary.py"
+  ],
+  "done": [
+    "Added task query helper for backend-specific claim candidate SQL.",
+    "Added task query helper for backend-specific stale recovery candidate SQL.",
+    "Added task query helper for backend-specific cancel candidate SQL.",
+    "Wired existing TaskQueue claim/recover/cancel paths through the helpers while preserving sqlite SQL behavior.",
+    "Postgres claim SQL uses native retry timestamp comparison, JSONB dependency readiness, stable ordering, and FOR UPDATE OF ts SKIP LOCKED.",
+    "Postgres stale recovery SQL uses native heartbeat timestamp comparison and FOR UPDATE OF ts, ls SKIP LOCKED.",
+    "Postgres cancel-by-agent SQL uses payload ->> 'agent_id'.",
+    "Extended Postgres placeholder conversion to preserve JSONB ? operators whose right side is an identifier such as dep.step_name."
+  ],
+  "verification": [
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_task_query_dialect.py tests/test_queue_postgres_boundary.py tests/test_pr316_taskqueue_state_candidate_cutover.py tests/test_queue_explicit_dependencies.py",
+      "result": "24 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_boundary.py tests/test_queue_postgres_fsm_store.py tests/test_queue_postgres_task_query_dialect.py tests/test_queue_explicit_dependencies.py tests/test_pr344_queue_claim_busy_handling.py tests/test_pr305_task_fsm_store_ledger.py tests/test_pr309_saga_fsm_store_ledger.py tests/test_pr313_worker_lease_ledger.py tests/test_pr235_session_ledger.py tests/test_pr315_queue_fsm_final_residue_guard.py tests/test_pr342_generic_fsm_transition_runner.py tests/test_pr259_generic_fsm_store_outbox.py tests/test_pr316_taskqueue_state_candidate_cutover.py",
+      "result": "61 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/queue_db.py queue_service/db/postgres.py tests/test_queue_postgres_task_query_dialect.py tests/test_queue_postgres_boundary.py",
+      "result": "compileall succeeded"
+    },
+    {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/queue_db.py queue_service/db/postgres.py tests/test_queue_postgres_task_query_dialect.py tests/test_queue_postgres_boundary.py",
+      "result": "no whitespace errors"
+    }
+  ],
+  "known_gaps": [
+    "Postgres task mutation locking/compare-update behavior remains P085.",
+    "Task idempotency ledger Postgres behavior remains P086.",
+    "No real Postgres integration test was run in this query dialect ticket."
+  ]
+}

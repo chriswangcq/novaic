@@ -1,0 +1,375 @@
+# Complex Problem Ledger
+
+Ledger: L20260522-091929
+Schema: v6
+Root: P000 - Unify NovAIC persistent state on Postgres and remove stale database residue
+Status: doing
+Updated: 2026-05-22T15:55:07+00:00
+
+## Problem Tree
+- [followup] P000: Unify NovAIC persistent state on Postgres and remove stale database residue
+  - [done] P001: Provision local Postgres infrastructure on api
+  - [done] P002: Classify SQLite state owners and stale residue
+  - [done] P003: Migrate llm-factory from SQLite to Postgres
+    - [done] P005: Add Explicit Postgres Backend Support to LLM Factory
+    - [done] P006: Migrate LLM Factory Data to Postgres With Row-Count Validation
+    - [done] P007: Cut Over LLM Factory Docker Runtime to Postgres and Label SQLite Rollback
+  - [done] P004: Plan core database migrations and close legacy residue
+    - [done] P008: Map Queue SQLite Semantics to Postgres
+      - [done] P012: Inventory Queue SQLite Schema and Runtime Owners
+      - [done] P013: Map Queue FSM, Claim, Outbox, Lease, and Idempotency Semantics
+        - [done] P015: Map Task Saga and Worker Lease Postgres Concurrency Semantics
+        - [done] P016: Map Session Outbox and Idempotency Postgres Replay Semantics
+        - [done] P017: Map Queue JSONB Timestamp Index and SQLite Assumption Blockers
+      - [done] P014: Define Queue Postgres Implementation and Cutover Plan
+    - [done] P009: Design Entangled Postgres Migration Requirements
+      - [done] P018: Inventory Entangled SQLite Schema and Runtime Owners
+      - [done] P019: Map Entangled SQLite Semantics to Postgres Requirements
+      - [done] P020: Define Entangled Postgres Implementation and Cutover Requirements
+    - [done] P010: Classify Gateway and Cortex Postgres Boundaries
+      - [done] P021: Classify Gateway SQLite State and Postgres Boundary
+      - [done] P022: Classify Cortex Operational SQLite State and Postgres Boundary
+      - [done] P023: Synthesize Gateway Cortex SQLite Dispositions and Classification Note
+    - [done] P011: Close Device DB Live-Empty Residue
+  - [followup] P024: Implement Remaining Service Postgres Cutovers
+    - [done] P025: Implement Gateway Postgres Auth Config Cutover
+      - [done] P029: Implement Gateway Postgres Storage Path
+      - [done] P030: Cut Over Gateway Production Auth Config to Postgres
+        - [done] P031: Gateway Production Cutover Preflight
+        - [done] P032: Execute Gateway Production Cutover
+    - [done] P026: Implement Cortex Operational Postgres Cutover
+      - [done] P033: Implement Cortex Postgres Operational Store
+      - [done] P034: Cut Over Cortex Production Operational Store to Postgres
+        - [done] P035: Cortex Production Cutover Preflight
+        - [done] P036: Execute Cortex Production Operational Cutover
+          - [done] P037: Repair Cortex Postgres schema and complete production cutover
+    - [done] P027: Implement Entangled Postgres Cutover
+      - [done] P038: Implement Entangled Postgres adapter and runtime boundary
+      - [done] P039: Port Entangled schema registration and entity store semantics to Postgres
+        - [done] P043: Add Entangled Postgres DDL dialect and schema inspection
+        - [done] P044: Port Entangled entity-store queries and rowid semantics to Postgres
+          - [done] P046: Port Entangled basic CRUD/upsert write queries to Postgres
+          - [done] P047: Port Entangled stream pagination and cleanup rowid semantics to Postgres
+          - [done] P048: Preserve Entangled row output shape under Postgres query paths
+        - [done] P045: Port Entangled sync-version and transition-log persistence to Postgres
+      - [done] P040: Build Entangled migration tooling and staging validation
+        - [done] P049: Build Entangled Offline Migration Command
+          - [done] P053: Build Entangled Migration Planner And Redacted Report Model
+          - [done] P054: Implement Entangled Migration Copy Executor And Identity Reset
+          - [done] P055: Add Entangled Migration CLI Entry Point And Test Coverage
+          - [done] P056: Add Entangled Migration Target Schema Preparation And Clean-Target Execution
+        - [done] P050: Validate Entangled Migration Semantics Against Staging Data
+        - [done] P051: Validate Entangled Postgres Mode With REST Smokes
+          - [done] P057: Prepare Safe Entangled Postgres REST Staging Target
+          - [done] P058: Start Entangled In Postgres Mode For REST Staging
+          - [done] P059: Run Entangled Postgres REST Smoke Suite And Report
+        - [done] P052: Validate Entangled Postgres Mode With WebSocket Sync Smokes
+          - [done] P060: Prepare Entangled Postgres WebSocket Staging Runtime
+          - [done] P061: Build Entangled WebSocket Sync Smoke Client
+          - [done] P062: Run Entangled Postgres WebSocket Sync Smoke
+      - [done] P041: Entangled production Postgres cutover preflight
+      - [done] P042: Execute Entangled production Postgres cutover
+        - [done] P063: Prepare Entangled Production Backup And Writer Freeze
+        - [done] P064: Run Final Entangled SQLite To Postgres Migration
+        - [done] P065: Restart Production Entangled In Postgres Mode
+          - [done] P068: Repair Entangled Postgres Placeholder Escaping And Complete Production Readiness
+            - [done] P069: Fix Entangled Postgres Percent Placeholder Escaping Locally
+            - [done] P070: Deploy Repaired Entangled Runtime And Restore Production Readiness
+        - [done] P066: Run Entangled Production Postgres REST And WebSocket Smokes
+        - [done] P067: Archive Entangled SQLite Residue And Update Cutover Notes
+          - [done] P071: Persist Entangled Postgres Startup Configuration Before SQLite Archival
+        - [done] P072: Restart Business Services After Entangled Postgres Cutover
+    - [todo] P028: Implement Queue Postgres Cutover
+      - [done] P073: Implement Queue Postgres Schema And Database Boundary
+        - [done] P078: Add Queue Postgres JSON Expression Indexes
+      - [done] P074: Port Queue Repositories And FSM Semantics To Postgres
+        - [done] P079: Build Queue Postgres Dialect And FSM Store Foundation
+        - [done] P080: Port Task Queue And Idempotency Paths To Postgres
+          - [done] P084: Add Task Queue Postgres Claim Recovery And JSONB Query Dialect
+          - [done] P085: Port Task Mutations And State Locking To Postgres
+          - [done] P086: Port Task Idempotency Ledger To Postgres
+            - [done] P087: Port Task Idempotency Acquisition And Lease Semantics To Postgres
+            - [done] P088: Port Task Idempotency Completion And Release Semantics To Postgres
+            - [done] P089: Normalize Task Idempotency Diagnostics Across SQLite And Postgres
+        - [done] P081: Port Saga Repository And Worker Lease Semantics To Postgres
+          - [done] P090: Add Saga Postgres Claim Recovery And JSONB Context Query Dialect
+          - [done] P091: Port Saga Lifecycle Mutations And State Locking To Postgres
+          - [done] P092: Validate Worker Lease Ledger Postgres Semantics
+        - [done] P082: Port Session And Outbox Semantics To Postgres
+          - [done] P093: Port Session State Locking And Transition Semantics To Postgres
+            - [done] P096: Strengthen Session Locking With Behavioral Postgres Race Tests
+          - [done] P094: Port Durable Outbox Drain And Retry Semantics To Postgres
+          - [done] P095: Isolate Session And Outbox SQLite Runtime Residue
+          - [done] P097: Port Session Rebuild And Read Models To Postgres
+        - [done] P083: Replace SQLite Busy Handling With Postgres Transient Error Guards
+          - [done] P098: Isolate Worker Startup And Recovery SQLite Busy Residue
+      - [done] P075: Build Queue SQLite To Postgres Migration Tooling
+        - [done] P099: Build Queue Migration Planner And Redacted Report Model
+        - [done] P100: Implement Queue SQLite To Postgres Copy Execution
+        - [done] P101: Add Queue Migration Semantic Validation And CLI
+          - [done] P102: Add Queue Migration Semantic Aggregate Validation
+          - [done] P103: Add Queue Migration CLI And Report Writing
+        - [done] P104: Validate Queue Migration Timestamp Binding
+      - [todo] P076: Validate Queue Postgres Mode In Staging
+        - [done] P105: Prepare Queue Postgres Staging Target
+        - [followup] P106: Run Queue Service Postgres API Staging Smokes
+          - [followup] P109: Confirm Queue API Staging Target And Run Smokes
+            - [done] P110: Confirm Non-Production Queue Postgres Target
+            - [todo] P111: Start Queue Service In Postgres Mode
+              - [done] P114: Clean Queue Startup Postgres Default
+              - [followup] P115: Start Queue Service With Confirmed Postgres Target
+                - [followup] P116: Start Queue Service After Staging DSN Is Supplied
+            - [todo] P112: Run Queue Service API Smokes
+            - [todo] P113: Record Queue Postgres Post-Smoke Counts
+        - [todo] P107: Run Queue Worker And Outbox Postgres Staging Smokes
+        - [todo] P108: Record Queue Postgres Staging Validation Report
+      - [todo] P077: Execute Queue Production Postgres Cutover And Cleanup
+
+## Active
+- [ ] P000: Unify NovAIC persistent state on Postgres and remove stale database residue (followup)
+- [ ] P024: Implement Remaining Service Postgres Cutovers (followup)
+- [ ] P028: Implement Queue Postgres Cutover (todo)
+- [ ] P076: Validate Queue Postgres Mode In Staging (todo)
+- [ ] P077: Execute Queue Production Postgres Cutover And Cleanup (todo)
+- [ ] P106: Run Queue Service Postgres API Staging Smokes (followup)
+- [ ] P107: Run Queue Worker And Outbox Postgres Staging Smokes (todo)
+- [ ] P108: Record Queue Postgres Staging Validation Report (todo)
+- [ ] P109: Confirm Queue API Staging Target And Run Smokes (followup)
+- [ ] P111: Start Queue Service In Postgres Mode (todo)
+- [ ] P112: Run Queue Service API Smokes (todo)
+- [ ] P113: Record Queue Postgres Post-Smoke Counts (todo)
+- [ ] P115: Start Queue Service With Confirmed Postgres Target (followup)
+- [ ] P116: Start Queue Service After Staging DSN Is Supplied (followup)
+
+## Blocked
+
+## Done
+- [x] P001: Provision local Postgres infrastructure on api
+- [x] P002: Classify SQLite state owners and stale residue
+- [x] P003: Migrate llm-factory from SQLite to Postgres
+- [x] P004: Plan core database migrations and close legacy residue
+- [x] P005: Add Explicit Postgres Backend Support to LLM Factory
+- [x] P006: Migrate LLM Factory Data to Postgres With Row-Count Validation
+- [x] P007: Cut Over LLM Factory Docker Runtime to Postgres and Label SQLite Rollback
+- [x] P008: Map Queue SQLite Semantics to Postgres
+- [x] P009: Design Entangled Postgres Migration Requirements
+- [x] P010: Classify Gateway and Cortex Postgres Boundaries
+- [x] P011: Close Device DB Live-Empty Residue
+- [x] P012: Inventory Queue SQLite Schema and Runtime Owners
+- [x] P013: Map Queue FSM, Claim, Outbox, Lease, and Idempotency Semantics
+- [x] P014: Define Queue Postgres Implementation and Cutover Plan
+- [x] P015: Map Task Saga and Worker Lease Postgres Concurrency Semantics
+- [x] P016: Map Session Outbox and Idempotency Postgres Replay Semantics
+- [x] P017: Map Queue JSONB Timestamp Index and SQLite Assumption Blockers
+- [x] P018: Inventory Entangled SQLite Schema and Runtime Owners
+- [x] P019: Map Entangled SQLite Semantics to Postgres Requirements
+- [x] P020: Define Entangled Postgres Implementation and Cutover Requirements
+- [x] P021: Classify Gateway SQLite State and Postgres Boundary
+- [x] P022: Classify Cortex Operational SQLite State and Postgres Boundary
+- [x] P023: Synthesize Gateway Cortex SQLite Dispositions and Classification Note
+- [x] P025: Implement Gateway Postgres Auth Config Cutover
+- [x] P026: Implement Cortex Operational Postgres Cutover
+- [x] P027: Implement Entangled Postgres Cutover
+- [x] P029: Implement Gateway Postgres Storage Path
+- [x] P030: Cut Over Gateway Production Auth Config to Postgres
+- [x] P031: Gateway Production Cutover Preflight
+- [x] P032: Execute Gateway Production Cutover
+- [x] P033: Implement Cortex Postgres Operational Store
+- [x] P034: Cut Over Cortex Production Operational Store to Postgres
+- [x] P035: Cortex Production Cutover Preflight
+- [x] P036: Execute Cortex Production Operational Cutover
+- [x] P037: Repair Cortex Postgres schema and complete production cutover
+- [x] P038: Implement Entangled Postgres adapter and runtime boundary
+- [x] P039: Port Entangled schema registration and entity store semantics to Postgres
+- [x] P040: Build Entangled migration tooling and staging validation
+- [x] P041: Entangled production Postgres cutover preflight
+- [x] P042: Execute Entangled production Postgres cutover
+- [x] P043: Add Entangled Postgres DDL dialect and schema inspection
+- [x] P044: Port Entangled entity-store queries and rowid semantics to Postgres
+- [x] P045: Port Entangled sync-version and transition-log persistence to Postgres
+- [x] P046: Port Entangled basic CRUD/upsert write queries to Postgres
+- [x] P047: Port Entangled stream pagination and cleanup rowid semantics to Postgres
+- [x] P048: Preserve Entangled row output shape under Postgres query paths
+- [x] P049: Build Entangled Offline Migration Command
+- [x] P050: Validate Entangled Migration Semantics Against Staging Data
+- [x] P051: Validate Entangled Postgres Mode With REST Smokes
+- [x] P052: Validate Entangled Postgres Mode With WebSocket Sync Smokes
+- [x] P053: Build Entangled Migration Planner And Redacted Report Model
+- [x] P054: Implement Entangled Migration Copy Executor And Identity Reset
+- [x] P055: Add Entangled Migration CLI Entry Point And Test Coverage
+- [x] P056: Add Entangled Migration Target Schema Preparation And Clean-Target Execution
+- [x] P057: Prepare Safe Entangled Postgres REST Staging Target
+- [x] P058: Start Entangled In Postgres Mode For REST Staging
+- [x] P059: Run Entangled Postgres REST Smoke Suite And Report
+- [x] P060: Prepare Entangled Postgres WebSocket Staging Runtime
+- [x] P061: Build Entangled WebSocket Sync Smoke Client
+- [x] P062: Run Entangled Postgres WebSocket Sync Smoke
+- [x] P063: Prepare Entangled Production Backup And Writer Freeze
+- [x] P064: Run Final Entangled SQLite To Postgres Migration
+- [x] P065: Restart Production Entangled In Postgres Mode
+- [x] P066: Run Entangled Production Postgres REST And WebSocket Smokes
+- [x] P067: Archive Entangled SQLite Residue And Update Cutover Notes
+- [x] P068: Repair Entangled Postgres Placeholder Escaping And Complete Production Readiness
+- [x] P069: Fix Entangled Postgres Percent Placeholder Escaping Locally
+- [x] P070: Deploy Repaired Entangled Runtime And Restore Production Readiness
+- [x] P071: Persist Entangled Postgres Startup Configuration Before SQLite Archival
+- [x] P072: Restart Business Services After Entangled Postgres Cutover
+- [x] P073: Implement Queue Postgres Schema And Database Boundary
+- [x] P074: Port Queue Repositories And FSM Semantics To Postgres
+- [x] P075: Build Queue SQLite To Postgres Migration Tooling
+- [x] P078: Add Queue Postgres JSON Expression Indexes
+- [x] P079: Build Queue Postgres Dialect And FSM Store Foundation
+- [x] P080: Port Task Queue And Idempotency Paths To Postgres
+- [x] P081: Port Saga Repository And Worker Lease Semantics To Postgres
+- [x] P082: Port Session And Outbox Semantics To Postgres
+- [x] P083: Replace SQLite Busy Handling With Postgres Transient Error Guards
+- [x] P084: Add Task Queue Postgres Claim Recovery And JSONB Query Dialect
+- [x] P085: Port Task Mutations And State Locking To Postgres
+- [x] P086: Port Task Idempotency Ledger To Postgres
+- [x] P087: Port Task Idempotency Acquisition And Lease Semantics To Postgres
+- [x] P088: Port Task Idempotency Completion And Release Semantics To Postgres
+- [x] P089: Normalize Task Idempotency Diagnostics Across SQLite And Postgres
+- [x] P090: Add Saga Postgres Claim Recovery And JSONB Context Query Dialect
+- [x] P091: Port Saga Lifecycle Mutations And State Locking To Postgres
+- [x] P092: Validate Worker Lease Ledger Postgres Semantics
+- [x] P093: Port Session State Locking And Transition Semantics To Postgres
+- [x] P094: Port Durable Outbox Drain And Retry Semantics To Postgres
+- [x] P095: Isolate Session And Outbox SQLite Runtime Residue
+- [x] P096: Strengthen Session Locking With Behavioral Postgres Race Tests
+- [x] P097: Port Session Rebuild And Read Models To Postgres
+- [x] P098: Isolate Worker Startup And Recovery SQLite Busy Residue
+- [x] P099: Build Queue Migration Planner And Redacted Report Model
+- [x] P100: Implement Queue SQLite To Postgres Copy Execution
+- [x] P101: Add Queue Migration Semantic Validation And CLI
+- [x] P102: Add Queue Migration Semantic Aggregate Validation
+- [x] P103: Add Queue Migration CLI And Report Writing
+- [x] P104: Validate Queue Migration Timestamp Binding
+- [x] P105: Prepare Queue Postgres Staging Target
+- [x] P110: Confirm Non-Production Queue Postgres Target
+- [x] P114: Clean Queue Startup Postgres Default
+
+## Tickets
+- [done] T000: Phased Postgres unification with residue cleanup -> P000 (split)
+- [done] T001: Install local Postgres Docker foundation -> P001 (one_go)
+- [done] T002: Classify SQLite Owners and Quarantine Stale Residue -> P002 (one_go)
+- [done] T003: Migrate LLM Factory SQLite State to Postgres -> P003 (split)
+- [done] T004: Implement or Verify LLM Factory Postgres Backend -> P005 (one_go)
+- [done] T005: Copy LLM Factory SQLite Data Into Postgres -> P006 (one_go)
+- [done] T006: Cut Over LLM Factory Docker Runtime to Postgres -> P007 (one_go)
+- [done] T007: Map Core SQLite Migrations and Close Remaining Residue -> P004 (split)
+- [done] T008: Map Queue SQLite FSM and Outbox Semantics to Postgres -> P008 (split)
+- [done] T009: Capture Queue SQLite Production Inventory -> P012 (one_go)
+- [done] T010: Map Queue Postgres Semantics -> P013 (split)
+- [done] T011: Define Queue Task Saga Lease Postgres Concurrency Map -> P015 (one_go)
+- [done] T012: Define Queue Session Outbox Idempotency Postgres Replay Map -> P016 (one_go)
+- [done] T013: Define Queue Postgres JSONB Time Index and SQLite Assumption Map -> P017 (one_go)
+- [done] T014: Define Queue Postgres Implementation and Cutover Plan -> P014 (one_go)
+- [done] T015: Design Entangled Postgres Migration Requirements -> P009 (split)
+- [done] T016: Inventory Live Entangled SQLite State -> P018 (one_go)
+- [done] T017: Map Entangled SQLite Semantics to Postgres Requirements -> P019 (one_go)
+- [done] T018: Define Entangled Postgres Implementation and Cutover Requirements -> P020 (one_go)
+- [done] T019: Classify Gateway and Cortex Postgres Boundaries -> P010 (split)
+- [done] T020: Classify Gateway SQLite State -> P021 (one_go)
+- [done] T021: Classify Cortex Operational SQLite State -> P022 (one_go)
+- [done] T022: Synthesize Gateway and Cortex SQLite Dispositions -> P023 (one_go)
+- [done] T023: Close Device DB Live-Empty Residue -> P011 (one_go)
+- [splitting] T024: Remaining Service Postgres Cutovers -> P024 (split)
+- [done] T025: Gateway Postgres Auth Config Cutover -> P025 (split)
+- [done] T026: Gateway Postgres Storage Implementation -> P029 (one_go)
+- [done] T027: Gateway Production Cutover to Postgres -> P030 (split)
+- [done] T028: Gateway Production Cutover Preflight -> P031 (one_go)
+- [done] T029: Execute Gateway Production Cutover -> P032 (one_go)
+- [done] T030: Cortex Operational Postgres Cutover -> P026 (split)
+- [done] T031: Cortex Postgres Operational Store Implementation -> P033 (one_go)
+- [done] T032: Cortex Production Operational Store Cutover -> P034 (split)
+- [done] T033: Cortex Production Cutover Preflight -> P035 (one_go)
+- [done] T034: Execute Cortex Production Operational Cutover -> P036 (one_go)
+- [done] T035: Repair and retry Cortex production Postgres cutover -> P037 (one_go)
+- [done] T036: Implement Entangled Postgres cutover -> P027 (split)
+- [done] T037: Add Entangled Postgres adapter and explicit runtime selection -> P038 (one_go)
+- [done] T038: Port Entangled dynamic schema and entity semantics to Postgres -> P039 (split)
+- [done] T039: Implement Entangled Postgres DDL dialect -> P043 (one_go)
+- [done] T040: Port Entangled entity-store query semantics to Postgres -> P044 (split)
+- [done] T041: Port Entangled basic write queries to Postgres -> P046 (one_go)
+- [done] T042: Port Entangled stream rowid semantics to Postgres -> P047 (one_go)
+- [done] T043: Preserve Entangled Postgres row output shape -> P048 (one_go)
+- [done] T044: Port Entangled sync-version and transition-log persistence to Postgres -> P045 (one_go)
+- [done] T045: Build Entangled SQLite-To-Postgres Migration And Staging Validation -> P040 (split)
+- [done] T046: Implement Entangled Offline SQLite-To-Postgres Migration Command -> P049 (split)
+- [done] T047: Implement Entangled Migration Planner And Report Model -> P053 (one_go)
+- [done] T048: Implement Entangled Migration Copy Executor And Identity Reset -> P054 (one_go)
+- [done] T049: Add Entangled Migration CLI Entry Point And Command Tests -> P055 (one_go)
+- [done] T050: Implement Entangled Migration Target Preparation And Clean Execution -> P056 (one_go)
+- [done] T051: Validate Entangled Migration Semantics Against Safe Staging Data -> P050 (one_go)
+- [done] T052: Validate Entangled Postgres Mode With REST Smokes -> P051 (split)
+- [done] T053: Prepare Safe Entangled Postgres REST Staging Target -> P057 (one_go)
+- [done] T054: Start Entangled In Postgres Mode For REST Staging -> P058 (one_go)
+- [done] T055: Run Entangled Postgres REST Smoke Suite And Report -> P059 (one_go)
+- [done] T056: Validate Entangled Postgres WebSocket Sync Path -> P052 (split)
+- [done] T057: Prepare WebSocket Postgres Staging Runtime -> P060 (one_go)
+- [done] T058: Build Reproducible Entangled WebSocket Smoke Client -> P061 (one_go)
+- [done] T059: Run Full Entangled Postgres WebSocket Sync Smoke -> P062 (one_go)
+- [done] T060: Run Entangled Production Postgres Cutover Preflight -> P041 (one_go)
+- [done] T061: Execute Entangled Production Postgres Cutover -> P042 (split)
+- [done] T062: Prepare Production Entangled Backup And Writer Freeze -> P063 (one_go)
+- [done] T063: Run Final Entangled Production Migration Into Postgres -> P064 (one_go)
+- [done] T064: Restart Production Entangled In Postgres Mode -> P065 (one_go)
+- [done] T065: Repair Entangled Postgres Placeholder Escaping And Complete Production Readiness -> P068 (split)
+- [done] T066: Fix Entangled Postgres Percent Placeholder Escaping Locally -> P069 (one_go)
+- [done] T067: Deploy Repaired Entangled Runtime And Restore Production Readiness -> P070 (one_go)
+- [done] T068: Run Entangled Production Postgres REST And WebSocket Smokes -> P066 (one_go)
+- [done] T069: Archive Entangled SQLite Residue And Update Cutover Notes -> P067 (one_go)
+- [done] T070: Persist Entangled Postgres Startup Configuration Before SQLite Archival -> P071 (one_go)
+- [done] T071: Restart Business Services After Entangled Postgres Cutover -> P072 (one_go)
+- [splitting] T072: Implement Queue Postgres Cutover -> P028 (split)
+- [done] T073: Implement Queue Postgres Schema And Database Boundary -> P073 (one_go)
+- [done] T074: Add Queue Postgres Required JSONB Expression Indexes -> P078 (one_go)
+- [done] T075: Port Queue Repository SQL And FSM Semantics To Postgres -> P074 (split)
+- [done] T076: Build Queue Postgres FSM Store Foundation -> P079 (one_go)
+- [done] T077: Port Task Queue And Idempotency SQL To Postgres -> P080 (split)
+- [done] T078: Add Task Queue Postgres Claim Recovery And JSONB Query Dialect -> P084 (one_go)
+- [done] T079: Port Task Mutations And State Locking To Postgres -> P085 (one_go)
+- [done] T080: Port Task Idempotency Ledger To Postgres -> P086 (split)
+- [done] T081: Port Idempotency Acquisition Lease Path To Postgres -> P087 (one_go)
+- [done] T082: Port Idempotency Completion And Release Ownership To Postgres -> P088 (one_go)
+- [done] T083: Normalize Idempotency Diagnostics Row Handling -> P089 (one_go)
+- [done] T084: Port Saga Repository And Worker Lease Semantics To Postgres -> P081 (split)
+- [done] T085: Add Saga Postgres Candidate Query Dialect -> P090 (one_go)
+- [done] T086: Port Saga Lifecycle Mutation Locking To Postgres -> P091 (one_go)
+- [done] T087: Validate Worker Lease Ledger On Postgres Store -> P092 (one_go)
+- [done] T088: Port Session And Outbox Semantics To Postgres -> P082 (split)
+- [done] T089: Port Session State Locking And Transition Semantics To Postgres -> P093 (one_go)
+- [done] T090: Strengthen Session Locking With Behavioral Postgres Race Tests -> P096 (one_go)
+- [done] T091: Port Durable Outbox Drain And Retry Semantics To Postgres -> P094 (one_go)
+- [done] T092: Isolate Session And Outbox SQLite Runtime Residue -> P095 (one_go)
+- [done] T093: Port Session Rebuild And Read Models To Postgres -> P097 (one_go)
+- [done] T094: Replace Route SQLite Busy Handling With Queue Transient Error Guards -> P083 (one_go)
+- [done] T095: Isolate Worker Startup And Recovery SQLite Compatibility Boundaries -> P098 (one_go)
+- [done] T096: Build Queue SQLite To Postgres Migration Tooling -> P075 (split)
+- [done] T097: Build Queue Migration Planner And Report Foundation -> P099 (one_go)
+- [done] T098: Implement Queue Migration Copy Execution -> P100 (one_go)
+- [done] T099: Add Queue Migration Semantic Validation And Operator CLI -> P101 (split)
+- [done] T100: Add Queue Migration Semantic Aggregate Validation -> P102 (one_go)
+- [done] T101: Add Queue Migration CLI And Report Writing -> P103 (one_go)
+- [done] T102: Validate Queue Migration Timestamp Binding -> P104 (one_go)
+- [splitting] T103: Validate Queue Postgres Mode In Staging -> P076 (split)
+- [done] T104: Prepare Queue Postgres Staging Target -> P105 (one_go)
+- [done] T105: Queue Service Postgres API Staging Smoke Ticket -> P106 (one_go)
+- [splitting] T106: Queue API Staging Target And Smoke Closure Ticket -> P109 (split)
+- [done] T107: Queue Postgres Target Confirmation Ticket -> P110 (one_go)
+- [splitting] T108: Queue Service Postgres Startup Ticket -> P111 (split)
+- [done] T109: Clean Queue Startup Default Ticket -> P114 (one_go)
+- [done] T110: Queue Service Confirmed-Target Startup Ticket -> P115 (one_go)
+- [classified] T111: Start Queue Service After DSN Ticket -> P116 (one_go)
+
+## Latest Checks
+- [success] C105: P103 P103 is solved. The Queue migration CLI exists, exposes the required options, writes redacted reports, keeps dry-run read-only at the copy layer, executes copy plus validation in normal mode, and returns non-zero for blocked/error statuses.
+- [success] C106: P101 P101 is solved. Semantic validation and the operator CLI are both implemented through closed split children, and the combined migration command now supports dry-run planning/preflight, execution copy plus validation, and redacted report writing.
+- [not_success] C107: P075 R099 completes the planner, copy execution, semantic validation, and CLI/reporting pieces, but P075's original success criteria are not fully proven. JSON conversion is explicitly tested, but representative timestamp preservation/binding is not directly asserted despite the criterion requiring JSON/time conversion validation.
+- [success] C108: P104 P104 is solved. Timestamp handling is now explicitly tested and documented as ISO string pass-through for Postgres TIMESTAMPTZ binding.
+- [success] C109: P075 P075 is solved after R099 plus timestamp follow-up R100. The Queue migration tooling now includes a planner, copy execution, semantic validation, CLI/report writing, redaction, and representative JSON/time fixture coverage.
+- [success] C110: P105 P105 is successful by its blocker-allowed acceptance path. R101 did not prepare a staging database, but it proved that no safe non-production Queue Postgres target is currently available in the workspace/shell/Docker context, avoided production writes, redacted secret handling, and recorded exact prerequisites for the next P076 child.
+- [not_success] C111: P106 P106 is not successful. R102 correctly stopped before unsafe startup, but none of the required Queue Service Postgres API staging smokes ran because the current environment still lacks a confirmed non-production Queue Postgres DSN/DSN file.
+- [success] C112: P110 P110 is successful by its explicit blocker path. R103 did not confirm a usable target, but it correctly proved that the current runner lacks a non-production Queue Postgres DSN/DSN file, avoided secret exposure and writes, and recorded the exact prerequisite required by downstream smoke work.
+- [success] C113: P114 P114 is successful. R104 removed the misleading Queue CLI wrapper SQLite default, preserved explicit SQLite opt-in, and added focused regression coverage for both Queue startup entrypoints.
+- [not_success] C114: P115 P115 is not successful. R105 correctly avoided unsafe startup, but Queue Service did not start against a confirmed non-production Postgres target and health/readiness did not run.

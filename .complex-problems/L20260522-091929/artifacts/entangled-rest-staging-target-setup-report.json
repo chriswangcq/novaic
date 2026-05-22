@@ -1,0 +1,55 @@
+{
+  "target_label": "novaic_entangled_rest_staging",
+  "host": "api.gradievo.com",
+  "postgres_service": "novaic-postgres",
+  "database": "novaic_entangled_rest_staging",
+  "role": "novaic_entangled_rest_staging",
+  "dsn_file": "/opt/novaic/postgres/secrets/novaic_entangled_rest_staging_dsn",
+  "secret_file_policy": {
+    "owner": "root:root",
+    "mode": "0600",
+    "value_recorded": false
+  },
+  "import_scope": "rest-smoke fixture data, not production traffic",
+  "tables": {
+    "entangled_sync_versions": 1,
+    "rest_smoke_events": 1,
+    "subagent_state_transitions": 1
+  },
+  "sync_version": {
+    "state_key": "rest-smoke-events:user:staging",
+    "version": 3
+  },
+  "transition": {
+    "count": 1,
+    "max_id": 1
+  },
+  "rowid_check": true,
+  "sequence_restart_expectation": [
+    {
+      "table": "rest_smoke_events",
+      "column": "id",
+      "restart_with": 2
+    },
+    {
+      "table": "rest_smoke_events",
+      "column": "entangled_rowid",
+      "restart_with": 2
+    },
+    {
+      "table": "subagent_state_transitions",
+      "column": "id",
+      "restart_with": 2
+    }
+  ],
+  "secret_scan": {
+    "contains_dsn": false,
+    "contains_password": false,
+    "contains_token": false
+  },
+  "notes": [
+    "The first psql attempt used the nonexistent default postgres role and made no changes.",
+    "The successful setup used the container admin role name from non-secret POSTGRES_USER and did not print DSN/password values.",
+    "The fixture import used docker exec against the novaic-postgres container because psql is not installed on the host."
+  ]
+}

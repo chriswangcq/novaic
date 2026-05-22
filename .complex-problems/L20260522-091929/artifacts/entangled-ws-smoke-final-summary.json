@@ -1,0 +1,54 @@
+{
+  "after_versions": {
+    "ws-smoke-list-items": 2,
+    "ws-smoke-stream-events": 2,
+    "ws-smoke-stream-events:[[\"agent_id\", \"ws-agent-fixture\"]]": 2
+  },
+  "append_id": "ws-smoke-p062-final-1779446999",
+  "before_versions": {
+    "ws-smoke-stream-events": 1,
+    "ws-smoke-stream-events:[[\"agent_id\", \"ws-agent-fixture\"]]": 1
+  },
+  "cleanup": {
+    "port_19910_listeners_after": 0,
+    "staging_pid_alive_after": false,
+    "sync_query_token_log_entries": 0
+  },
+  "client_stdout": {
+    "delta_seen": true,
+    "ok": true,
+    "output": "/opt/novaic/logs/entangled-ws-smoke-final.json",
+    "query_string_token_used": false,
+    "schema_seen": true
+  },
+  "list_count": 2,
+  "observations": {
+    "delta_seen": true,
+    "list_skipped": false,
+    "list_sync_mode": "snapshot",
+    "reconnect_sync_mode": "up_to_date",
+    "schema_seen": true,
+    "stream_sync_mode": "head_n"
+  },
+  "ok": true,
+  "report_path": "/opt/novaic/logs/entangled-ws-smoke-final.json",
+  "schema_registration": {
+    "registered": [
+      "ws-smoke-list-items"
+    ],
+    "status_code": 200,
+    "total": 1
+  },
+  "secret_policy": {
+    "auth_uses_authorization_header": true,
+    "query_string_token_used": false,
+    "raw_dsn_recorded": false,
+    "raw_jwt_recorded": false,
+    "raw_token_recorded": false,
+    "report_contains_secret": false
+  },
+  "stream_count": 4,
+  "stream_entangled_rowid_max": 4,
+  "stream_entangled_rowid_min": 1,
+  "version_non_decreasing": true
+}

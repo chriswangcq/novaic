@@ -1,0 +1,35 @@
+{
+  "problem": "P090",
+  "ticket": "T085",
+  "status": "implemented",
+  "code_changes": [
+    "Added backend-aware saga claim candidate SQL.",
+    "Added backend-aware saga stale recovery candidate SQL.",
+    "Added backend-aware saga cancel candidate SQL.",
+    "Wired SagaRepository.claim, recover_stale, and cancel_all through the helpers.",
+    "Postgres claim/recovery/cancel candidates now use FOR UPDATE SKIP LOCKED and JSONB/timestamptz dialect where applicable."
+  ],
+  "tests": {
+    "focused": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_saga_query_dialect.py",
+      "result": "9 passed"
+    },
+    "selected": {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_saga_query_dialect.py tests/test_pr309_saga_fsm_store_ledger.py tests/test_pr313_worker_lease_ledger.py tests/test_pr310_saga_repository_fsm_cutover.py tests/test_pr308_saga_lifecycle_fsm.py tests/test_queue_postgres_boundary.py tests/test_queue_postgres_idempotency_diagnostics.py tests/test_queue_postgres_idempotency_complete_release.py tests/test_queue_postgres_idempotency_acquisition.py",
+      "result": "59 passed"
+    },
+    "compileall": {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/saga_repo.py tests/test_queue_postgres_saga_query_dialect.py",
+      "result": "succeeded"
+    },
+    "diff_check": {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/saga_repo.py tests/test_queue_postgres_saga_query_dialect.py",
+      "result": "succeeded"
+    }
+  },
+  "known_gaps": [
+    "Saga single-row lifecycle mutation locking remains P091.",
+    "Worker lease ledger Postgres semantics remain P092.",
+    "Live Postgres runtime validation remains a later staging validation problem."
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "counts": {
+    "entangled_sync_versions": 1,
+    "rest_smoke_events": 1,
+    "subagent_state_transitions": 1,
+    "ws_smoke_stream_events": 2
+  },
+  "db_backend": "postgres",
+  "dsn_file": "/opt/novaic/postgres/secrets/novaic_entangled_rest_staging_dsn",
+  "fixture_results": [
+    {
+      "ok": true,
+      "status_code": 200
+    },
+    {
+      "ok": true,
+      "status_code": 200
+    }
+  ],
+  "health": {
+    "body": {
+      "entities": 2,
+      "entity_names": [
+        "rest-smoke-events",
+        "ws-smoke-stream-events"
+      ],
+      "status": "ok"
+    },
+    "status_code": 200
+  },
+  "host": "api.gradievo.com",
+  "lifecycle": {
+    "status": "left_running_for_ws_client_and_smoke_children",
+    "stop_command": "ssh root@api.gradievo.com \"kill $(cat /opt/novaic/entangled-ws-staging.pid)\""
+  },
+  "log_path": "/opt/novaic/logs/entangled-ws-staging.log",
+  "ok": true,
+  "pid": 3554399,
+  "pid_file": "/opt/novaic/entangled-ws-staging.pid",
+  "port": 19910,
+  "ready": {
+    "body": {
+      "entities": 2,
+      "entity_names": [
+        "rest-smoke-events",
+        "ws-smoke-stream-events"
+      ],
+      "missing": [],
+      "status": "ready"
+    },
+    "status_code": 200
+  },
+  "schema_registration": {
+    "registered": [
+      "rest-smoke-events",
+      "ws-smoke-stream-events"
+    ],
+    "status_code": 200,
+    "total": 2
+  },
+  "secret_files": {
+    "dsn_mode": "600",
+    "service_token_mode": "600"
+  },
+  "secret_policy": {
+    "log_has_sync_query_token_after_rotation": false,
+    "process_args_use_secret_files": {
+      "uses_dsn_file_flag": true,
+      "uses_raw_postgres_dsn_flag": false,
+      "uses_raw_service_token_flag": false,
+      "uses_service_token_file_flag": true
+    },
+    "raw_dsn_recorded": false,
+    "raw_service_token_recorded": false
+  },
+  "service_token_file": "/opt/novaic/postgres/secrets/entangled_rest_staging_service_token",
+  "sqlite_file_handles": [],
+  "target_label": "novaic_entangled_rest_staging",
+  "ws_probe": {
+    "connected": true,
+    "entity_count": 0,
+    "first_frame_type": "push"
+  },
+  "ws_stream_entangled_rowid": {
+    "max": 2,
+    "min": 1,
+    "present": true
+  }
+}

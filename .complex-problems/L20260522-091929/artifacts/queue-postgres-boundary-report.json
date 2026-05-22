@@ -1,0 +1,50 @@
+{
+  "ticket": "T073",
+  "problem": "P073",
+  "scope": "Queue Postgres schema and database boundary only; repository SQL port and production cutover remain later tickets.",
+  "changed_files": [
+    "novaic-agent-runtime/queue_service/db/postgres.py",
+    "novaic-agent-runtime/queue_service/db/__init__.py",
+    "novaic-agent-runtime/queue_service/db/schema.py",
+    "novaic-agent-runtime/queue_service/main.py",
+    "novaic-agent-runtime/main_novaic.py",
+    "novaic-agent-runtime/requirements.txt",
+    "novaic-agent-runtime/tests/test_queue_postgres_boundary.py"
+  ],
+  "done": [
+    "Added QueuePostgresDatabase with DSN and DSN-file support, qmark-to-psycopg placeholder conversion, percent literal escaping, SQLite-like row access, transaction helpers, and advisory locks.",
+    "Added Queue Postgres schema baseline covering config plus all active tq_* tables and index families.",
+    "Represented queue JSON fields as jsonb and time fields as timestamptz in the Postgres schema.",
+    "Added create_queue_database and public database info helpers that do not expose direct DSNs.",
+    "Wired queue-service CLI/runtime selection through --db-backend, --postgres-dsn, and --postgres-dsn-file.",
+    "Updated Queue health/root/readiness payloads to report selected backend and safe path/source information.",
+    "Added psycopg Postgres dependency for the agent runtime."
+  ],
+  "verification": [
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_boundary.py tests/test_queue_explicit_dependencies.py tests/test_pr344_queue_claim_busy_handling.py tests/test_pr305_task_fsm_store_ledger.py tests/test_pr309_saga_fsm_store_ledger.py tests/test_pr313_worker_lease_ledger.py tests/test_pr235_session_ledger.py tests/test_pr315_queue_fsm_final_residue_guard.py",
+      "result": "34 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_boundary.py",
+      "result": "10 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python main_novaic.py queue-service --help",
+      "result": "queue-service help includes db-backend, postgres-dsn, and postgres-dsn-file options"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/db/postgres.py queue_service/db/__init__.py queue_service/db/schema.py queue_service/main.py main_novaic.py",
+      "result": "compileall succeeded"
+    },
+    {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/db/postgres.py queue_service/db/__init__.py queue_service/db/schema.py queue_service/main.py main_novaic.py requirements.txt tests/test_queue_postgres_boundary.py",
+      "result": "no whitespace errors"
+    }
+  ],
+  "known_gaps": [
+    "Queue repositories still contain SQLite-specific operational SQL such as datetime(), json_each(), and JSON extraction. That belongs to P074.",
+    "No real Postgres service was used in this boundary ticket; tests use fake pool/connection objects to validate schema, configuration, transaction, and secrecy behavior.",
+    "No production Queue cutover was attempted; that remains P077."
+  ]
+}

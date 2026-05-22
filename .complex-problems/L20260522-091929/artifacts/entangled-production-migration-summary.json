@@ -1,0 +1,23 @@
+{
+  "remote_report": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled-production-migration-report.json",
+  "source": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.sqlite-backup",
+  "target": "novaic_entangled",
+  "planned_table_count": 28,
+  "prepared_table_count": 28,
+  "cleaned_table_count": 28,
+  "source_table_count_including_sqlite_internal": 29,
+  "target_table_count": 28,
+  "sqlite_sequence_skipped": true,
+  "checks": {
+    "target_counts_match": "passed",
+    "sync_versions_match": "passed",
+    "transition_ids_match": "passed",
+    "rowid_copy_complete": "passed"
+  },
+  "production_runtime_after_migration": {
+    "pid": 3533537,
+    "has_db_path": true,
+    "has_pg_backend": false
+  },
+  "raw_dsn_recorded": false
+}

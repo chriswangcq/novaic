@@ -1,0 +1,111 @@
+{
+  "host": "api.gradievo.com",
+  "health": {
+    "status_code": 200,
+    "status": "ok",
+    "entities": 22
+  },
+  "ready": {
+    "status_code": 200,
+    "status": "ready",
+    "entities": 22,
+    "missing": []
+  },
+  "production_runtime": {
+    "pid": 3533537,
+    "host": "127.0.0.1",
+    "port": "19900",
+    "db_path": "/opt/novaic/data/entangled.db",
+    "db_backend": null,
+    "uses_db_path": true,
+    "uses_raw_service_token": true,
+    "uses_service_token_file": false,
+    "uses_raw_postgres_dsn": false
+  },
+  "sqlite": {
+    "path": "/opt/novaic/data/entangled.db",
+    "exists": true,
+    "size_bytes": 7106560,
+    "mode": "644",
+    "owner": "root:root",
+    "table_count": 28,
+    "sync_versions": {
+      "count": 67,
+      "max_version": 5319
+    },
+    "subagent_state_transitions": {
+      "count": 184,
+      "max_id": 542
+    },
+    "active_holder_count": 21,
+    "active_holder_pids": [
+      "3533537"
+    ],
+    "table_counts": {
+      "agent_activity_participants": 2,
+      "agent_activity_records": 314,
+      "agent_device_bindings": 2,
+      "agent_drive": 0,
+      "agent_skills": 0,
+      "agent_state": 1,
+      "agents": 3,
+      "api_key_models": 408,
+      "api_keys": 3,
+      "available_models": 2,
+      "chat_messages": 270,
+      "devices": 1,
+      "entangled_sync_versions": 67,
+      "environment_events": 270,
+      "environment_im_messages": 270,
+      "environment_notifications": 210,
+      "environment_resource_refs": 0,
+      "execution_log_payloads": 302,
+      "execution_logs": 302,
+      "files": 3,
+      "models": 408,
+      "refresh_tokens": 1,
+      "skills": 1,
+      "subagent_state_transitions": 184,
+      "subagents": 5,
+      "user_preferences": 2,
+      "users": 1,
+      "vm_users": 0
+    }
+  },
+  "postgres_target": {
+    "dsn_file": "/opt/novaic/postgres/secrets/novaic_entangled_dsn",
+    "dsn_file_exists": true,
+    "dsn_file_mode": "600",
+    "dsn_file_owner": "root:root",
+    "connect_ok": true,
+    "database": "novaic_entangled",
+    "user": "novaic_entangled",
+    "public_table_count": 0,
+    "raw_dsn_recorded": false
+  },
+  "deployed_code": {
+    "base": "/opt/novaic/services/Entangled/packages/server-python",
+    "compile_ok": true,
+    "migration_cli_help_ok": true,
+    "imports_ok": {
+      "entangled.app.main": true,
+      "entangled.sql.migration": true,
+      "entangled.sql.migration_cli": true,
+      "psycopg": true,
+      "psycopg_pool": true
+    }
+  },
+  "rollback": {
+    "dir": "/opt/novaic/residue-archive/entangled-cutover-preflight-20260522T105730Z",
+    "exists": true,
+    "mode": "755",
+    "owner": "root:root"
+  },
+  "no_runtime_switch_performed": true,
+  "secret_policy": {
+    "raw_process_args_recorded": false,
+    "raw_dsn_recorded": false,
+    "raw_service_token_recorded": false,
+    "legacy_raw_service_token_arg_detected": true
+  }
+}

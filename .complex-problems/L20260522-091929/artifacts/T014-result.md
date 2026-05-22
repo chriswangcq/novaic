@@ -1,0 +1,29 @@
+# Queue Postgres Implementation Cutover Plan Result
+
+## Summary
+
+Completed the P014 implementation and cutover plan for migrating Queue from SQLite to Postgres. The plan is phased, includes verification and rollback boundaries, and explicitly does not attempt production cutover.
+
+## Done
+
+- Defined phases for preconditions, PG schema, adapter/runtime boundary, repository SQL conversion, migration tooling, test environment cutover, production pre-cutover, production cutover window, rollback, stabilization, and cleanup.
+- Included required checks for row counts, status counts, event/state projection consistency, outboxes, leases, idempotency, health/readiness, smoke tests, and SQLite runtime absence.
+- Documented rollback boundaries for pre-cutover, stopped-before-PG-writers, and after-PG-writers-start scenarios.
+- Listed "do not cut over" blockers.
+- Included cleanup policy for old `queue.db` after stabilization.
+
+## Verification
+
+- Verified the plan artifact exists at `.complex-problems/L20260522-091929/artifacts/queue-postgres-implementation-cutover-plan.md`.
+- Verified it contains sections for implementation phases, migration tooling, production cutover, rollback boundaries, and do-not-cut-over criteria.
+- Reviewed against P012/P015/P016/P017 inputs.
+- No runtime code, production service, or production database was changed.
+
+## Known Gaps
+
+- This is a plan artifact only. Implementation, test environment execution, production migration, and cleanup remain future ledger work.
+
+## Artifacts
+
+- `.complex-problems/L20260522-091929/artifacts/queue-postgres-implementation-cutover-plan.md`
+

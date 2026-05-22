@@ -1,0 +1,31 @@
+# JSONB Time Index SQLite Assumption Mapping Result
+
+## Summary
+
+Completed the P017 design mapping for Queue JSONB predicates, timestamp type choice, required Postgres indexes/constraints, SQLite busy/error replacement, PRAGMA removal, and Python lock classification.
+
+## Done
+
+- Mapped SQLite `json_each`/`json_extract` usages to Postgres JSONB predicates for task dependencies, task agent filtering, and saga agent filtering.
+- Chose `timestamptz` for queue time fields and defined conversion/comparison rules for retry, heartbeat, stale recovery, idempotency leases, and outbox ordering.
+- Listed required PG primary keys, unique idempotency constraints, partial indexes, candidate indexes, event indexes, outbox indexes, and JSON expression indexes.
+- Mapped SQLite busy/locked string matching and generic busy retry loops to PG transient exception retry/defer rules.
+- Classified Python process-local locks as correctness residue under PG, with optional use only for local fairness/backpressure.
+- Listed implementation blockers for PG adapter, dialect separation, outbox claim metadata, deterministic ordering, JSONB tests, and route log/error cleanup.
+
+## Verification
+
+- Read and cited source evidence from `queue_db.py`, `saga_repo.py`, `routes.py`, `fsm/sqlite_store.py`, `schema.py`, and `common/db/database.py`.
+- Verified the mapping artifact exists at `.complex-problems/L20260522-091929/artifacts/queue-pg-jsonb-time-index-sqlite-assumptions.md`.
+- Verified the artifact contains sections for JSONB predicate mapping, timestamp decision, required PG constraints/indexes, SQLite busy/error mapping, Python lock classification, and implementation blockers.
+- No runtime code, production service, or production database was changed.
+
+## Known Gaps
+
+- P017 is a design input only; schema/code changes are later implementation work.
+- P015 owns transaction/claim concurrency and P016 owns replay/outbox/idempotency semantics.
+
+## Artifacts
+
+- `.complex-problems/L20260522-091929/artifacts/queue-pg-jsonb-time-index-sqlite-assumptions.md`
+

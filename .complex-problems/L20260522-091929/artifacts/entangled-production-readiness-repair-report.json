@@ -1,0 +1,113 @@
+{
+  "business_freeze": {
+    "matching_process_count": 0
+  },
+  "entangled": {
+    "listener_has_19900": true,
+    "pid": 3566057,
+    "raw_dsn_or_token_in_args": false,
+    "required_args": {
+      "db_backend_postgres": true,
+      "postgres_dsn_file": true,
+      "service_token_file": true
+    }
+  },
+  "health": {
+    "body": {
+      "entities": 22,
+      "entity_names": [
+        "skills",
+        "api-keys",
+        "agents",
+        "subagents",
+        "files",
+        "user-preferences",
+        "agent-skills",
+        "models",
+        "api-key-models",
+        "available-models",
+        "agent-binding",
+        "agent-tools",
+        "agent-state",
+        "messages",
+        "agent-activity-records",
+        "agent-activity-participants",
+        "environment-events",
+        "environment-im-messages",
+        "environment-notifications",
+        "environment-resource-refs",
+        "devices",
+        "vm-users"
+      ],
+      "status": "ok"
+    },
+    "status_code": 200
+  },
+  "log_error_tail": [],
+  "ready": {
+    "body": {
+      "entities": 22,
+      "entity_names": [
+        "agent-activity-participants",
+        "agent-activity-records",
+        "agent-binding",
+        "agent-skills",
+        "agent-state",
+        "agent-tools",
+        "agents",
+        "api-key-models",
+        "api-keys",
+        "available-models",
+        "devices",
+        "environment-events",
+        "environment-im-messages",
+        "environment-notifications",
+        "environment-resource-refs",
+        "files",
+        "messages",
+        "models",
+        "skills",
+        "subagents",
+        "user-preferences",
+        "vm-users"
+      ],
+      "missing": [],
+      "status": "ready"
+    },
+    "status_code": 200
+  },
+  "schema_push": {
+    "business_expected_count": 20,
+    "business_expected_names": [
+      "agent-activity-participants",
+      "agent-activity-records",
+      "agent-binding",
+      "agent-skills",
+      "agent-state",
+      "agent-tools",
+      "agents",
+      "api-key-models",
+      "api-keys",
+      "available-models",
+      "environment-events",
+      "environment-im-messages",
+      "environment-notifications",
+      "environment-resource-refs",
+      "files",
+      "messages",
+      "models",
+      "skills",
+      "subagents",
+      "user-preferences"
+    ],
+    "device_expected_count": 2,
+    "device_registered_names": [
+      "devices",
+      "vm-users"
+    ]
+  },
+  "sqlite_holders": {
+    "count": 0
+  },
+  "timestamp": "2026-05-22T20:10:00+08:00"
+}

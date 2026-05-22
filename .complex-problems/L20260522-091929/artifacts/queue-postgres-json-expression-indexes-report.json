@@ -1,0 +1,38 @@
+{
+  "ticket": "T074",
+  "problem": "P078",
+  "scope": "Follow-up to close P073 JSON expression index gap.",
+  "changed_files": [
+    "novaic-agent-runtime/queue_service/db/postgres.py",
+    "novaic-agent-runtime/queue_service/db/schema.py",
+    "novaic-agent-runtime/tests/test_queue_postgres_boundary.py"
+  ],
+  "done": [
+    "Added idx_tq_tasks_payload_agent on tq_tasks ((payload ->> 'agent_id')) WHERE payload ? 'agent_id'.",
+    "Added idx_tq_saga_state_context_agent on tq_saga_state ((context ->> 'agent_id')) WHERE context ? 'agent_id'.",
+    "Updated QueuePostgresDatabase placeholder conversion so Postgres JSONB question operators are preserved while qmark parameters still convert to psycopg placeholders.",
+    "Extended boundary tests to assert both expression indexes and adapter preservation of JSONB question operators through schema initialization."
+  ],
+  "verification": [
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_boundary.py",
+      "result": "11 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m pytest tests/test_queue_postgres_boundary.py tests/test_queue_explicit_dependencies.py tests/test_pr344_queue_claim_busy_handling.py tests/test_pr305_task_fsm_store_ledger.py tests/test_pr309_saga_fsm_store_ledger.py tests/test_pr313_worker_lease_ledger.py tests/test_pr235_session_ledger.py tests/test_pr315_queue_fsm_final_residue_guard.py",
+      "result": "35 passed"
+    },
+    {
+      "command": "PYTHONPATH=.:../novaic-common python -m compileall queue_service/db/postgres.py queue_service/db/schema.py tests/test_queue_postgres_boundary.py",
+      "result": "compileall succeeded"
+    },
+    {
+      "command": "git -C novaic-agent-runtime diff --check -- queue_service/db/postgres.py queue_service/db/schema.py tests/test_queue_postgres_boundary.py",
+      "result": "no whitespace errors"
+    }
+  ],
+  "known_gaps": [
+    "No production database was touched.",
+    "Repository SQL porting remains P074 under the Queue Postgres cutover plan, distinct from this follow-up ticket T074."
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "backup": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/start.sh.before-entangled-pg-20260522T121130Z",
+  "bash_n_ok": true,
+  "block_has_db_backend_postgres": true,
+  "block_has_inline_service_token": false,
+  "block_has_postgres_dsn_file": true,
+  "block_has_service_token_file": true,
+  "block_has_sqlite_db_path": false,
+  "diff": "--- start.sh.before\n+++ start.sh.after\n@@ -183,8 +183,9 @@\n PYTHONPATH=\"$BASE/Entangled/packages/server-python:${PYTHONPATH:-}\" \\\n $(py novaic-gateway) -m entangled.app.main \\\n     --host \"$HOST\" --port \"$PORT_ENTANGLED\" \\\n-    --db-path \"$DATA_DIR/entangled.db\" \\\n-    --service-token \"$JWT_SECRET\" \\\n+    --db-backend postgres \\\n+    --postgres-dsn-file \"/opt/novaic/postgres/secrets/novaic_entangled_dsn\" \\\n+    --service-token-file \"/opt/novaic/postgres/secrets/entangled_production_service_token\" \\\n     >> \"$LOG_DIR/entangled.log\" 2>&1 &\n wait_port \"$PORT_ENTANGLED\" \"Entangled Service\"\n \n",
+  "health": {
+    "body": {
+      "entities": 22,
+      "entity_names": [
+        "skills",
+        "api-keys",
+        "agents",
+        "subagents",
+        "files",
+        "user-preferences",
+        "agent-skills",
+        "models",
+        "api-key-models",
+        "available-models",
+        "agent-binding",
+        "agent-tools",
+        "agent-state",
+        "messages",
+        "agent-activity-records",
+        "agent-activity-participants",
+        "environment-events",
+        "environment-im-messages",
+        "environment-notifications",
+        "environment-resource-refs",
+        "devices",
+        "vm-users"
+      ],
+      "status": "ok"
+    },
+    "status_code": 200
+  },
+  "path": "/opt/novaic/start.sh",
+  "ready": {
+    "body": {
+      "entities": 22,
+      "entity_names": [
+        "agent-activity-participants",
+        "agent-activity-records",
+        "agent-binding",
+        "agent-skills",
+        "agent-state",
+        "agent-tools",
+        "agents",
+        "api-key-models",
+        "api-keys",
+        "available-models",
+        "devices",
+        "environment-events",
+        "environment-im-messages",
+        "environment-notifications",
+        "environment-resource-refs",
+        "files",
+        "messages",
+        "models",
+        "skills",
+        "subagents",
+        "user-preferences",
+        "vm-users"
+      ],
+      "missing": [],
+      "status": "ready"
+    },
+    "status_code": 200
+  },
+  "timestamp": "2026-05-22T20:35:00+08:00"
+}

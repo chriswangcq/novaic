@@ -1,0 +1,234 @@
+{
+  "cleanup": {
+    "attempted": true,
+    "deleted": true,
+    "verified_missing": true
+  },
+  "http_base": "http://127.0.0.1:19900",
+  "log_error_tail": [],
+  "rest": {
+    "create": [
+      200,
+      {
+        "data": {
+          "created_at": "2026-05-22T12:07:24Z",
+          "entangled_rowid": 410,
+          "is_custom": 1,
+          "model_id": "codex-smoke-model-1779451644008",
+          "model_name": "Codex Smoke Model",
+          "name": "Codex Smoke Model",
+          "provider": "codex-smoke",
+          "updated_at": "2026-05-22T12:07:24Z"
+        }
+      }
+    ],
+    "delete": [
+      200,
+      {
+        "deleted": true
+      }
+    ],
+    "get_after_delete": [
+      404,
+      {
+        "detail": "models/codex-smoke-model-1779451644008 not found"
+      }
+    ],
+    "get_updated": [
+      200,
+      {
+        "model_id": "codex-smoke-model-1779451644008",
+        "name": "Codex Smoke Model Updated"
+      }
+    ],
+    "health": [
+      200,
+      {
+        "entities": 22,
+        "entity_names": [
+          "skills",
+          "api-keys",
+          "agents",
+          "subagents",
+          "files",
+          "user-preferences",
+          "agent-skills",
+          "models",
+          "api-key-models",
+          "available-models",
+          "agent-binding",
+          "agent-tools",
+          "agent-state",
+          "messages",
+          "agent-activity-records",
+          "agent-activity-participants",
+          "environment-events",
+          "environment-im-messages",
+          "environment-notifications",
+          "environment-resource-refs",
+          "devices",
+          "vm-users"
+        ],
+        "status": "ok"
+      }
+    ],
+    "models_count_after": [
+      200,
+      {
+        "count": 408
+      }
+    ],
+    "models_count_before": [
+      200,
+      {
+        "count": 408
+      }
+    ],
+    "models_list": [
+      200,
+      {
+        "data_count": 3
+      }
+    ],
+    "ready": [
+      200,
+      {
+        "entities": 22,
+        "entity_names": [
+          "agent-activity-participants",
+          "agent-activity-records",
+          "agent-binding",
+          "agent-skills",
+          "agent-state",
+          "agent-tools",
+          "agents",
+          "api-key-models",
+          "api-keys",
+          "available-models",
+          "devices",
+          "environment-events",
+          "environment-im-messages",
+          "environment-notifications",
+          "environment-resource-refs",
+          "files",
+          "messages",
+          "models",
+          "skills",
+          "subagents",
+          "user-preferences",
+          "vm-users"
+        ],
+        "missing": [],
+        "status": "ready"
+      }
+    ],
+    "update": [
+      200,
+      {
+        "data": {
+          "created_at": "2026-05-22T12:07:24Z",
+          "entangled_rowid": 410,
+          "is_custom": 1,
+          "model_id": "codex-smoke-model-1779451644008",
+          "model_name": "Codex Smoke Model",
+          "name": "Codex Smoke Model Updated",
+          "provider": "codex-smoke",
+          "updated_at": "2026-05-22T12:07:24.117Z"
+        }
+      }
+    ]
+  },
+  "secret_policy": {
+    "query_string_token_used": false,
+    "raw_dsn_recorded": false,
+    "raw_jwt_recorded": false,
+    "raw_token_recorded": false,
+    "report_contains_secret": false
+  },
+  "smoke_entity": "models",
+  "smoke_id": "codex-smoke-model-1779451644008",
+  "timestamp": "2026-05-22T20:25:00+08:00",
+  "user_id": "codex-smoke-user",
+  "websocket": {
+    "frames": [
+      {
+        "entity_count": 22,
+        "event": "schema",
+        "schema_hash": "d4af30a7cfea",
+        "syncContractVersion": 2,
+        "type": "push"
+      },
+      {
+        "data_count": 408,
+        "entity": "models",
+        "mode": "snapshot",
+        "ops_count": null,
+        "type": "sync",
+        "version": 477
+      },
+      {
+        "baseVersion": 477,
+        "data_count": null,
+        "entity": "models",
+        "mode": "delta",
+        "op_kinds": [
+          "insert"
+        ],
+        "ops_count": 1,
+        "type": "sync",
+        "version": 478
+      },
+      {
+        "baseVersion": 478,
+        "data_count": null,
+        "entity": "models",
+        "mode": "delta",
+        "op_kinds": [
+          "update"
+        ],
+        "ops_count": 1,
+        "type": "sync",
+        "version": 479
+      },
+      {
+        "baseVersion": 479,
+        "data_count": null,
+        "entity": "models",
+        "mode": "delta",
+        "op_kinds": [
+          "delete"
+        ],
+        "ops_count": 1,
+        "type": "sync",
+        "version": 480
+      }
+    ],
+    "observations": {
+      "count_after": 408,
+      "count_before": 408,
+      "delta_count": 3,
+      "reconnect_schema_seen": true,
+      "reconnect_sync_seen": true,
+      "schema_seen": true,
+      "snapshot_seen": true
+    },
+    "reconnect_frames": [
+      {
+        "entity_count": 22,
+        "event": "schema",
+        "schema_hash": "d4af30a7cfea",
+        "syncContractVersion": 2,
+        "type": "push"
+      },
+      {
+        "data_count": null,
+        "entity": "models",
+        "mode": "up_to_date",
+        "ops_count": null,
+        "type": "sync",
+        "version": 480
+      }
+    ]
+  },
+  "ws_endpoint": "ws://127.0.0.1:19900/v1/sync"
+}

@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260518-235045",
+  "active_ledger_id": "L20260522-091929",
   "ledgers": [
     {
       "active_count": 0,
@@ -704,7 +704,18 @@
       "status": "done",
       "title": "项目文档重写：归档旧文档，从代码重建全套文档",
       "updated_at": "2026-05-18T16:44:19+00:00"
+    },
+    {
+      "active_count": 14,
+      "blocked_count": 0,
+      "ledger_id": "L20260522-091929",
+      "path": "L20260522-091929",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "doing",
+      "title": "Unify NovAIC persistent state on Postgres and remove stale database residue",
+      "updated_at": "2026-05-22T15:55:07+00:00"
     }
   ],
-  "updated_at": "2026-05-18T16:44:29+00:00"
+  "updated_at": "2026-05-22T15:55:07+00:00"
 }
