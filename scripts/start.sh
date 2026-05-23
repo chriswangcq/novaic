@@ -15,7 +15,7 @@
 #   - Queue Service  :19997  Task/Saga queue management
 #   - Blob Service   :19995  Blob upload/download
 #   - Sandboxd       :19994  Generic sandbox process execution
-#   - Cortex         :19996  Scope tree, LLM context assembly, Workspace, Sandbox
+#   - Cortex         :19996  Scope/context/work trace, payload manifest, shell orchestration
 #   - Workers        see novaic-agent-runtime/task_queue/workers/runtime_roster.py
 #
 # Communication:
@@ -35,6 +35,12 @@ BASE="/opt/novaic/services"
 DATA_DIR="/opt/novaic/data"
 LOG_DIR="$DATA_DIR/logs"
 HOST="127.0.0.1"
+POSTGRES_SECRETS_DIR="/opt/novaic/postgres/secrets"
+ENTANGLED_POSTGRES_DSN_FILE="$POSTGRES_SECRETS_DIR/novaic_entangled_dsn"
+ENTANGLED_SERVICE_TOKEN_FILE="$POSTGRES_SECRETS_DIR/entangled_production_service_token"
+GATEWAY_POSTGRES_DSN_FILE="$POSTGRES_SECRETS_DIR/novaic_gateway_dsn"
+QUEUE_POSTGRES_DSN_FILE="$POSTGRES_SECRETS_DIR/novaic_queue_dsn"
+CORTEX_POSTGRES_DSN_FILE="$POSTGRES_SECRETS_DIR/novaic_cortex_dsn"
 mkdir -p "$LOG_DIR"
 
 # ── Ports ────────────────────────────────────────────────────────────────────
@@ -183,8 +189,8 @@ CORTEX_INTERNAL_KEY=$(_cfg "['secrets']['cortex_internal_key']")
 PYTHONPATH="$BASE/Entangled/packages/server-python:${PYTHONPATH:-}" \
 $(py novaic-gateway) -m entangled.app.main \
     --host "$HOST" --port "$PORT_ENTANGLED" \
-    --db-path "$DATA_DIR/entangled.db" \
-    --service-token "$JWT_SECRET" \
+    --postgres-dsn-file "$ENTANGLED_POSTGRES_DSN_FILE" \
+    --service-token-file "$ENTANGLED_SERVICE_TOKEN_FILE" \
     >> "$LOG_DIR/entangled.log" 2>&1 &
 wait_port "$PORT_ENTANGLED" "Entangled Service"
 
@@ -193,6 +199,7 @@ $(py novaic-gateway) "$BASE/novaic-gateway/main_gateway.py" \
     --host "$HOST" --port "$PORT_GATEWAY" --data-dir "$DATA_DIR" \
     --queue-service-url "$QS_URL" --blob-service-url "$BLOB_URL" \
     --blob-upload-url "$BLOB_URL" \
+    --postgres-dsn-file "$GATEWAY_POSTGRES_DSN_FILE" \
     >> "$LOG_DIR/gateway-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_GATEWAY" "Gateway" 30
 
@@ -211,6 +218,7 @@ wait_port "$PORT_DEVICE" "Device Service"
 
 $(py novaic-agent-runtime) "$BASE/novaic-agent-runtime/main_novaic.py" queue-service \
     --host "$HOST" --port "$PORT_QUEUE_SERVICE" --data-dir "$DATA_DIR" \
+    --postgres-dsn-file "$QUEUE_POSTGRES_DSN_FILE" \
     >> "$LOG_DIR/queue-service.log" 2>&1 &
 wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
 
@@ -242,7 +250,7 @@ mkdir -p "$DATA_DIR/cortex"
 # ``novaic_cortex/scope_locks.py::RedisScopeLockManager``). Multi-worker /
 # multi-replica Cortex is therefore always safe.
 # Cortex runs out of its own venv; export PYTHONPATH so sibling infrastructure
-# packages resolve explicitly instead of relying on bundled fallbacks.
+# packages resolve through explicit workspace paths.
 CORTEX_BLOB_SERVICE_URL="$BLOB_URL" \
 PYTHONPATH="$BASE/novaic-cortex:$BASE/novaic-logicalfs:$BASE/novaic-sandbox-sdk:$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-cortex) -m novaic_cortex.main_cortex \
@@ -251,7 +259,8 @@ $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --internal-key "$CORTEX_INTERNAL_KEY" \
     --blob-service-url "$BLOB_URL" \
     --sandboxd-url "$SANDBOXD_URL" \
-    --operational-sqlite-path "$DATA_DIR/cortex/operational.sqlite3" \
+    --cortex-api-url "$CORTEX_URL" \
+    --operational-postgres-dsn-file "$CORTEX_POSTGRES_DSN_FILE" \
     --redis-url "redis://127.0.0.1:6379/0" \
     --redis-lock-ttl-seconds 300 \
     >> "$LOG_DIR/cortex.log" 2>&1 &

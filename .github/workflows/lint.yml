@@ -67,3 +67,5 @@ jobs:
       run: ./scripts/ci/lint_lifecycle_loop_ownership.sh
     - name: Run generated artifact lint
       run: ./scripts/ci/lint_generated_artifacts.sh
+    - name: Run retired file and SQLite residue lint
+      run: python3 scripts/ci/test_no_legacy_file_hot_paths.py

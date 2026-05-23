@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260523-103752",
+  "active_ledger_id": "L20260523-104921",
   "ledgers": [
     {
       "active_count": 0,
@@ -726,7 +726,18 @@
       "status": "done",
       "title": "Purge rollback-only SQLite artifacts from api",
       "updated_at": "2026-05-23T02:44:12+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260523-104921",
+      "path": "L20260523-104921",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Remove server-side SQLite code residue after Postgres cutover",
+      "updated_at": "2026-05-23T04:11:45+00:00"
     }
   ],
-  "updated_at": "2026-05-23T02:44:12+00:00"
+  "updated_at": "2026-05-23T04:11:45+00:00"
 }

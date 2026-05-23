@@ -340,40 +340,6 @@ check_status() {
   $RELAY_SSH 'systemctl is-active novaic-quic-service && echo "  Relay: ✓ running" || echo "  Relay: ✗ stopped"'
 }
 
-# ── 运维：重置 Gateway 用户登录密码（api.gradievo.com 上 gateway.db） ─────────
-# 新密码通过管道传入远端 Python，避免出现在 ssh 命令行参数里。
-# 用法:
-#   ./deploy reset-password 7334381@qq.com
-#   （交互输入两次新密码，至少 8 位）
-# 非交互（仅本机脚本/CI，注意 shell 历史）:
-#   NOVAIC_DEPLOY_NEW_PASSWORD='YourPass12' ./deploy reset-password 7334381@qq.com
-reset_user_password() {
-  local email="${2:-}"
-  [ -n "$email" ] || fail "用法: ./deploy reset-password <email>"
-  local pass="${NOVAIC_DEPLOY_NEW_PASSWORD:-}"
-  if [ -z "$pass" ]; then
-    read -r -s -p "New password (min 8 chars): " pass
-    echo ""
-    read -r -s -p "Confirm: " pass2
-    echo ""
-    [ "$pass" = "$pass2" ] || fail "两次输入不一致"
-  fi
-  [ ${#pass} -ge 8 ] || fail "密码至少 8 位"
-
-  local script_local="$REPO_ROOT/novaic-gateway/scripts/admin_reset_user_password.py"
-  [ -f "$script_local" ] || fail "本地缺少 $script_local"
-  info "同步 admin_reset_user_password.py → $API_HOST ..."
-  rsync -avz -e ssh "$script_local" "$API_HOST:$SERVICES_DIR/novaic-gateway/scripts/" || fail "rsync 脚本失败"
-
-  local db="/opt/novaic/data/gateway.db"
-  info "SSH → $API_HOST : 重置 $email 的密码并撤销其 refresh token..."
-  printf '%s' "$pass" | $API_SSH \
-    "cd $SERVICES_DIR/novaic-gateway && test -x .venv/bin/python || { echo 'missing .venv'; exit 1; } && \
-     .venv/bin/python scripts/admin_reset_user_password.py --db $db --revoke-refresh $(printf '%q' "$email") -" \
-    || fail "远程执行失败（检查邮箱是否存在、.venv、gateway.db 路径）"
-  ok "密码已更新；该用户需重新登录"
-}
-
 check_logs() {
   local svc="${2:-gateway}"
   info "查看 $svc 最新日志"
@@ -426,7 +392,6 @@ show_help() {
   echo "  status            检查所有服务状态"
   echo "  fresh-smoke [epoch] 检查关键后端日志是否在 epoch 后更新（默认最近 15 分钟）"
   echo "  logs [svc]        查看日志 (gateway|business|device|entangled|sandboxd|cortex|runtime|worker|health|scheduler|relay)"
-  echo "  reset-password <email>  在 api 机上重置该用户登录密码（交互输入；可选 NOVAIC_DEPLOY_NEW_PASSWORD）"
   echo ""
 }
 
@@ -449,6 +414,5 @@ case "${1}" in
   status)         check_status ;;
   fresh-smoke)    verify_fresh_backend_logs "${2:-}" ;;
   logs)           check_logs "$@" ;;
-  reset-password) reset_user_password "$@" ;;
   *)              show_help ;;
 esac

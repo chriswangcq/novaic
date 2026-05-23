@@ -1,0 +1,755 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-23T02:54:31+00:00",
+      "criteria_map": [
+        "Startup scripts launch migrated services with Postgres flags: satisfied by Entangled, Gateway, Queue Service, and Cortex arguments in `scripts/start.sh`.",
+        "Startup scripts no longer pass old server SQLite DB paths: satisfied by the focused `rg` scan on `scripts/start.sh`.",
+        "Preserve unrelated root worktree edits: satisfied; edits were limited to the relevant `scripts/start.sh` lines already in the current worktree plus the Cortex parser dependency.",
+        "Focused residue scan over current startup paths: satisfied by the scan listed above."
+      ],
+      "evidence": [
+        "`R000` records the startup patch and verification commands.",
+        "`bash -n scripts/start.sh` passed.",
+        "`python -m py_compile novaic_cortex/main_cortex.py` passed.",
+        "Focused scan of `scripts/start.sh` found no `entangled.db`, `operational.sqlite3`, `queue.db`, `gateway.db`, `device.db`, `business.db`, `--db-path`, or `--operational-sqlite-path`.",
+        "API host inventory confirmed the selected DSN secret paths exist under `/opt/novaic/postgres/secrets`."
+      ],
+      "execution_map": [
+        "`R000` changed the startup script and the Cortex argument parser dependency.",
+        "Verification covered shell syntax, Python syntax, and startup residue strings."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Queue worker subprocess DB configuration and deeper service runtime fallback deletion are not solved by this startup slice, but they are already separate child problems under the same ledger and do not block P001's startup-entry success."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A likely failure mode is a service still requiring a SQLite path even after startup stops passing it. The Cortex parser was compiled after changing `--operational-sqlite-path` from required to deprecated/optional, which covers the known blocking case in this slice."
+      ],
+      "summary": "Success. The current startup/deployment entry point for backend processes no longer launches migrated server services with SQLite database files, and the necessary Cortex parser change lets the startup script omit the old operational SQLite path in Postgres mode."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-23T03:03:46+00:00",
+      "criteria_map": [
+        "Queue CLI no longer accepts SQLite backend selection: satisfied by removing `--db-backend` and `NOVAIC_QUEUE_DB_BACKEND` from `main_novaic.py`.",
+        "Queue Service no longer constructs `queue.db` or reports SQLite readiness: satisfied by `queue_service/main.py` changes and focused scan.",
+        "Worker DB assembly no longer reads backend env or constructs queue.db: satisfied by `_queue_worker_database(... postgres_dsn_file=...)` and focused scan.",
+        "Old Queue migration CLI/modules/tests deleted: satisfied by deleted `queue_service/db/migration.py`, `queue_service/db/migrate_sqlite_to_postgres.py`, and migration test files.",
+        "Focused tests and scans pass: satisfied by the listed commands."
+      ],
+      "evidence": [
+        "`R001` records the code deletion and focused verification.",
+        "Py-compile passed for the changed Queue runtime modules.",
+        "Focused Queue test set passed with `36 passed`.",
+        "Residue scan over current Queue runtime paths found no `NOVAIC_QUEUE_DB_BACKEND`, `queue.db`, `migrate_sqlite_to_postgres`, `sqlite_boundary`, `--db-backend`, `SQLITE_DB_PATH`, or `sqlite_path`.",
+        "`scripts/start.sh` now passes `--postgres-dsn-file \"$QUEUE_POSTGRES_DSN_FILE\"` to Queue Service, and `runtime_roster.py` passes the same file to session/saga outbox workers."
+      ],
+      "execution_map": [
+        "`R001` executed one coherent runtime cleanup and updated tests to assert the new Postgres-only shape.",
+        "Wider test execution identified residual suite issues but not a Queue runtime SQLite fallback regression."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "The generic FSM store still contains SQLite implementation and naming. That is not a server backend selector after this change, but it is still residue and remains for the later residue-guard/follow-up phase."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The main plausible regression is a hidden startup path still setting `NOVAIC_QUEUE_DB_BACKEND` or constructing `queue.db`. The runtime scan covered `queue_service`, `task_queue`, and `main_novaic.py`, and the root startup script now passes the Queue DSN file explicitly."
+      ],
+      "summary": "Success for the Queue runtime-fallback problem. `R001` removes the active server runtime selector, queue.db construction, migration CLIs, SQLite busy compatibility boundary, and updates outbox-worker DB assembly to explicit Postgres DSN inputs."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-23T03:10:20+00:00",
+      "criteria_map": [
+        "Gateway no longer defaults to or accepts SQLite backend selection: satisfied by removing `--db-backend` from `main_gateway.py` and using required `--postgres-dsn-file`.",
+        "Gateway DB access initializes Postgres only: satisfied by `gateway/db/access.py` simplifying to `PostgresGatewayDatabase`.",
+        "Executable `gateway.db` mutation/migration scripts are deleted: satisfied by deleting the Gateway migration script and root admin/add-agent scripts, plus removing `deploy reset-password`.",
+        "Device local SQLite module deleted and comments updated: satisfied by deleting `device/db_access.py` and rewriting Device local DB comments.",
+        "Focused tests/scans pass: satisfied by the listed commands."
+      ],
+      "evidence": [
+        "Gateway py-compile passed for changed runtime modules.",
+        "Gateway focused tests passed with `5 passed`.",
+        "Device py-compile passed for changed modules.",
+        "`bash -n deploy` and `bash -n scripts/start.sh` passed after removing the old reset-password operation.",
+        "Residue scan over current Gateway/Device runtime and deploy paths found no executable old SQLite utility references; remaining `gateway.db` text in the scan is Python package namespace usage (`gateway.db`), not an old DB file."
+      ],
+      "execution_map": [
+        "`R002` covered Gateway runtime, Gateway packaging/deps, root deploy scripts, Device local DB module, and focused verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Global config still carries the unused `database.gateway_db_file` value in `novaic-common/config/services.json`; that is a global config residue and remains for the final residue guard/config cleanup child."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The likely recurrence path was `./deploy reset-password`, which still synchronized and executed a script against `/opt/novaic/data/gateway.db`. That command and the underlying script were both deleted, so the old operational path cannot be invoked from the current deploy tool."
+      ],
+      "summary": "Success. `R002` removes active Gateway/Device server SQLite utilities and makes Gateway auth/config runtime Postgres-only."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-23T04:06:13+00:00",
+      "criteria_map": [
+        "All P004 criteria are met: Cortex operational storage is Postgres-only; Entangled server-python DB boundary/migration path is Postgres-only; tests no longer rely on SQLite fallback."
+      ],
+      "evidence": [
+        "Cortex and Entangled py_compile/pytest passed; service-side SQLite/fallback residue scan is empty."
+      ],
+      "execution_map": [
+        "Implementation removed Cortex operational SQLite store/config and Entangled server-python SQLite Database/migration/test paths, then updated focused tests to current Postgres boundary."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Entangled client-rust keeps its desktop local cache SQLite code, outside service-side DB unification."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Service-side residue scan across current runtime/config paths returned no SQLite/fallback token hits; focused compile and pytest suites passed."
+      ],
+      "summary": "P004 success: Cortex and Entangled server SQLite fallback paths are gone from current service code."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P005/checks/C004.md",
+      "created_at": "2026-05-23T04:10:23+00:00",
+      "criteria_map": [
+        "Guard covers active service/runtime/config paths and fails on service SQLite/fallback tokens; workflow runs it; current guard execution passes."
+      ],
+      "evidence": [
+        "python3 guard passed; pytest guard passed; service-side residue scan returned no hits."
+      ],
+      "execution_map": [
+        "Updated scripts/ci/test_no_legacy_file_hot_paths.py, lint workflow, and packaged launcher blob-service names; recorded verification evidence."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Entangled client-rust and desktop local cache SQLite remain deliberately out of scope."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Ran guard as plain Python, ran it under pytest, and ran focused service-side residue rg scan with no hits."
+      ],
+      "summary": "P005 success: SQLite residue guard is CI-runnable, passes locally, and active service paths scan clean."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C005.md",
+      "created_at": "2026-05-23T04:11:28+00:00",
+      "criteria_map": [
+        "All success criteria are met: startup/deploy, Queue, Gateway, Device, Entangled server-python, Cortex, tests, and guards now reflect Postgres-only server persistence."
+      ],
+      "evidence": [
+        "P001-P005 success checks, R005 result, focused test runs, root guard, and empty active-path residue scan."
+      ],
+      "execution_map": [
+        "Closed child problems P001-P005, removed old SQLite runtime/fallback/migration/test paths, added active-path guard, and verified current service paths."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Client-local SQLite caches and historical archive docs remain out of server-side DB unification scope."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Focused py_compile/pytest suites passed; root guard passed directly and under pytest; service-side residue rg scan returned no hits."
+      ],
+      "summary": "P000 success: server-side SQLite residue is removed from current runtime paths and guarded."
+    }
+  },
+  "counters": {
+    "check": 6,
+    "event": 72,
+    "problem": 6,
+    "result": 6,
+    "ticket": 6
+  },
+  "created_at": "2026-05-23T02:49:21+00:00",
+  "ledger_id": "L20260523-104921",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-23T02:49:21+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "Postgres is now the intended server-side persistence boundary, but the repository still contains active-looking SQLite runtime branches, startup flags, migration CLIs, admin scripts, comments, and tests. This residue makes future humans and AI likely to reintroduce queue.db, gateway.db, device.db, entangled.db, or Cortex operational.sqlite3 paths after the cutover.\n\nScope is server-side production and developer runtime code in this workspace. Client-local cache SQLite is out of scope unless it crosses into server persistence. Archived historical docs are lower priority unless they are referenced by current runbooks or scripts.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004",
+        "P005"
+      ],
+      "success_criteria": [
+        "Server startup paths no longer pass or document SQLite database files for migrated services.",
+        "Queue, Gateway, Device, Entangled, and Cortex current runtime entry points no longer expose SQLite as the normal or fallback server backend after the Postgres cutover.",
+        "Migration/admin scripts that only exist to operate old SQLite server databases are removed or moved out of executable current paths.",
+        "Current tests and residue guards reflect the Postgres-only server shape instead of preserving SQLite compatibility as a goal.",
+        "Any remaining SQLite references are either client-local cache, historical archive, or explicitly justified non-server test substrate with a follow-up if not removable in this pass."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Remove server-side SQLite code residue after Postgres cutover",
+      "updated_at": "2026-05-23T04:11:28+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-23T02:50:24+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Current root startup scripts and service launch arguments still pass server SQLite database paths after the Postgres cutover, including Entangled and Cortex paths. These entry points are the highest-risk residue because they define how future deployments are copied or restarted.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Current startup scripts launch migrated services with Postgres backend arguments or explicit Postgres DSN files.",
+        "Current startup scripts no longer pass `entangled.db`, `operational.sqlite3`, `gateway.db`, `device.db`, `business.db`, or `queue.db` paths as server persistence.",
+        "Existing unrelated root worktree edits are preserved.",
+        "A focused residue scan over current startup/deployment paths confirms no server SQLite DB launch arguments remain."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Remove SQLite from current startup and deployment entry points",
+      "updated_at": "2026-05-23T02:54:31+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-23T02:50:24+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Queue Service still exposes SQLite backend choices, queue.db path construction, migration CLIs, and tests that preserve SQLite compatibility as current behavior. This directly conflicts with the Postgres-only server persistence target.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Queue Service runtime entry points use Postgres as the only server backend and no longer offer a SQLite backend selector.",
+        "Queue worker database assembly no longer constructs or logs queue.db paths.",
+        "Old Queue SQLite-to-Postgres migration CLIs/modules/tests are removed from current executable paths.",
+        "Focused Queue tests and residue scans pass for the Postgres-only boundary."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Remove Queue Service SQLite runtime fallback",
+      "updated_at": "2026-05-23T03:03:46+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-23T02:50:24+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Gateway and Device still contain SQLite backend defaults, gateway.db admin/migration scripts, and device local DB modules/comments. These paths make deleted gateway.db/device.db files look recoverable and supported.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Gateway startup defaults to Postgres-only auth/config storage and rejects SQLite backend selection in current server runtime.",
+        "Gateway SQLite migration/admin scripts are deleted from current executable paths or replaced with Postgres-only equivalents if still needed.",
+        "Device local SQLite modules and comments that claim active SQLite ownership are deleted or rewritten to the Entangled/EntityStore current path.",
+        "Focused Gateway/Device tests or imports pass after deletion."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Remove Gateway and Device server SQLite utilities",
+      "updated_at": "2026-05-23T03:10:20+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-23T02:50:24+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Cortex operational state and Entangled entity engine still expose SQLite as default or selectable server persistence. Migration scripts and comments also teach old SQLite operational stores as current.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Cortex runtime entry point defaults to Postgres operational store and does not accept SQLite as a production fallback.",
+        "Entangled runtime entry point defaults to Postgres and no longer launches from SQLite db-path in current startup examples.",
+        "Old Cortex/Entangled SQLite migration CLIs are retired from current executable paths when no longer needed.",
+        "Remaining SQLite code, if any, is limited to non-production tests or explicitly recorded as a follow-up with reason."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Remove Cortex and Entangled server SQLite fallback paths",
+      "updated_at": "2026-05-23T04:06:13+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P005/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-23T02:50:24+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "After code deletion, tests and guard scripts must stop encoding SQLite compatibility as a desirable server property. The work also needs durable evidence so future cleanup does not regress.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P005",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Tests/guard scripts assert Postgres-only server persistence where relevant.",
+        "A residue inventory categorizes remaining SQLite references into current allowed, historical archive, or follow-up-required.",
+        "The ledger records evidence from diffs, scans, and test runs.",
+        "Touched submodules and root pointers are committed and pushed without reverting unrelated worktree changes."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Update residue guards, tests, and ledger evidence",
+      "updated_at": "2026-05-23T04:10:23+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`scripts/start.sh`",
+        "`novaic-cortex/novaic_cortex/main_cortex.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-23T02:54:09+00:00",
+      "done": [
+        "Added `/opt/novaic/postgres/secrets` DSN variables in `scripts/start.sh`.",
+        "Replaced Entangled `--db-path /opt/novaic/data/entangled.db` with `--db-backend postgres`, `--postgres-dsn-file`, and `--service-token-file`.",
+        "Added Gateway `--db-backend postgres --postgres-dsn-file`.",
+        "Added Queue Service `--db-backend postgres --postgres-dsn-file`.",
+        "Replaced Cortex `--operational-sqlite-path /opt/novaic/data/cortex/operational.sqlite3` with Postgres operational-store flags.",
+        "Relaxed `novaic-cortex/novaic_cortex/main_cortex.py` so Postgres mode no longer requires the deprecated SQLite path argument."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Cortex still has a deprecated `--operational-sqlite-path` parser option and SQLite store implementation; deeper deletion belongs to the Cortex/Entangled child problem.",
+        "Queue worker subprocesses still rely on the runtime code's database assembly behavior; Queue runtime fallback deletion belongs to the Queue child problem."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The current startup entry point no longer launches migrated server services through old SQLite database files. The script now names the Postgres DSN secret files explicitly and passes Postgres launch flags for Entangled, Gateway, Queue Service, and Cortex.",
+      "ticket_id": "T001",
+      "verification": [
+        "`bash -n scripts/start.sh` passed.",
+        "`python -m py_compile novaic_cortex/main_cortex.py` passed.",
+        "Focused scan of `scripts/start.sh` found no `entangled.db`, `operational.sqlite3`, `queue.db`, `gateway.db`, `device.db`, `business.db`, `--db-path`, or `--operational-sqlite-path` launch residue.",
+        "Remote API machine path inventory confirmed the Postgres DSN files exist under `/opt/novaic/postgres/secrets` for Entangled, Gateway, Queue, and Cortex."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "Changed Queue files listed in `git status --short` under `novaic-agent-runtime`.",
+        "Deleted migration files and migration tests from current paths."
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-23T03:03:28+00:00",
+      "done": [
+        "Removed `--db-backend` and `NOVAIC_QUEUE_DB_BACKEND` from `main_novaic.py queue-service`.",
+        "Removed `queue.db` path construction, SQLite readiness reporting, and SQLite schema fallback from `queue_service/main.py`.",
+        "Simplified `queue_service.db.create_queue_database()` to return `QueuePostgresDatabase` only.",
+        "Removed Queue SQLite migration modules: `queue_service/db/migration.py` and `queue_service/db/migrate_sqlite_to_postgres.py`.",
+        "Removed `queue_service/db/sqlite_boundary.py` and the `sqlite_lock_timeout_kwargs` call sites in `queue_service/queue_db.py` and `queue_service/saga_repo.py`.",
+        "Removed SQLite busy classification from `queue_service/transient_errors.py`.",
+        "Added explicit `--postgres-dsn-file` options for the session/saga outbox workers and updated `runtime_roster.py` so supervised worker commands pass `$QUEUE_POSTGRES_DSN_FILE`.",
+        "Deleted the Queue SQLite migration test files and updated focused tests to assert Postgres-only runtime behavior."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "`queue_service/fsm/sqlite_store.py` remains as a generic FSM store used by task/saga/session/lease ledgers and many tests. It is no longer a server runtime backend selector, but it is still misleading by name and implementation and should be handled by a separate follow-up or the residue guard child problem.",
+        "Some low-level SQL helpers still branch on a `backend_name` default of `sqlite` for old unit-test fixtures; the runtime entry points no longer expose this path.",
+        "Full-suite verification is blocked by unrelated existing failures: one collection error for `_exec_payload_qa`, missing root docs expected by PR-340 tests, `main_task.py` residue guard, and other pre-existing fixture expectations."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Executed the Queue runtime cleanup slice. Queue server startup and direct-DB outbox worker assembly are now Postgres-only, old queue SQLite migration code is deleted, and the dedicated SQLite lock/busy compatibility boundary is gone from runtime paths.",
+      "ticket_id": "T002",
+      "verification": [
+        "`python -m py_compile queue_service/main.py main_novaic.py task_queue/workers/assembly_factories.py task_queue/workers/registry.py task_queue/workers/runtime_roster.py queue_service/db/__init__.py queue_service/db/postgres.py queue_service/queue_db.py queue_service/saga_repo.py queue_service/transient_errors.py` passed.",
+        "Focused test set passed: `pytest tests/test_queue_runtime_postgres_default.py tests/test_queue_postgres_boundary.py tests/test_queue_transient_errors.py tests/test_pr345_recovery_background_defer.py tests/test_pr339_worker_startup_db_retry.py tests/test_pr344_queue_claim_busy_handling.py` (`36 passed`).",
+        "Runtime residue scan over `queue_service`, `task_queue`, and `main_novaic.py` found no `NOVAIC_QUEUE_DB_BACKEND`, `queue.db`, `migrate_sqlite_to_postgres`, `sqlite_boundary`, `--db-backend`, `SQLITE_DB_PATH`, or `sqlite_path`.",
+        "Wider `pytest --ignore=tests/unit/task_queue/test_payload_tool_handlers.py` ran 832 tests with 817 passing and 15 failing; the failures are existing broader-suite issues around old tests/docs/fixtures and Postgres FSM-store payload expectations, not the removed Queue SQLite runtime fallback."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Gateway submodule changes in `novaic-gateway`.",
+        "Device submodule changes in `novaic-device`.",
+        "Root deploy/script/docs changes deleting old Gateway SQLite operations."
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-23T03:09:58+00:00",
+      "done": [
+        "Removed Gateway `--db-backend` CLI selection and `gateway.db` file assignment from `main_gateway.py`.",
+        "Simplified `gateway/db/access.py` to initialize `PostgresGatewayDatabase` only via `--postgres-dsn-file`.",
+        "Removed common SQLite DB exports from `gateway/db/__init__.py`.",
+        "Deleted `novaic-gateway/scripts/migrate_gateway_sqlite_to_postgres.py`.",
+        "Removed `aiosqlite` and packaged `sqlite3` hidden imports from Gateway packaging/dependencies.",
+        "Deleted root SQLite utility scripts `scripts/gateway/add_agent_a2.py` and `scripts/gateway/admin_reset_user_password.py`.",
+        "Removed `deploy reset-password`, which still pushed a SQLite `gateway.db` mutation script to the API host.",
+        "Deleted `novaic-device/device/db_access.py` and rewrote Device comments away from local SQLite ownership."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "`novaic-common/config/services.json` still contains the now-unused `database.gateway_db_file` config key. That is outside Gateway/Device submodule runtime code and should be removed in the global residue guard/config cleanup phase.",
+        "Gateway schema still has `init_schema_sync` for old tests/import compatibility inside the module; no current runtime imports it after this patch."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Gateway and Device no longer expose current executable server SQLite utilities. Gateway runtime is Postgres-only, old `gateway.db` admin/migration scripts are gone, and Device local DB code has been deleted.",
+      "ticket_id": "T003",
+      "verification": [
+        "`python -m py_compile main_gateway.py gateway/db/access.py gateway/db/__init__.py gateway/db/schema.py gateway/entity/defs_users.py gateway/infra/auth.py` passed.",
+        "Gateway focused tests passed: `pytest tests/test_gateway_postgres_storage.py tests/test_pr141_no_db_access_alias.py` (`5 passed`).",
+        "`python -m py_compile main_device.py device/config_agents_db.py device/config_agents.py device/ssh_keys.py` passed.",
+        "`bash -n deploy` and `bash -n scripts/start.sh` passed.",
+        "Focused residue scan over current Gateway/Device runtime and deploy script paths found no old SQLite script or DB-file references; remaining matches are Python module namespace imports such as `gateway.db`, not `gateway.db` files."
+      ]
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-23T04:05:44+00:00",
+      "done": [
+        "Removed Cortex operational SQLite store/config and Entangled server-python SQLite Database/migration/test paths."
+      ],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Cortex and Entangled server SQLite fallback paths removed; Postgres-only code and tests verified.",
+      "ticket_id": "T004",
+      "verification": [
+        "Cortex and Entangled server-python py_compile and focused pytest suites passed; service-side SQLite residue scan is empty for current runtime paths."
+      ]
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P005/results/R004.md",
+      "created_at": "2026-05-23T04:09:59+00:00",
+      "done": [
+        "Extended active-path residue guard, wired it into lint workflow, made it directly executable, and updated packaged launcher blob-service binary names."
+      ],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Added CI-runnable service-side SQLite residue guard and cleaned stale launcher naming revealed by the guard.",
+      "ticket_id": "T005",
+      "verification": [
+        "Plain Python guard passed, pytest guard passed, and focused service-side residue scan returned no hits."
+      ]
+    },
+    "R005": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R005.md",
+      "created_at": "2026-05-23T04:10:59+00:00",
+      "done": [
+        "Removed migrated SQLite server runtime/fallback/migration/test paths across startup, Queue, Gateway, Device, Cortex, Entangled server-python, Common, and active config/scripts."
+      ],
+      "id": "R005",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Server-side SQLite residue deletion pass completed and guarded after Postgres cutover.",
+      "ticket_id": "T000",
+      "verification": [
+        "Focused compile/pytest suites passed; root guard and active service-side residue scan passed."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Startup scripts no longer pass server SQLite file paths for migrated services.",
+        "Current server runtime entry points reject or omit SQLite backend selection for migrated services.",
+        "SQLite migration/admin utilities for old server DB files are deleted from current executable paths.",
+        "Tests no longer encode SQLite fallback as desired server behavior.",
+        "Remaining SQLite references are enumerated and justified by category."
+      ],
+      "assumptions": [
+        "Server-side production persistence is Postgres-only after the migration.",
+        "Client-local SQLite caches are out of scope for this cleanup pass.",
+        "Historical docs archives can remain if they are not imported, executed, or referenced by current runbooks."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Touches multiple service boundaries and requires staged deletion plus tests.",
+      "created_at": "2026-05-23T02:49:45+00:00",
+      "id": "T000",
+      "problem_definition": "Postgres cutover is complete for server persistence, but current code still contains SQLite runtime switches, server database file arguments, migration/admin CLIs, and tests that assert SQLite compatibility. These paths are misleading because they look executable after the cutover.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the cleanup by active service boundary. First remove production startup and runtime selector residue. Then retire old migration/admin scripts and update tests/residue guards so Postgres-only server persistence is the current path. Keep only references that are clearly client-local cache or historical archive, and label any remaining low-level SQLite substrate as a separately closed follow-up if it cannot be deleted without replacing a still-active abstraction.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Some low-level SQLite adapters may still be used as generic test stores and require a separate Postgres-backed replacement rather than blind deletion.",
+        "Existing unrelated root worktree changes must be preserved while editing shared scripts.",
+        "Production runtime may rely on env/secret files not present locally, so local verification may be limited to import/unit/residue checks unless remote deploy smoke is performed."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Delete migrated server SQLite code paths",
+      "updated_at": "2026-05-23T04:10:59+00:00",
+      "verification_plan": "- Run targeted ripgrep residue scans across current service directories.\n- Run focused unit tests for changed service boundaries.\n- Run ledger success check with evidence from diffs, scans, and tests.\n- Commit and push each touched submodule plus the root pointer/ledger changes."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "`scripts/start.sh` no longer contains `entangled.db` or `operational.sqlite3` server launch arguments.",
+        "Entangled launches with `--db-backend postgres --postgres-dsn-file`.",
+        "Gateway launches with `--db-backend postgres --postgres-dsn-file`.",
+        "Cortex launches with `--operational-backend postgres --operational-postgres-dsn-file`.",
+        "A focused scan over current startup/deploy files reports no old server SQLite launch args."
+      ],
+      "assumptions": [
+        "`/opt/novaic/secrets/*-postgres-dsn` is the intended family of secret files used by the Docker/API machine layout."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Single startup script plus one current runbook line; bounded and verifiable by shell syntax plus residue scan.",
+      "created_at": "2026-05-23T02:50:58+00:00",
+      "id": "T001",
+      "problem_definition": "The root Linux/cloud startup script still passes server SQLite database files for Entangled and Cortex and does not pass Postgres DSN files for those services. Gateway also starts without Postgres backend flags.",
+      "problem_id": "P001",
+      "proposed_solution": "Patch `scripts/start.sh` so migrated server services start with explicit Postgres backend flags and DSN files under `/opt/novaic/secrets`. Add shell variables for the current Postgres DSN file paths, remove server SQLite file arguments, and preserve the existing unrelated script edits. Update any current deploy runbook line that still describes a SQLite gateway.db operation when it is part of current docs.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "The exact production DSN filenames must match deployed secret paths; choose stable service-specific filenames under `/opt/novaic/secrets` and align later deploy if production differs."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make current startup Postgres-only",
+      "updated_at": "2026-05-23T02:54:09+00:00",
+      "verification_plan": "- Run `bash -n scripts/start.sh`.\n- Run `rg` against `scripts/start.sh` and current deploy docs for `.db`/SQLite launch residue.\n- Inspect `git diff -- scripts/start.sh docs/runbooks/deploy.md` to ensure the change is scoped."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "`main_novaic.py queue-service` no longer accepts `--db-backend sqlite` or sets `NOVAIC_QUEUE_DB_BACKEND`.",
+        "`queue_service/main.py` no longer constructs `queue.db` or reports SQLite readiness.",
+        "`task_queue/workers/assembly_factories.py` no longer reads `NOVAIC_QUEUE_DB_BACKEND` or constructs `queue.db`.",
+        "Old Queue SQLite migration CLI/modules/tests are deleted from current paths.",
+        "Focused Queue Postgres tests and residue scans pass."
+      ],
+      "assumptions": [
+        "Queue server production and integration-test environments have `/opt/novaic/postgres/secrets/novaic_queue_dsn` or an equivalent DSN file."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "One service boundary with concrete runtime/migration deletion and focused tests; deeper low-level test substrate can be judged as a gap if it remains.",
+      "created_at": "2026-05-23T02:55:25+00:00",
+      "id": "T002",
+      "problem_definition": "Queue Service still carries active-looking SQLite runtime fallback: CLI `--db-backend sqlite`, env backend switches, queue.db construction, SQLite migration CLIs, and SQLite lock boundary helpers. These make the old queue.db path look supported after the Postgres cutover.",
+      "problem_id": "P002",
+      "proposed_solution": "Remove the Queue runtime backend switch and make Postgres the only server runtime database. Delete old SQLite-to-Postgres migration modules/tests from current executable paths. Replace worker DB assembly with explicit Postgres DSN inputs, and update the supervised worker roster/startup commands for outbox workers that open the Queue DB directly.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Many older tests use `common.db.Database(tmp_path / queue.sqlite3)` as a cheap unit-test substrate; removing all of that in one step may require a larger Postgres test fixture refactor.",
+        "Some repository SQL helpers still generate SQLite dialect branches for old tests; this ticket focuses on server runtime fallback, not every low-level historical dialect branch."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make Queue Service Postgres-only at runtime",
+      "updated_at": "2026-05-23T03:03:28+00:00",
+      "verification_plan": "- Run targeted Queue runtime tests after updating expectations.\n- Run `python -m py_compile` on changed Queue modules.\n- Run `rg` for `NOVAIC_QUEUE_DB_BACKEND`, `queue.db`, `migrate_sqlite_to_postgres`, and `sqlite_boundary` in Queue runtime paths."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Gateway current runtime no longer defaults to or accepts `--db-backend sqlite`.",
+        "Gateway DB access initializes `PostgresGatewayDatabase` only and requires a Postgres DSN file.",
+        "Current executable scripts that mutate or migrate `gateway.db` are deleted from root/Gateway paths.",
+        "Device local SQLite DB module is deleted if unused, and Device comments no longer claim local SQLite storage ownership.",
+        "Focused Gateway/Device imports/tests and residue scans pass."
+      ],
+      "assumptions": [
+        "`/opt/novaic/postgres/secrets/novaic_gateway_dsn` is the production Gateway auth/config DSN file."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Two service utility surfaces with clear files to delete/update and focused compile/residue checks.",
+      "created_at": "2026-05-23T03:04:04+00:00",
+      "id": "T003",
+      "problem_definition": "Gateway still defaults to SQLite auth/config storage and ships scripts that directly mutate `gateway.db`. Device still has an executable local SQLite DB module and comments that describe SQLite as the current storage owner. These contradict the Postgres/Entangled server-state target and make deleted DB files look supported.",
+      "problem_id": "P003",
+      "proposed_solution": "Make Gateway runtime Postgres-only by removing SQLite backend selection and db-file configuration from the current entry point/access layer. Delete executable SQLite migration/admin scripts in Gateway/current root scripts. Remove the Device local SQLite DB module if unused, and rewrite misleading Device comments to EntityStore/Entangled ownership.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Some tests may still use SQLite schema validators or client-side cache references; those should be categorized rather than silently kept as server runtime paths."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Remove Gateway and Device SQLite current-path utilities",
+      "updated_at": "2026-05-23T03:09:58+00:00",
+      "verification_plan": "- Run py-compile for changed Gateway/Device modules.\n- Run focused Gateway Postgres tests and Device import checks.\n- Run residue scans for `gateway.db`, `device.db`, `sqlite3`, and `--db-backend` over current Gateway/Device runtime paths."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Cortex startup CLI no longer accepts or requires an operational SQLite path.",
+        "Entangled startup CLI no longer advertises SQLite db-path startup as normal server mode.",
+        "Old Cortex/Entangled SQLite migration CLIs are deleted from current executable paths.",
+        "Root `scripts/start.sh` matches the new Postgres-only CLI surface.",
+        "Focused py-compile/residue scans pass, and any remaining SQLite store substrate is explicitly categorized."
+      ],
+      "assumptions": [
+        "Production Cortex and Entangled should be started only against `/opt/novaic/postgres/secrets/novaic_cortex_dsn` and `/opt/novaic/postgres/secrets/novaic_entangled_dsn`."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded to startup CLI fallback and migration-script deletion; deeper store refactor remains explicitly categorized.",
+      "created_at": "2026-05-23T03:10:46+00:00",
+      "id": "T004",
+      "problem_definition": "Cortex and Entangled still expose SQLite fallback paths through service CLIs, default configs, and old migration scripts. After the Postgres cutover these are misleading current paths even when production startup already aims at Postgres.",
+      "problem_id": "P004",
+      "proposed_solution": "Make Cortex and Entangled server entry points Postgres-only where practical, delete old SQLite migration CLIs from current paths, and update root startup to match. Preserve only lower-level store code that cannot be safely deleted in this pass without replacing active abstractions, and record it explicitly as residue for the guard/follow-up phase.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Cortex's Postgres operational store currently subclasses the SQLite store implementation, so deleting all SQLite-named substrate requires a larger refactor.",
+        "Entangled SQL entity definitions may still support SQLite dialect generation for tests or historical clients."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Remove Cortex and Entangled SQLite server runtime fallbacks",
+      "updated_at": "2026-05-23T04:05:44+00:00",
+      "verification_plan": "- Run py-compile on changed Cortex/Entangled modules.\n- Run focused tests for Postgres boundary modules if available.\n- Run residue scans over `novaic-cortex`, `Entangled`, and `scripts/start.sh` for startup/migration fallback tokens."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "Guard is CI-runnable and fails on service SQLite/fallback tokens; current guard and service-side residue scan pass."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Small concrete guard/test/ledger update with direct local verification.",
+      "created_at": "2026-05-23T04:09:10+00:00",
+      "id": "T005",
+      "problem_definition": "Future generated code could reintroduce service-side SQLite fallback names, flags, or file DB paths unless active runtime paths are guarded.",
+      "problem_id": "P005",
+      "proposed_solution": "Add and run a service-side SQLite residue guard across active service/runtime/config paths, wire it into CI, and record verification evidence.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Guard service-side SQLite residue",
+      "updated_at": "2026-05-23T04:09:59+00:00",
+      "verification_plan": "Run the guard as plain Python, run it under pytest, and run the focused service-side rg residue scan."
+    }
+  },
+  "updated_at": "2026-05-23T04:11:45+00:00"
+}
