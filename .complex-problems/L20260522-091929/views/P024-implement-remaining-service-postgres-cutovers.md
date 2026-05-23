@@ -1,6 +1,6 @@
 # P024: Implement Remaining Service Postgres Cutovers
 
-Status: followup
+Status: done
 Parent: P000
 Root: P000
 Source Ticket: none (none)
@@ -33,16 +33,20 @@ Remaining active SQLite owners:
 - P026: Implement Cortex Operational Postgres Cutover
 - P027: Implement Entangled Postgres Cutover
 - P028: Implement Queue Postgres Cutover
+- P136: Repair Final SQLite Classification Rows For Gateway And Cortex
 
 ## Results
-- none
+- R135
 
 ## Latest Check
-none
+C153
 
 ## Bodies
 - Problem: problems/P000/children/P024/README.md
 - Ticket T024: problems/P000/children/P024/tickets/T024.md
+- Result R135: problems/P000/children/P024/results/R135.md
+- Check C151: problems/P000/children/P024/checks/C151.md
+- Check C153: problems/P000/children/P024/checks/C153.md
 
 ## Follow-ups
-- none
+- P136: Repair Final SQLite Classification Rows For Gateway And Cortex

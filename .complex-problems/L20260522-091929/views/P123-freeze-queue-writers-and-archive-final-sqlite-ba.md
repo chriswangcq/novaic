@@ -1,6 +1,6 @@
 # P123: Freeze Queue Writers And Archive Final SQLite Backup
 
-Status: todo
+Status: done
 Parent: P077
 Root: P000
 Source Ticket: T120 (split)
@@ -24,14 +24,16 @@ The final SQLite queue backup must be taken while production queue writers and w
 - P129: Execute Queue Freeze And Final SQLite Backup
 
 ## Results
-- none
+- R124
 
 ## Latest Check
-none
+C139
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P077/children/P123/README.md
 - Ticket T123: problems/P000/children/P024/children/P028/children/P077/children/P123/tickets/T123.md
+- Result R124: problems/P000/children/P024/children/P028/children/P077/children/P123/results/R124.md
+- Check C139: problems/P000/children/P024/children/P028/children/P077/children/P123/checks/C139.md
 
 ## Follow-ups
 - none

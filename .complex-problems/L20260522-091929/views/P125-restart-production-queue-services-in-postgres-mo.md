@@ -1,13 +1,13 @@
 # P125: Restart Production Queue Services In Postgres Mode
 
-Status: todo
+Status: done
 Parent: P077
 Root: P000
 Source Ticket: T120 (split)
 Source Check: none
 Package: problems/P000/children/P024/children/P028/children/P077/children/P125
 Body: problems/P000/children/P024/children/P028/children/P077/children/P125/README.md
-Ticket(s): none
+Ticket(s): T132
 
 ## Problem
 After migration, Queue Service and related worker/outbox processes must be restarted in Postgres mode with the production credential source, and must not resume using `/opt/novaic/data/queue.db`.
@@ -23,13 +23,16 @@ After migration, Queue Service and related worker/outbox processes must be resta
 - none
 
 ## Results
-- none
+- R129
 
 ## Latest Check
-none
+C144
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P077/children/P125/README.md
+- Ticket T132: problems/P000/children/P024/children/P028/children/P077/children/P125/tickets/T132.md
+- Result R129: problems/P000/children/P024/children/P028/children/P077/children/P125/results/R129.md
+- Check C144: problems/P000/children/P024/children/P028/children/P077/children/P125/checks/C144.md
 
 ## Follow-ups
 - none

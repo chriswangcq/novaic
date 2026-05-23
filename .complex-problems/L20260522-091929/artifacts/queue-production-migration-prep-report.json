@@ -1,0 +1,103 @@
+{
+  "actions": [
+    {
+      "cmd": [
+        "git",
+        "fetch",
+        "origin",
+        "main"
+      ],
+      "returncode": 0,
+      "stderr": "From github.com:chriswangcq/novaic-agent-runtime\n * branch            main       -> FETCH_HEAD",
+      "stdout": ""
+    },
+    {
+      "cmd": [
+        "git",
+        "merge",
+        "--ff-only",
+        "origin/main"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "Already up to date."
+    }
+  ],
+  "cutover_head": "6c464b8b0796b3f1b31729d4d36afe81778a0fd0",
+  "cutover_runtime": "/opt/novaic/services/novaic-agent-runtime-pg",
+  "cutover_status_after_count": 0,
+  "cutover_status_before_count": 2,
+  "desired_commit": "6c464b8b0796b3f1b31729d4d36afe81778a0fd0",
+  "dry_run_command": [
+    "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python",
+    "-m",
+    "queue_service.db.migrate_sqlite_to_postgres",
+    "--sqlite-path",
+    "/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db",
+    "--postgres-dsn-file",
+    "<redacted>",
+    "--report-path",
+    "/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-migration-dry-run-report.json",
+    "--dry-run"
+  ],
+  "dry_run_errors": [],
+  "dry_run_returncode": 0,
+  "dry_run_status": "ready",
+  "dry_run_stderr": "rolling back returned connection: <psycopg.Connection [INTRANS] (host=127.0.0.1 database=novaic_queue) at 0xecbbc5eaafc0>",
+  "dry_run_stdout": "",
+  "dry_run_table_count": 16,
+  "dry_run_target_clean": true,
+  "dsn_file": "<redacted-path>",
+  "dsn_file_written": false,
+  "errors": [],
+  "generated_at": "2026-05-23T01:32:26.003280Z",
+  "migration_help_first_line": "usage: migrate_sqlite_to_postgres.py [-h] --sqlite-path SQLITE_PATH",
+  "ok": true,
+  "source_backup": "/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db",
+  "target_backup": {
+    "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/pre-migration-novaic_queue.sql",
+    "sha256": "e3140a50f927632174e27db721adce3692979f1202d3e7cdbb63f896b227afa3",
+    "size_bytes": 1065
+  },
+  "target_counts_after_prepare": {
+    "config": 0,
+    "tq_idempotency_ledger": 0,
+    "tq_saga_events": 0,
+    "tq_saga_outbox": 0,
+    "tq_saga_state": 0,
+    "tq_sagas": 0,
+    "tq_session_events": 0,
+    "tq_session_outbox": 0,
+    "tq_session_state": 0,
+    "tq_task_events": 0,
+    "tq_task_outbox": 0,
+    "tq_task_state": 0,
+    "tq_tasks": 0,
+    "tq_worker_lease_events": 0,
+    "tq_worker_lease_outbox": 0,
+    "tq_worker_lease_state": 0
+  },
+  "target_counts_before_clear": {
+    "config": null,
+    "tq_idempotency_ledger": null,
+    "tq_saga_events": null,
+    "tq_saga_outbox": null,
+    "tq_saga_state": null,
+    "tq_sagas": null,
+    "tq_session_events": null,
+    "tq_session_outbox": null,
+    "tq_session_state": null,
+    "tq_task_events": null,
+    "tq_task_outbox": null,
+    "tq_task_state": null,
+    "tq_tasks": null,
+    "tq_worker_lease_events": null,
+    "tq_worker_lease_outbox": null,
+    "tq_worker_lease_state": null
+  },
+  "target_database": "novaic_queue",
+  "target_known_rows_after_prepare": 0,
+  "target_known_rows_before_clear": 0,
+  "target_prepare_errors": [],
+  "venv_source": "/opt/novaic/services/novaic-agent-runtime-pg/.venv-cutover"
+}

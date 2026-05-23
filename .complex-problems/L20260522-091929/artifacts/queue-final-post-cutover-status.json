@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-05-23T10:22:35.055967+08:00",
+  "health": {
+    "json": {
+      "database": "postgres:<redacted-credential-path>",
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "status": "healthy",
+      "version": "1.0.0"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "live_paths_exist": {
+    "/opt/novaic/data/queue.db": false,
+    "/opt/novaic/data/queue.db-shm": false,
+    "/opt/novaic/data/queue.db-wal": false
+  },
+  "lsof_queue_db": {
+    "returncode": 1,
+    "stderr": "lsof: status error on /opt/novaic/data/queue.db: No such file or directory\n",
+    "stdout": ""
+  },
+  "ok": true,
+  "queue_row_archived": true,
+  "queue_row_not_active": true,
+  "queue_row_postgres_source": true,
+  "ready": {
+    "json": {
+      "checks": {
+        "database": "ok",
+        "database_backend": "postgres",
+        "postgres": "ok",
+        "postgres_dsn_file": "<redacted-credential-path>",
+        "session_outbox": "ok",
+        "session_state": "ok",
+        "tq_sagas": "ok",
+        "tq_session_outbox": "ok",
+        "tq_session_state": "ok",
+        "tq_tasks": "ok"
+      },
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "session_outbox": {
+        "dead_letter_count": 0,
+        "oldest_pending_created_at": null,
+        "pending_count": 0
+      },
+      "session_state": {
+        "oldest_starting_updated_at": null,
+        "starting_count": 0
+      },
+      "status": "ok"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "rollback_note_exists": true
+}

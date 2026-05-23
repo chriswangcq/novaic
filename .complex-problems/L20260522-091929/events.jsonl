@@ -1521,3 +1521,162 @@
 {"at": "2026-05-22T17:49:34+00:00", "id": "E1518", "payload": {"from": "created", "id": "T126", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
 {"at": "2026-05-22T17:49:45+00:00", "id": "E1519", "payload": {"from": "defined", "id": "T126", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
 {"at": "2026-05-22T17:49:45+00:00", "id": "E1520", "payload": {"classification": "one_go", "reason": "Approval capture is a single bounded interaction: record explicit approval or a deferral without changing production state.", "ticket_id": "T126"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T01:08:47+00:00", "id": "E1521", "payload": {"from": "todo", "id": "P130", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:08:47+00:00", "id": "E1522", "payload": {"from": "classified", "id": "T126", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:09:05+00:00", "id": "E1523", "payload": {"from": "executing", "id": "T126", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:09:05+00:00", "id": "E1524", "payload": {"result_id": "R121", "ticket_id": "T126"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:09:35+00:00", "id": "E1525", "payload": {"from": "doing", "id": "P130", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:09:35+00:00", "id": "E1526", "payload": {"from": "checking", "id": "P130", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:09:35+00:00", "id": "E1527", "payload": {"check_id": "C136", "followup_id": null, "problem_id": "P130", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:10:00+00:00", "id": "E1528", "payload": {"problem_id": "P131", "ticket_id": "T127", "title": "Execute Approved Queue Freeze And Backup"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T01:10:00+00:00", "id": "E1529", "payload": {"from": "created", "id": "T127", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:10:08+00:00", "id": "E1530", "payload": {"from": "defined", "id": "T127", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:10:08+00:00", "id": "E1531", "payload": {"classification": "one_go", "reason": "Approved freeze/backup execution is a bounded operational runbook with immediate evidence: process inventory, lsof, backup checksum, stat, integrity check, and go/no-go result.", "ticket_id": "T127"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T01:10:17+00:00", "id": "E1532", "payload": {"from": "todo", "id": "P131", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:10:17+00:00", "id": "E1533", "payload": {"from": "classified", "id": "T127", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:14:43+00:00", "id": "E1534", "payload": {"from": "executing", "id": "T127", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:14:43+00:00", "id": "E1535", "payload": {"result_id": "R122", "ticket_id": "T127"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:15:20+00:00", "id": "E1536", "payload": {"from": "doing", "id": "P131", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:15:20+00:00", "id": "E1537", "payload": {"from": "checking", "id": "P131", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:15:20+00:00", "id": "E1538", "payload": {"check_id": "C137", "followup_id": null, "problem_id": "P131", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:15:48+00:00", "id": "E1539", "payload": {"from": "todo", "id": "P129", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:15:48+00:00", "id": "E1540", "payload": {"from": "splitting", "id": "T125", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:15:48+00:00", "id": "E1541", "payload": {"result_id": "R123", "ticket_id": "T125"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:16:04+00:00", "id": "E1542", "payload": {"from": "doing", "id": "P129", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:16:04+00:00", "id": "E1543", "payload": {"from": "checking", "id": "P129", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:16:04+00:00", "id": "E1544", "payload": {"check_id": "C138", "followup_id": null, "problem_id": "P129", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:16:45+00:00", "id": "E1545", "payload": {"from": "todo", "id": "P123", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:16:45+00:00", "id": "E1546", "payload": {"from": "splitting", "id": "T123", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:16:45+00:00", "id": "E1547", "payload": {"result_id": "R124", "ticket_id": "T123"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:17:00+00:00", "id": "E1548", "payload": {"from": "doing", "id": "P123", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:17:00+00:00", "id": "E1549", "payload": {"from": "checking", "id": "P123", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:17:00+00:00", "id": "E1550", "payload": {"check_id": "C139", "followup_id": null, "problem_id": "P123", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:17:40+00:00", "id": "E1551", "payload": {"problem_id": "P124", "ticket_id": "T128", "title": "Migrate Frozen Queue SQLite Snapshot To Production Postgres"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T01:17:40+00:00", "id": "E1552", "payload": {"from": "created", "id": "T128", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:17:47+00:00", "id": "E1553", "payload": {"from": "defined", "id": "T128", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:17:47+00:00", "id": "E1554", "payload": {"classification": "split", "reason": "Production migration has separate blocking concerns: runtime/tooling readiness, target Postgres safety, migration execution, and semantic verification; each needs isolated evidence before restart.", "ticket_id": "T128"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T01:18:21+00:00", "id": "E1555", "payload": {"from": "classified", "id": "T128", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:18:21+00:00", "id": "E1556", "payload": {"parent_id": "P124", "problem_id": "P132", "source": "split", "title": "Prepare Production Queue Migration Runtime And Postgres Target"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-23T01:18:21+00:00", "id": "E1557", "payload": {"parent_id": "P124", "problem_id": "P133", "source": "split", "title": "Execute Production Queue SQLite To Postgres Migration"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-23T01:18:22+00:00", "id": "E1558", "payload": {"parent_id": "P124", "problem_id": "P134", "source": "split", "title": "Verify Production Queue Postgres Migration Semantics"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-23T01:18:38+00:00", "id": "E1559", "payload": {"problem_id": "P132", "ticket_id": "T129", "title": "Prepare Runtime And Target For Queue Production Migration"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T01:18:38+00:00", "id": "E1560", "payload": {"from": "created", "id": "T129", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:18:45+00:00", "id": "E1561", "payload": {"from": "defined", "id": "T129", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:18:45+00:00", "id": "E1562", "payload": {"classification": "one_go", "reason": "Bounded preparation task: inspect production runtime, verify or fast-forward code, initialize/check schema, capture target counts, and save one redacted report before migration.", "ticket_id": "T129"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T01:18:56+00:00", "id": "E1563", "payload": {"from": "todo", "id": "P132", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:18:56+00:00", "id": "E1564", "payload": {"from": "classified", "id": "T129", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:34:19+00:00", "id": "E1565", "payload": {"from": "executing", "id": "T129", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:34:19+00:00", "id": "E1566", "payload": {"result_id": "R125", "ticket_id": "T129"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:34:36+00:00", "id": "E1567", "payload": {"from": "doing", "id": "P132", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:34:36+00:00", "id": "E1568", "payload": {"from": "checking", "id": "P132", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:34:36+00:00", "id": "E1569", "payload": {"check_id": "C140", "followup_id": null, "problem_id": "P132", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:34:53+00:00", "id": "E1570", "payload": {"problem_id": "P133", "ticket_id": "T130", "title": "Execute Frozen Queue SQLite Backup Migration To Production Postgres"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T01:34:53+00:00", "id": "E1571", "payload": {"from": "created", "id": "T130", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:35:00+00:00", "id": "E1572", "payload": {"from": "defined", "id": "T130", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:35:00+00:00", "id": "E1573", "payload": {"classification": "one_go", "reason": "The target is prepared and dry-run is ready; execution is a single migration command plus report capture with immediate blocker handling.", "ticket_id": "T130"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T01:35:07+00:00", "id": "E1574", "payload": {"from": "todo", "id": "P133", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:35:07+00:00", "id": "E1575", "payload": {"from": "classified", "id": "T130", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:40:33+00:00", "id": "E1576", "payload": {"from": "executing", "id": "T130", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:40:33+00:00", "id": "E1577", "payload": {"result_id": "R126", "ticket_id": "T130"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:40:51+00:00", "id": "E1578", "payload": {"from": "doing", "id": "P133", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:40:51+00:00", "id": "E1579", "payload": {"from": "checking", "id": "P133", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:40:51+00:00", "id": "E1580", "payload": {"check_id": "C141", "followup_id": null, "problem_id": "P133", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:41:06+00:00", "id": "E1581", "payload": {"problem_id": "P134", "ticket_id": "T131", "title": "Independently Verify Migrated Queue Postgres State"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T01:41:06+00:00", "id": "E1582", "payload": {"from": "created", "id": "T131", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:41:15+00:00", "id": "E1583", "payload": {"from": "defined", "id": "T131", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:41:15+00:00", "id": "E1584", "payload": {"classification": "one_go", "reason": "Independent verification is a bounded read-only check over the frozen SQLite backup and production Postgres target with clear pass/fail artifacts.", "ticket_id": "T131"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T01:41:25+00:00", "id": "E1585", "payload": {"from": "todo", "id": "P134", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:41:25+00:00", "id": "E1586", "payload": {"from": "classified", "id": "T131", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:43:22+00:00", "id": "E1587", "payload": {"from": "executing", "id": "T131", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:43:22+00:00", "id": "E1588", "payload": {"result_id": "R127", "ticket_id": "T131"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:43:38+00:00", "id": "E1589", "payload": {"from": "doing", "id": "P134", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:43:38+00:00", "id": "E1590", "payload": {"from": "checking", "id": "P134", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:43:38+00:00", "id": "E1591", "payload": {"check_id": "C142", "followup_id": null, "problem_id": "P134", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:43:56+00:00", "id": "E1592", "payload": {"from": "todo", "id": "P124", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:43:56+00:00", "id": "E1593", "payload": {"from": "splitting", "id": "T128", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:43:56+00:00", "id": "E1594", "payload": {"result_id": "R128", "ticket_id": "T128"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:44:14+00:00", "id": "E1595", "payload": {"from": "doing", "id": "P124", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:44:14+00:00", "id": "E1596", "payload": {"from": "checking", "id": "P124", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:44:14+00:00", "id": "E1597", "payload": {"check_id": "C143", "followup_id": null, "problem_id": "P124", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:44:52+00:00", "id": "E1598", "payload": {"problem_id": "P125", "ticket_id": "T132", "title": "Restart Queue Stack From Clean Postgres Cutover Runtime"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T01:44:52+00:00", "id": "E1599", "payload": {"from": "created", "id": "T132", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:44:59+00:00", "id": "E1600", "payload": {"from": "defined", "id": "T132", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:44:59+00:00", "id": "E1601", "payload": {"classification": "one_go", "reason": "Bounded restart step with known ports/process roles, clean runtime, prepared credential file, and concrete health/ready/lsof verification.", "ticket_id": "T132"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T01:45:25+00:00", "id": "E1602", "payload": {"from": "todo", "id": "P125", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:45:25+00:00", "id": "E1603", "payload": {"from": "classified", "id": "T132", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:54:53+00:00", "id": "E1604", "payload": {"from": "executing", "id": "T132", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:54:53+00:00", "id": "E1605", "payload": {"result_id": "R129", "ticket_id": "T132"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T01:55:10+00:00", "id": "E1606", "payload": {"from": "doing", "id": "P125", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:55:10+00:00", "id": "E1607", "payload": {"from": "checking", "id": "P125", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:55:10+00:00", "id": "E1608", "payload": {"check_id": "C144", "followup_id": null, "problem_id": "P125", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T01:55:45+00:00", "id": "E1609", "payload": {"problem_id": "P126", "ticket_id": "T133", "title": "Smoke Production Queue Postgres Runtime"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T01:55:45+00:00", "id": "E1610", "payload": {"from": "created", "id": "T133", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:55:54+00:00", "id": "E1611", "payload": {"from": "defined", "id": "T133", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T01:55:54+00:00", "id": "E1612", "payload": {"classification": "one_go", "reason": "Bounded post-restart smoke suite with loopback health/API/process/log/count checks and one redacted report.", "ticket_id": "T133"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T01:56:01+00:00", "id": "E1613", "payload": {"from": "todo", "id": "P126", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T01:56:01+00:00", "id": "E1614", "payload": {"from": "classified", "id": "T133", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:10:21+00:00", "id": "E1615", "payload": {"from": "executing", "id": "T133", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:10:21+00:00", "id": "E1616", "payload": {"result_id": "R130", "ticket_id": "T133"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T02:10:40+00:00", "id": "E1617", "payload": {"from": "doing", "id": "P126", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:10:40+00:00", "id": "E1618", "payload": {"from": "checking", "id": "P126", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:10:40+00:00", "id": "E1619", "payload": {"check_id": "C145", "followup_id": null, "problem_id": "P126", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:11:00+00:00", "id": "E1620", "payload": {"problem_id": "P127", "ticket_id": "T134", "title": "Archive Old Queue SQLite Active Path After Postgres Cutover"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T02:11:00+00:00", "id": "E1621", "payload": {"from": "created", "id": "T134", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:11:09+00:00", "id": "E1622", "payload": {"from": "defined", "id": "T134", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:11:09+00:00", "id": "E1623", "payload": {"classification": "one_go", "reason": "Bounded cleanup action: lsof guard, move old SQLite files to rollback archive, write manifest, verify health/ready and old path absence.", "ticket_id": "T134"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T02:11:19+00:00", "id": "E1624", "payload": {"from": "todo", "id": "P127", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:11:19+00:00", "id": "E1625", "payload": {"from": "classified", "id": "T134", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:14:26+00:00", "id": "E1626", "payload": {"from": "executing", "id": "T134", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:14:26+00:00", "id": "E1627", "payload": {"result_id": "R131", "ticket_id": "T134"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T02:15:33+00:00", "id": "E1628", "payload": {"from": "doing", "id": "P127", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:15:33+00:00", "id": "E1629", "payload": {"from": "checking", "id": "P127", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:15:33+00:00", "id": "E1630", "payload": {"check_id": "C146", "followup_id": "P135", "problem_id": "P127", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:16:11+00:00", "id": "E1631", "payload": {"problem_id": "P135", "ticket_id": "T135", "title": "Update Queue Postgres Cleanup Documentation"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T02:16:11+00:00", "id": "E1632", "payload": {"from": "created", "id": "T135", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:16:30+00:00", "id": "E1633", "payload": {"from": "defined", "id": "T135", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:16:30+00:00", "id": "E1634", "payload": {"classification": "one_go", "reason": "Narrow documentation and evidence cleanup: update one central classification note plus one rollback note, copy sanitized artifacts, and verify with text checks and credential scan in a bounded reversible pass.", "ticket_id": "T135"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T02:16:40+00:00", "id": "E1635", "payload": {"from": "followup", "id": "P135", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:16:40+00:00", "id": "E1636", "payload": {"from": "classified", "id": "T135", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:19:50+00:00", "id": "E1637", "payload": {"from": "executing", "id": "T135", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:19:50+00:00", "id": "E1638", "payload": {"result_id": "R132", "ticket_id": "T135"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T02:20:28+00:00", "id": "E1639", "payload": {"from": "doing", "id": "P135", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:20:28+00:00", "id": "E1640", "payload": {"from": "checking", "id": "P135", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:20:28+00:00", "id": "E1641", "payload": {"check_id": "C147", "followup_id": null, "problem_id": "P135", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:20:58+00:00", "id": "E1642", "payload": {"from": "followup", "id": "P127", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:20:58+00:00", "id": "E1643", "payload": {"from": "checking", "id": "P127", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:20:58+00:00", "id": "E1644", "payload": {"check_id": "C148", "followup_id": null, "problem_id": "P127", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:22:08+00:00", "id": "E1645", "payload": {"from": "todo", "id": "P077", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:22:08+00:00", "id": "E1646", "payload": {"from": "splitting", "id": "T120", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:22:08+00:00", "id": "E1647", "payload": {"result_id": "R133", "ticket_id": "T120"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T02:23:40+00:00", "id": "E1648", "payload": {"from": "doing", "id": "P077", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:23:40+00:00", "id": "E1649", "payload": {"from": "checking", "id": "P077", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:23:40+00:00", "id": "E1650", "payload": {"check_id": "C149", "followup_id": null, "problem_id": "P077", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:24:30+00:00", "id": "E1651", "payload": {"from": "todo", "id": "P028", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:24:30+00:00", "id": "E1652", "payload": {"from": "splitting", "id": "T072", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:24:30+00:00", "id": "E1653", "payload": {"result_id": "R134", "ticket_id": "T072"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T02:24:58+00:00", "id": "E1654", "payload": {"from": "doing", "id": "P028", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:24:58+00:00", "id": "E1655", "payload": {"from": "checking", "id": "P028", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:24:58+00:00", "id": "E1656", "payload": {"check_id": "C150", "followup_id": null, "problem_id": "P028", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:26:28+00:00", "id": "E1657", "payload": {"from": "followup", "id": "P024", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:26:28+00:00", "id": "E1658", "payload": {"from": "splitting", "id": "T024", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:26:28+00:00", "id": "E1659", "payload": {"result_id": "R135", "ticket_id": "T024"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T02:26:59+00:00", "id": "E1660", "payload": {"from": "doing", "id": "P024", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:26:59+00:00", "id": "E1661", "payload": {"from": "checking", "id": "P024", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:26:59+00:00", "id": "E1662", "payload": {"check_id": "C151", "followup_id": "P136", "problem_id": "P024", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:27:38+00:00", "id": "E1663", "payload": {"problem_id": "P136", "ticket_id": "T136", "title": "Repair Gateway And Cortex Final Classification Rows"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-23T02:27:38+00:00", "id": "E1664", "payload": {"from": "created", "id": "T136", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:27:46+00:00", "id": "E1665", "payload": {"from": "defined", "id": "T136", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:27:46+00:00", "id": "E1666", "payload": {"classification": "one_go", "reason": "Narrow documentation repair: update two stale central classification rows, rerun a read-only final audit, sanitize local evidence, and verify with text checks and credential scan in one bounded reversible pass.", "ticket_id": "T136"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-23T02:27:55+00:00", "id": "E1667", "payload": {"from": "followup", "id": "P136", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:27:55+00:00", "id": "E1668", "payload": {"from": "classified", "id": "T136", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:29:50+00:00", "id": "E1669", "payload": {"from": "executing", "id": "T136", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-23T02:29:50+00:00", "id": "E1670", "payload": {"result_id": "R136", "ticket_id": "T136"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-23T02:30:15+00:00", "id": "E1671", "payload": {"from": "doing", "id": "P136", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:30:15+00:00", "id": "E1672", "payload": {"from": "checking", "id": "P136", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:30:15+00:00", "id": "E1673", "payload": {"check_id": "C152", "followup_id": null, "problem_id": "P136", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:30:43+00:00", "id": "E1674", "payload": {"from": "followup", "id": "P024", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:30:43+00:00", "id": "E1675", "payload": {"from": "checking", "id": "P024", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:30:43+00:00", "id": "E1676", "payload": {"check_id": "C153", "followup_id": null, "problem_id": "P024", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-23T02:31:36+00:00", "id": "E1677", "payload": {"from": "followup", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:31:36+00:00", "id": "E1678", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-23T02:31:36+00:00", "id": "E1679", "payload": {"check_id": "C154", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

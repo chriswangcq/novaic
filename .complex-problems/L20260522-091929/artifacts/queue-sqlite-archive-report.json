@@ -1,0 +1,97 @@
+{
+  "archive_dir": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z",
+  "errors": [],
+  "generated_at": "2026-05-23T02:11:56.708423Z",
+  "health_after": {
+    "json": {
+      "database": "postgres:<redacted-path>",
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "status": "healthy",
+      "version": "1.0.0"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "live_paths_after": {
+    "/opt/novaic/data/queue.db": false,
+    "/opt/novaic/data/queue.db-shm": false,
+    "/opt/novaic/data/queue.db-wal": false
+  },
+  "lsof_after": {
+    "holder_pids": [],
+    "returncode": 1,
+    "stderr": "lsof: status error on /opt/novaic/data/queue.db: No such file or directory\n",
+    "stdout": ""
+  },
+  "lsof_before": {
+    "holder_pids": [],
+    "returncode": 1,
+    "stderr": "",
+    "stdout": ""
+  },
+  "manifest_path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/README.md",
+  "moved": [
+    {
+      "destination": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db",
+      "destination_exists": true,
+      "existed": true,
+      "mode": "0o644",
+      "mtime_utc": "2026-05-20T14:13:52.513230Z",
+      "sha256": "07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153",
+      "size_bytes": 378683392,
+      "source": "/opt/novaic/data/queue.db"
+    },
+    {
+      "destination": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db-wal",
+      "destination_exists": true,
+      "existed": true,
+      "mode": "0o644",
+      "mtime_utc": "2026-05-22T08:41:48.126361Z",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "source": "/opt/novaic/data/queue.db-wal"
+    },
+    {
+      "destination": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db-shm",
+      "destination_exists": true,
+      "existed": true,
+      "mode": "0o644",
+      "mtime_utc": "2026-05-22T08:41:48.126361Z",
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "size_bytes": 32768,
+      "source": "/opt/novaic/data/queue.db-shm"
+    }
+  ],
+  "ok": true,
+  "ready_after": {
+    "json": {
+      "checks": {
+        "database": "ok",
+        "database_backend": "postgres",
+        "postgres": "ok",
+        "postgres_dsn_file": "<redacted-path>",
+        "session_outbox": "ok",
+        "session_state": "ok",
+        "tq_sagas": "ok",
+        "tq_session_outbox": "ok",
+        "tq_session_state": "ok",
+        "tq_tasks": "ok"
+      },
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "session_outbox": {
+        "dead_letter_count": 0,
+        "oldest_pending_created_at": null,
+        "pending_count": 0
+      },
+      "session_state": {
+        "oldest_starting_updated_at": null,
+        "starting_count": 0
+      },
+      "status": "ok"
+    },
+    "ok": true,
+    "status": 200
+  }
+}

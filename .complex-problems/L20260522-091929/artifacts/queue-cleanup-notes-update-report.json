@@ -1,0 +1,24 @@
+{
+  "archive_dir": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z",
+  "checks": {
+    "central_names_postgres_source": true,
+    "classification_exists": true,
+    "queue_row_archived": true,
+    "queue_row_not_defer_active": true,
+    "rollback_note_exists": true,
+    "rollback_note_has_archive_dir": true,
+    "rollback_note_has_checksum": true,
+    "rollback_note_has_restore_expectation": true,
+    "rollback_note_has_retention": true
+  },
+  "classification_backup_path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/SQLITE_STATE_CLASSIFICATION.before-queue-20260523T101759+0800.md",
+  "classification_path": "/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md",
+  "final_backup_sha256": "07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153",
+  "generated_at": "2026-05-23T10:17:59.459487+08:00",
+  "ok": true,
+  "postgres_source_of_truth": "novaic_queue",
+  "retention_until": "2026-06-22 Asia/Shanghai",
+  "rollback_note_path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/QUEUE_POSTGRES_CUTOVER.md",
+  "runtime_head": "c7aa54517e84ffd6ed931c9f1f8b9c120b6343e9",
+  "runtime_path": "/opt/novaic/services/novaic-agent-runtime-pg"
+}

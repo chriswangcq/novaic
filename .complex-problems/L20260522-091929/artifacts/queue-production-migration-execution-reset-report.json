@@ -1,0 +1,23 @@
+{
+  "counts_before_reset": {
+    "config": 0,
+    "tq_idempotency_ledger": 0,
+    "tq_saga_events": 0,
+    "tq_saga_outbox": 0,
+    "tq_saga_state": 0,
+    "tq_sagas": 0,
+    "tq_session_events": 0,
+    "tq_session_outbox": 0,
+    "tq_session_state": 0,
+    "tq_task_events": 0,
+    "tq_task_outbox": 0,
+    "tq_task_state": 0,
+    "tq_tasks": 0,
+    "tq_worker_lease_events": 0,
+    "tq_worker_lease_outbox": 0,
+    "tq_worker_lease_state": 0
+  },
+  "head": "0517c37ae0c3368ec9c2a87fd6270f3e28603289",
+  "known_rows_before_reset": 0,
+  "reset_returncode": 0
+}

@@ -1,0 +1,23 @@
+{
+  "classification_path": "/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md",
+  "generated_at": "2026-05-23T10:25:55.821981+08:00",
+  "live_paths_exist": {
+    "/opt/novaic/data/cortex/operational.sqlite3": false,
+    "/opt/novaic/data/entangled.db": false,
+    "/opt/novaic/data/gateway.db": false,
+    "/opt/novaic/data/queue.db": false,
+    "/opt/novaic/llm-factory/data/llm_factory.db": true
+  },
+  "needs_followup": true,
+  "rows": {
+    "/opt/novaic/data/cortex/operational.sqlite3": "| /opt/novaic/data/cortex/operational.sqlite3 | active-projection-cache | Cortex starts with --operational-sqlite-path /opt/novaic/data/cortex/operational.sqlite3 | 135168 bytes; active_stack_projection=5, payload_manifest=90, scope_projection=26 | Keep as Cortex operational projection until Cortex migration/design says otherwise. |",
+    "/opt/novaic/data/entangled.db": "| /opt/novaic/data/entangled.db | archived/rollback-only non-current SQLite snapshot | Entangled now runs on `127.0.0.1:19900` with `--db-backend postgres`, `--postgres-dsn-file`, and `--service-credential-file`; health/ready and production REST/WS smokes passed | Pre-cutover SQLite source and final active-path files are retained under `/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z`; current state owner is Postgres `novaic_entangled` with 22 registered schemas | Active path cleaned; restore only for emergency rollback using `/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/ENTANGLED_POSTGRES_CUTOVER.md`. |",
+    "/opt/novaic/data/gateway.db": "| /opt/novaic/data/gateway.db | active auth/ops state | Gateway starts with --data-dir /opt/novaic/data and main_gateway.py initializes gateway.db | 176128 bytes; users=1, refresh credential records=26, config=5 | Keep until Gateway auth/ops migration. Do not delete. |",
+    "/opt/novaic/data/queue.db": "| /opt/novaic/data/queue.db | archived/rollback-only non-current SQLite snapshot | Queue production now runs from `/opt/novaic/services/novaic-agent-runtime-pg` at commit `c7aa54517e84ffd6ed931c9f1f8b9c120b6343e9` with backend `postgres` and DSN file `<redacted-credential-path>`; `/health` and `/ready` passed on Postgres after active-path archive | Final freeze backup and archived active-path file are 378683392 bytes with SHA256 `07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153`; migration copied 25721 rows across 16 tables into Postgres `novaic_queue` | Active path cleaned; current state owner is Postgres `novaic_queue`. Retain rollback artifacts under `/opt/novaic/backups/queue-cutover/20260523T011125Z` through 2026-06-22 Asia/Shanghai or until an explicit cleanup ledger retires them. Restore only by stopping Queue and intentionally placing archived `queue.db` back at `/opt/novaic/data/queue.db`. |",
+    "/opt/novaic/llm-factory/data/llm_factory.db": "| /opt/novaic/llm-factory/data/llm_factory.db | rollback-only non-current SQLite snapshot | novaic-llm-factory now runs with database.backend=postgres and no longer holds this SQLite file open | 17649664 bytes; pre-cutover source had API credential records=6, models=771, user credential records=2, llm_logs=29760 | Retained only for rollback; current state owner is Postgres novaic_llm_factory. See /opt/novaic/llm-factory/POSTGRES_CUTOVER.md. |"
+  },
+  "stale_active_rows": [
+    "/opt/novaic/data/gateway.db",
+    "/opt/novaic/data/cortex/operational.sqlite3"
+  ]
+}

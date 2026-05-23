@@ -706,16 +706,16 @@
       "updated_at": "2026-05-18T16:44:19+00:00"
     },
     {
-      "active_count": 12,
+      "active_count": 0,
       "blocked_count": 0,
       "ledger_id": "L20260522-091929",
       "path": "L20260522-091929",
       "root_id": "P000",
       "schema_version": 6,
-      "status": "doing",
+      "status": "done",
       "title": "Unify NovAIC persistent state on Postgres and remove stale database residue",
-      "updated_at": "2026-05-22T17:49:45+00:00"
+      "updated_at": "2026-05-23T02:31:36+00:00"
     }
   ],
-  "updated_at": "2026-05-22T17:49:45+00:00"
+  "updated_at": "2026-05-23T02:31:36+00:00"
 }

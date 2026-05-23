@@ -1,0 +1,392 @@
+{
+  "errors": [],
+  "generated_at": "2026-05-23T02:07:08.474647Z",
+  "health_after": {
+    "body": "<json>",
+    "json": {
+      "database": "postgres:<redacted-path>",
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "status": "healthy",
+      "version": "1.0.0"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "health_wait": {
+    "body": "<json>",
+    "json": {
+      "database": "postgres:<redacted-path>",
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "status": "healthy",
+      "version": "1.0.0"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "launches": [
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py queue-service --host 127.0.0.1 --port 19997 --data-dir /opt/novaic/data --db-backend postgres --postgres-dsn-file <redacted>",
+      "name": "queue-service",
+      "pid": 3742760
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool control --num-workers 1",
+      "name": "task-worker-control-1",
+      "pid": 3742773
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool control --num-workers 1",
+      "name": "task-worker-control-2",
+      "pid": 3742774
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool execution --num-workers 1",
+      "name": "task-worker-execution-1",
+      "pid": 3742775
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool execution --num-workers 1",
+      "name": "task-worker-execution-2",
+      "pid": 3742776
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py saga-worker --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --max-concurrent 4",
+      "name": "saga-worker-1",
+      "pid": 3742777
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py saga-worker --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --max-concurrent 4",
+      "name": "saga-worker-2",
+      "pid": 3742778
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py session-outbox-worker --data-dir /opt/novaic/data",
+      "name": "session-outbox-worker",
+      "pid": 3742779
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py saga-outbox-worker --data-dir /opt/novaic/data",
+      "name": "saga-outbox-worker",
+      "pid": 3742780
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py health --queue-service-url http://127.0.0.1:19997 --data-dir /opt/novaic/data",
+      "name": "health",
+      "pid": 3742781
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py scheduler --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data",
+      "name": "scheduler",
+      "pid": 3742782
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-business/main_subscriber.py --data-dir /opt/novaic/data --entangled-url http://127.0.0.1:19900 --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997",
+      "name": "subscriber",
+      "pid": 3742783
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-gateway/main_gateway.py --host 127.0.0.1 --port 19999 --data-dir /opt/novaic/data --queue-service-url http://127.0.0.1:19997 --blob-service-url http://127.0.0.1:19995 --blob-upload-url http://127.0.0.1:19995 --db-backend postgres --postgres-dsn-file <redacted>",
+      "name": "gateway",
+      "pid": 3742784
+    }
+  ],
+  "mismatches": {},
+  "ok": true,
+  "post_processes": [
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py queue-service --host 127.0.0.1 --port 19997 --data-dir /opt/novaic/data --db-backend postgres --postgres-dsn-file <redacted>",
+      "pid": 3742760,
+      "roles": [
+        "queue-service"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool control --num-workers 1",
+      "pid": 3742773,
+      "roles": [
+        "task-worker"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool control --num-workers 1",
+      "pid": 3742774,
+      "roles": [
+        "task-worker"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool execution --num-workers 1",
+      "pid": 3742775,
+      "roles": [
+        "task-worker"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py task-worker --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --pool execution --num-workers 1",
+      "pid": 3742776,
+      "roles": [
+        "task-worker"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py saga-worker --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --max-concurrent 4",
+      "pid": 3742777,
+      "roles": [
+        "saga-worker"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py saga-worker --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data --max-concurrent 4",
+      "pid": 3742778,
+      "roles": [
+        "saga-worker"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py session-outbox-worker --data-dir /opt/novaic/data",
+      "pid": 3742779,
+      "roles": [
+        "session-outbox-worker"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py saga-outbox-worker --data-dir /opt/novaic/data",
+      "pid": 3742780,
+      "roles": [
+        "saga-outbox-worker"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py health --queue-service-url http://127.0.0.1:19997 --data-dir /opt/novaic/data",
+      "pid": 3742781,
+      "roles": [
+        "health"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-agent-runtime-pg/.venv/bin/python /opt/novaic/services/novaic-agent-runtime-pg/main_novaic.py scheduler --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997 --cortex-url http://127.0.0.1:19996 --data-dir /opt/novaic/data",
+      "pid": 3742782,
+      "roles": [
+        "scheduler"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-business/main_subscriber.py --data-dir /opt/novaic/data --entangled-url http://127.0.0.1:19900 --business-url http://127.0.0.1:19998 --queue-service-url http://127.0.0.1:19997",
+      "pid": 3742783,
+      "roles": [
+        "subscriber"
+      ]
+    },
+    {
+      "cmd": "/opt/novaic/services/novaic-gateway/.venv/bin/python /opt/novaic/services/novaic-gateway/main_gateway.py --host 127.0.0.1 --port 19999 --data-dir /opt/novaic/data --queue-service-url http://127.0.0.1:19997 --blob-service-url http://127.0.0.1:19995 --blob-upload-url http://127.0.0.1:19995 --db-backend postgres --postgres-dsn-file <redacted>",
+      "pid": 3742784,
+      "roles": [
+        "gateway"
+      ]
+    }
+  ],
+  "ready_after": {
+    "body": "<json>",
+    "json": {
+      "checks": {
+        "database": "ok",
+        "database_backend": "postgres",
+        "postgres": "ok",
+        "postgres_dsn_file": "<redacted-path>",
+        "session_outbox": "ok",
+        "session_state": "ok",
+        "tq_sagas": "ok",
+        "tq_session_outbox": "ok",
+        "tq_session_state": "ok",
+        "tq_tasks": "ok"
+      },
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "session_outbox": {
+        "dead_letter_count": 0,
+        "oldest_pending_created_at": null,
+        "pending_count": 0
+      },
+      "session_state": {
+        "oldest_starting_updated_at": null,
+        "starting_count": 0
+      },
+      "status": "ok"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "ready_wait": {
+    "body": "<json>",
+    "json": {
+      "checks": {
+        "database": "ok",
+        "database_backend": "postgres",
+        "postgres": "ok",
+        "postgres_dsn_file": "<redacted-path>",
+        "session_outbox": "ok",
+        "session_state": "ok",
+        "tq_sagas": "ok",
+        "tq_session_outbox": "ok",
+        "tq_session_state": "ok",
+        "tq_tasks": "ok"
+      },
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "session_outbox": {
+        "dead_letter_count": 0,
+        "oldest_pending_created_at": null,
+        "pending_count": 0
+      },
+      "session_state": {
+        "oldest_starting_updated_at": null,
+        "starting_count": 0
+      },
+      "status": "ok"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "role_counts": {
+    "gateway": 1,
+    "health": 1,
+    "queue-service": 1,
+    "saga-outbox-worker": 1,
+    "saga-worker": 2,
+    "scheduler": 1,
+    "session-outbox-worker": 1,
+    "subscriber": 1,
+    "task-worker": 4
+  },
+  "runtime_head": "c7aa54517e84ffd6ed931c9f1f8b9c120b6343e9",
+  "terminate_actions": [
+    {
+      "pid": 3738426,
+      "roles": [
+        "queue-service"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738459,
+      "roles": [
+        "task-worker"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738460,
+      "roles": [
+        "task-worker"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738461,
+      "roles": [
+        "task-worker"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738462,
+      "roles": [
+        "task-worker"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738463,
+      "roles": [
+        "saga-worker"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738464,
+      "roles": [
+        "saga-worker"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738465,
+      "roles": [
+        "session-outbox-worker"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738466,
+      "roles": [
+        "saga-outbox-worker"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738467,
+      "roles": [
+        "health"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738468,
+      "roles": [
+        "scheduler"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738469,
+      "roles": [
+        "subscriber"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738470,
+      "roles": [
+        "gateway"
+      ],
+      "signal": "TERM"
+    },
+    {
+      "pid": 3738426,
+      "roles": [
+        "queue-service"
+      ],
+      "signal": "KILL"
+    },
+    {
+      "pid": 3738461,
+      "roles": [
+        "task-worker"
+      ],
+      "signal": "KILL"
+    },
+    {
+      "pid": 3738462,
+      "roles": [
+        "task-worker"
+      ],
+      "signal": "KILL"
+    },
+    {
+      "pid": 3738463,
+      "roles": [
+        "saga-worker"
+      ],
+      "signal": "KILL"
+    },
+    {
+      "pid": 3738467,
+      "roles": [
+        "health"
+      ],
+      "signal": "KILL"
+    }
+  ]
+}

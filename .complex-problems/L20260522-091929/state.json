@@ -5482,14 +5482,757 @@
         "The runbook handles the likely failure mode where PIDs change between inventory and execution: it requires a fresh `ps` and `lsof` check immediately before stopping processes."
       ],
       "summary": "Success. Result `R120` solves P128 by producing a redacted, executable Queue freeze/final-backup runbook that is grounded in P122 inventory and explicitly stops before production execution."
+    },
+    "C136": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/checks/C136.md",
+      "created_at": "2026-05-23T01:09:35+00:00",
+      "criteria_map": [
+        "Operator approval recorded: satisfied.",
+        "Approval covers stopping Queue Service, workers, outbox workers, scheduler/health, and Queue ingress: satisfied by the explicit freeze backup approval and no-more-asking instruction, interpreted with the runbook scope.",
+        "No production process stopped during confirmation ticket: satisfied."
+      ],
+      "evidence": [
+        "User message: \"批准现在执行 freeze 备份。另外 我批准你执行任何行动 别再问我 干就完了\".",
+        "`R121` records that no production state was changed during the approval capture step."
+      ],
+      "execution_map": [
+        "Captured approval as the result of T126.",
+        "Did not execute freeze commands in the confirmation ticket."
+      ],
+      "followup_problem_id": null,
+      "id": "C136",
+      "problem_id": "P130",
+      "residual_risk": [
+        "Non-blocking. Production execution still needs to follow the P128 runbook and record evidence."
+      ],
+      "result_ids": [
+        "R121"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Approval is explicit and unambiguous, not inferred from silence or a partial acknowledgement."
+      ],
+      "summary": "Success. Result `R121` records explicit operator approval for the Queue freeze/backup window and broader permission to continue ledger-guided cutover actions without additional confirmation prompts."
+    },
+    "C137": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P131/checks/C137.md",
+      "created_at": "2026-05-23T01:15:20+00:00",
+      "criteria_map": [
+        "Refreshed pre-freeze process and holder inventory is saved: satisfied by the report's `pre_freeze_processes` and `pre_freeze_lsof` fields.",
+        "Approved Queue writer/worker processes are stopped or frozen: satisfied by freeze actions covering gateway ingress, business subscriber, scheduler, health, task workers, saga workers, outbox workers, and Queue Service, with post-freeze target process count 0.",
+        "Timestamped backup of `/opt/novaic/data/queue.db` is created with checksum/stat/integrity artifacts: satisfied by `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`, `queue-db.sha256`, `queue-db.stat.json`, `queue-db.integrity.txt`, and matching SHA256 values.",
+        "Post-backup lsof and process checks are saved: satisfied by `post_backup_lsof` and `post_backup_processes` in the report.",
+        "Migration is blocked if backup validation fails or holders remain: satisfied because backup validation passed, holder PIDs were empty, and no blocker was recorded."
+      ],
+      "evidence": [
+        "R122 records the approved freeze execution and backup verification.",
+        "JSON artifact `.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.json` contains the refreshed process inventory, lsof checks, freeze actions, backup stat, checksum, and integrity result.",
+        "Markdown artifact `.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.md` summarizes the verification evidence.",
+        "Remote backup report exists at `/opt/novaic/backups/queue-cutover/20260523T011125Z/freeze-backup-report.json`."
+      ],
+      "execution_map": [
+        "Freeze runbook was executed in the approved window.",
+        "Queue-related writers and workers were stopped before backup.",
+        "Backup was taken only after no active SQLite holders remained.",
+        "Backup checksum and integrity checks were run before the step was accepted."
+      ],
+      "followup_problem_id": null,
+      "id": "C137",
+      "problem_id": "P131",
+      "residual_risk": [
+        "The Queue stack is intentionally down/frozen until the next cutover steps migrate the verified snapshot to production Postgres and restart services in Postgres mode. This is not a gap for P131 because P131 covers only freeze and backup execution."
+      ],
+      "result_ids": [
+        "R122"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A plausible failure mode was a stale Queue process continuing to hold or mutate `/opt/novaic/data/queue.db` during backup. The saved post-freeze and post-backup lsof checks showed empty holder PID lists, and the process inventory showed zero target Queue processes after freeze."
+      ],
+      "summary": "Success. R122 solves P131: the approved freeze was executed, the final SQLite backup was created and verified, holder/process checks were saved, and no migration blocker was present from the backup step."
+    },
+    "C138": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/checks/C138.md",
+      "created_at": "2026-05-23T01:16:04+00:00",
+      "criteria_map": [
+        "Queue writers/workers listed in the runbook are stopped or frozen: satisfied by P131 freeze actions and post-freeze target process count 0.",
+        "Timestamped backup of `/opt/novaic/data/queue.db` is created: satisfied by `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`.",
+        "Backup checksum and file metadata are recorded: satisfied by JSON/Markdown artifacts, `queue-db.sha256`, and `queue-db.stat.json`.",
+        "Post-freeze/backup lsof shows no active Queue writer holders, or remaining holder blocks migration: satisfied by empty holder PID lists after freeze and after backup.",
+        "Queue writer restart remains blocked until migration or rollback decision is recorded: satisfied by the recorded residual risk and current operational state; production Queue remains frozen for the next ledger migration action."
+      ],
+      "evidence": [
+        "P130/R121/C136 records operator approval for the freeze window.",
+        "P131/R122/C137 records successful freeze and backup execution.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.json` contains process, holder, checksum, stat, and integrity evidence.",
+        "Remote backup directory: `/opt/novaic/backups/queue-cutover/20260523T011125Z`."
+      ],
+      "execution_map": [
+        "Approval child P130 closed before execution child P131.",
+        "Freeze/backup child P131 stopped the relevant processes before copying SQLite.",
+        "Backup validation completed before the parent result was accepted."
+      ],
+      "followup_problem_id": null,
+      "id": "C138",
+      "problem_id": "P129",
+      "residual_risk": [
+        "The system remains in a downtime/freeze window until subsequent ledger actions migrate data and restart services. That is intentional and non-blocking for this gate."
+      ],
+      "result_ids": [
+        "R123"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The key failure mode is an unapproved or partial freeze producing a moving SQLite backup. Approval evidence exists, the post-freeze process inventory is empty for target roles, and lsof shows no holder PIDs before and after backup, so this failure mode is covered."
+      ],
+      "summary": "Success. R123 solves P129: the approved production freeze was executed, the final SQLite backup exists with verification artifacts, and Queue writer restart remains blocked until the later migration/restart decision."
+    },
+    "C139": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/checks/C139.md",
+      "created_at": "2026-05-23T01:17:00+00:00",
+      "criteria_map": [
+        "All identified Queue writers/workers are stopped, frozen, or prevented from writing: satisfied by freeze action evidence and post-freeze target process count 0.",
+        "`/opt/novaic/data/queue.db` is backed up to a timestamped rollback archive: satisfied by `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`.",
+        "Backup checksum and file metadata are recorded: satisfied by recorded SHA256, stat file, and report artifacts.",
+        "Post-backup check confirms no writer process still holds or mutates active SQLite queue file: satisfied by empty post-backup lsof holder PID list and zero target processes.",
+        "Backup location is recorded without exposing unrelated credentials: satisfied by redacted artifacts and clean redaction scan."
+      ],
+      "evidence": [
+        "P128/R120/C135: redacted freeze and backup runbook.",
+        "P129/R123/C138: approved freeze and final backup execution.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.json`: process, lsof, backup stat, checksum, and integrity evidence.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.md`: redacted human summary."
+      ],
+      "execution_map": [
+        "P128 created the runbook and go/no-go checklist.",
+        "P129 confirmed approval and executed freeze/backup.",
+        "R124 summarizes the closed child results R120 and R123."
+      ],
+      "followup_problem_id": null,
+      "id": "C139",
+      "problem_id": "P123",
+      "residual_risk": [
+        "The backup gate is complete, but the larger production cutover remains in a freeze window until migration and restart are completed or rollback is chosen."
+      ],
+      "result_ids": [
+        "R124"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The principal risk was taking a stale or inconsistent copy while a Queue writer still had the SQLite file open. The saved lsof evidence after freeze and after backup shows no holder PIDs, and the backup hash matches source with integrity_check ok."
+      ],
+      "summary": "Success. R124 solves P123: the runbook existed, all identified Queue writers/workers were frozen, the active SQLite queue file was backed up to a timestamped rollback archive, and post-backup evidence shows no active SQLite writer holders."
+    },
+    "C140": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P132/checks/C140.md",
+      "created_at": "2026-05-23T01:34:36+00:00",
+      "criteria_map": [
+        "Production Queue runtime checkout and migration tool version are recorded and compatible: satisfied by the cutover runtime commit and migration CLI help/dry-run evidence.",
+        "Production Postgres target connection path is identified without exposing credential values: satisfied by redacted artifacts and a clean redaction scan.",
+        "Target `novaic_queue` table inventory and row counts are recorded before migration: satisfied by `target_counts_before_clear` and total known rows 0 in the preparation report.",
+        "Target state is proven safe or backed up/cleared: satisfied by pg_dump backup plus post-prepare known rows 0.",
+        "Queue schema initialization is run or verified: satisfied by empty schema preparation and dry-run inspecting 16 Queue tables.",
+        "A redacted preparation report is saved: satisfied by JSON and Markdown artifacts under the ledger artifact directory."
+      ],
+      "evidence": [
+        "R125 records the runtime preparation, target backup/clear, schema preparation, and dry-run result.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-prep-report.json` records the remote preparation details.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-dry-run-report.json` records the migration dry-run table inspections.",
+        "Runtime commit `6c464b8b0796b3f1b31729d4d36afe81778a0fd0` is pushed and installed in `/opt/novaic/services/novaic-agent-runtime-pg`."
+      ],
+      "execution_map": [
+        "A migration tool defect was found and fixed before relying on the tool.",
+        "A clean cutover runtime was used instead of modifying the dirty legacy runtime.",
+        "The target database was backed up, cleared, initialized in migration mode, and dry-run verified."
+      ],
+      "followup_problem_id": null,
+      "id": "C140",
+      "problem_id": "P132",
+      "residual_risk": [
+        "The actual data copy remains for P133. The old legacy runtime remains dirty but is not a blocker for migration because the clean cutover runtime is the prepared execution path."
+      ],
+      "result_ids": [
+        "R125"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A plausible failure mode was proceeding with a dirty or partially populated Postgres target. The preparation report records a pg_dump backup, post-prepare zero known Queue rows, and a dry-run status of `ready` with `target_clean=true`."
+      ],
+      "summary": "Success. R125 solves P132: the production migration runtime is clean and compatible, the target Postgres connection path is established without leaking credentials, the target was backed up and prepared as empty Queue schema, and a dry-run from the frozen backup returned ready."
+    },
+    "C141": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P133/checks/C141.md",
+      "created_at": "2026-05-23T01:40:51+00:00",
+      "criteria_map": [
+        "Migration source is the frozen backup, not the active writer path: satisfied by the execution command and artifact paths pointing to `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`.",
+        "Migration command runs from clean runtime commit `6c464b8...`: satisfied at a newer pushed commit `0517c37...`, which includes the previous fix plus the JSONB adapter fix required by production data.",
+        "CLI exits successfully and report status is `validated`: satisfied by return code 0 and report status `validated`.",
+        "Report records copied row counts for all Queue tables: satisfied by 16 copied-row entries totaling 25721 rows.",
+        "Report contains no unresolved errors or credential values: satisfied by empty errors and clean redaction scan.",
+        "Remote and local report artifacts are saved: satisfied by listed remote and local artifacts."
+      ],
+      "evidence": [
+        "R126 records the final execution result.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-report.json` reports status `validated` and no errors.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-report.md` records copied rows and semantic aggregates.",
+        "Runtime commit `0517c37ae0c3368ec9c2a87fd6270f3e28603289` contains the required migration fixes."
+      ],
+      "execution_map": [
+        "First migration attempt found a JSONB adapter issue before final success.",
+        "The issue was fixed, tested, pushed, and deployed to the cutover runtime.",
+        "Empty target tables were reset before rerun.",
+        "Final migration executed and validated row counts plus semantic aggregates."
+      ],
+      "followup_problem_id": null,
+      "id": "C141",
+      "problem_id": "P133",
+      "residual_risk": [
+        "Independent verification in P134 still needs to confirm target state after the successful migration. This is a planned downstream gate, not a failure of P133."
+      ],
+      "result_ids": [
+        "R126"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A plausible failure mode was JSON payload data failing to bind to Postgres JSONB columns. This occurred during the first attempt, was fixed in the database boundary, and the successful rerun copied all JSON-bearing tables with matching semantic aggregates."
+      ],
+      "summary": "Success. R126 solves P133: the migration ran from the frozen SQLite backup using the clean cutover runtime, exited successfully, produced a `validated` report, copied all Queue tables, and saved redacted artifacts."
+    },
+    "C142": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P134/checks/C142.md",
+      "created_at": "2026-05-23T01:43:38+00:00",
+      "criteria_map": [
+        "Source SQLite and target Postgres row counts match for all 16 tables: satisfied by empty `count_mismatches` and matching table counts.",
+        "Schema version is `18` on both source and target: satisfied by semantic aggregate schema version values.",
+        "Task, saga, session, outbox, worker lease, and idempotency aggregates match: satisfied by empty `semantic_mismatches`.",
+        "Verification is independent after final migration: satisfied by a separate script and separate artifact generated after P133.",
+        "Verification artifacts are saved and scan clean: satisfied by local/remote artifacts and clean redaction scan."
+      ],
+      "evidence": [
+        "R127 records the independent verification pass.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-independent-verification-report.json` reports `ok=true`.",
+        "Verification report has zero row count, semantic, and consistency mismatches.",
+        "Verification report was produced after P133's final migration execution."
+      ],
+      "execution_map": [
+        "The verification opened the frozen SQLite backup and live production Postgres target separately.",
+        "It computed counts, semantic aggregates, and projection consistency checks.",
+        "It compared source and target values and saved a standalone report."
+      ],
+      "followup_problem_id": null,
+      "id": "C142",
+      "problem_id": "P134",
+      "residual_risk": [
+        "Service restart and API smoke tests remain downstream gates. P134 only proves migrated data correctness before restart."
+      ],
+      "result_ids": [
+        "R127"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A plausible failure mode is a migration report marked validated while the live target later differs. The independent pass queried the live target after migration and found no count, semantic, or consistency mismatches."
+      ],
+      "summary": "Success. R127 solves P134: independent post-migration verification shows source and target row counts match, semantic aggregates match, consistency checks match, and both schema versions are `18`."
+    },
+    "C143": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/checks/C143.md",
+      "created_at": "2026-05-23T01:44:14+00:00",
+      "criteria_map": [
+        "Migration tooling runs against frozen backup and production Postgres target: satisfied by P133 execution from `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db` into `novaic_queue`.",
+        "Row counts match expected mappings for all Queue tables: satisfied by P134 zero count mismatches across 16 tables.",
+        "Semantic invariant checks cover task state, saga state, session/outbox rows, worker lease rows, and idempotency rows: satisfied by P133 and P134 semantic/consistency reports.",
+        "Migration warnings or skipped rows are recorded and resolved or block cutover: satisfied by empty errors and no mismatches in final reports.",
+        "Redacted migration report is saved: satisfied by preparation, execution, reset, and independent verification artifacts plus clean redaction scans."
+      ],
+      "evidence": [
+        "P132/R125/C140 prepared the runtime and target and produced dry-run status `ready`.",
+        "P133/R126/C141 executed the final migration and produced status `validated` with 25721 copied rows and no errors.",
+        "P134/R127/C142 independently verified row counts and semantics with zero mismatches.",
+        "Local artifacts under `.complex-problems/L20260522-091929/artifacts/` contain redacted reports."
+      ],
+      "execution_map": [
+        "Preparation found and fixed a migration config-seeding issue.",
+        "Execution found and fixed a Postgres JSONB adapter issue.",
+        "Final migration ran after both fixes and validated source-to-target data.",
+        "Independent verification reran count and semantic checks after the successful migration."
+      ],
+      "followup_problem_id": null,
+      "id": "C143",
+      "problem_id": "P124",
+      "residual_risk": [
+        "Queue services are still down/frozen until the next tickets restart them in Postgres mode and smoke-test production behavior. That is outside P124 and remains tracked by the parent cutover plan."
+      ],
+      "result_ids": [
+        "R128"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Two plausible production-only failure modes were encountered and closed: default config seeding before migration, and dict/list JSONB binding during copy. Both were fixed, tested, pushed, deployed to the clean runtime, and verified through the final successful migration and independent checks."
+      ],
+      "summary": "Success. R128 solves P124: the frozen SQLite backup was migrated into production Postgres `novaic_queue`; row counts, schema version, JSON payloads, FSM projections, outbox state, lease state, and idempotency semantics were verified with no unresolved warnings or skipped rows."
+    },
+    "C144": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P125/checks/C144.md",
+      "created_at": "2026-05-23T01:55:10+00:00",
+      "criteria_map": [
+        "Queue Service restarted with Postgres backend and redacted credential configuration: satisfied by health backend and env evidence.",
+        "Task worker, saga worker, outbox, scheduler/health processes restarted: satisfied by expected role counts.",
+        "`/health` and `/ready` pass: satisfied by healthy backend and ready status 200.",
+        "Runtime process commands show Postgres mode or Queue Service URL usage: satisfied by process inventory and env flags in the redacted report.",
+        "No process opens `/opt/novaic/data/queue.db`: satisfied by empty lsof holder PID list."
+      ],
+      "evidence": [
+        "R129 records restart execution and verification.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-restart-postgres-verify-report.json` reports `ok=true`.",
+        "Health JSON reports `database_backend=postgres`.",
+        "Verification report has no role count mismatches and no SQLite holder PIDs."
+      ],
+      "execution_map": [
+        "Queue Service was started first and waited healthy/ready.",
+        "Queue workers/outbox/scheduler/health were started from the clean cutover runtime.",
+        "Subscriber and gateway ingress were restarted against the Queue Service URL.",
+        "A second verification pass corrected a gateway process matching issue and proved all roles were present."
+      ],
+      "followup_problem_id": null,
+      "id": "C144",
+      "problem_id": "P125",
+      "residual_risk": [
+        "Behavior-level production smoke tests remain in P126. P125 proves the stack is running in Postgres mode but does not prove end-to-end queue behavior."
+      ],
+      "result_ids": [
+        "R129"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A plausible failure mode was a direct DB process silently falling back to SQLite. The restart verification checked direct Queue DB process environments and lsof on `/opt/novaic/data/queue.db`; Postgres env was set and no SQLite holders remained."
+      ],
+      "summary": "Success. R129 solves P125: Queue Service and related production Queue processes are restarted in Postgres mode, health and readiness pass, expected roles are present, and the old SQLite file has no process holders."
+    },
+    "C145": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P126/checks/C145.md",
+      "created_at": "2026-05-23T02:10:40+00:00",
+      "criteria_map": [
+        "Health/readiness pass in production Postgres mode: satisfied by health backend `postgres` and ready status 200.",
+        "Safe task API smoke covers publish/claim/complete/fail: satisfied by task complete and task fail smoke paths.",
+        "Safe saga/session/idempotency smoke covers representative lifecycle or safe equivalents: satisfied by idempotency acquire/complete/reacquire, safe unknown saga create/claim/launched/complete, and read-only session diagnostics.",
+        "Worker and outbox process checks show startup and no tracebacks/error loops: satisfied by process counts and post-marker log scan with no matches.",
+        "Post-smoke DB counts and outbox histograms are recorded: satisfied by smoke report before/after snapshots.",
+        "Smoke artifacts are redacted: satisfied by clean redaction scan."
+      ],
+      "evidence": [
+        "R130 records the production smoke result and the connection-pool fix needed to make worker claim stable.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-postgres-smoke-report.json` reports `ok=true` and no errors.",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-postgres-smoke-report.md` summarizes smoke coverage and post-smoke counts.",
+        "Runtime commit `c7aa54517e84ffd6ed931c9f1f8b9c120b6343e9` includes the connection release fix."
+      ],
+      "execution_map": [
+        "Initial smoke found a real PoolTimeout failure in worker claim paths.",
+        "The failure was fixed in code, tested, pushed, deployed, and Queue was restarted.",
+        "The final smoke ran after the fix and passed all checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C145",
+      "problem_id": "P126",
+      "residual_risk": [
+        "The old SQLite file still exists as a rollback artifact until P127 cleanup/archive. P126 proves active behavior on Postgres but does not archive the stale SQLite path."
+      ],
+      "result_ids": [
+        "R130"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The smoke deliberately exercised concurrent API and worker conditions after the connection-pool fix. The final post-marker log scan found no PoolTimeout, traceback, or error-loop markers, and worker processes remained at expected counts."
+      ],
+      "summary": "Success. R130 solves P126: production Queue Postgres mode passed health/readiness, safe task lifecycle, idempotency lifecycle, safe saga lifecycle, session diagnostic equivalent, worker/outbox process, recent log, DB count, outbox histogram, and old SQLite holder checks."
+    },
+    "C146": {
+      "blocking_gaps": [
+        "The success criterion \"Central SQLite classification and rollback notes are updated to say Queue runtime source of truth is Postgres\" is not satisfied by `R131`; the result only cites the archive report and not an updated central classification or rollback note.",
+        "The success criterion \"The report states whether the rollback-only SQLite artifact can be retired later or must be retained for a defined window\" is only partially addressed; `R131` preserves the archive but does not define the retention window or retirement condition."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/checks/C146.md",
+      "created_at": "2026-05-23T02:15:33+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P135",
+      "id": "C146",
+      "problem_id": "P127",
+      "residual_risk": [],
+      "result_ids": [
+        "R131"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "Result `R131` proves the active Queue SQLite path was archived, no process holds it, and Postgres health/ready still pass. It does not prove the full `P127` problem is solved because the central SQLite classification/rollback notes were not updated and the rollback-only artifact retention/retirement window is not stated in a durable central note."
+    },
+    "C147": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/children/P135/checks/C147.md",
+      "created_at": "2026-05-23T02:20:28+00:00",
+      "criteria_map": [
+        "Central classification marks Queue SQLite archived/rollback-only and names Postgres as source of truth: satisfied by the updated Queue row in `SQLITE_STATE_CLASSIFICATION.after-queue-redacted.md` and report checks `queue_row_archived=true`, `central_names_postgres_source=true`.",
+        "Rollback/cutover note records archive path, checksum, runtime facts, restore expectation, and retention policy: satisfied by `QUEUE_POSTGRES_CUTOVER.redacted.md` and report checks for archive dir, checksum, restore expectation, and retention.",
+        "Local ledger artifacts include redacted copies or summaries: satisfied by `SQLITE_STATE_CLASSIFICATION.after-queue-redacted.md`, `QUEUE_POSTGRES_CUTOVER.redacted.md`, and `queue-cleanup-notes-update-report.json`.",
+        "Updated notes scanned for credential patterns: satisfied by the final empty scan over the three local artifacts."
+      ],
+      "evidence": [
+        "Remote report `.complex-problems/L20260522-091929/artifacts/queue-cleanup-notes-update-report.json` has `ok=true`.",
+        "Report checks show the Queue row is archived, the old `defer-high-risk active-state-owner` Queue classification is absent from the Queue row, Postgres `novaic_queue` is named as source of truth, and the rollback note contains archive path, checksum, restore expectation, and retention.",
+        "Local sanitized central note snapshot contains `/opt/novaic/data/queue.db | archived/rollback-only non-current SQLite snapshot`.",
+        "Local sanitized rollback note contains the final backup SHA256 `07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153`, the rollback archive path, and retention through `2026-06-22 Asia/Shanghai`.",
+        "Final credential-pattern scan over the new local note artifacts returned no matches."
+      ],
+      "execution_map": [
+        "`R132` updated the remote central note and Queue rollback note.",
+        "`R132` copied sanitized local artifacts into the ledger artifact directory.",
+        "`R132` verified remote content with a generated JSON report and grep checks.",
+        "`R132` performed final local credential-pattern scanning after additional artifact sanitization."
+      ],
+      "followup_problem_id": null,
+      "id": "C147",
+      "problem_id": "P135",
+      "residual_risk": [
+        "Other non-Queue SQLite owners remain in the central note and parent ledger; this does not block `P135` because its scope is Queue cleanup documentation.",
+        "Remote operational notes include credential-file paths by design for operators, but not credential values; committed local evidence is sanitized."
+      ],
+      "result_ids": [
+        "R132"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: stale operators or agents still see Queue as SQLite-backed because the old active row remains. Coverage: the generated report verifies `queue_row_not_defer_active=true`, and the sanitized central note shows Queue as archived/rollback-only with Postgres as current owner.",
+        "Plausible failure mode: rollback evidence exists but no retention or restore rule is documented. Coverage: the rollback note states rollback is intentional restore-only and retains artifacts through `2026-06-22 Asia/Shanghai`.",
+        "Plausible failure mode: local artifacts leak credential paths. Coverage: secret paths were redacted and the final scan returned no matches."
+      ],
+      "summary": "`P135` is successful. Result `R132` updates the central SQLite classification and Queue rollback note, provides local sanitized evidence, and verifies the notes without leaking credential paths into ledger artifacts."
+    },
+    "C148": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/checks/C148.md",
+      "created_at": "2026-05-23T02:20:58+00:00",
+      "criteria_map": [
+        "`/opt/novaic/data/queue.db` moved or marked rollback-only: satisfied by `R131` archive action and `R132` classification update.",
+        "No production process holds old SQLite after cleanup: satisfied by `R131` lsof after archive with no holder PIDs.",
+        "Central SQLite classification and rollback notes updated to say Queue runtime source of truth is Postgres: satisfied by `R132`.",
+        "Cleanup preserves final backup and checksum: satisfied by `R131` archived SHA256 matching the freeze backup and `R132` rollback note.",
+        "Report states whether rollback-only SQLite can be retired or retained for a defined window: satisfied by `R132` retention through `2026-06-22 Asia/Shanghai` and explicit later cleanup requirement."
+      ],
+      "evidence": [
+        "`R131` archived `/opt/novaic/data/queue.db`, `queue.db-wal`, and `queue.db-shm` under `/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/`.",
+        "`R131` verified live SQLite paths are absent, Queue `/health` reports Postgres, Queue `/ready` returns HTTP 200, and `lsof` has no Queue SQLite holders after archive.",
+        "`R131` recorded archived `queue.db` SHA256 `07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153`, matching the final freeze backup.",
+        "`R132` updated the central classification so Queue SQLite is `archived/rollback-only non-current SQLite snapshot` and current state owner is Postgres `novaic_queue`.",
+        "`R132` created the Queue rollback note with archive path, checksum, runtime facts, intentional restore expectation, and retention through `2026-06-22 Asia/Shanghai`.",
+        "Local artifacts from both results were scanned for credential patterns, with final scans clean for the relevant report/note artifacts."
+      ],
+      "execution_map": [
+        "`R131` performed active-path archive, health/ready/lsof verification, checksum capture, and local cleanup report capture.",
+        "`R132` closed the previous documentation gap by updating remote notes, adding rollback/retention policy, copying sanitized local evidence, and verifying with report checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C148",
+      "problem_id": "P127",
+      "residual_risk": [
+        "Rollback now requires an intentional restore of archived SQLite and explicit runtime switch; that is documented and non-blocking.",
+        "Other service SQLite work remains in parent ledger scope and does not block Queue cleanup closure."
+      ],
+      "result_ids": [
+        "R131",
+        "R132"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: stale code silently falls back to `/opt/novaic/data/queue.db`. Coverage: live path and sidecars are absent, no process holds the file, and central notes no longer present Queue SQLite as active.",
+        "Plausible failure mode: rollback artifacts are preserved but operationally ambiguous. Coverage: rollback note defines intentional restore steps and a retention/retirement policy.",
+        "Plausible failure mode: documentation says Postgres but service is unhealthy. Coverage: `R131` verified health backend Postgres and readiness HTTP 200 after archive."
+      ],
+      "summary": "`P127` is successful after follow-up `P135`. Result `R131` archived the active Queue SQLite path and verified Postgres health/ready with no SQLite holders; result `R132` updated the central SQLite classification and rollback documentation with a retention policy and sanitized local evidence."
+    },
+    "C149": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/checks/C149.md",
+      "created_at": "2026-05-23T02:23:40+00:00",
+      "criteria_map": [
+        "Production writers/workers identified and stopped/frozen before final backup: satisfied by `P122` inventory and `P123` freeze/check success.",
+        "Final SQLite backup archived with checksums: satisfied by `P123` and `R133` checksum evidence.",
+        "Migration into `novaic_queue` passes row-count and semantic invariant checks: satisfied by `P124` and independent verification.",
+        "Queue service and worker/outbox processes restart in Postgres mode: satisfied by `P125` and later restart-after-pool-fix evidence in `P126`.",
+        "Health/API/worker/outbox smokes pass: satisfied by `P126`.",
+        "No process holds `/opt/novaic/data/queue.db` after cutover: satisfied by `P125`, `P127`, and final live status.",
+        "Old `queue.db` archived/rollback-only and central notes updated: satisfied by `P127` plus follow-up `P135`."
+      ],
+      "evidence": [
+        "Child checks `C133`, `C134`, `C139`, `C143`, `C144`, `C145`, and `C148` are all success.",
+        "Final live status artifact `.complex-problems/L20260522-091929/artifacts/queue-final-post-cutover-status.json` has `ok=true`.",
+        "Final live status confirms `/health` status 200 with backend `postgres`, `/ready` status 200, `/opt/novaic/data/queue.db*` paths absent, lsof non-holder return code, Queue central classification archived, Queue row not active, and rollback note exists.",
+        "Migration evidence from `R128` copied 25721 rows across 16 tables and independently verified zero count, semantic, or consistency mismatches.",
+        "Cleanup evidence from `R131` and `R132` preserved the final backup checksum, archived the old active path, and documented Postgres `novaic_queue` as source of truth with retention through `2026-06-22 Asia/Shanghai`."
+      ],
+      "execution_map": [
+        "`T120` split the production cutover into operational gates.",
+        "Child results closed preflight/deploy, inventory, freeze/backup, migration/verification, restart, smokes, and cleanup/notes.",
+        "`R133` summarized the closed child results and remaining non-blocking risks.",
+        "This check adds one final read-only live status snapshot to reduce drift risk before parent closure."
+      ],
+      "followup_problem_id": null,
+      "id": "C149",
+      "problem_id": "P077",
+      "residual_risk": [
+        "Rollback artifacts are intentionally retained through `2026-06-22 Asia/Shanghai`; future retirement needs a separate ledger item.",
+        "Legacy `/opt/novaic/services/novaic-agent-runtime` remains dirty but is not the active Queue runtime; active Queue runs from `/opt/novaic/services/novaic-agent-runtime-pg`.",
+        "Parent Postgres-unification work still includes non-Queue services; this does not block the Queue production cutover."
+      ],
+      "result_ids": [
+        "R133"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: Queue appears migrated in artifacts but live runtime has fallen back to SQLite. Coverage: final live status reports health backend `postgres`, ready HTTP 200, no live SQLite files, and no lsof holders.",
+        "Plausible failure mode: migration copied rows but broke FSM/outbox/idempotency semantics. Coverage: independent verification found zero semantic mismatches, and production smokes exercised task, saga, idempotency, session, worker/outbox, scheduler/subscriber, and gateway paths.",
+        "Plausible failure mode: old SQLite remains operationally ambiguous. Coverage: active path is removed, archive/checksum evidence exists, central notes classify Queue SQLite as rollback-only non-current, and rollback note defines intentional restore plus retention."
+      ],
+      "summary": "`P077` is successful. Result `R133` and the closed child checks prove the Queue production stack is cut over from SQLite to Postgres, migrated and verified, running in Postgres mode, behaviorally smoked, and cleaned so the old SQLite active path is rollback-only documentation and archive material."
+    },
+    "C150": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P028/checks/C150.md",
+      "created_at": "2026-05-23T02:24:58+00:00",
+      "criteria_map": [
+        "Postgres-backed production store for active Queue state: satisfied by P073 schema/boundary, P074 repository/FSM ports, P124 migration, and P077 production status.",
+        "SQLite transaction/busy/locking behavior preserved with Postgres primitives: satisfied by P073/P074 checks covering transactions, row locks, `SKIP LOCKED`, advisory locks, unique constraints, JSONB, timestamptz, and transient-error behavior.",
+        "Existing Queue SQLite backed up and migrated with row-count and semantic checks: satisfied by P123 backup and P124 migration/independent verification.",
+        "Queue service/workers switched to Postgres and smokes pass: satisfied by P125/P126/P077 final live status.",
+        "No active Queue writer continues to use `/opt/novaic/data/queue.db`: satisfied by P125/P127/final live status lsof and absent live paths.",
+        "Old SQLite retained only as rollback evidence and documented centrally: satisfied by P127/P135 and final central classification evidence."
+      ],
+      "evidence": [
+        "Child checks `C077`, `C101`, `C109`, `C132`, and `C149` are success.",
+        "`R134` summarizes the implementation, repository semantics, migration tooling, staging validation, and production cutover slices.",
+        "Production migration copied 25721 rows across 16 tables into `novaic_queue`, with zero independent count, semantic, or consistency mismatches.",
+        "Final production status artifact reports backend `postgres`, ready HTTP 200, no live `/opt/novaic/data/queue.db*` files, Queue central classification archived, and rollback note exists.",
+        "Production smoke artifacts cover task, saga, idempotency, session, worker/outbox, scheduler/subscriber, log, DB-count, and old-holder checks."
+      ],
+      "execution_map": [
+        "`T072` split Queue cutover into implementation and production phases.",
+        "P073-P075 implemented and tested the Postgres boundary, semantics, and migration tooling.",
+        "P076 validated the stack in staging.",
+        "P077 executed and verified production cutover and cleanup.",
+        "`R134` aggregates those closed phases for this problem-level check."
+      ],
+      "followup_problem_id": null,
+      "id": "C150",
+      "problem_id": "P028",
+      "residual_risk": [
+        "SQLite code remains only behind explicit non-production/test/local backend boundaries; production does not use SQLite fallback.",
+        "Rollback artifact retirement is intentionally deferred to a later cleanup decision after the stabilization window.",
+        "Non-Queue service migrations remain open in the parent ledger and do not block Queue closure."
+      ],
+      "result_ids": [
+        "R134"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: implementation supports Postgres but production still uses SQLite. Coverage: final live status and production smoke reports show backend `postgres`, live SQLite paths absent, and no holders.",
+        "Plausible failure mode: migration preserves row counts but breaks Queue semantics. Coverage: independent verification checked semantic invariants and production smokes exercised lifecycle behavior.",
+        "Plausible failure mode: old SQLite can be mistaken as active. Coverage: live path is gone, central classification says rollback-only non-current, and rollback note has explicit restore-only policy."
+      ],
+      "summary": "`P028` is successful. Result `R134` and its closed child checks prove that Queue's active production state has moved to Postgres `novaic_queue`, core task/saga/session/lease/outbox/idempotency semantics are covered by explicit Postgres paths and tests, production SQLite state was backed up and migrated with invariant verification, services are running and smoked in Postgres mode, and old SQLite is rollback-only documented evidence."
+    },
+    "C151": {
+      "blocking_gaps": [
+        "`/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` still classifies `/opt/novaic/data/gateway.db` as active auth/ops state in its top table row, even though Gateway has been cut over and the live file is absent.",
+        "`/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` still classifies `/opt/novaic/data/cortex/operational.sqlite3` as active-projection-cache in its top table row, even though Cortex has been cut over and the live file is absent.",
+        "The final classification audit artifact reports `needs_followup=true` with stale rows for Gateway and Cortex, so the final classification criterion is not satisfied."
+      ],
+      "body_path": "problems/P000/children/P024/checks/C151.md",
+      "created_at": "2026-05-23T02:26:59+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P136",
+      "id": "C151",
+      "problem_id": "P024",
+      "residual_risk": [],
+      "result_ids": [
+        "R135"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "`R135` proves the Gateway, Cortex, Entangled, and Queue cutover work is substantially complete, but `P024` is not yet successful because the final central SQLite classification table still has stale active top-level rows for Gateway and Cortex. The original problem explicitly requires the final classification note to identify remaining SQLite files as rollback-only snapshots or justified non-service data."
+    },
+    "C152": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P136/checks/C152.md",
+      "created_at": "2026-05-23T02:30:15+00:00",
+      "criteria_map": [
+        "Gateway row rollback/non-current and names `novaic_gateway`: satisfied by `R136` report and final classification snapshot.",
+        "Gateway row points to its rollback/cutover archive: satisfied by `R136` report and final classification snapshot.",
+        "Cortex row rollback/non-current and names `novaic_cortex`: satisfied by `R136` report and final classification snapshot.",
+        "Cortex row points to its rollback/cutover archive: satisfied by `R136` report and final classification snapshot.",
+        "Fresh final audit shows no stale active rows among Queue, Entangled, Gateway, and Cortex: satisfied by `stale_active_rows=[]` and `no_stale_active_rows=true`.",
+        "Sanitized local artifacts exist and pass scanning: satisfied by listed artifacts and final empty scan."
+      ],
+      "evidence": [
+        "`final-sqlite-classification-repair-report.json` has `ok=true`.",
+        "Report checks show `gateway_row_archived=true`, `cortex_row_archived=true`, `live_paths_absent=true`, and `no_stale_active_rows=true`.",
+        "`stale_active_rows` is empty.",
+        "Sanitized final classification snapshot records Gateway as Postgres `novaic_gateway` with rollback archive `/opt/novaic/residue-archive/gateway-pg-cutover-20260522T041053Z`.",
+        "Sanitized final classification snapshot records Cortex as Postgres `novaic_cortex` with rollback archive `/opt/novaic/residue-archive/cortex-pg-cutover-20260522T082503Z`.",
+        "Final local artifact scan over the repair report, final classification snapshot, and remote-dir note returned no matches."
+      ],
+      "execution_map": [
+        "`T136` made one documentation repair pass on the central classification note.",
+        "`R136` records the remote update, audit report, sanitized local evidence, and scan results.",
+        "No service runtime or schema mutation was performed."
+      ],
+      "followup_problem_id": null,
+      "id": "C152",
+      "problem_id": "P136",
+      "residual_risk": [
+        "LLM Factory SQLite remains present as rollback-only evidence, which is expected and separately classified.",
+        "Future operators should still use the per-service rollback notes for restore steps; this check only closes final classification consistency."
+      ],
+      "result_ids": [
+        "R136"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: only addenda are fixed while the top table remains stale. Coverage: the generated audit parses the top service rows and reports no stale active rows.",
+        "Plausible failure mode: rows are fixed but live files still exist. Coverage: audit confirms all four service-owned live paths are absent.",
+        "Plausible failure mode: evidence leaks credential paths. Coverage: local artifacts were sanitized and scanned clean."
+      ],
+      "summary": "`P136` is successful. Result `R136` updates the stale Gateway and Cortex central classification rows, verifies that no Queue/Entangled/Gateway/Cortex service row remains actively classified, and stores sanitized local evidence with clean credential-pattern scanning."
+    },
+    "C153": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/checks/C153.md",
+      "created_at": "2026-05-23T02:30:43+00:00",
+      "criteria_map": [
+        "Each remaining service has production Postgres runtime path: satisfied by Gateway `novaic_gateway`, Cortex `novaic_cortex`, Entangled `novaic_entangled`, and Queue `novaic_queue` child checks.",
+        "Production SQLite fallback removed or disabled after cutover: satisfied by absent live paths, Postgres runtime evidence, and no active service-owned SQLite rows.",
+        "Existing SQLite state backed up and migrated with checks: satisfied by per-service child results and `R135`.",
+        "Service-specific behavior preserved according to earlier mapping artifacts: satisfied by child checks for Gateway auth/config, Cortex operational projections, Entangled entity/sync behavior, and Queue FSM/outbox/idempotency semantics.",
+        "Live health/readiness checks pass after cutover: satisfied by child checks and final Queue status; Gateway/Cortex/Entangled checks include their respective health/smoke evidence.",
+        "Rollback instructions and retained snapshots recorded: satisfied by per-service rollback archives and classification rows.",
+        "Final SQLite classification note identifies remaining service-owned SQLite as rollback-only or justified: satisfied by `R136` final repair audit with no stale active rows."
+      ],
+      "evidence": [
+        "Child checks `C028`, `C035`, `C074`, and `C150` are success for Gateway, Cortex, Entangled, and Queue.",
+        "`R135` records that all four service-owned live SQLite paths are absent after cutover.",
+        "`R136` report has `ok=true`, `stale_active_rows=[]`, `no_stale_active_rows=true`, and `live_paths_absent=true`.",
+        "Final classification snapshot now marks Queue, Entangled, Gateway, and Cortex service-owned SQLite files as archived/rollback-only non-current snapshots with Postgres databases named as sources of truth.",
+        "Local repair artifacts were sanitized and scanned clean."
+      ],
+      "execution_map": [
+        "`T024` split remaining service cutovers by ownership boundary.",
+        "Gateway, Cortex, Entangled, and Queue child problems closed their production migrations.",
+        "`R135` summarized the full cutover result and surfaced the final classification gap.",
+        "`P136/R136` repaired and verified the classification gap."
+      ],
+      "followup_problem_id": null,
+      "id": "C153",
+      "problem_id": "P024",
+      "residual_risk": [
+        "Rollback snapshots remain by design; retirement should be handled by later explicit cleanup items.",
+        "LLM Factory SQLite remains present as a rollback-only snapshot and was outside the four remaining active owners listed in P024.",
+        "Parent root closure may still need a global final audit and repository commit/push."
+      ],
+      "result_ids": [
+        "R135",
+        "R136"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: one service is cut over but the central table still says active SQLite. Coverage: final repair audit parses Queue, Entangled, Gateway, and Cortex rows and reports no stale active rows.",
+        "Plausible failure mode: classification says rollback-only but files still exist in live data paths. Coverage: audit confirms all four live paths are absent.",
+        "Plausible failure mode: service behavior regressed after migration. Coverage: child checks include health/readiness/API/smoke and service-specific semantic verification."
+      ],
+      "summary": "`P024` is successful after follow-up `P136`. Result `R135` proves Gateway, Cortex, Entangled, and Queue production cutovers are complete with backups, migration checks, health/smoke verification, and rollback notes; result `R136` closes the remaining final-classification gap by repairing stale Gateway and Cortex rows in the central SQLite classification table."
+    },
+    "C154": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C154.md",
+      "created_at": "2026-05-23T02:31:36+00:00",
+      "criteria_map": [
+        "Postgres Docker service provisioned with persistence, local exposure, health, protected credentials, and backup/restore docs: satisfied by `R023` and child `P001`.",
+        "Each current SQLite database classified with runtime/schema/count/code evidence: satisfied by `R023`, final classification artifacts, and `R136` repair audit.",
+        "`llm-factory` migrated first or scheduled first: satisfied by `R023` and child `P003`.",
+        "`queue.db` not migrated until FSM/outbox/lease semantics mapped: satisfied by `R023`/`P004` mapping work and `R135`/`P028` Queue implementation and cutover sequence.",
+        "Legacy residue such as empty `business.db` and unused/empty `device.db` cleaned or documented non-current: satisfied by `R023` and final classification evidence.",
+        "Live services remain healthy after each phase with rollback instructions/backups for mutations: satisfied by child checks under `R023` and `R135`, plus final Queue live status and final classification repair report."
+      ],
+      "evidence": [
+        "Initial root result `R023` completed Postgres provisioning, LLM Factory migration, SQLite owner classification, high-risk migration mapping, and stale residue cleanup.",
+        "Follow-up result `R135` completed remaining service cutovers for Gateway, Cortex, Entangled, and Queue with backups, row-count/semantic checks, health/smoke evidence, and rollback notes.",
+        "Follow-up result `R136` repaired final central classification rows for Gateway and Cortex.",
+        "Final classification repair report has `ok=true`, `stale_active_rows=[]`, and confirms `/opt/novaic/data/queue.db`, `/opt/novaic/data/entangled.db`, `/opt/novaic/data/gateway.db`, and `/opt/novaic/data/cortex/operational.sqlite3` are absent from live data paths.",
+        "Queue final live status has `ok=true`, health backend `postgres`, ready HTTP 200, live `queue.db*` paths absent, and rollback note present."
+      ],
+      "execution_map": [
+        "`T000` drove the root phased migration.",
+        "Early child problems provisioned Postgres, classified SQLite owners/residue, migrated LLM Factory, and mapped high-risk service migrations.",
+        "Follow-up `P024` implemented the remaining service Postgres cutovers one ownership boundary at a time.",
+        "Follow-up `P136` closed the final classification-table consistency gap."
+      ],
+      "followup_problem_id": null,
+      "id": "C154",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Rollback snapshots remain by design and should be retired later only through explicit cleanup items after stabilization and backup coverage are confirmed.",
+        "Local repository/ledger state still needs commit and push after this final ledger closure.",
+        "The old inactive runtime checkout on the API host remains dirty but is documented as non-active for Queue."
+      ],
+      "result_ids": [
+        "R023",
+        "R135",
+        "R136"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: a service-owned SQLite file remains active-looking after migration. Coverage: final classification audit reports no stale active rows and no live paths for Queue, Entangled, Gateway, or Cortex.",
+        "Plausible failure mode: Queue was migrated before its concurrency/FSM semantics were mapped. Coverage: Queue mapping/implementation/staging/production cutover were split and checked before production cleanup.",
+        "Plausible failure mode: production rollback evidence was lost. Coverage: each mutated service has retained rollback archives/notes; Queue retention is explicitly through `2026-06-22 Asia/Shanghai`.",
+        "Plausible failure mode: local ledger artifacts leak credentials. Coverage: new Queue/final classification artifacts were sanitized and scanned clean before citation."
+      ],
+      "summary": "`P000` is successful after follow-up `P024` and its classification repair `P136`. The API host now has one Postgres infrastructure with per-service databases, LLM Factory migrated first, Gateway/Cortex/Entangled/Queue migrated after service-specific mapping and verification, stale `device.db`/`business.db` residue cleaned or archived, and final SQLite classification no longer presents service-owned SQLite paths as active state owners."
     }
   },
   "counters": {
-    "check": 136,
-    "event": 1521,
-    "problem": 132,
-    "result": 121,
-    "ticket": 127
+    "check": 155,
+    "event": 1680,
+    "problem": 137,
+    "result": 137,
+    "ticket": 137
   },
   "created_at": "2026-05-22T01:19:29+00:00",
   "ledger_id": "L20260522-091929",
@@ -5497,7 +6240,8 @@
     "P000": {
       "body_path": "problems/P000/README.md",
       "check_ids": [
-        "C023"
+        "C023",
+        "C154"
       ],
       "created_at": "2026-05-22T01:19:29+00:00",
       "created_from_check_id": null,
@@ -5514,7 +6258,7 @@
         "R023"
       ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P001",
         "P002",
@@ -5534,7 +6278,7 @@
         "T000"
       ],
       "title": "Unify NovAIC persistent state on Postgres and remove stale database residue",
-      "updated_at": "2026-05-22T03:53:33+00:00"
+      "updated_at": "2026-05-23T02:31:36+00:00"
     },
     "P001": {
       "body_path": "problems/P000/children/P001/README.md",
@@ -6331,24 +7075,32 @@
     },
     "P024": {
       "body_path": "problems/P000/children/P024/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C151",
+        "C153"
+      ],
       "created_at": "2026-05-22T03:53:33+00:00",
       "created_from_check_id": "C023",
       "created_from_ticket_id": null,
       "created_from_ticket_mode": null,
       "description": "The first safe phase is complete: Postgres is provisioned, LLM Factory is on Postgres, SQLite owners are classified, high-risk semantics are mapped, and stale residue is cleaned. The remaining user goal is to migrate all remaining service-side persistent state off SQLite and onto the existing per-service Postgres databases without maintaining production SQLite fallback logic.\n\nRemaining active SQLite owners:\n\n- `/opt/novaic/data/queue.db`\n- `/opt/novaic/data/entangled.db`\n- `/opt/novaic/data/gateway.db`\n- `/opt/novaic/data/cortex/operational.sqlite3`",
-      "followup_ids": [],
+      "followup_ids": [
+        "P136"
+      ],
       "id": "P024",
       "package_path": "problems/P000/children/P024",
       "parent_id": "P000",
-      "result_ids": [],
+      "result_ids": [
+        "R135"
+      ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P025",
         "P026",
         "P027",
-        "P028"
+        "P028",
+        "P136"
       ],
       "success_criteria": [
         "Each remaining service has a production Postgres-backed code path and deployed runtime configuration.",
@@ -6363,7 +7115,7 @@
         "T024"
       ],
       "title": "Implement Remaining Service Postgres Cutovers",
-      "updated_at": "2026-05-22T03:53:33+00:00"
+      "updated_at": "2026-05-23T02:30:43+00:00"
     },
     "P025": {
       "body_path": "problems/P000/children/P024/children/P025/README.md",
@@ -6481,7 +7233,9 @@
     },
     "P028": {
       "body_path": "problems/P000/children/P024/children/P028/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C150"
+      ],
       "created_at": "2026-05-22T03:54:49+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T024",
@@ -6491,9 +7245,11 @@
       "id": "P028",
       "package_path": "problems/P000/children/P024/children/P028",
       "parent_id": "P024",
-      "result_ids": [],
+      "result_ids": [
+        "R134"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [
         "P073",
         "P074",
@@ -6513,7 +7269,7 @@
         "T072"
       ],
       "title": "Implement Queue Postgres Cutover",
-      "updated_at": "2026-05-22T03:54:49+00:00"
+      "updated_at": "2026-05-23T02:24:58+00:00"
     },
     "P029": {
       "body_path": "problems/P000/children/P024/children/P025/children/P029/README.md",
@@ -8265,7 +9021,9 @@
     },
     "P077": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C149"
+      ],
       "created_at": "2026-05-22T12:24:27+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T072",
@@ -8275,9 +9033,11 @@
       "id": "P077",
       "package_path": "problems/P000/children/P024/children/P028/children/P077",
       "parent_id": "P028",
-      "result_ids": [],
+      "result_ids": [
+        "R133"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [
         "P121",
         "P122",
@@ -8300,7 +9060,7 @@
         "T120"
       ],
       "title": "Execute Queue Production Postgres Cutover And Cleanup",
-      "updated_at": "2026-05-22T12:24:27+00:00"
+      "updated_at": "2026-05-23T02:23:40+00:00"
     },
     "P078": {
       "body_path": "problems/P000/children/P024/children/P028/children/P073/children/P078/README.md",
@@ -9877,7 +10637,9 @@
     },
     "P123": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C139"
+      ],
       "created_at": "2026-05-22T17:32:43+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T120",
@@ -9887,9 +10649,11 @@
       "id": "P123",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123",
       "parent_id": "P077",
-      "result_ids": [],
+      "result_ids": [
+        "R124"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [
         "P128",
         "P129"
@@ -9905,11 +10669,13 @@
         "T123"
       ],
       "title": "Freeze Queue Writers And Archive Final SQLite Backup",
-      "updated_at": "2026-05-22T17:32:43+00:00"
+      "updated_at": "2026-05-23T01:17:00+00:00"
     },
     "P124": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C143"
+      ],
       "created_at": "2026-05-22T17:32:44+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T120",
@@ -9919,10 +10685,16 @@
       "id": "P124",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P124",
       "parent_id": "P077",
-      "result_ids": [],
+      "result_ids": [
+        "R128"
+      ],
       "root_id": "P000",
-      "status": "todo",
-      "subproblem_ids": [],
+      "status": "done",
+      "subproblem_ids": [
+        "P132",
+        "P133",
+        "P134"
+      ],
       "success_criteria": [
         "Migration tooling runs against the frozen SQLite backup/source and production Postgres target.",
         "Row counts match expected source-to-target mappings for all Queue tables.",
@@ -9930,13 +10702,17 @@
         "Any migration warnings or skipped rows are recorded and resolved or block cutover.",
         "A redacted migration report is saved under ledger artifacts."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T128"
+      ],
       "title": "Migrate Queue SQLite Data To Production Postgres And Verify",
-      "updated_at": "2026-05-22T17:32:44+00:00"
+      "updated_at": "2026-05-23T01:44:14+00:00"
     },
     "P125": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P125/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C144"
+      ],
       "created_at": "2026-05-22T17:32:44+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T120",
@@ -9946,9 +10722,11 @@
       "id": "P125",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P125",
       "parent_id": "P077",
-      "result_ids": [],
+      "result_ids": [
+        "R129"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Queue Service is restarted with `NOVAIC_QUEUE_DB_BACKEND=postgres` and redacted production credential configuration.",
@@ -9957,13 +10735,17 @@
         "Runtime process commands show Postgres mode or Queue Service URL usage as appropriate.",
         "No process opens `/opt/novaic/data/queue.db` after restart."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T132"
+      ],
       "title": "Restart Production Queue Services In Postgres Mode",
-      "updated_at": "2026-05-22T17:32:44+00:00"
+      "updated_at": "2026-05-23T01:55:10+00:00"
     },
     "P126": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P126/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C145"
+      ],
       "created_at": "2026-05-22T17:32:44+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T120",
@@ -9973,9 +10755,11 @@
       "id": "P126",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P126",
       "parent_id": "P077",
-      "result_ids": [],
+      "result_ids": [
+        "R130"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Health/readiness checks pass in production Postgres mode.",
@@ -9985,26 +10769,37 @@
         "Post-smoke DB counts and outbox histograms are recorded.",
         "Smoke artifacts are redacted."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T133"
+      ],
       "title": "Run Production Queue Postgres Health API Worker And Outbox Smokes",
-      "updated_at": "2026-05-22T17:32:44+00:00"
+      "updated_at": "2026-05-23T02:10:40+00:00"
     },
     "P127": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C146",
+        "C148"
+      ],
       "created_at": "2026-05-22T17:32:44+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T120",
       "created_from_ticket_mode": "split",
       "description": "After production Postgres mode passes smokes, the old SQLite queue file must stop looking like an active runtime path. It should remain available only for rollback until retirement, and central cleanup notes must reflect the new source of truth.",
-      "followup_ids": [],
+      "followup_ids": [
+        "P135"
+      ],
       "id": "P127",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P127",
       "parent_id": "P077",
-      "result_ids": [],
+      "result_ids": [
+        "R131"
+      ],
       "root_id": "P000",
-      "status": "todo",
-      "subproblem_ids": [],
+      "status": "done",
+      "subproblem_ids": [
+        "P135"
+      ],
       "success_criteria": [
         "`/opt/novaic/data/queue.db` is moved, renamed, permissioned, or otherwise marked rollback-only according to the rollback plan.",
         "No production process holds the old SQLite file after cleanup.",
@@ -10012,9 +10807,11 @@
         "Cleanup preserves the final backup and checksum.",
         "The report states whether the rollback-only SQLite artifact can be retired later or must be retained for a defined window."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T134"
+      ],
       "title": "Archive Old Queue SQLite Residue And Update Cleanup Notes",
-      "updated_at": "2026-05-22T17:32:44+00:00"
+      "updated_at": "2026-05-23T02:20:58+00:00"
     },
     "P128": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P128/README.md",
@@ -10050,7 +10847,9 @@
     },
     "P129": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C138"
+      ],
       "created_at": "2026-05-22T17:45:13+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T123",
@@ -10060,9 +10859,11 @@
       "id": "P129",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129",
       "parent_id": "P123",
-      "result_ids": [],
+      "result_ids": [
+        "R123"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [
         "P130",
         "P131"
@@ -10078,11 +10879,13 @@
         "T125"
       ],
       "title": "Execute Queue Freeze And Final SQLite Backup",
-      "updated_at": "2026-05-22T17:45:13+00:00"
+      "updated_at": "2026-05-23T01:16:04+00:00"
     },
     "P130": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C136"
+      ],
       "created_at": "2026-05-22T17:49:10+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T125",
@@ -10092,9 +10895,11 @@
       "id": "P130",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130",
       "parent_id": "P129",
-      "result_ids": [],
+      "result_ids": [
+        "R121"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Operator approval is recorded in the ledger.",
@@ -10105,11 +10910,13 @@
         "T126"
       ],
       "title": "Confirm Queue Freeze Window Approval",
-      "updated_at": "2026-05-22T17:49:10+00:00"
+      "updated_at": "2026-05-23T01:09:35+00:00"
     },
     "P131": {
       "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P131/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C137"
+      ],
       "created_at": "2026-05-22T17:49:10+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T125",
@@ -10119,9 +10926,11 @@
       "id": "P131",
       "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P131",
       "parent_id": "P129",
-      "result_ids": [],
+      "result_ids": [
+        "R122"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Refreshed pre-freeze process and holder inventory is saved.",
@@ -10130,9 +10939,176 @@
         "Post-backup `lsof` and process checks are saved.",
         "Migration is blocked if backup validation fails or holders remain."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T127"
+      ],
       "title": "Execute Approved Queue Freeze And Backup",
-      "updated_at": "2026-05-22T17:49:10+00:00"
+      "updated_at": "2026-05-23T01:15:20+00:00"
+    },
+    "P132": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P132/README.md",
+      "check_ids": [
+        "C140"
+      ],
+      "created_at": "2026-05-23T01:18:21+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T128",
+      "created_from_ticket_mode": "split",
+      "description": "Before writing Queue data into production Postgres, the production runtime, migration tooling, DSN handling, schema initialization path, and target `novaic_queue` database state must be inspected and prepared. This belongs under P124 because migration execution is unsafe if the code version is stale, the target already has unmanaged rows, or credentials/schema are not handled through the approved redacted paths.",
+      "followup_ids": [],
+      "id": "P132",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P132",
+      "parent_id": "P124",
+      "result_ids": [
+        "R125"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Production Queue runtime checkout and migration tool version are recorded and compatible with the pushed cutover code.",
+        "Production Postgres target connection path is identified without exposing credential values in artifacts.",
+        "Target `novaic_queue` table inventory and row counts are recorded before migration.",
+        "Target state is either proven safe for migration or backed up/cleared through an auditable command path.",
+        "Queue schema initialization is run or verified against production Postgres.",
+        "A redacted preparation report is saved under ledger artifacts."
+      ],
+      "ticket_ids": [
+        "T129"
+      ],
+      "title": "Prepare Production Queue Migration Runtime And Postgres Target",
+      "updated_at": "2026-05-23T01:34:36+00:00"
+    },
+    "P133": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P133/README.md",
+      "check_ids": [
+        "C141"
+      ],
+      "created_at": "2026-05-23T01:18:21+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T128",
+      "created_from_ticket_mode": "split",
+      "description": "The verified frozen SQLite backup must be migrated into production Postgres using the approved migration tooling. This belongs under P124 because it is the state-changing data copy step and must happen only after runtime and target preparation pass.",
+      "followup_ids": [],
+      "id": "P133",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P133",
+      "parent_id": "P124",
+      "result_ids": [
+        "R126"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Migration source is the frozen backup `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`, not an active writer path.",
+        "Migration command, code version, source path, target database name, and timestamp are recorded with credentials redacted.",
+        "Migration completes without unresolved errors, warnings, skipped rows, or target conflicts.",
+        "Migration output/report is saved under ledger artifacts.",
+        "If migration fails or reports unresolved warnings, cutover remains blocked and the blocker is recorded."
+      ],
+      "ticket_ids": [
+        "T130"
+      ],
+      "title": "Execute Production Queue SQLite To Postgres Migration",
+      "updated_at": "2026-05-23T01:40:51+00:00"
+    },
+    "P134": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P134/README.md",
+      "check_ids": [
+        "C142"
+      ],
+      "created_at": "2026-05-23T01:18:22+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T128",
+      "created_from_ticket_mode": "split",
+      "description": "After the data copy, production Postgres must be checked against the frozen SQLite backup for row counts and semantic invariants before Queue services restart. This belongs under P124 because raw migration completion is insufficient without proof that task state, saga state, FSM projections, outbox/session state, leases, and idempotency semantics survived correctly.",
+      "followup_ids": [],
+      "id": "P134",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P134",
+      "parent_id": "P124",
+      "result_ids": [
+        "R127"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Source SQLite and target Postgres row counts are compared for all migrated Queue tables.",
+        "Semantic checks cover task state, saga state, FSM projections, session/outbox rows, worker lease rows, and idempotency completed/in-progress rows.",
+        "Schema/version metadata is verified on the Postgres target.",
+        "Any count mismatch or semantic warning is resolved or recorded as a blocker.",
+        "A redacted verification report is saved under ledger artifacts."
+      ],
+      "ticket_ids": [
+        "T131"
+      ],
+      "title": "Verify Production Queue Postgres Migration Semantics",
+      "updated_at": "2026-05-23T01:43:38+00:00"
+    },
+    "P135": {
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/children/P135/README.md",
+      "check_ids": [
+        "C147"
+      ],
+      "created_at": "2026-05-23T02:15:33+00:00",
+      "created_from_check_id": "C146",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The Queue SQLite active path has been archived after the production Postgres cutover, but the central SQLite classification and rollback notes still need to explicitly state that Queue runtime source of truth is Postgres and that the archived SQLite files are rollback-only evidence. The cleanup documentation must also define whether the archived SQLite artifact can be retired later or must be retained for a specific window.",
+      "followup_ids": [],
+      "id": "P135",
+      "package_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/children/P135",
+      "parent_id": "P127",
+      "result_ids": [
+        "R132"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` or the current central SQLite classification note marks Queue SQLite as archived/rollback-only and non-current, with Postgres named as the runtime source of truth.",
+        "A rollback/cutover note records the Queue archive path, final backup checksum, Postgres runtime facts, restore expectation, and retention/retirement policy for the archived SQLite artifact.",
+        "Local ledger artifacts include redacted copies or summaries of the updated notes.",
+        "Updated notes are scanned for credential patterns before being recorded as evidence."
+      ],
+      "ticket_ids": [
+        "T135"
+      ],
+      "title": "Update Queue Postgres Source-Of-Truth Cleanup Notes",
+      "updated_at": "2026-05-23T02:20:28+00:00"
+    },
+    "P136": {
+      "body_path": "problems/P000/children/P024/children/P136/README.md",
+      "check_ids": [
+        "C152"
+      ],
+      "created_at": "2026-05-23T02:26:59+00:00",
+      "created_from_check_id": "C151",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The remaining service Postgres cutovers are complete, but the central SQLite classification table still has stale active top-level rows for Gateway and Cortex. This creates operational ambiguity because the live SQLite files are gone and later addenda document Postgres cutovers, but the primary table still says those paths are active.",
+      "followup_ids": [],
+      "id": "P136",
+      "package_path": "problems/P000/children/P024/children/P136",
+      "parent_id": "P024",
+      "result_ids": [
+        "R136"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` top-level row for `/opt/novaic/data/gateway.db` marks it rollback-only/non-current or archived, names Postgres `novaic_gateway` as the current source of truth, and points to the Gateway rollback/cutover archive.",
+        "`/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` top-level row for `/opt/novaic/data/cortex/operational.sqlite3` marks it rollback-only/non-current or archived, names Postgres `novaic_cortex` as the current source of truth, and points to the Cortex rollback/cutover archive.",
+        "A fresh final classification audit shows no stale active service-owned SQLite rows among Queue, Entangled, Gateway, and Cortex.",
+        "Local ledger artifacts include sanitized evidence of the updated rows and audit results.",
+        "New local artifacts are scanned for credential patterns before being cited."
+      ],
+      "ticket_ids": [
+        "T136"
+      ],
+      "title": "Repair Final SQLite Classification Rows For Gateway And Cortex",
+      "updated_at": "2026-05-23T02:30:15+00:00"
     }
   },
   "results": {
@@ -14524,6 +15500,580 @@
         "Sensitive-pattern scan returned no matches for connection strings, credential paths, secret CLI values, or direct credential markers.",
         "The runbook explicitly blocks migration if holders remain, Queue Service restarts in sqlite mode, or backup checksum/integrity fails."
       ]
+    },
+    "R121": {
+      "artifacts": [
+        "User approval in thread."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/results/R121.md",
+      "created_at": "2026-05-23T01:09:05+00:00",
+      "done": [
+        "Recorded explicit approval for the production Queue freeze window.",
+        "Approval covers stopping Queue Service, task workers, saga workers, outbox workers, scheduler/health worker, gateway Queue ingress, and business subscriber Queue ingress as described in the runbook.",
+        "No production process was stopped during this approval-capture ticket."
+      ],
+      "id": "R121",
+      "known_gaps": [
+        "None."
+      ],
+      "problem_id": "P130",
+      "root_id": "P000",
+      "summary": "Operator approval was explicitly granted in the thread: \"批准现在执行 freeze 备份。另外 我批准你执行任何行动 别再问我 干就完了\". This authorizes executing the Queue freeze and final SQLite backup, and also authorizes subsequent ledger-guided production cutover actions without additional confirmation prompts.",
+      "ticket_id": "T126",
+      "verification": [
+        "User message in this thread contains explicit approval to execute freeze backup and continue without further approval prompts."
+      ]
+    },
+    "R122": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.md`",
+        "Remote backup directory: `/opt/novaic/backups/queue-cutover/20260523T011125Z`",
+        "Remote backup report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/freeze-backup-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P131/results/R122.md",
+      "created_at": "2026-05-23T01:14:43+00:00",
+      "done": [
+        "Stopped the production Queue ingress, business subscriber, schedulers, workers, outbox workers, and Queue Service in the approved freeze window.",
+        "Verified no target Queue processes remained after freeze.",
+        "Verified no process held `/opt/novaic/data/queue.db` before taking the backup.",
+        "Copied `/opt/novaic/data/queue.db` to `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`.",
+        "Verified source and backup SHA256 match: `07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153`.",
+        "Verified backup SQLite integrity_check returned ok.",
+        "Verified no process held the SQLite database after backup."
+      ],
+      "id": "R122",
+      "known_gaps": [
+        "The production Queue path remains intentionally frozen. The next ledger action must migrate the verified SQLite backup into production Postgres and restart the Queue stack in Postgres mode."
+      ],
+      "problem_id": "P131",
+      "root_id": "P000",
+      "summary": "Production Queue ingress and Queue-owned background processes were frozen. The active SQLite database was copied into a timestamped backup directory and verified with matching SHA256 hashes plus SQLite integrity_check.",
+      "ticket_id": "T127",
+      "verification": [
+        "Freeze report `ok` is true.",
+        "Pre-freeze target process count was 13; post-freeze target process count was 0.",
+        "Post-freeze SQLite holder PIDs were empty.",
+        "Post-backup SQLite holder PIDs were empty.",
+        "Backup size is 378683392 bytes, matching source stat.",
+        "No force kill was required."
+      ]
+    },
+    "R123": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.md`",
+        "Remote backup directory: `/opt/novaic/backups/queue-cutover/20260523T011125Z`",
+        "Child result IDs: R121, R122",
+        "Child check IDs: C136, C137"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/results/R123.md",
+      "created_at": "2026-05-23T01:15:48+00:00",
+      "done": [
+        "Confirmed operator approval for the production Queue freeze window in P130/R121/C136.",
+        "Executed the approved freeze/backup runbook in P131/R122/C137.",
+        "Stopped the Queue-dependent ingress and Queue-owned background processes before backup.",
+        "Created timestamped backup `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db` from `/opt/novaic/data/queue.db`.",
+        "Recorded SHA256, stat, SQLite integrity_check, process inventory, and lsof evidence.",
+        "Left Queue writer restart blocked until the next migration or rollback decision."
+      ],
+      "id": "R123",
+      "known_gaps": [
+        "Queue production remains intentionally frozen and must not be considered restored until migration/restart/smoke steps complete in later ledger actions."
+      ],
+      "problem_id": "P129",
+      "root_id": "P000",
+      "summary": "The freeze/backup gate is complete. Operator approval was recorded, Queue writers/workers were frozen, the final SQLite backup was created, and the backup was verified with checksum, stat, integrity, process, and holder evidence.",
+      "ticket_id": "T125",
+      "verification": [
+        "P130 check C136 accepted approval as sufficient for the freeze window.",
+        "P131 check C137 accepted the freeze and backup evidence as satisfying all child criteria.",
+        "Freeze report shows post-freeze target process count 0.",
+        "Freeze report shows no SQLite holder PIDs after freeze or after backup.",
+        "Backup SHA256 matches source SHA256: `07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153`.",
+        "SQLite integrity_check returned ok."
+      ]
+    },
+    "R124": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-runbook.md`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.md`",
+        "Remote backup directory: `/opt/novaic/backups/queue-cutover/20260523T011125Z`",
+        "Child result IDs: R120, R123",
+        "Child check IDs: C135, C138"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/results/R124.md",
+      "created_at": "2026-05-23T01:16:45+00:00",
+      "done": [
+        "Prepared freeze/backup runbook in P128/R120/C135.",
+        "Completed approval and execution chain in P129/R123/C138.",
+        "Stopped or froze all identified Queue writers/workers before backup.",
+        "Archived `/opt/novaic/data/queue.db` to `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`.",
+        "Recorded backup checksum, file metadata, SQLite integrity_check, process inventory, and lsof evidence.",
+        "Kept backup reporting redacted; artifact scans did not expose unrelated credential values."
+      ],
+      "id": "R124",
+      "known_gaps": [
+        "Production Queue remains intentionally frozen until the migration and restart steps complete. This is expected for the overall cutover and is not a remaining gap for the backup gate."
+      ],
+      "problem_id": "P123",
+      "root_id": "P000",
+      "summary": "The final SQLite backup gate is complete. A redacted runbook was prepared, operator approval was recorded, Queue writers/workers were frozen, and `/opt/novaic/data/queue.db` was archived with checksum, metadata, integrity, process, and holder evidence.",
+      "ticket_id": "T123",
+      "verification": [
+        "P128 check C135 accepted the runbook as complete and redacted.",
+        "P129 check C138 accepted execution of the freeze/backup gate.",
+        "Freeze report shows post-freeze target process count 0 and no SQLite holder PIDs after freeze or backup.",
+        "Source and backup SHA256 match: `07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153`.",
+        "SQLite integrity_check returned ok."
+      ]
+    },
+    "R125": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-prep-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-prep-report.md`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-dry-run-report.json`",
+        "Remote target pg_dump: `/opt/novaic/backups/queue-cutover/20260523T011125Z/pre-migration-novaic_queue.sql`",
+        "Remote dry-run report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-migration-dry-run-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P132/results/R125.md",
+      "created_at": "2026-05-23T01:34:19+00:00",
+      "done": [
+        "Fixed the migration CLI so migration schema initialization does not seed default `config` rows before copying SQLite data.",
+        "Tested the fix locally with 38 focused Queue migration/Postgres tests passing.",
+        "Pushed `novaic-agent-runtime` commit `6c464b8b0796b3f1b31729d4d36afe81778a0fd0` to `main`.",
+        "Created clean production cutover runtime `/opt/novaic/services/novaic-agent-runtime-pg` at commit `6c464b8b0796b3f1b31729d4d36afe81778a0fd0`.",
+        "Created a dedicated cutover venv at `/opt/novaic/services/novaic-agent-runtime-pg/.venv-cutover` with Postgres dependencies available.",
+        "Created/verified the production Queue Postgres credential file on the server without recording credential values in artifacts.",
+        "Backed up the pre-migration `novaic_queue` target with pg_dump.",
+        "Dropped/recreated known Queue tables into an empty schema suitable for migration.",
+        "Ran migration dry-run from `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`; status was `ready`."
+      ],
+      "id": "R125",
+      "known_gaps": [
+        "Actual data copy has not run yet; it belongs to P133.",
+        "The old legacy production runtime remains dirty and intentionally untouched; later restart work should use the clean cutover runtime."
+      ],
+      "problem_id": "P132",
+      "root_id": "P000",
+      "summary": "Production Queue migration preparation succeeded. A clean cutover runtime was prepared at the latest pushed migration commit, the migration CLI config-seeding bug was fixed and pushed, the production `novaic_queue` target was backed up and prepared as an empty Queue schema, and dry-run reported `ready` for the frozen SQLite backup.",
+      "ticket_id": "T129",
+      "verification": [
+        "Local tests: `pytest tests/test_queue_migration_cli.py tests/test_queue_migration_planner.py tests/test_queue_migration_copy.py tests/test_queue_migration_validation.py tests/test_queue_postgres_boundary.py tests/test_queue_postgres_task_query_dialect.py` returned 38 passed.",
+        "Cutover runtime HEAD equals desired commit `6c464b8b0796b3f1b31729d4d36afe81778a0fd0`.",
+        "Target known Queue rows before clear: 0.",
+        "Target known Queue rows after prepare: 0.",
+        "Dry-run status: `ready`.",
+        "Dry-run target_clean: true.",
+        "Dry-run table inspections: 16.",
+        "Redaction scan over preparation artifacts produced no credential matches."
+      ]
+    },
+    "R126": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-reset-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-report.md`",
+        "Remote migration report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-migration-execution-report.json`",
+        "Remote reset report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-migration-execution-reset-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P133/results/R126.md",
+      "created_at": "2026-05-23T01:40:33+00:00",
+      "done": [
+        "Fixed and pushed a required Postgres JSONB adapter change in `novaic-agent-runtime` commit `0517c37ae0c3368ec9c2a87fd6270f3e28603289`.",
+        "Updated `/opt/novaic/services/novaic-agent-runtime-pg` to commit `0517c37ae0c3368ec9c2a87fd6270f3e28603289`.",
+        "Reset the empty prepared Queue tables before final execution so the migration CLI could initialize a fresh migration schema.",
+        "Ran the migration CLI from the clean cutover runtime using source `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`.",
+        "Saved remote and local migration execution reports.",
+        "Confirmed report status `validated`, zero errors, and 25721 copied rows."
+      ],
+      "id": "R126",
+      "known_gaps": [
+        "P134 still needs to perform an independent post-migration verification pass before services restart.",
+        "Queue production remains frozen until later restart/smoke steps complete."
+      ],
+      "problem_id": "P133",
+      "root_id": "P000",
+      "summary": "The frozen production Queue SQLite backup was migrated into production Postgres `novaic_queue`. The final migration run completed with CLI exit code 0 and report status `validated`, copying 25721 rows with no report errors.",
+      "ticket_id": "T130",
+      "verification": [
+        "Local focused tests after JSONB fix: 39 passed.",
+        "Final migration report status: `validated`.",
+        "Final migration report errors: empty list.",
+        "Copied row total: 25721.",
+        "Copied row table count: 16.",
+        "Semantic source and target aggregates match in the migration report.",
+        "Redaction scan over migration execution artifacts produced no credential matches."
+      ]
+    },
+    "R127": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-independent-verification-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-independent-verification-report.md`",
+        "Remote verification report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-migration-independent-verification-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P134/results/R127.md",
+      "created_at": "2026-05-23T01:43:22+00:00",
+      "done": [
+        "Ran a separate verification pass after the final migration execution.",
+        "Compared source SQLite and target Postgres row counts for all Queue migration tables.",
+        "Compared schema version, task state counts, saga state counts, session state counts, outbox status counts, idempotency status counts, worker lease state counts, and max event/outbox IDs.",
+        "Checked projection consistency for tasks, sagas, and completed idempotency rows.",
+        "Saved remote and local verification artifacts.",
+        "Ran redaction scan over verification artifacts."
+      ],
+      "id": "R127",
+      "known_gaps": [
+        "Queue services have not been restarted on Postgres yet; that belongs to later production restart and smoke-test tickets."
+      ],
+      "problem_id": "P134",
+      "root_id": "P000",
+      "summary": "Independent post-migration verification passed. The frozen SQLite backup and production Postgres `novaic_queue` target have matching row counts for all 16 Queue tables, matching semantic aggregates, matching consistency checks, and schema version `18` on both sides.",
+      "ticket_id": "T131",
+      "verification": [
+        "Verification report `ok`: true.",
+        "Row count mismatches: 0.",
+        "Semantic mismatches: 0.",
+        "Consistency mismatches: 0.",
+        "Source and target schema version: `18`.",
+        "Source and target total copied rows by table match the P133 migration report.",
+        "Redaction scan produced no credential matches."
+      ]
+    },
+    "R128": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-prep-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-dry-run-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-reset-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-migration-independent-verification-report.json`",
+        "Child result IDs: R125, R126, R127",
+        "Child check IDs: C140, C141, C142"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/results/R128.md",
+      "created_at": "2026-05-23T01:43:56+00:00",
+      "done": [
+        "Prepared clean production cutover runtime and target Postgres in P132/R125/C140.",
+        "Fixed and pushed migration tooling defects found during production preparation/execution.",
+        "Executed production SQLite-to-Postgres migration in P133/R126/C141.",
+        "Independently verified source and target semantics in P134/R127/C142.",
+        "Saved redacted preparation, dry-run, execution, reset, and verification reports under ledger artifacts."
+      ],
+      "id": "R128",
+      "known_gaps": [
+        "Queue services are still intentionally frozen and must be restarted in Postgres mode in the next cutover ticket.",
+        "The legacy production runtime remains dirty and should not be used for the restarted Queue stack; use `/opt/novaic/services/novaic-agent-runtime-pg`."
+      ],
+      "problem_id": "P124",
+      "root_id": "P000",
+      "summary": "Production Queue SQLite data was migrated from the frozen backup into production Postgres `novaic_queue` and independently verified. The migration copied 25721 rows across 16 Queue tables, final report status was `validated`, and independent verification found zero row count, semantic, or consistency mismatches.",
+      "ticket_id": "T128",
+      "verification": [
+        "P132 dry-run status: `ready`.",
+        "P133 final migration status: `validated`.",
+        "P133 copied rows: 25721.",
+        "P134 independent verification: `ok=true`.",
+        "P134 row count mismatches: 0.",
+        "P134 semantic mismatches: 0.",
+        "P134 consistency mismatches: 0.",
+        "All migration artifacts scanned clean for credential patterns."
+      ]
+    },
+    "R129": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-restart-postgres-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-restart-postgres-verify-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-restart-postgres-report.md`",
+        "Remote restart report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-restart-postgres-report.json`",
+        "Remote verification report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-restart-postgres-verify-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P125/results/R129.md",
+      "created_at": "2026-05-23T01:54:53+00:00",
+      "done": [
+        "Started Queue Service from `/opt/novaic/services/novaic-agent-runtime-pg` on `127.0.0.1:19997` with Postgres backend and credential-file configuration.",
+        "Started four task workers and two saga workers pointed at the restarted Queue Service.",
+        "Started session outbox and saga outbox workers with Queue Postgres environment.",
+        "Started Queue health worker and scheduler.",
+        "Restarted business subscriber and gateway queue ingress.",
+        "Saved redacted restart and verification reports."
+      ],
+      "id": "R129",
+      "known_gaps": [
+        "Production smoke tests still need to run in the next ledger ticket before the cutover is considered behaviorally complete."
+      ],
+      "problem_id": "P125",
+      "root_id": "P000",
+      "summary": "Production Queue services were restarted from the clean cutover runtime in Postgres mode. Queue Service health reports `database_backend=postgres`, `/ready` returns 200, all expected Queue-related process roles are running, and no process holds `/opt/novaic/data/queue.db`.",
+      "ticket_id": "T132",
+      "verification": [
+        "Role counts: Queue Service 1, task workers 4, saga workers 2, session outbox 1, saga outbox 1, health 1, scheduler 1, business subscriber 1, gateway ingress 1.",
+        "`/health`: healthy with `database_backend=postgres`.",
+        "`/ready`: 200.",
+        "Direct Queue DB processes have `NOVAIC_QUEUE_DB_BACKEND=postgres` and credential-file env set.",
+        "`lsof /opt/novaic/data/queue.db`: no holder PIDs.",
+        "Redaction scan over restart artifacts produced no credential matches or credential-file paths."
+      ]
+    },
+    "R130": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-postgres-smoke-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-production-postgres-smoke-report.md`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-restart-postgres-after-pool-fix-report.json`",
+        "Remote smoke report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-production-postgres-smoke-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P126/results/R130.md",
+      "created_at": "2026-05-23T02:10:21+00:00",
+      "done": [
+        "Found worker claim 500s caused by Queue Postgres connections not returning to the pool.",
+        "Fixed the connection lifecycle in `novaic-agent-runtime` commit `c7aa54517e84ffd6ed931c9f1f8b9c120b6343e9`.",
+        "Ran 57 focused Queue migration/Postgres/session tests locally; all passed.",
+        "Deployed commit `c7aa54517e84ffd6ed931c9f1f8b9c120b6343e9` to `/opt/novaic/services/novaic-agent-runtime-pg` and restarted the Queue stack.",
+        "Ran production smoke prefix `codex-smoke-20260523T020841Z`.",
+        "Exercised task publish/claim/complete and publish/claim/fail lifecycles.",
+        "Exercised idempotency acquire/complete/reacquire lifecycle.",
+        "Exercised safe unknown-type saga create/claim/launched/complete lifecycle.",
+        "Used read-only session diagnostics as the production-safe session equivalent.",
+        "Recorded post-smoke DB counts, outbox histograms, process counts, lsof, and log scan."
+      ],
+      "id": "R130",
+      "known_gaps": [
+        "Final cleanup/archive of the old SQLite active path is still pending in the next ledger ticket."
+      ],
+      "problem_id": "P126",
+      "root_id": "P000",
+      "summary": "Production Queue Postgres smoke checks passed after fixing and deploying a Postgres connection-pool lifecycle bug. Health/readiness, task lifecycle, idempotency lifecycle, safe saga lifecycle, session diagnostics, worker/outbox liveness, recent log scan, DB histograms, and old SQLite holder checks all passed.",
+      "ticket_id": "T133",
+      "verification": [
+        "`/health`: `database_backend=postgres`.",
+        "`/ready`: 200.",
+        "Process counts matched expected Queue stack counts.",
+        "`lsof /opt/novaic/data/queue.db`: no holder PIDs.",
+        "Recent post-marker log scan: no error matches.",
+        "Task states changed as expected: done +1, failed +1, pending unchanged.",
+        "Saga completed +1.",
+        "Idempotency completed +1.",
+        "Worker lease released +3 from smoke claims.",
+        "Redaction scan over smoke/restart artifacts produced no credential matches or credential-file paths."
+      ]
+    },
+    "R131": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-sqlite-archive-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/queue-sqlite-archive-report.md`",
+        "Remote report: `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-sqlite-archive-report.json`",
+        "Remote archive directory: `/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/results/R131.md",
+      "created_at": "2026-05-23T02:14:26+00:00",
+      "done": [
+        "Verified no process held `/opt/novaic/data/queue.db` before cleanup.",
+        "Archived `/opt/novaic/data/queue.db`, `queue.db-wal`, and `queue.db-shm` into `/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/`.",
+        "Recorded file sizes and hashes for the archived SQLite files.",
+        "Verified the live SQLite path and sidecars no longer exist after archive.",
+        "Verified Queue `/health` still reports Postgres and Queue `/ready` returns HTTP 200 after archive.",
+        "Verified no process held `/opt/novaic/data/queue.db` after cleanup.",
+        "Copied the archive report into the ledger artifact directory and scanned the JSON/Markdown report for credential patterns."
+      ],
+      "id": "R131",
+      "known_gaps": [
+        "This ticket only archived the Queue SQLite active path. Other services' legacy SQLite paths and broader Postgres cleanup remain governed by the parent migration ledger items.",
+        "Rollback now requires intentionally restoring the archived SQLite file instead of relying on accidental live-path fallback."
+      ],
+      "problem_id": "P127",
+      "root_id": "P000",
+      "summary": "The old active Queue SQLite path on the API host was moved out of `/opt/novaic/data` into the cutover backup archive after the Queue stack was already running and smoke-tested on Postgres. The live SQLite path and WAL/SHM sidecars are absent, Queue health and readiness still pass against Postgres, and the cleanup evidence was copied into local ledger artifacts.",
+      "ticket_id": "T134",
+      "verification": [
+        "`queue-sqlite-archive-report.md` records status `success`, health backend `postgres`, ready status `200`, and no SQLite holders before or after the archive.",
+        "Archived `queue.db` size is `378683392` bytes with SHA256 `07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153`, matching the earlier freeze backup hash.",
+        "Redaction scan over `queue-sqlite-archive-report.json` and `queue-sqlite-archive-report.md` returned no matches for DSNs, passwords, tokens, private keys, or the Postgres secret path."
+      ]
+    },
+    "R132": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/queue-cleanup-notes-update-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/SQLITE_STATE_CLASSIFICATION.after-queue-redacted.md`",
+        "`.complex-problems/L20260522-091929/artifacts/QUEUE_POSTGRES_CUTOVER.redacted.md`",
+        "Remote central note: `/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md`",
+        "Remote rollback note: `/opt/novaic/backups/queue-cutover/20260523T011125Z/QUEUE_POSTGRES_CUTOVER.md`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/children/P135/results/R132.md",
+      "created_at": "2026-05-23T02:19:50+00:00",
+      "done": [
+        "Updated `/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` on `api.gradievo.com` so `/opt/novaic/data/queue.db` is `archived/rollback-only non-current SQLite snapshot`.",
+        "Added a Queue Postgres cutover addendum to the central classification note naming Postgres database `novaic_queue` as the current source of truth.",
+        "Created `/opt/novaic/backups/queue-cutover/20260523T011125Z/QUEUE_POSTGRES_CUTOVER.md` with cutover evidence, backup checksum, archive location, rollback expectation, and retention/retirement policy.",
+        "Saved a remote verification report at `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue-cleanup-notes-update-report.json`.",
+        "Copied sanitized local artifacts into `.complex-problems/L20260522-091929/artifacts/`."
+      ],
+      "id": "R132",
+      "known_gaps": [
+        "The central note still records other service classifications, including remaining non-Queue SQLite owners such as Gateway and Cortex; those are outside this follow-up and remain governed by the parent migration ledger.",
+        "Remote operational notes intentionally include credential-file paths for operators, but local ledger copies are sanitized before commit."
+      ],
+      "problem_id": "P135",
+      "root_id": "P000",
+      "summary": "Updated the API host Queue cleanup documentation so the central SQLite classification no longer describes `queue.db` as active. Queue is now documented as Postgres-backed, with the archived SQLite files marked rollback-only and retained through a defined stabilization window.",
+      "ticket_id": "T135",
+      "verification": [
+        "Remote report `ok` is `true`.",
+        "Remote checks confirmed the central classification exists, the rollback note exists, the Queue row is archived, the old `defer-high-risk active-state-owner` Queue classification is gone, Postgres `novaic_queue` is named as source of truth, and the rollback note contains archive path, checksum, restore expectation, and retention through `2026-06-22 Asia/Shanghai`.",
+        "Remote grep confirmed the Queue classification row and Queue Postgres cutover addendum in `/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md`.",
+        "Remote grep confirmed rollback and retention sections in `/opt/novaic/backups/queue-cutover/20260523T011125Z/QUEUE_POSTGRES_CUTOVER.md`.",
+        "Local sanitized artifacts were scanned for `postgres://`, `postgresql://`, password/passwd, secret, token, API-key patterns, private-key markers, and raw `/opt/novaic/postgres/secrets` paths; the final scan returned no matches."
+      ]
+    },
+    "R133": {
+      "artifacts": [
+        "Child result IDs: `R118`, `R119`, `R124`, `R128`, `R129`, `R130`, `R131`, `R132`",
+        "Child check IDs: `C133`, `C134`, `C139`, `C143`, `C144`, `C145`, `C148`",
+        "Freeze/backup: `.complex-problems/L20260522-091929/artifacts/queue-freeze-backup-report.json`",
+        "Migration: `.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-report.json`",
+        "Independent verification: `.complex-problems/L20260522-091929/artifacts/queue-production-migration-independent-verification-report.json`",
+        "Restart: `.complex-problems/L20260522-091929/artifacts/queue-restart-postgres-report.json`",
+        "Smoke: `.complex-problems/L20260522-091929/artifacts/queue-production-postgres-smoke-report.json`",
+        "SQLite archive: `.complex-problems/L20260522-091929/artifacts/queue-sqlite-archive-report.json`",
+        "Cleanup notes: `.complex-problems/L20260522-091929/artifacts/queue-cleanup-notes-update-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/results/R133.md",
+      "created_at": "2026-05-23T02:22:08+00:00",
+      "done": [
+        "P121 committed, pushed, and deployed the Queue Postgres cutover runtime code to the API host.",
+        "P122 inventoried production Queue processes, active SQLite holders, Postgres target readiness, and cutover preconditions.",
+        "P123 froze Queue writers/workers and created the final backup under `/opt/novaic/backups/queue-cutover/20260523T011125Z`.",
+        "P124 migrated the frozen SQLite backup into production Postgres `novaic_queue`, copying 25721 rows across 16 tables with zero independent verification mismatches.",
+        "P125 restarted Queue Service and related worker/outbox/scheduler/subscriber processes from the clean cutover runtime in Postgres mode.",
+        "P126 ran production health, API, task, saga, idempotency, session, worker/outbox, scheduler/subscriber, log, and holder smokes; after fixing a Postgres connection-pool lifecycle issue, smokes passed.",
+        "P127 archived `/opt/novaic/data/queue.db` and sidecars out of the active path, verified no holders remained, and updated central SQLite classification plus Queue rollback/retention notes through follow-up P135."
+      ],
+      "id": "R133",
+      "known_gaps": [
+        "The legacy production runtime checkout `/opt/novaic/services/novaic-agent-runtime` remains dirty and should not be used for Queue runtime; production Queue now runs from `/opt/novaic/services/novaic-agent-runtime-pg`.",
+        "Remote rollback artifacts are intentionally retained through the stabilization window; later retirement needs a separate explicit cleanup decision.",
+        "Other service SQLite owners in the parent Postgres-unification ledger remain out of this Queue cutover scope."
+      ],
+      "problem_id": "P077",
+      "root_id": "P000",
+      "summary": "Completed the production Queue cutover from `/opt/novaic/data/queue.db` to Postgres `novaic_queue`. The cutover code was committed and deployed, production writers were inventoried and frozen, the final SQLite backup was archived with checksum, data was migrated and independently verified, Queue services restarted in Postgres mode, production smokes passed after the connection-pool lifecycle fix, and the old SQLite active path was archived as rollback-only with central cleanup notes updated.",
+      "ticket_id": "T120",
+      "verification": [
+        "Child checks `C133`, `C134`, `C139`, `C143`, `C144`, `C145`, and `C148` are all success.",
+        "Freeze backup SHA256 for `queue.db` is `07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153`; the archived active-path SQLite copy matches this checksum.",
+        "Migration final report status was validated and independent verification found no count, semantic, or consistency mismatches.",
+        "Queue `/health` reports Postgres and `/ready` returns HTTP 200 after restart, smoke tests, and old SQLite archive.",
+        "Process role counts after the pool fix include Queue Service, task workers, saga workers, session outbox, saga outbox, health, scheduler, subscriber, and gateway-facing process coverage.",
+        "`/opt/novaic/data/queue.db`, `queue.db-wal`, and `queue.db-shm` no longer exist in the live data path, and lsof reported no holders after cleanup.",
+        "Central cleanup notes now classify Queue SQLite as archived/rollback-only non-current state, name Postgres `novaic_queue` as source of truth, and retain rollback artifacts through `2026-06-22 Asia/Shanghai`."
+      ]
+    },
+    "R134": {
+      "artifacts": [
+        "Child result IDs: `R071`, `R093`, `R099`, `R117`, `R133`",
+        "Child check IDs: `C077`, `C101`, `C109`, `C132`, `C149`",
+        "Boundary report: `.complex-problems/L20260522-091929/artifacts/queue-postgres-boundary-report.json`",
+        "Staging report: `.complex-problems/L20260522-091929/artifacts/queue-postgres-staging-validation-report.md`",
+        "Production migration report: `.complex-problems/L20260522-091929/artifacts/queue-production-migration-execution-report.json`",
+        "Production smoke report: `.complex-problems/L20260522-091929/artifacts/queue-production-postgres-smoke-report.json`",
+        "Final live status: `.complex-problems/L20260522-091929/artifacts/queue-final-post-cutover-status.json`",
+        "Cleanup classification report: `.complex-problems/L20260522-091929/artifacts/queue-cleanup-notes-update-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/results/R134.md",
+      "created_at": "2026-05-23T02:24:30+00:00",
+      "done": [
+        "P073 implemented the Queue Postgres schema and database boundary, including backend selection, adapter, active table coverage, JSONB/timestamptz choices, indexes, transaction behavior, and health/readiness backend reporting.",
+        "P074 ported Queue repositories and FSM semantics across task, saga, session, worker lease, outbox, idempotency, and transient-error behavior.",
+        "P075 built the SQLite-to-Postgres migration planner, copy execution, semantic validation, CLI, report writing, and redaction.",
+        "P076 validated Queue Postgres mode in staging with Queue Service, API, worker/outbox, and sqlite-residue checks.",
+        "P077 executed production cutover: commit/deploy, inventory, freeze, backup, migration, restart, smokes, pool-lifecycle fix, active-path SQLite archive, central classification update, and rollback/retention notes."
+      ],
+      "id": "R134",
+      "known_gaps": [
+        "SQLite test/local support still exists behind explicit backend boundaries; production cutover does not rely on SQLite fallback.",
+        "The dirty legacy runtime checkout on the API host remains preserved but inactive for Queue; the active Queue runtime is `/opt/novaic/services/novaic-agent-runtime-pg`.",
+        "Queue rollback artifacts are retained through `2026-06-22 Asia/Shanghai` and need a later explicit retirement decision.",
+        "Other service migrations remain in the parent Postgres unification ledger."
+      ],
+      "problem_id": "P028",
+      "root_id": "P000",
+      "summary": "Completed the Queue Postgres cutover end to end. Queue now has a Postgres-backed production store for task, saga, lease, session, outbox, idempotency, and worker state; repository/FSM semantics were ported to explicit Postgres behavior; migration tooling copied and verified existing SQLite state; staging validation passed; production was cut over to Postgres `novaic_queue`; and old SQLite active-path residue is archived and documented as rollback-only.",
+      "ticket_id": "T072",
+      "verification": [
+        "Child checks `C077`, `C101`, `C109`, `C132`, and `C149` are all success.",
+        "Focused local tests covered Queue Postgres boundary, repository query dialects, migration planning/copy/validation/CLI, and session locking behavior.",
+        "Staging validation proved Queue Service/API/worker/outbox behavior on a non-production Postgres target with no sqlite queue residue.",
+        "Production migration copied 25721 rows across 16 tables into `novaic_queue`; final migration report was validated and independent verification found zero count, semantic, or consistency mismatches.",
+        "Production Queue health/readiness, API/task/saga/idempotency/session/worker/outbox/scheduler/subscriber/gateway-facing smokes passed.",
+        "Final live status after cleanup reports health backend `postgres`, ready HTTP 200, live `/opt/novaic/data/queue.db*` paths absent, Queue classification archived, and rollback note present."
+      ]
+    },
+    "R135": {
+      "artifacts": [
+        "Child result IDs: `R028`, `R034`, `R070`, `R134`",
+        "Child check IDs: `C028`, `C035`, `C074`, `C150`",
+        "Final classification audit: `.complex-problems/L20260522-091929/artifacts/final-sqlite-classification-audit.json`",
+        "Queue final live status: `.complex-problems/L20260522-091929/artifacts/queue-final-post-cutover-status.json`",
+        "Queue cleanup notes update: `.complex-problems/L20260522-091929/artifacts/queue-cleanup-notes-update-report.json`"
+      ],
+      "body_path": "problems/P000/children/P024/results/R135.md",
+      "created_at": "2026-05-23T02:26:28+00:00",
+      "done": [
+        "P025 cut Gateway auth/config state over to Postgres `novaic_gateway`, preserving the intended `users`, `refresh_tokens`, and `config` state while excluding retired zero-row tables.",
+        "P026 cut Cortex operational state over to Postgres `novaic_cortex`, preserving the five operational tables and runtime control-plane behavior.",
+        "P027 cut Entangled entity/sync state over to Postgres `novaic_entangled`, preserving schema registration, sync versions, transition atomicity, row shape, REST/WS behavior, and startup persistence.",
+        "P028 cut Queue FSM/outbox/idempotency/session/lease state over to Postgres `novaic_queue`, including implementation, staging validation, production migration, restart, smokes, active-path archive, and rollback documentation.",
+        "Created a final read-only SQLite classification audit artifact to compare the central classification rows with live path presence."
+      ],
+      "id": "R135",
+      "known_gaps": [
+        "`/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` still classifies `/opt/novaic/data/gateway.db` as active auth/ops state in its top table row.",
+        "`/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` still classifies `/opt/novaic/data/cortex/operational.sqlite3` as active-projection-cache in its top table row.",
+        "These are documentation/classification residue gaps, not evidence that the live files still exist; the audit shows both live paths are absent."
+      ],
+      "problem_id": "P024",
+      "root_id": "P000",
+      "summary": "Completed the service cutover work for Gateway, Cortex, Entangled, and Queue: each has a Postgres-backed production runtime path, production SQLite active paths have been moved out of `/opt/novaic/data`, row-count/semantic checks and health/smoke checks are recorded in child results, and rollback snapshots/notes exist. A final classification audit found one remaining documentation gap: the central SQLite classification table still has stale top-row classifications for Gateway and Cortex even though their live SQLite paths are gone and later addenda document their Postgres cutovers.",
+      "ticket_id": "T024",
+      "verification": [
+        "Child checks `C028`, `C035`, `C074`, and `C150` are all success.",
+        "Gateway, Cortex, Entangled, and Queue child results each record production cutover evidence, backup/rollback artifacts, health/readiness or API smoke verification, and cleanup notes.",
+        "Final classification audit shows `/opt/novaic/data/queue.db`, `/opt/novaic/data/entangled.db`, `/opt/novaic/data/gateway.db`, and `/opt/novaic/data/cortex/operational.sqlite3` no longer exist in the live data path.",
+        "Final classification audit shows Queue and Entangled top-level rows are rollback/non-current, and LLM Factory remains a rollback-only SQLite snapshot outside this remaining-services child problem.",
+        "Final classification audit also shows stale active top-level rows for `/opt/novaic/data/gateway.db` and `/opt/novaic/data/cortex/operational.sqlite3`, which need a documentation follow-up before the parent problem can be considered fully closed."
+      ]
+    },
+    "R136": {
+      "artifacts": [
+        "`.complex-problems/L20260522-091929/artifacts/final-sqlite-classification-repair-report.json`",
+        "`.complex-problems/L20260522-091929/artifacts/SQLITE_STATE_CLASSIFICATION.final-redacted.md`",
+        "`.complex-problems/L20260522-091929/artifacts/final-sqlite-classification-repair-remote-dir.txt`",
+        "Remote central note: `/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md`"
+      ],
+      "body_path": "problems/P000/children/P024/children/P136/results/R136.md",
+      "created_at": "2026-05-23T02:29:50+00:00",
+      "done": [
+        "Updated `/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` Gateway row to classify `/opt/novaic/data/gateway.db` as rollback-only/non-current and name Postgres `novaic_gateway`.",
+        "Updated the Gateway row disposition to point at `/opt/novaic/residue-archive/gateway-pg-cutover-20260522T041053Z` and its cutover note.",
+        "Updated `/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` Cortex row to classify `/opt/novaic/data/cortex/operational.sqlite3` as rollback-only/non-current and name Postgres `novaic_cortex`.",
+        "Updated the Cortex row disposition to point at `/opt/novaic/residue-archive/cortex-pg-cutover-20260522T082503Z` and its cutover note.",
+        "Wrote a remote repair report and copied sanitized local evidence into the ledger artifacts."
+      ],
+      "id": "R136",
+      "known_gaps": [
+        "This follow-up only repaired central classification documentation for Gateway and Cortex. It did not change service code or runtime configuration.",
+        "LLM Factory's SQLite file remains present as a rollback-only snapshot, which is expected and outside the Queue/Gateway/Cortex/Entangled final active-row audit."
+      ],
+      "problem_id": "P136",
+      "root_id": "P000",
+      "summary": "Repaired the stale Gateway and Cortex top-level rows in the API host central SQLite classification note. Gateway and Cortex are now both classified as archived/rollback-only non-current SQLite snapshots with Postgres named as the current source of truth, and the fresh audit shows no stale active service-owned SQLite rows among Queue, Entangled, Gateway, and Cortex.",
+      "ticket_id": "T136",
+      "verification": [
+        "`final-sqlite-classification-repair-report.json` has `ok=true`.",
+        "Report checks show `gateway_row_archived=true`, `cortex_row_archived=true`, `live_paths_absent=true`, and `no_stale_active_rows=true`.",
+        "Report `stale_active_rows` is empty.",
+        "Report confirms `/opt/novaic/data/queue.db`, `/opt/novaic/data/entangled.db`, `/opt/novaic/data/gateway.db`, and `/opt/novaic/data/cortex/operational.sqlite3` do not exist in the live data path.",
+        "Sanitized local report and final classification snapshot were scanned for DSNs, passwords, tokens, API-key patterns, private-key markers, and raw Postgres secret paths; the final scan returned no matches."
+      ]
     }
   },
   "root_id": "P000",
@@ -15441,7 +16991,9 @@
       "problem_definition": "The safe preparation phase is complete, but four production services still own active SQLite state. The user wants the remaining service-side databases moved to Postgres without maintaining production SQLite fallback logic.\n\nRemaining active SQLite owners:\n\n- Queue: `/opt/novaic/data/queue.db`\n- Entangled: `/opt/novaic/data/entangled.db`\n- Gateway: `/opt/novaic/data/gateway.db`\n- Cortex: `/opt/novaic/data/cortex/operational.sqlite3`",
       "problem_id": "P024",
       "proposed_solution": "Split the implementation by service ownership and cut over one service at a time:\n\n1. Queue to `novaic_queue`\n   - Implement schema, adapter, data migration, deployment config, smoke tests, and rollback notes.\n   - Preserve FSM, saga, lease, outbox, idempotency, JSON/time, and locking semantics from P008.\n2. Entangled to `novaic_entangled`\n   - Implement schema, adapter, data migration, deployment config, smoke tests, and rollback notes.\n   - Preserve schema registration, sync-version monotonicity, transition atomicity, and API row shape from P009.\n3. Gateway to `novaic_gateway`\n   - Implement Postgres auth/config storage and migrate only `users`, `refresh_tokens`, and `config`.\n   - Do not migrate retired zero-row Gateway tables.\n4. Cortex to `novaic_cortex`\n   - Implement Postgres operational store and migrate `cortex_operational_meta`, `scope_events`, `scope_projection`, `active_stack_projection`, and `payload_manifest`.\n   - Preserve idempotency, active-stack, projection, and payload manifest behavior from P010.",
-      "result_ids": [],
+      "result_ids": [
+        "R135"
+      ],
       "risks": [
         "Queue is concurrency-sensitive and should probably be implemented first only if enough time is available for careful tests; otherwise Gateway is the smallest remaining cutover.",
         "Entangled sync-version mistakes can corrupt client/device state.",
@@ -15449,9 +17001,9 @@
         "Cortex operational projection mistakes can affect runtime control-plane behavior."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Remaining Service Postgres Cutovers",
-      "updated_at": "2026-05-22T03:54:49+00:00",
+      "updated_at": "2026-05-23T02:26:28+00:00",
       "verification_plan": "- Before each cutover: capture SQLite backup, schema, row counts, live process/config evidence, and rollback commands.\n- During each implementation: run focused local unit tests for adapter behavior; use fakes/mocks for unit tests rather than maintaining production SQLite fallback.\n- Before production mutation when feasible: run migration in staging/test environment or as a dry-run against copied data.\n- After each cutover: verify service health/readiness, representative API behavior, Postgres row counts, absence of SQLite writes, and rollback snapshot presence.\n- After all cutovers: verify no active `*.db`/`*.sqlite3` files remain for service-owned state except rollback-only archives."
     },
     "T025": {
@@ -17207,7 +18759,9 @@
       "problem_definition": "Queue still owns high-risk active state in `/opt/novaic/data/queue.db`: task FSM, saga FSM, session coordination, worker leases, outboxes, idempotency ledger, JSON predicates, timestamp comparisons, and concurrency behavior. It must move to `novaic_queue` Postgres without maintaining a SQLite fallback and without losing or replaying effects incorrectly.",
       "problem_id": "P028",
       "proposed_solution": "Split the Queue migration into implementation and production phases:\n\n1. Implement a Postgres queue database boundary and schema that preserves the SQLite queue schema semantics with Postgres-native transactions, row locks, JSONB, timestamptz, indexes, and transient-error behavior.\n2. Port task/saga/session/lease repositories and the generic FSM store from SQLite SQL to explicit Postgres SQL while preserving claim/recover/idempotency/outbox behavior.\n3. Build a SQLite-to-Postgres migration tool with row-count and semantic invariant checks for task/saga/session/lease/outbox/idempotency state.\n4. Validate in a staging/test database with queue service, workers, outbox workers, and representative API/worker smokes.\n5. Execute production cutover in a writer-free window: stop queue writers/workers, back up SQLite, migrate to `novaic_queue`, restart queue service/workers in Postgres mode, run health/worker/API/outbox smokes, then archive old `queue.db` as rollback-only after no-holder checks.",
-      "result_ids": [],
+      "result_ids": [
+        "R134"
+      ],
       "risks": [
         "Queue has live pending outbox rows; incorrect migration can lose or duplicate side effects.",
         "Claim/recover flows require real Postgres concurrency semantics, not process-local locks.",
@@ -17215,9 +18769,9 @@
         "Production cutover must stop all direct SQLite queue writers, not only the HTTP queue service."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Implement Queue Postgres Cutover",
-      "updated_at": "2026-05-22T12:24:26+00:00",
+      "updated_at": "2026-05-23T02:24:30+00:00",
       "verification_plan": "Use focused unit tests for SQL generation and repository behavior, integration tests against Postgres, migration fixture tests, staging queue service/worker smokes, production row-count/invariant reports, process/file-holder inspection, and central classification/rollback notes."
     },
     "T073": {
@@ -18840,7 +20394,9 @@
       "problem_definition": "Queue Postgres implementation and staging validation are complete, but production still needs a controlled cutover from the legacy SQLite queue file to the production Postgres database. This is a high-risk operational change because active writers/workers can mutate `/opt/novaic/data/queue.db`, data must be migrated with invariants checked, services must restart in Postgres mode, and the old SQLite file must become rollback-only residue rather than an active path.",
       "problem_id": "P077",
       "proposed_solution": "Split the production cutover into explicit child problems: preflight and source-control readiness, production inventory/freeze, final SQLite backup with checksums, migration and invariant verification, Postgres-mode restart for Queue Service and workers, production smokes, and rollback-only cleanup/documentation. Do not execute destructive cleanup or production restarts until preflight proves the target, processes, backup path, and rollback plan.",
-      "result_ids": [],
+      "result_ids": [
+        "R133"
+      ],
       "risks": [
         "Production writers may mutate SQLite during backup if freeze is incomplete.",
         "A migration may pass row counts but fail semantic invariants such as lifecycle state projections or idempotency replay behavior.",
@@ -18848,9 +20404,9 @@
         "Cleanup can erase rollback capability if performed before the Postgres runtime is verified."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Execute Queue Production Postgres Cutover Safely",
-      "updated_at": "2026-05-22T17:32:43+00:00",
+      "updated_at": "2026-05-23T02:22:08+00:00",
       "verification_plan": "Use child checks for each operational gate. Require explicit command output artifacts for process inventory, backup checksums, migration report, service health/readiness, smoke results, `lsof` checks, and cleanup notes. Treat missing production credentials, unknown process owners, failing invariant checks, or uncommitted cutover code as blockers rather than proceeding."
     },
     "T121": {
@@ -18943,16 +20499,18 @@
       "problem_definition": "Production Queue is still active on `/opt/novaic/data/queue.db`, and `lsof` shows Queue Service plus outbox workers holding the file. A final SQLite backup must be taken only after writers/workers are frozen or stopped, with checksums and metadata recorded for rollback.",
       "problem_id": "P123",
       "proposed_solution": "Split this work into a command-preparation gate and an execution gate. First create a freeze/backup runbook from the P122 process inventory, including exact stop order, backup path, checksum commands, and rollback notes. Then execute the freeze and final backup in a bounded window, verifying that no Queue writer holds or mutates the SQLite file before proceeding to migration.",
-      "result_ids": [],
+      "result_ids": [
+        "R124"
+      ],
       "risks": [
         "This creates a brief production Queue write freeze.",
         "Stopping workers without stopping Queue Service first may allow new claims or outbox writes.",
         "Restarting writers prematurely could invalidate the backup before migration."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Freeze Queue Writers And Archive Final SQLite Backup",
-      "updated_at": "2026-05-22T17:45:12+00:00",
+      "updated_at": "2026-05-23T01:16:45+00:00",
       "verification_plan": "Before backup, run process and `lsof` checks from P122 again. Stop/freeze the listed Queue writers in a documented order. Copy the SQLite file to an archive directory, compute checksum, stat both source and backup, and run `lsof` again. If any writer remains, record a blocker and do not migrate."
     },
     "T124": {
@@ -19008,16 +20566,18 @@
       "problem_definition": "The production Queue SQLite file is active and has live holders. To proceed toward Postgres migration, Queue writers/workers must be frozen in a controlled window and `/opt/novaic/data/queue.db` must be archived with checksum and integrity evidence. This step creates production Queue write downtime.",
       "problem_id": "P129",
       "proposed_solution": "Execute the prepared runbook only after operator confirmation of the freeze window. Refresh process and holder inventory, stop/freeze Queue ingress, workers, outbox workers, scheduler/health, and Queue Service in order, copy the SQLite file to a timestamped backup directory, compute checksums and integrity output, and record post-backup process/holder state. Do not proceed to migration if any holder remains or backup validation fails.",
-      "result_ids": [],
+      "result_ids": [
+        "R123"
+      ],
       "risks": [
         "Queue-dependent user workflows may fail during the freeze.",
         "If an external supervisor restarts Queue Service in sqlite mode, the backup can become stale and migration must be blocked.",
         "Force-killing a stuck process may need careful review to avoid corrupting the file."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Execute Queue Freeze And Final SQLite Backup",
-      "updated_at": "2026-05-22T17:49:10+00:00",
+      "updated_at": "2026-05-23T01:15:48+00:00",
       "verification_plan": "Compare refreshed process inventory to P122/P128, run stop commands, verify holders, copy and checksum the file, run sqlite integrity check on the backup, and store a redacted execution report under ledger artifacts."
     },
     "T126": {
@@ -19037,16 +20597,368 @@
       "problem_definition": "The next operational step will stop production Queue writers and create a brief write freeze. This requires explicit operator approval before any process is stopped.",
       "problem_id": "P130",
       "proposed_solution": "Ask the operator to approve or defer the freeze window. Record the answer in the ledger. If approved, unblock the execution child; if deferred, record the blocker without changing production state.",
-      "result_ids": [],
+      "result_ids": [
+        "R121"
+      ],
       "risks": [
         "Ambiguous approval could lead to unintended downtime; require a clear yes before proceeding."
       ],
       "root_id": "P000",
-      "status": "classified",
+      "status": "done",
       "title": "Confirm Queue Freeze Window Approval",
-      "updated_at": "2026-05-22T17:49:45+00:00",
+      "updated_at": "2026-05-23T01:09:05+00:00",
       "verification_plan": "Use the user's explicit response in this thread as evidence. If the response is not explicit approval, treat the execution as blocked/deferred."
+    },
+    "T127": {
+      "acceptance_criteria": [
+        "Refreshed pre-freeze process and holder inventory is saved.",
+        "Approved Queue writer/worker processes are stopped or frozen.",
+        "Timestamped backup of `/opt/novaic/data/queue.db` is created.",
+        "Backup checksum, stat metadata, and sqlite integrity check are recorded.",
+        "Post-backup `lsof` and process checks are saved.",
+        "Migration is blocked if backup validation fails or holders remain."
+      ],
+      "assumptions": [
+        "User approval from P130 covers this execution.",
+        "Queue writers remain stopped until migration or rollback."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P131/tickets/T127.md",
+      "classification": "one_go",
+      "classification_reason": "Approved freeze/backup execution is a bounded operational runbook with immediate evidence: process inventory, lsof, backup checksum, stat, integrity check, and go/no-go result.",
+      "created_at": "2026-05-23T01:10:00+00:00",
+      "id": "T127",
+      "problem_definition": "Approval is recorded and the prepared runbook is ready. Production Queue writers must now be stopped/frozen and `/opt/novaic/data/queue.db` must be backed up with checksum and integrity evidence before migration.",
+      "problem_id": "P131",
+      "proposed_solution": "Run a remote freeze/backup script on `api.gradievo.com` that refreshes process and holder inventories, gracefully stops Queue ingress, workers, outbox workers, scheduler/health, and Queue Service in the runbook order, verifies holders, copies `/opt/novaic/data/queue.db` to a timestamped backup directory, writes checksum/stat/integrity artifacts, and produces a redacted JSON/Markdown report for the ledger.",
+      "result_ids": [
+        "R122"
+      ],
+      "risks": [
+        "Production Queue write requests fail while Queue Service is frozen.",
+        "A supervisor may restart sqlite-mode services; the script must check and report if this happens.",
+        "If `sqlite3` is missing, integrity check may be blocked; migration should not proceed until integrity is verified."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Execute Approved Queue Freeze And Backup",
+      "updated_at": "2026-05-23T01:14:43+00:00",
+      "verification_plan": "Inspect the freeze report, confirm backup files exist, confirm source/backup checksums match, confirm sqlite integrity is `ok`, confirm post-backup Queue holder list is empty, and confirm production Queue health on port `19997` is no longer reachable because it is intentionally frozen."
+    },
+    "T128": {
+      "acceptance_criteria": [
+        "Production runtime code used for migration is known and compatible with the staged/pushed Queue Postgres migration code.",
+        "Migration runs from the verified backup snapshot, not from a live mutable SQLite writer path.",
+        "Production Postgres target state is checked before writes and backed up or proven safe to overwrite/merge.",
+        "Row count comparisons are recorded for all migrated Queue tables.",
+        "Semantic checks cover task state, saga state, FSM projections, outbox/session rows, worker leases, and idempotency semantics.",
+        "Warnings, skipped rows, or target conflicts are either resolved or recorded as blockers.",
+        "A redacted migration report is saved under `.complex-problems/L20260522-091929/artifacts/`."
+      ],
+      "assumptions": [
+        "Operator approval already covers continuing through the cutover without another prompt.",
+        "The verified backup directory `/opt/novaic/backups/queue-cutover/20260523T011125Z` is the source of truth for migration.",
+        "The production Postgres container `novaic-postgres` and database `novaic_queue` are the intended target."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/tickets/T128.md",
+      "classification": "split",
+      "classification_reason": "Production migration has separate blocking concerns: runtime/tooling readiness, target Postgres safety, migration execution, and semantic verification; each needs isolated evidence before restart.",
+      "created_at": "2026-05-23T01:17:40+00:00",
+      "id": "T128",
+      "problem_definition": "Production Queue is frozen with a verified SQLite backup at `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db`. The Queue data must be migrated into production Postgres database `novaic_queue` and verified before Queue services restart on Postgres.",
+      "problem_id": "P124",
+      "proposed_solution": "Inspect the production runtime and migration tooling, prepare the Postgres target with the deployed Queue schema, run the migration from the frozen backup into `novaic_queue`, and save a redacted migration report. Verify source-to-target row mappings and semantic invariants for queue tasks, sagas, FSM projections, outbox/session state, leases, and idempotency before allowing the restart ticket to proceed.",
+      "result_ids": [
+        "R128"
+      ],
+      "risks": [
+        "Production Postgres may already contain Queue data from previous attempts and require a controlled backup/truncate or merge decision.",
+        "The production runtime checkout may lag behind the pushed migration fixes and need a safe fast-forward before migration.",
+        "Migration tooling may expose a gap for a table or invariant that was not covered in staging.",
+        "Queue remains frozen until migration and restart are completed or rollback is selected."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Migrate Frozen Queue SQLite Snapshot To Production Postgres",
+      "updated_at": "2026-05-23T01:43:56+00:00",
+      "verification_plan": "Run migration preflight, schema initialization, source count queries, target count queries, migration execution, target count checks, invariant queries, and redaction scan on generated reports. Do not proceed to service restart if any checksum, count, semantic, or warning blocker remains."
+    },
+    "T129": {
+      "acceptance_criteria": [
+        "Runtime code version and git cleanliness are recorded.",
+        "Migration tool presence and CLI usage are recorded.",
+        "Postgres connection path is usable and not exposed in artifacts.",
+        "Existing target row counts are captured before migration.",
+        "Target schema is initialized or verified.",
+        "Any existing target rows are either proven safe, backed up and cleared, or recorded as a blocker.",
+        "A redacted preparation report is saved under ledger artifacts."
+      ],
+      "assumptions": [
+        "The validated cutover code is available from the pushed `main` branch in `novaic-agent-runtime`.",
+        "The target database is `novaic_queue` in the existing `novaic-postgres` container.",
+        "Operator approval allows executing these preparation steps without another prompt."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P132/tickets/T129.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded preparation task: inspect production runtime, verify or fast-forward code, initialize/check schema, capture target counts, and save one redacted report before migration.",
+      "created_at": "2026-05-23T01:18:38+00:00",
+      "id": "T129",
+      "problem_definition": "The frozen Queue SQLite backup cannot be migrated safely until the production runtime code, migration CLI, Postgres connection path, target database contents, and schema initialization are inspected and prepared without leaking credential values.",
+      "problem_id": "P132",
+      "proposed_solution": "Inspect the production Queue runtime checkout and migration scripts, fast-forward only if needed to the pushed cutover commit, locate the approved production Queue Postgres connection path, initialize or verify the Queue schema in `novaic_queue`, inspect target table counts, and make an auditable target backup/clear decision before migration execution.",
+      "result_ids": [
+        "R125"
+      ],
+      "risks": [
+        "Production runtime may have local uncommitted changes that should be preserved instead of overwritten.",
+        "Target Postgres may contain partial Queue data from a previous attempt.",
+        "Connection details must be handled operationally without writing secrets into reports."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Prepare Runtime And Target For Queue Production Migration",
+      "updated_at": "2026-05-23T01:34:19+00:00",
+      "verification_plan": "Run remote git/version probes, migration CLI help/probe, schema inventory/count queries against `novaic_queue`, optional pg_dump backup and controlled truncate when required, then scan the generated report for credential patterns."
+    },
+    "T130": {
+      "acceptance_criteria": [
+        "Migration source path is the frozen backup, not `/opt/novaic/data/queue.db`.",
+        "Migration command runs from clean runtime commit `6c464b8b0796b3f1b31729d4d36afe81778a0fd0`.",
+        "CLI exits successfully and report status is `validated`.",
+        "Report records copied row counts for all Queue tables.",
+        "Report contains no unresolved errors or credential values.",
+        "Remote and local migration report artifacts are saved."
+      ],
+      "assumptions": [
+        "P132 prepared an empty target schema and dry-run status `ready`.",
+        "Operator approval remains active for the production freeze window."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P133/tickets/T130.md",
+      "classification": "one_go",
+      "classification_reason": "The target is prepared and dry-run is ready; execution is a single migration command plus report capture with immediate blocker handling.",
+      "created_at": "2026-05-23T01:34:53+00:00",
+      "id": "T130",
+      "problem_definition": "The production Queue data is still frozen in the verified SQLite backup and must be copied into the prepared empty `novaic_queue` Postgres schema. This is the state-changing migration step before semantic verification and service restart.",
+      "problem_id": "P133",
+      "proposed_solution": "Run the pushed migration CLI from the clean cutover runtime `/opt/novaic/services/novaic-agent-runtime-pg` against `/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db` and the production Queue Postgres credential file. Save the generated redacted migration report under the remote backup directory and local ledger artifacts. Treat any non-validated status, warning, skipped row, or command error as a cutover blocker.",
+      "result_ids": [
+        "R126"
+      ],
+      "risks": [
+        "Insert failures can leave partial rows if transaction semantics do not roll back as expected.",
+        "JSON payload conversion may still expose a production-only malformed row.",
+        "Long migration runtime could keep Queue frozen longer than expected."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Execute Frozen Queue SQLite Backup Migration To Production Postgres",
+      "updated_at": "2026-05-23T01:40:33+00:00",
+      "verification_plan": "Run the migration CLI, parse the JSON report status/errors/copied rows, verify the source path and runtime commit, copy the report into ledger artifacts, and run a redaction scan."
+    },
+    "T131": {
+      "acceptance_criteria": [
+        "Source SQLite and target Postgres row counts match for all 16 Queue migration tables.",
+        "Schema version is `18` on both source and target.",
+        "Task, saga, session, outbox, worker lease, and idempotency aggregate checks match.",
+        "Verification is run independently after the final migration execution, not only copied from the migration report.",
+        "Verification artifacts are saved locally and remotely and scan clean for credentials."
+      ],
+      "assumptions": [
+        "P133 completed with report status `validated` and no errors.",
+        "Queue production remains frozen, so target state should not change during verification."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P124/children/P134/tickets/T131.md",
+      "classification": "one_go",
+      "classification_reason": "Independent verification is a bounded read-only check over the frozen SQLite backup and production Postgres target with clear pass/fail artifacts.",
+      "created_at": "2026-05-23T01:41:06+00:00",
+      "id": "T131",
+      "problem_definition": "The migration report says production Queue data is validated, but the cutover should not proceed to restart until an independent post-migration verification compares the frozen SQLite backup and the live Postgres target for row counts and Queue semantics.",
+      "problem_id": "P134",
+      "proposed_solution": "Run a separate verification script from the clean cutover runtime that opens the frozen SQLite backup and production `novaic_queue`, computes all Queue table counts, semantic aggregates, schema version, and selected consistency checks, and saves a redacted verification report. Treat any mismatch or query error as a cutover blocker.",
+      "result_ids": [
+        "R127"
+      ],
+      "risks": [
+        "A verification query may reveal a semantic gap not covered by the migration report.",
+        "Postgres type normalization may differ from SQLite string formats and require careful comparison."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Independently Verify Migrated Queue Postgres State",
+      "updated_at": "2026-05-23T01:43:22+00:00",
+      "verification_plan": "Execute independent source/target count and aggregate queries, compare results, write JSON and Markdown reports, copy artifacts to the ledger, and run redaction scan."
+    },
+    "T132": {
+      "acceptance_criteria": [
+        "Queue Service is running on `127.0.0.1:19997` with `database_backend=postgres` in health output.",
+        "Queue Service process command/env evidence shows Postgres backend and credential-file usage without exposing credential values.",
+        "Task workers, saga workers, session outbox worker, saga outbox worker, health, scheduler, business subscriber, and gateway ingress are restarted or explicitly justified if omitted.",
+        "`/health` and `/ready` pass after restart.",
+        "`lsof /opt/novaic/data/queue.db` shows no holders after restart.",
+        "A redacted restart report is saved under ledger artifacts."
+      ],
+      "assumptions": [
+        "Clean runtime `/opt/novaic/services/novaic-agent-runtime-pg` at commit `0517c37ae0c3368ec9c2a87fd6270f3e28603289` is the intended Queue runtime for restart.",
+        "Production service ports and URLs from preflight remain valid.",
+        "Operator approval covers restart actions without another prompt."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P125/tickets/T132.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded restart step with known ports/process roles, clean runtime, prepared credential file, and concrete health/ready/lsof verification.",
+      "created_at": "2026-05-23T01:44:52+00:00",
+      "id": "T132",
+      "problem_definition": "Production Queue services are frozen after migration. They must restart from the clean cutover runtime in Postgres mode, use the production Queue Postgres credential file, and avoid reopening `/opt/novaic/data/queue.db`.",
+      "problem_id": "P125",
+      "proposed_solution": "Start Queue Service from `/opt/novaic/services/novaic-agent-runtime-pg` with `NOVAIC_QUEUE_DB_BACKEND=postgres` and the redacted Queue credential file, then restart Queue-dependent task workers, saga workers, session/saga outbox workers, health, scheduler, business subscriber, and gateway ingress using the same service URLs and production ports as pre-freeze. Save PID/log/startup evidence, run `/health` and `/ready`, and confirm no process holds the old SQLite file.",
+      "result_ids": [
+        "R129"
+      ],
+      "risks": [
+        "Some service CLIs may still default to SQLite unless environment variables are explicitly set.",
+        "Gateway/business subscriber restart may require existing non-Queue Postgres credential paths and tokens.",
+        "Outbox workers directly access Queue DB and must receive the Queue Postgres environment."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Restart Queue Stack From Clean Postgres Cutover Runtime",
+      "updated_at": "2026-05-23T01:54:53+00:00",
+      "verification_plan": "Launch processes with nohup into existing log directories, wait for Queue Service health and readiness, inventory PIDs and command lines with credential redaction, run lsof on the old SQLite file, and save local/remote reports."
+    },
+    "T133": {
+      "acceptance_criteria": [
+        "Health/readiness pass with `database_backend=postgres`.",
+        "Safe task smoke exercises a representative lifecycle path and records resulting state.",
+        "Safe saga/session/idempotency smoke records representative lifecycle rows or a documented safe equivalent.",
+        "Worker/outbox processes are alive and recent logs show no tracebacks or error loops.",
+        "Post-smoke DB counts and outbox histograms are saved.",
+        "Smoke artifacts are redacted and contain no credential values or credential-file paths."
+      ],
+      "assumptions": [
+        "Queue production has already restarted in Postgres mode.",
+        "The smoke may create clearly labeled `codex-smoke` Queue rows as part of validation."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P126/tickets/T133.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded post-restart smoke suite with loopback health/API/process/log/count checks and one redacted report.",
+      "created_at": "2026-05-23T01:55:45+00:00",
+      "id": "T133",
+      "problem_definition": "After restart, production Queue Postgres mode needs behavior-level proof. Health/readiness alone is insufficient; safe Queue API, lifecycle, worker process, and outbox checks must confirm the system is operating without falling back to SQLite or entering error loops.",
+      "problem_id": "P126",
+      "proposed_solution": "Run a production-safe smoke script against loopback Queue Service and Postgres. Check `/health` and `/ready`, create isolated smoke task/session/saga/idempotency rows through safe Queue APIs or direct repository calls where APIs are not suitable, verify worker/outbox process liveness and recent logs, record post-smoke table counts and outbox histograms, and save redacted artifacts.",
+      "result_ids": [
+        "R130"
+      ],
+      "risks": [
+        "Production smoke rows can be visible in operational history, so IDs must be clearly prefixed and low-impact.",
+        "Some worker behavior may depend on external services; if unsafe, use direct Queue DB/repository checks and record the rationale."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Smoke Production Queue Postgres Runtime",
+      "updated_at": "2026-05-23T02:10:21+00:00",
+      "verification_plan": "Use a bounded remote smoke script, then copy JSON and Markdown summaries into ledger artifacts and scan for credential patterns. Treat API failures, log tracebacks, SQLite holders, or outbox error loops as blockers."
+    },
+    "T134": {
+      "acceptance_criteria": [
+        "`lsof /opt/novaic/data/queue.db` shows no holders before archive.",
+        "`/opt/novaic/data/queue.db` and sidecars are moved to a timestamped rollback-only archive under `/opt/novaic/backups/queue-cutover/20260523T011125Z/`.",
+        "Archive manifest records original paths, destination paths, file sizes, and hashes where available.",
+        "Live `/opt/novaic/data/queue.db` path no longer exists after archive.",
+        "Queue `/health` and `/ready` still pass on Postgres after archive.",
+        "Cleanup report is saved and redacted."
+      ],
+      "assumptions": [
+        "Postgres migration, restart, and smoke checks have passed.",
+        "The timestamped backup already contains a verified copy of the SQLite database."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/tickets/T134.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded cleanup action: lsof guard, move old SQLite files to rollback archive, write manifest, verify health/ready and old path absence.",
+      "created_at": "2026-05-23T02:11:00+00:00",
+      "id": "T134",
+      "problem_definition": "After successful Postgres migration, restart, and smoke tests, `/opt/novaic/data/queue.db` must no longer look like an active Queue database path. It should be preserved as rollback evidence but removed from the live path so stale code cannot silently fall back to SQLite.",
+      "problem_id": "P127",
+      "proposed_solution": "Verify no process holds the SQLite file, archive `queue.db` and any sidecar WAL/SHM files into the cutover backup directory, leave a clear README/manifest at the archive location, verify the live path is gone, rerun Queue health/ready and lsof, and save a redacted cleanup report.",
+      "result_ids": [
+        "R131"
+      ],
+      "risks": [
+        "If any process still opens SQLite, moving the file can break a hidden fallback path; this must block cleanup.",
+        "Rollback becomes a deliberate restore action rather than an accidental live-path fallback."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Archive Old Queue SQLite Active Path After Postgres Cutover",
+      "updated_at": "2026-05-23T02:14:26+00:00",
+      "verification_plan": "Run lsof/stat/hash before archive, move files, write manifest, verify old paths absent, run health/ready/lsof after archive, copy reports into ledger artifacts, and scan for credential patterns."
+    },
+    "T135": {
+      "acceptance_criteria": [
+        "`/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` no longer classifies `/opt/novaic/data/queue.db` as an active state owner.",
+        "The central classification note says Queue runtime source of truth is Postgres and SQLite is archived/rollback-only evidence.",
+        "A Queue cutover/rollback note exists under `/opt/novaic/backups/queue-cutover/20260523T011125Z/`.",
+        "The cutover/rollback note includes the final backup checksum, archived SQLite location, current runtime path, restore expectation, and retention/retirement policy.",
+        "Redacted local artifact copies or summaries exist in `.complex-problems/L20260522-091929/artifacts/`.",
+        "Local artifacts are scanned for DSNs, passwords, tokens, private keys, and raw Postgres secret paths."
+      ],
+      "assumptions": [
+        "Queue cutover evidence from `P123` through `P127` is valid and remains the source of operational facts.",
+        "The archived SQLite file should be retained through the post-cutover stabilization window and only retired after a later explicit cleanup decision."
+      ],
+      "body_path": "problems/P000/children/P024/children/P028/children/P077/children/P127/children/P135/tickets/T135.md",
+      "classification": "one_go",
+      "classification_reason": "Narrow documentation and evidence cleanup: update one central classification note plus one rollback note, copy sanitized artifacts, and verify with text checks and credential scan in a bounded reversible pass.",
+      "created_at": "2026-05-23T02:16:11+00:00",
+      "id": "T135",
+      "problem_definition": "The production Queue service now runs from Postgres and its old SQLite active path has been archived, but `/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` still describes `/opt/novaic/data/queue.db` as a deferred active state owner. That stale central note can mislead future operations, and the Queue rollback/retention policy is not yet documented in one durable place.",
+      "problem_id": "P135",
+      "proposed_solution": "Update the API host central SQLite classification note so Queue is classified as archived/rollback-only and non-current, with Postgres named as the runtime source of truth. Add a dedicated Queue cutover/rollback note in the cutover archive that records the archive directory, final backup checksum, production Postgres runtime facts, restore expectations, and a defined retention/retirement policy. Copy redacted note snapshots into local ledger artifacts and scan the local artifacts for credential patterns.",
+      "result_ids": [
+        "R132"
+      ],
+      "risks": [
+        "The remote central note currently contains other services' credential-file paths; local evidence must be sanitized before committing.",
+        "Documentation-only cleanup does not itself enforce runtime behavior, so it must cite the already completed Postgres health, ready, lsof, backup, and archive evidence."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Update Queue Postgres Cleanup Documentation",
+      "updated_at": "2026-05-23T02:19:50+00:00",
+      "verification_plan": "Read the updated remote classification and rollback notes, verify required Queue phrases and paths are present, verify the old active classification phrase is absent from the Queue row, copy sanitized snapshots into local artifacts, and run a credential-pattern scan over the new artifacts."
+    },
+    "T136": {
+      "acceptance_criteria": [
+        "Gateway top-level classification row is rollback-only/non-current or archived and names Postgres `novaic_gateway`.",
+        "Gateway top-level disposition points to `/opt/novaic/residue-archive/gateway-pg-cutover-20260522T041053Z`.",
+        "Cortex top-level classification row is rollback-only/non-current or archived and names Postgres `novaic_cortex`.",
+        "Cortex top-level disposition points to `/opt/novaic/residue-archive/cortex-pg-cutover-20260522T082503Z`.",
+        "Fresh final classification audit reports no stale active rows for Queue, Entangled, Gateway, or Cortex.",
+        "Sanitized local artifacts exist and pass credential-pattern scanning."
+      ],
+      "assumptions": [
+        "Gateway and Cortex cutover results/checks remain valid.",
+        "Live Gateway and Cortex SQLite paths should remain absent after the row update."
+      ],
+      "body_path": "problems/P000/children/P024/children/P136/tickets/T136.md",
+      "classification": "one_go",
+      "classification_reason": "Narrow documentation repair: update two stale central classification rows, rerun a read-only final audit, sanitize local evidence, and verify with text checks and credential scan in one bounded reversible pass.",
+      "created_at": "2026-05-23T02:27:38+00:00",
+      "id": "T136",
+      "problem_definition": "The production Gateway and Cortex cutovers are already documented in later addenda and their live SQLite paths are absent, but the primary table in `/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md` still marks `/opt/novaic/data/gateway.db` and `/opt/novaic/data/cortex/operational.sqlite3` as active. This makes the final state ambiguous for future operators and agents.",
+      "problem_id": "P136",
+      "proposed_solution": "Update only the Gateway and Cortex top-level rows in the central SQLite classification note so they match the completed cutovers: archived/rollback-only non-current SQLite snapshots, current source of truth in Postgres, and rollback archive paths under `/opt/novaic/residue-archive/gateway-pg-cutover-20260522T041053Z` and `/opt/novaic/residue-archive/cortex-pg-cutover-20260522T082503Z`. Then rerun a final classification audit across Queue, Entangled, Gateway, and Cortex; copy sanitized evidence locally; and scan new artifacts for credential patterns.",
+      "result_ids": [
+        "R136"
+      ],
+      "risks": [
+        "This is documentation-only, but incorrect wording could obscure rollback paths; use existing archive directories and cutover note names rather than inventing new locations.",
+        "The full central note contains unrelated credential-related words; local evidence must be sanitized before it is committed."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Repair Gateway And Cortex Final Classification Rows",
+      "updated_at": "2026-05-23T02:29:50+00:00",
+      "verification_plan": "Replace the two stale rows, run a read-only audit over service rows and live path existence, verify required row phrases, copy sanitized snapshots/reports into ledger artifacts, and scan the new artifacts for DSNs, passwords, tokens, private-key markers, API-key patterns, and raw Postgres secret paths."
     }
   },
-  "updated_at": "2026-05-22T17:49:45+00:00"
+  "updated_at": "2026-05-23T02:31:36+00:00"
 }

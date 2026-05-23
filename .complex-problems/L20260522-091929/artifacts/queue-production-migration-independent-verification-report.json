@@ -1,0 +1,149 @@
+{
+  "consistency_checks": {
+    "source": {
+      "idempotency_completed_without_task": 0,
+      "pending_task_state_rows": 23,
+      "saga_state_without_saga": 0,
+      "sagas_without_state": 0,
+      "task_state_without_task": 0,
+      "tasks_without_state": 0
+    },
+    "target": {
+      "idempotency_completed_without_task": 0,
+      "pending_task_state_rows": 23,
+      "saga_state_without_saga": 0,
+      "sagas_without_state": 0,
+      "task_state_without_task": 0,
+      "tasks_without_state": 0
+    }
+  },
+  "consistency_mismatches": {},
+  "count_mismatches": {},
+  "generated_at": "2026-05-23T01:42:19.302970Z",
+  "ok": true,
+  "semantic_aggregates": {
+    "source": {
+      "idempotency_status_counts": {
+        "completed": 2215
+      },
+      "max_ids": {
+        "tq_saga_events": "sevt-saga-ff3d6f85e528-9-saga_step_result_appended",
+        "tq_saga_outbox": "sout-saga-f5a7057b2fa0-4-0",
+        "tq_session_events": "suspected:822af016-31a1-49bb-b529-9b8f539a0831:main-822af016:saga-d2cdce07d5c6",
+        "tq_session_outbox": "seff-ffdcd3be61db",
+        "tq_task_events": "tevt-task-fff14bd90b64-3-task_completed",
+        "tq_task_outbox": null,
+        "tq_worker_lease_events": "levt-queue_task:task-fff14bd90b64-2-lease_released",
+        "tq_worker_lease_outbox": null
+      },
+      "outbox_status_counts": {
+        "tq_saga_outbox": {
+          "published": 6
+        },
+        "tq_session_outbox": {
+          "published": 31
+        },
+        "tq_task_outbox": {},
+        "tq_worker_lease_outbox": {}
+      },
+      "saga_state_counts": {
+        "completed": 309,
+        "failed": 6
+      },
+      "schema_version": "18",
+      "session_state_counts": {
+        "no_active": 2
+      },
+      "task_state_counts": {
+        "done": 2215,
+        "failed": 9,
+        "pending": 23
+      },
+      "worker_lease_state_counts": {
+        "released": 2539
+      }
+    },
+    "target": {
+      "idempotency_status_counts": {
+        "completed": 2215
+      },
+      "max_ids": {
+        "tq_saga_events": "sevt-saga-ff3d6f85e528-9-saga_step_result_appended",
+        "tq_saga_outbox": "sout-saga-f5a7057b2fa0-4-0",
+        "tq_session_events": "suspected:822af016-31a1-49bb-b529-9b8f539a0831:main-822af016:saga-d2cdce07d5c6",
+        "tq_session_outbox": "seff-ffdcd3be61db",
+        "tq_task_events": "tevt-task-fff14bd90b64-3-task_completed",
+        "tq_task_outbox": null,
+        "tq_worker_lease_events": "levt-queue_task:task-fff14bd90b64-2-lease_released",
+        "tq_worker_lease_outbox": null
+      },
+      "outbox_status_counts": {
+        "tq_saga_outbox": {
+          "published": 6
+        },
+        "tq_session_outbox": {
+          "published": 31
+        },
+        "tq_task_outbox": {},
+        "tq_worker_lease_outbox": {}
+      },
+      "saga_state_counts": {
+        "completed": 309,
+        "failed": 6
+      },
+      "schema_version": "18",
+      "session_state_counts": {
+        "no_active": 2
+      },
+      "task_state_counts": {
+        "done": 2215,
+        "failed": 9,
+        "pending": 23
+      },
+      "worker_lease_state_counts": {
+        "released": 2539
+      }
+    }
+  },
+  "semantic_mismatches": {},
+  "source_sqlite": "/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db",
+  "table_counts": {
+    "source": {
+      "config": 1,
+      "tq_idempotency_ledger": 2215,
+      "tq_saga_events": 3226,
+      "tq_saga_outbox": 6,
+      "tq_saga_state": 315,
+      "tq_sagas": 315,
+      "tq_session_events": 202,
+      "tq_session_outbox": 31,
+      "tq_session_state": 2,
+      "tq_task_events": 6996,
+      "tq_task_outbox": 0,
+      "tq_task_state": 2247,
+      "tq_tasks": 2247,
+      "tq_worker_lease_events": 5379,
+      "tq_worker_lease_outbox": 0,
+      "tq_worker_lease_state": 2539
+    },
+    "target": {
+      "config": 1,
+      "tq_idempotency_ledger": 2215,
+      "tq_saga_events": 3226,
+      "tq_saga_outbox": 6,
+      "tq_saga_state": 315,
+      "tq_sagas": 315,
+      "tq_session_events": 202,
+      "tq_session_outbox": 31,
+      "tq_session_state": 2,
+      "tq_task_events": 6996,
+      "tq_task_outbox": 0,
+      "tq_task_state": 2247,
+      "tq_tasks": 2247,
+      "tq_worker_lease_events": 5379,
+      "tq_worker_lease_outbox": 0,
+      "tq_worker_lease_state": 2539
+    }
+  },
+  "target_database": "novaic_queue"
+}

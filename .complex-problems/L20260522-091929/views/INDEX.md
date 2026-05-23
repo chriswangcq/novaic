@@ -3,11 +3,11 @@
 Ledger: L20260522-091929
 Schema: v6
 Root: P000 - Unify NovAIC persistent state on Postgres and remove stale database residue
-Status: doing
-Updated: 2026-05-22T17:49:45+00:00
+Status: done
+Updated: 2026-05-23T02:31:36+00:00
 
 ## Problem Tree
-- [followup] P000: Unify NovAIC persistent state on Postgres and remove stale database residue
+- [done] P000: Unify NovAIC persistent state on Postgres and remove stale database residue
   - [done] P001: Provision local Postgres infrastructure on api
   - [done] P002: Classify SQLite state owners and stale residue
   - [done] P003: Migrate llm-factory from SQLite to Postgres
@@ -31,7 +31,7 @@ Updated: 2026-05-22T17:49:45+00:00
       - [done] P022: Classify Cortex Operational SQLite State and Postgres Boundary
       - [done] P023: Synthesize Gateway Cortex SQLite Dispositions and Classification Note
     - [done] P011: Close Device DB Live-Empty Residue
-  - [followup] P024: Implement Remaining Service Postgres Cutovers
+  - [done] P024: Implement Remaining Service Postgres Cutovers
     - [done] P025: Implement Gateway Postgres Auth Config Cutover
       - [done] P029: Implement Gateway Postgres Storage Path
       - [done] P030: Cut Over Gateway Production Auth Config to Postgres
@@ -79,7 +79,7 @@ Updated: 2026-05-22T17:49:45+00:00
         - [done] P067: Archive Entangled SQLite Residue And Update Cutover Notes
           - [done] P071: Persist Entangled Postgres Startup Configuration Before SQLite Archival
         - [done] P072: Restart Business Services After Entangled Postgres Cutover
-    - [todo] P028: Implement Queue Postgres Cutover
+    - [done] P028: Implement Queue Postgres Cutover
       - [done] P073: Implement Queue Postgres Schema And Database Boundary
         - [done] P078: Add Queue Postgres JSON Expression Indexes
       - [done] P074: Port Queue Repositories And FSM Semantics To Postgres
@@ -127,36 +127,30 @@ Updated: 2026-05-22T17:49:45+00:00
             - [done] P113: Record Queue Postgres Post-Smoke Counts
         - [done] P107: Run Queue Worker And Outbox Postgres Staging Smokes
         - [done] P108: Record Queue Postgres Staging Validation Report
-      - [todo] P077: Execute Queue Production Postgres Cutover And Cleanup
+      - [done] P077: Execute Queue Production Postgres Cutover And Cleanup
         - [done] P121: Commit Push And Deploy Queue Postgres Cutover Code
         - [done] P122: Inventory Production Queue Runtime And Cutover Preconditions
-        - [todo] P123: Freeze Queue Writers And Archive Final SQLite Backup
+        - [done] P123: Freeze Queue Writers And Archive Final SQLite Backup
           - [done] P128: Prepare Queue Freeze And Backup Runbook
-          - [todo] P129: Execute Queue Freeze And Final SQLite Backup
-            - [todo] P130: Confirm Queue Freeze Window Approval
-            - [todo] P131: Execute Approved Queue Freeze And Backup
-        - [todo] P124: Migrate Queue SQLite Data To Production Postgres And Verify
-        - [todo] P125: Restart Production Queue Services In Postgres Mode
-        - [todo] P126: Run Production Queue Postgres Health API Worker And Outbox Smokes
-        - [todo] P127: Archive Old Queue SQLite Residue And Update Cleanup Notes
+          - [done] P129: Execute Queue Freeze And Final SQLite Backup
+            - [done] P130: Confirm Queue Freeze Window Approval
+            - [done] P131: Execute Approved Queue Freeze And Backup
+        - [done] P124: Migrate Queue SQLite Data To Production Postgres And Verify
+          - [done] P132: Prepare Production Queue Migration Runtime And Postgres Target
+          - [done] P133: Execute Production Queue SQLite To Postgres Migration
+          - [done] P134: Verify Production Queue Postgres Migration Semantics
+        - [done] P125: Restart Production Queue Services In Postgres Mode
+        - [done] P126: Run Production Queue Postgres Health API Worker And Outbox Smokes
+        - [done] P127: Archive Old Queue SQLite Residue And Update Cleanup Notes
+          - [done] P135: Update Queue Postgres Source-Of-Truth Cleanup Notes
+    - [done] P136: Repair Final SQLite Classification Rows For Gateway And Cortex
 
 ## Active
-- [ ] P000: Unify NovAIC persistent state on Postgres and remove stale database residue (followup)
-- [ ] P024: Implement Remaining Service Postgres Cutovers (followup)
-- [ ] P028: Implement Queue Postgres Cutover (todo)
-- [ ] P077: Execute Queue Production Postgres Cutover And Cleanup (todo)
-- [ ] P123: Freeze Queue Writers And Archive Final SQLite Backup (todo)
-- [ ] P124: Migrate Queue SQLite Data To Production Postgres And Verify (todo)
-- [ ] P125: Restart Production Queue Services In Postgres Mode (todo)
-- [ ] P126: Run Production Queue Postgres Health API Worker And Outbox Smokes (todo)
-- [ ] P127: Archive Old Queue SQLite Residue And Update Cleanup Notes (todo)
-- [ ] P129: Execute Queue Freeze And Final SQLite Backup (todo)
-- [ ] P130: Confirm Queue Freeze Window Approval (todo)
-- [ ] P131: Execute Approved Queue Freeze And Backup (todo)
 
 ## Blocked
 
 ## Done
+- [x] P000: Unify NovAIC persistent state on Postgres and remove stale database residue
 - [x] P001: Provision local Postgres infrastructure on api
 - [x] P002: Classify SQLite state owners and stale residue
 - [x] P003: Migrate llm-factory from SQLite to Postgres
@@ -180,9 +174,11 @@ Updated: 2026-05-22T17:49:45+00:00
 - [x] P021: Classify Gateway SQLite State and Postgres Boundary
 - [x] P022: Classify Cortex Operational SQLite State and Postgres Boundary
 - [x] P023: Synthesize Gateway Cortex SQLite Dispositions and Classification Note
+- [x] P024: Implement Remaining Service Postgres Cutovers
 - [x] P025: Implement Gateway Postgres Auth Config Cutover
 - [x] P026: Implement Cortex Operational Postgres Cutover
 - [x] P027: Implement Entangled Postgres Cutover
+- [x] P028: Implement Queue Postgres Cutover
 - [x] P029: Implement Gateway Postgres Storage Path
 - [x] P030: Cut Over Gateway Production Auth Config to Postgres
 - [x] P031: Gateway Production Cutover Preflight
@@ -231,6 +227,7 @@ Updated: 2026-05-22T17:49:45+00:00
 - [x] P074: Port Queue Repositories And FSM Semantics To Postgres
 - [x] P075: Build Queue SQLite To Postgres Migration Tooling
 - [x] P076: Validate Queue Postgres Mode In Staging
+- [x] P077: Execute Queue Production Postgres Cutover And Cleanup
 - [x] P078: Add Queue Postgres JSON Expression Indexes
 - [x] P079: Build Queue Postgres Dialect And FSM Store Foundation
 - [x] P080: Port Task Queue And Idempotency Paths To Postgres
@@ -276,7 +273,20 @@ Updated: 2026-05-22T17:49:45+00:00
 - [x] P120: Fix Fresh Postgres Schema Init Transaction Handling
 - [x] P121: Commit Push And Deploy Queue Postgres Cutover Code
 - [x] P122: Inventory Production Queue Runtime And Cutover Preconditions
+- [x] P123: Freeze Queue Writers And Archive Final SQLite Backup
+- [x] P124: Migrate Queue SQLite Data To Production Postgres And Verify
+- [x] P125: Restart Production Queue Services In Postgres Mode
+- [x] P126: Run Production Queue Postgres Health API Worker And Outbox Smokes
+- [x] P127: Archive Old Queue SQLite Residue And Update Cleanup Notes
 - [x] P128: Prepare Queue Freeze And Backup Runbook
+- [x] P129: Execute Queue Freeze And Final SQLite Backup
+- [x] P130: Confirm Queue Freeze Window Approval
+- [x] P131: Execute Approved Queue Freeze And Backup
+- [x] P132: Prepare Production Queue Migration Runtime And Postgres Target
+- [x] P133: Execute Production Queue SQLite To Postgres Migration
+- [x] P134: Verify Production Queue Postgres Migration Semantics
+- [x] P135: Update Queue Postgres Source-Of-Truth Cleanup Notes
+- [x] P136: Repair Final SQLite Classification Rows For Gateway And Cortex
 
 ## Tickets
 - [done] T000: Phased Postgres unification with residue cleanup -> P000 (split)
@@ -303,7 +313,7 @@ Updated: 2026-05-22T17:49:45+00:00
 - [done] T021: Classify Cortex Operational SQLite State -> P022 (one_go)
 - [done] T022: Synthesize Gateway and Cortex SQLite Dispositions -> P023 (one_go)
 - [done] T023: Close Device DB Live-Empty Residue -> P011 (one_go)
-- [splitting] T024: Remaining Service Postgres Cutovers -> P024 (split)
+- [done] T024: Remaining Service Postgres Cutovers -> P024 (split)
 - [done] T025: Gateway Postgres Auth Config Cutover -> P025 (split)
 - [done] T026: Gateway Postgres Storage Implementation -> P029 (one_go)
 - [done] T027: Gateway Production Cutover to Postgres -> P030 (split)
@@ -351,7 +361,7 @@ Updated: 2026-05-22T17:49:45+00:00
 - [done] T069: Archive Entangled SQLite Residue And Update Cutover Notes -> P067 (one_go)
 - [done] T070: Persist Entangled Postgres Startup Configuration Before SQLite Archival -> P071 (one_go)
 - [done] T071: Restart Business Services After Entangled Postgres Cutover -> P072 (one_go)
-- [splitting] T072: Implement Queue Postgres Cutover -> P028 (split)
+- [done] T072: Implement Queue Postgres Cutover -> P028 (split)
 - [done] T073: Implement Queue Postgres Schema And Database Boundary -> P073 (one_go)
 - [done] T074: Add Queue Postgres Required JSONB Expression Indexes -> P078 (one_go)
 - [done] T075: Port Queue Repository SQL And FSM Semantics To Postgres -> P074 (split)
@@ -399,22 +409,32 @@ Updated: 2026-05-22T17:49:45+00:00
 - [done] T117: Queue Postgres Post-Smoke Counts Ticket -> P113 (one_go)
 - [done] T118: Verify Queue Workers And Outbox On Postgres Staging -> P107 (one_go)
 - [done] T119: Compile Queue Postgres Staging Validation Report -> P108 (one_go)
-- [splitting] T120: Execute Queue Production Postgres Cutover Safely -> P077 (split)
+- [done] T120: Execute Queue Production Postgres Cutover Safely -> P077 (split)
 - [done] T121: Commit Push And Deploy Queue Postgres Cutover Code -> P121 (one_go)
 - [done] T122: Inventory Production Queue Runtime And Cutover Preconditions -> P122 (one_go)
-- [splitting] T123: Freeze Queue Writers And Archive Final SQLite Backup -> P123 (split)
+- [done] T123: Freeze Queue Writers And Archive Final SQLite Backup -> P123 (split)
 - [done] T124: Prepare Queue Freeze And Backup Runbook -> P128 (one_go)
-- [splitting] T125: Execute Queue Freeze And Final SQLite Backup -> P129 (split)
-- [classified] T126: Confirm Queue Freeze Window Approval -> P130 (one_go)
+- [done] T125: Execute Queue Freeze And Final SQLite Backup -> P129 (split)
+- [done] T126: Confirm Queue Freeze Window Approval -> P130 (one_go)
+- [done] T127: Execute Approved Queue Freeze And Backup -> P131 (one_go)
+- [done] T128: Migrate Frozen Queue SQLite Snapshot To Production Postgres -> P124 (split)
+- [done] T129: Prepare Runtime And Target For Queue Production Migration -> P132 (one_go)
+- [done] T130: Execute Frozen Queue SQLite Backup Migration To Production Postgres -> P133 (one_go)
+- [done] T131: Independently Verify Migrated Queue Postgres State -> P134 (one_go)
+- [done] T132: Restart Queue Stack From Clean Postgres Cutover Runtime -> P125 (one_go)
+- [done] T133: Smoke Production Queue Postgres Runtime -> P126 (one_go)
+- [done] T134: Archive Old Queue SQLite Active Path After Postgres Cutover -> P127 (one_go)
+- [done] T135: Update Queue Postgres Cleanup Documentation -> P135 (one_go)
+- [done] T136: Repair Gateway And Cortex Final Classification Rows -> P136 (one_go)
 
 ## Latest Checks
-- [success] C126: P112 `P112` is successful. `R112` exercised the real staging Queue Service in Postgres mode across health, readiness, task lifecycle, saga lifecycle, session dispatch/finalize, idempotency, and post-smoke database counts. No operation was skipped.
-- [success] C127: P113 `P113` is successful. `R113` records post-smoke Queue Postgres counts, status histograms, target public identity, and ties the evidence to the successful API smoke run without exposing secrets.
-- [success] C128: P109 `P109` is successful. `R114` proves a non-production Queue Postgres target exists, Queue Service starts against it in Postgres mode, representative APIs pass, and post-smoke counts are recorded with secrets redacted.
-- [success] C129: P106 `P106` is successful after `R102` plus follow-up result `R114`. The earlier missing-target gap is closed: a staging Queue Postgres target was provisioned, Queue Service ran in Postgres mode, representative APIs passed, and post-smoke counts were recorded.
-- [success] C130: P107 Success. Result `R115` solves the original worker/outbox Postgres staging smoke problem. The first failed run exposed real worker-path defects, but the final rerun after fixes proved task, saga, session outbox, and saga outbox worker paths against the api staging Postgres target with no sqlite residue.
-- [success] C131: P108 Success. Result `R116` solves P108 by creating a durable redacted validation report and verifying both factual coverage and redaction requirements.
-- [success] C132: P076 Success. Result `R117` closes P076's Queue Postgres staging validation scope. All four split children are done with checks, and their combined evidence covers the staging database, Queue Service runtime, API flows, worker/outbox flows, sqlite residue checks, and redacted validation reporting.
-- [success] C133: P121 Success. Result `R118` satisfies P121: the Queue Postgres runtime fixes are committed, pushed, and deployed to the api runtime checkout, with tests and health verification. Root unrelated dirty files were not staged or reverted.
-- [success] C134: P122 Success. Result `R119` solves the production inventory/preflight problem with read-only evidence, sanitized artifacts, production Queue writer identification, active SQLite holder evidence, production Postgres target confirmation, and a clear next-gate decision.
-- [success] C135: P128 Success. Result `R120` solves P128 by producing a redacted, executable Queue freeze/final-backup runbook that is grounded in P122 inventory and explicitly stops before production execution.
+- [success] C145: P126 Success. R130 solves P126: production Queue Postgres mode passed health/readiness, safe task lifecycle, idempotency lifecycle, safe saga lifecycle, session diagnostic equivalent, worker/outbox process, recent log, DB count, outbox histogram, and old SQLite holder checks.
+- [not_success] C146: P127 Result `R131` proves the active Queue SQLite path was archived, no process holds it, and Postgres health/ready still pass. It does not prove the full `P127` problem is solved because the central SQLite classification/rollback notes were not updated and the rollback-only artifact retention/retirement window is not stated in a durable central note.
+- [success] C147: P135 `P135` is successful. Result `R132` updates the central SQLite classification and Queue rollback note, provides local sanitized evidence, and verifies the notes without leaking credential paths into ledger artifacts.
+- [success] C148: P127 `P127` is successful after follow-up `P135`. Result `R131` archived the active Queue SQLite path and verified Postgres health/ready with no SQLite holders; result `R132` updated the central SQLite classification and rollback documentation with a retention policy and sanitized local evidence.
+- [success] C149: P077 `P077` is successful. Result `R133` and the closed child checks prove the Queue production stack is cut over from SQLite to Postgres, migrated and verified, running in Postgres mode, behaviorally smoked, and cleaned so the old SQLite active path is rollback-only documentation and archive material.
+- [success] C150: P028 `P028` is successful. Result `R134` and its closed child checks prove that Queue's active production state has moved to Postgres `novaic_queue`, core task/saga/session/lease/outbox/idempotency semantics are covered by explicit Postgres paths and tests, production SQLite state was backed up and migrated with invariant verification, services are running and smoked in Postgres mode, and old SQLite is rollback-only documented evidence.
+- [not_success] C151: P024 `R135` proves the Gateway, Cortex, Entangled, and Queue cutover work is substantially complete, but `P024` is not yet successful because the final central SQLite classification table still has stale active top-level rows for Gateway and Cortex. The original problem explicitly requires the final classification note to identify remaining SQLite files as rollback-only snapshots or justified non-service data.
+- [success] C152: P136 `P136` is successful. Result `R136` updates the stale Gateway and Cortex central classification rows, verifies that no Queue/Entangled/Gateway/Cortex service row remains actively classified, and stores sanitized local evidence with clean credential-pattern scanning.
+- [success] C153: P024 `P024` is successful after follow-up `P136`. Result `R135` proves Gateway, Cortex, Entangled, and Queue production cutovers are complete with backups, migration checks, health/smoke verification, and rollback notes; result `R136` closes the remaining final-classification gap by repairing stale Gateway and Cortex rows in the central SQLite classification table.
+- [success] C154: P000 `P000` is successful after follow-up `P024` and its classification repair `P136`. The API host now has one Postgres infrastructure with per-service databases, LLM Factory migrated first, Gateway/Cortex/Entangled/Queue migrated after service-specific mapping and verification, stale `device.db`/`business.db` residue cleaned or archived, and final SQLite classification no longer presents service-owned SQLite paths as active state owners.

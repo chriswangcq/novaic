@@ -1,6 +1,6 @@
 # P028: Implement Queue Postgres Cutover
 
-Status: todo
+Status: done
 Parent: P024
 Root: P000
 Source Ticket: T024 (split)
@@ -28,14 +28,16 @@ Queue still owns the highest-risk active state in `/opt/novaic/data/queue.db`. I
 - P077: Execute Queue Production Postgres Cutover And Cleanup
 
 ## Results
-- none
+- R134
 
 ## Latest Check
-none
+C150
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/README.md
 - Ticket T072: problems/P000/children/P024/children/P028/tickets/T072.md
+- Result R134: problems/P000/children/P024/children/P028/results/R134.md
+- Check C150: problems/P000/children/P024/children/P028/checks/C150.md
 
 ## Follow-ups
 - none

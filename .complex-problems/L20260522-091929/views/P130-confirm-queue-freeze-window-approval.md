@@ -1,6 +1,6 @@
 # P130: Confirm Queue Freeze Window Approval
 
-Status: todo
+Status: done
 Parent: P129
 Root: P000
 Source Ticket: T125 (split)
@@ -21,14 +21,16 @@ Executing the final SQLite backup requires stopping production Queue writers and
 - none
 
 ## Results
-- none
+- R121
 
 ## Latest Check
-none
+C136
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/README.md
 - Ticket T126: problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/tickets/T126.md
+- Result R121: problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/results/R121.md
+- Check C136: problems/P000/children/P024/children/P028/children/P077/children/P123/children/P129/children/P130/checks/C136.md
 
 ## Follow-ups
 - none

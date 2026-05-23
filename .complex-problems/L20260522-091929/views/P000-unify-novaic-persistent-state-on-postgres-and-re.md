@@ -1,6 +1,6 @@
 # P000: Unify NovAIC persistent state on Postgres and remove stale database residue
 
-Status: followup
+Status: done
 Parent: none
 Root: P000
 Source Ticket: none (none)
@@ -33,13 +33,14 @@ This is production state work. It must be phased, reversible, and evidence-drive
 - R023
 
 ## Latest Check
-C023
+C154
 
 ## Bodies
 - Problem: problems/P000/README.md
 - Ticket T000: problems/P000/tickets/T000.md
 - Result R023: problems/P000/results/R023.md
 - Check C023: problems/P000/checks/C023.md
+- Check C154: problems/P000/checks/C154.md
 
 ## Follow-ups
 - P024: Implement Remaining Service Postgres Cutovers

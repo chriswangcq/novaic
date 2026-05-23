@@ -1,0 +1,225 @@
+{
+  "copied_rows": {
+    "config": 1,
+    "tq_idempotency_ledger": 2215,
+    "tq_saga_events": 3226,
+    "tq_saga_outbox": 6,
+    "tq_saga_state": 315,
+    "tq_sagas": 315,
+    "tq_session_events": 202,
+    "tq_session_outbox": 31,
+    "tq_session_state": 2,
+    "tq_task_events": 6996,
+    "tq_task_outbox": 0,
+    "tq_task_state": 2247,
+    "tq_tasks": 2247,
+    "tq_worker_lease_events": 5379,
+    "tq_worker_lease_outbox": 0,
+    "tq_worker_lease_state": 2539
+  },
+  "elapsed_ms": 137.772,
+  "errors": [],
+  "postgres_dsn": null,
+  "postgres_dsn_file": "<redacted-path>",
+  "semantic_aggregates": {
+    "source": {
+      "config_schema_version": "18",
+      "idempotency_status_counts": {
+        "completed": 2215
+      },
+      "max_ids": {
+        "tq_saga_events": "sevt-saga-ff3d6f85e528-9-saga_step_result_appended",
+        "tq_saga_outbox": "sout-saga-f5a7057b2fa0-4-0",
+        "tq_session_events": "suspected:822af016-31a1-49bb-b529-9b8f539a0831:main-822af016:saga-d2cdce07d5c6",
+        "tq_session_outbox": "seff-ffdcd3be61db",
+        "tq_task_events": "tevt-task-fff14bd90b64-3-task_completed",
+        "tq_task_outbox": null,
+        "tq_worker_lease_events": "levt-queue_task:task-fff14bd90b64-2-lease_released",
+        "tq_worker_lease_outbox": null
+      },
+      "outbox_status_counts": {
+        "tq_saga_outbox": {
+          "published": 6
+        },
+        "tq_session_outbox": {
+          "published": 31
+        },
+        "tq_task_outbox": {},
+        "tq_worker_lease_outbox": {}
+      },
+      "saga_state_counts": {
+        "completed": 309,
+        "failed": 6
+      },
+      "session_state_counts": {
+        "no_active": 2
+      },
+      "task_state_counts": {
+        "done": 2215,
+        "failed": 9,
+        "pending": 23
+      },
+      "worker_lease_state_counts": {
+        "released": 2539
+      }
+    },
+    "target": {
+      "config_schema_version": "18",
+      "idempotency_status_counts": {
+        "completed": 2215
+      },
+      "max_ids": {
+        "tq_saga_events": "sevt-saga-ff3d6f85e528-9-saga_step_result_appended",
+        "tq_saga_outbox": "sout-saga-f5a7057b2fa0-4-0",
+        "tq_session_events": "suspected:822af016-31a1-49bb-b529-9b8f539a0831:main-822af016:saga-d2cdce07d5c6",
+        "tq_session_outbox": "seff-ffdcd3be61db",
+        "tq_task_events": "tevt-task-fff14bd90b64-3-task_completed",
+        "tq_task_outbox": null,
+        "tq_worker_lease_events": "levt-queue_task:task-fff14bd90b64-2-lease_released",
+        "tq_worker_lease_outbox": null
+      },
+      "outbox_status_counts": {
+        "tq_saga_outbox": {
+          "published": 6
+        },
+        "tq_session_outbox": {
+          "published": 31
+        },
+        "tq_task_outbox": {},
+        "tq_worker_lease_outbox": {}
+      },
+      "saga_state_counts": {
+        "completed": 309,
+        "failed": 6
+      },
+      "session_state_counts": {
+        "no_active": 2
+      },
+      "task_state_counts": {
+        "done": 2215,
+        "failed": 9,
+        "pending": 23
+      },
+      "worker_lease_state_counts": {
+        "released": 2539
+      }
+    }
+  },
+  "started_at": "2026-05-23T01:39:11.382337Z",
+  "status": "validated",
+  "tables": [
+    {
+      "source_count": 1,
+      "source_error": null,
+      "table": "config",
+      "target_count": 1,
+      "target_error": null
+    },
+    {
+      "source_count": 2247,
+      "source_error": null,
+      "table": "tq_tasks",
+      "target_count": 2247,
+      "target_error": null
+    },
+    {
+      "source_count": 6996,
+      "source_error": null,
+      "table": "tq_task_events",
+      "target_count": 6996,
+      "target_error": null
+    },
+    {
+      "source_count": 2247,
+      "source_error": null,
+      "table": "tq_task_state",
+      "target_count": 2247,
+      "target_error": null
+    },
+    {
+      "source_count": 0,
+      "source_error": null,
+      "table": "tq_task_outbox",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 315,
+      "source_error": null,
+      "table": "tq_sagas",
+      "target_count": 315,
+      "target_error": null
+    },
+    {
+      "source_count": 3226,
+      "source_error": null,
+      "table": "tq_saga_events",
+      "target_count": 3226,
+      "target_error": null
+    },
+    {
+      "source_count": 315,
+      "source_error": null,
+      "table": "tq_saga_state",
+      "target_count": 315,
+      "target_error": null
+    },
+    {
+      "source_count": 6,
+      "source_error": null,
+      "table": "tq_saga_outbox",
+      "target_count": 6,
+      "target_error": null
+    },
+    {
+      "source_count": 5379,
+      "source_error": null,
+      "table": "tq_worker_lease_events",
+      "target_count": 5379,
+      "target_error": null
+    },
+    {
+      "source_count": 2539,
+      "source_error": null,
+      "table": "tq_worker_lease_state",
+      "target_count": 2539,
+      "target_error": null
+    },
+    {
+      "source_count": 0,
+      "source_error": null,
+      "table": "tq_worker_lease_outbox",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 2215,
+      "source_error": null,
+      "table": "tq_idempotency_ledger",
+      "target_count": 2215,
+      "target_error": null
+    },
+    {
+      "source_count": 202,
+      "source_error": null,
+      "table": "tq_session_events",
+      "target_count": 202,
+      "target_error": null
+    },
+    {
+      "source_count": 2,
+      "source_error": null,
+      "table": "tq_session_state",
+      "target_count": 2,
+      "target_error": null
+    },
+    {
+      "source_count": 31,
+      "source_error": null,
+      "table": "tq_session_outbox",
+      "target_count": 31,
+      "target_error": null
+    }
+  ],
+  "target_clean": false
+}

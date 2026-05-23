@@ -1,6 +1,6 @@
 # P077: Execute Queue Production Postgres Cutover And Cleanup
 
-Status: todo
+Status: done
 Parent: P028
 Root: P000
 Source Ticket: T072 (split)
@@ -31,14 +31,16 @@ After Queue Postgres implementation, migration tooling, and staging validation p
 - P127: Archive Old Queue SQLite Residue And Update Cleanup Notes
 
 ## Results
-- none
+- R133
 
 ## Latest Check
-none
+C149
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P077/README.md
 - Ticket T120: problems/P000/children/P024/children/P028/children/P077/tickets/T120.md
+- Result R133: problems/P000/children/P024/children/P028/children/P077/results/R133.md
+- Check C149: problems/P000/children/P024/children/P028/children/P077/checks/C149.md
 
 ## Follow-ups
 - none

@@ -1,0 +1,421 @@
+{
+  "db_after": {
+    "counts": {
+      "config": 1,
+      "tq_idempotency_ledger": 2217,
+      "tq_saga_events": 3234,
+      "tq_saga_outbox": 6,
+      "tq_saga_state": 317,
+      "tq_sagas": 317,
+      "tq_session_events": 202,
+      "tq_session_outbox": 31,
+      "tq_session_state": 2,
+      "tq_task_events": 7008,
+      "tq_task_outbox": 0,
+      "tq_task_state": 2251,
+      "tq_tasks": 2251,
+      "tq_worker_lease_events": 5391,
+      "tq_worker_lease_outbox": 0,
+      "tq_worker_lease_state": 2545
+    },
+    "outbox": {
+      "tq_saga_outbox": {
+        "published": 6
+      },
+      "tq_session_outbox": {
+        "published": 31
+      },
+      "tq_task_outbox": {},
+      "tq_worker_lease_outbox": {}
+    },
+    "states": {
+      "idempotency": {
+        "completed": 2217
+      },
+      "saga": {
+        "completed": 311,
+        "failed": 6
+      },
+      "session": {
+        "no_active": 2
+      },
+      "task": {
+        "done": 2217,
+        "failed": 11,
+        "pending": 23
+      },
+      "worker_lease": {
+        "released": 2545
+      }
+    }
+  },
+  "db_before": {
+    "counts": {
+      "config": 1,
+      "tq_idempotency_ledger": 2216,
+      "tq_saga_events": 3230,
+      "tq_saga_outbox": 6,
+      "tq_saga_state": 316,
+      "tq_sagas": 316,
+      "tq_session_events": 202,
+      "tq_session_outbox": 31,
+      "tq_session_state": 2,
+      "tq_task_events": 7002,
+      "tq_task_outbox": 0,
+      "tq_task_state": 2249,
+      "tq_tasks": 2249,
+      "tq_worker_lease_events": 5385,
+      "tq_worker_lease_outbox": 0,
+      "tq_worker_lease_state": 2542
+    },
+    "outbox": {
+      "tq_saga_outbox": {
+        "published": 6
+      },
+      "tq_session_outbox": {
+        "published": 31
+      },
+      "tq_task_outbox": {},
+      "tq_worker_lease_outbox": {}
+    },
+    "states": {
+      "idempotency": {
+        "completed": 2216
+      },
+      "saga": {
+        "completed": 310,
+        "failed": 6
+      },
+      "session": {
+        "no_active": 2
+      },
+      "task": {
+        "done": 2216,
+        "failed": 10,
+        "pending": 23
+      },
+      "worker_lease": {
+        "released": 2542
+      }
+    }
+  },
+  "errors": [],
+  "generated_at": "2026-05-23T02:08:41.140938Z",
+  "health": {
+    "body": {
+      "database": "postgres:<redacted-path>",
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "status": "healthy",
+      "version": "1.0.0"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "log_error_matches": {},
+  "log_scan": {
+    "gateway-postgres.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "health.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "queue-service.log": {
+      "exists": true,
+      "lines_after_marker": 31,
+      "matches": []
+    },
+    "saga-outbox-worker.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "saga-worker-1.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "saga-worker-2.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "scheduler.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "session-outbox-worker.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "subscriber.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "task-worker-control-1.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "task-worker-control-2.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "task-worker-execution-1.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    },
+    "task-worker-execution-2.log": {
+      "exists": true,
+      "lines_after_marker": 0,
+      "matches": []
+    }
+  },
+  "lsof_queue_db": {
+    "holder_pids": [],
+    "returncode": 1
+  },
+  "ok": true,
+  "prefix": "codex-smoke-20260523T020841Z",
+  "process_counts": {
+    "gateway": 1,
+    "health": 1,
+    "queue-service": 1,
+    "saga-outbox-worker": 1,
+    "saga-worker": 2,
+    "scheduler": 1,
+    "session-outbox-worker": 1,
+    "subscriber": 1,
+    "task-worker": 4
+  },
+  "process_mismatches": {},
+  "ready": {
+    "body": {
+      "checks": {
+        "database": "ok",
+        "database_backend": "postgres",
+        "postgres": "ok",
+        "postgres_dsn_file": "<redacted-path>",
+        "session_outbox": "ok",
+        "session_state": "ok",
+        "tq_sagas": "ok",
+        "tq_session_outbox": "ok",
+        "tq_session_state": "ok",
+        "tq_tasks": "ok"
+      },
+      "database_backend": "postgres",
+      "service": "queue-service",
+      "session_outbox": {
+        "dead_letter_count": 0,
+        "oldest_pending_created_at": null,
+        "pending_count": 0
+      },
+      "session_state": {
+        "oldest_starting_updated_at": null,
+        "starting_count": 0
+      },
+      "status": "ok"
+    },
+    "ok": true,
+    "status": 200
+  },
+  "smokes": {
+    "idempotency": {
+      "acquire": {
+        "body": {
+          "action": "acquired",
+          "result": null
+        },
+        "ok": true,
+        "status": 200
+      },
+      "complete": {
+        "body": {
+          "success": true
+        },
+        "ok": true,
+        "status": 200
+      },
+      "reacquire": {
+        "body": {
+          "action": "completed",
+          "result": {
+            "idem": "done",
+            "smoke": "codex-smoke-20260523T020841Z"
+          }
+        },
+        "ok": true,
+        "status": 200
+      }
+    },
+    "saga": {
+      "claim": {
+        "body": {
+          "saga": {
+            "claimed_at": "2026-05-23T02:08:41.582Z",
+            "claimed_by": "codex-smoke-20260523T020841Z:saga-worker",
+            "completed_at": null,
+            "context": {
+              "smoke": "codex-smoke-20260523T020841Z"
+            },
+            "created_at": "2026-05-23T02:08:41.575000Z",
+            "dag_task_count": null,
+            "error": null,
+            "heartbeat_at": "2026-05-23T02:08:41.582Z",
+            "id": "saga-b6028b1843c6",
+            "idempotency_key": "codex-smoke-20260523T020841Z:saga",
+            "saga_type": "codex-smoke-20260523T020841Z.saga.noop",
+            "status": "running",
+            "step_results": {},
+            "updated_at": "2026-05-23T02:08:41.575000Z"
+          }
+        },
+        "ok": true,
+        "status": 200
+      },
+      "complete": {
+        "body": {
+          "success": true
+        },
+        "ok": true,
+        "status": 200
+      },
+      "create": {
+        "body": {
+          "saga_id": "saga-b6028b1843c6"
+        },
+        "ok": true,
+        "status": 200
+      },
+      "launched": {
+        "body": {
+          "success": true
+        },
+        "ok": true,
+        "status": 200
+      },
+      "saga_id": "saga-b6028b1843c6"
+    },
+    "session_read_only": {
+      "pending": {
+        "body": {
+          "inputs": []
+        },
+        "ok": true,
+        "status": 200
+      },
+      "sessions": {
+        "body": {
+          "sessions": []
+        },
+        "ok": true,
+        "status": 200
+      }
+    },
+    "task_complete": {
+      "claim": {
+        "body": {
+          "task": {
+            "claimed_at": "2026-05-23T02:08:41.482Z",
+            "claimed_by": "codex-smoke-20260523T020841Z:worker-complete",
+            "created_at": "2026-05-23T02:08:41.464000Z",
+            "depends_on": null,
+            "error": null,
+            "finished_at": null,
+            "heartbeat_at": "2026-05-23T02:08:41.482Z",
+            "id": "task-c232ab77197f",
+            "idempotency_key": "codex-smoke-20260523T020841Z:task-complete",
+            "max_retries": 3,
+            "next_retry_at": null,
+            "payload": {
+              "path": "complete",
+              "smoke": "codex-smoke-20260523T020841Z"
+            },
+            "result": null,
+            "retry_count": 0,
+            "saga_id": null,
+            "started_at": "2026-05-23T02:08:41.482Z",
+            "status": "claimed",
+            "step_name": null,
+            "topic": "codex-smoke-20260523T020841Z.task.complete",
+            "version": 2
+          }
+        },
+        "ok": true,
+        "status": 200
+      },
+      "complete": {
+        "body": {
+          "success": true
+        },
+        "ok": true,
+        "status": 200
+      },
+      "publish": {
+        "body": {
+          "task_id": "task-c232ab77197f"
+        },
+        "ok": true,
+        "status": 200
+      },
+      "task_id": "task-c232ab77197f"
+    },
+    "task_fail": {
+      "claim": {
+        "body": {
+          "task": {
+            "claimed_at": "2026-05-23T02:08:41.533Z",
+            "claimed_by": "codex-smoke-20260523T020841Z:worker-fail",
+            "created_at": "2026-05-23T02:08:41.524000Z",
+            "depends_on": null,
+            "error": null,
+            "finished_at": null,
+            "heartbeat_at": "2026-05-23T02:08:41.533Z",
+            "id": "task-557bae5410e4",
+            "idempotency_key": "codex-smoke-20260523T020841Z:task-fail",
+            "max_retries": 3,
+            "next_retry_at": null,
+            "payload": {
+              "path": "fail",
+              "smoke": "codex-smoke-20260523T020841Z"
+            },
+            "result": null,
+            "retry_count": 0,
+            "saga_id": null,
+            "started_at": "2026-05-23T02:08:41.533Z",
+            "status": "claimed",
+            "step_name": null,
+            "topic": "codex-smoke-20260523T020841Z.task.fail",
+            "version": 2
+          }
+        },
+        "ok": true,
+        "status": 200
+      },
+      "fail": {
+        "body": {
+          "final_status": "failed"
+        },
+        "ok": true,
+        "status": 200
+      },
+      "publish": {
+        "body": {
+          "task_id": "task-557bae5410e4"
+        },
+        "ok": true,
+        "status": 200
+      },
+      "task_id": "task-557bae5410e4"
+    }
+  }
+}

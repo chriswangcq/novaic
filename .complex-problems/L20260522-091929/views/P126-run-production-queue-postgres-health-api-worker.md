@@ -1,13 +1,13 @@
 # P126: Run Production Queue Postgres Health API Worker And Outbox Smokes
 
-Status: todo
+Status: done
 Parent: P077
 Root: P000
 Source Ticket: T120 (split)
 Source Check: none
 Package: problems/P000/children/P024/children/P028/children/P077/children/P126
 Body: problems/P000/children/P024/children/P028/children/P077/children/P126/README.md
-Ticket(s): none
+Ticket(s): T133
 
 ## Problem
 Production Postgres mode must be verified with safe smoke checks after restart. The checks must prove health/readiness, representative Queue APIs, worker startup, and outbox drain behavior without unsafe business side effects.
@@ -24,13 +24,16 @@ Production Postgres mode must be verified with safe smoke checks after restart. 
 - none
 
 ## Results
-- none
+- R130
 
 ## Latest Check
-none
+C145
 
 ## Bodies
 - Problem: problems/P000/children/P024/children/P028/children/P077/children/P126/README.md
+- Ticket T133: problems/P000/children/P024/children/P028/children/P077/children/P126/tickets/T133.md
+- Result R130: problems/P000/children/P024/children/P028/children/P077/children/P126/results/R130.md
+- Check C145: problems/P000/children/P024/children/P028/children/P077/children/P126/checks/C145.md
 
 ## Follow-ups
 - none

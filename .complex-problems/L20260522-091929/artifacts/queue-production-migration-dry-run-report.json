@@ -1,0 +1,134 @@
+{
+  "copied_rows": {},
+  "elapsed_ms": 78.474,
+  "errors": [],
+  "postgres_dsn": null,
+  "postgres_dsn_file": "<redacted-path>",
+  "semantic_aggregates": {
+    "config_schema_version": null,
+    "idempotency_status_counts": {},
+    "max_ids": {},
+    "outbox_status_counts": {},
+    "saga_state_counts": {},
+    "session_state_counts": {},
+    "task_state_counts": {},
+    "worker_lease_state_counts": {}
+  },
+  "started_at": "2026-05-23T01:32:29.783661Z",
+  "status": "ready",
+  "tables": [
+    {
+      "source_count": 1,
+      "source_error": null,
+      "table": "config",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 2247,
+      "source_error": null,
+      "table": "tq_tasks",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 6996,
+      "source_error": null,
+      "table": "tq_task_events",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 2247,
+      "source_error": null,
+      "table": "tq_task_state",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 0,
+      "source_error": null,
+      "table": "tq_task_outbox",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 315,
+      "source_error": null,
+      "table": "tq_sagas",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 3226,
+      "source_error": null,
+      "table": "tq_saga_events",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 315,
+      "source_error": null,
+      "table": "tq_saga_state",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 6,
+      "source_error": null,
+      "table": "tq_saga_outbox",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 5379,
+      "source_error": null,
+      "table": "tq_worker_lease_events",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 2539,
+      "source_error": null,
+      "table": "tq_worker_lease_state",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 0,
+      "source_error": null,
+      "table": "tq_worker_lease_outbox",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 2215,
+      "source_error": null,
+      "table": "tq_idempotency_ledger",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 202,
+      "source_error": null,
+      "table": "tq_session_events",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 2,
+      "source_error": null,
+      "table": "tq_session_state",
+      "target_count": 0,
+      "target_error": null
+    },
+    {
+      "source_count": 31,
+      "source_error": null,
+      "table": "tq_session_outbox",
+      "target_count": 0,
+      "target_error": null
+    }
+  ],
+  "target_clean": true
+}
