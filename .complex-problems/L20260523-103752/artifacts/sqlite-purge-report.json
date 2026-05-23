@@ -1,0 +1,644 @@
+{
+  "blocked": false,
+  "classification_backup_path": "/opt/novaic/residue-archive/sqlite-purge-20260523T104215+0800/SQLITE_STATE_CLASSIFICATION.before-purge.md",
+  "classification_path": "/opt/novaic/data/SQLITE_STATE_CLASSIFICATION.md",
+  "deleted": [
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db",
+      "sha256": "07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153",
+      "size_bytes": 378683392
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db-shm",
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "size_bytes": 32768
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db-wal",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db",
+      "sha256": "07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153",
+      "size_bytes": 378683392
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/data/queue-db-backups/fsm-v18-20260507-135937/queue.db",
+      "sha256": "ea842472f41419edc447fa379e7f4fa0a22e63a98d57beffb6a4a6aafd307033",
+      "size_bytes": 116703232
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/data/queue.db.recovery-20260505-224500.bak",
+      "sha256": "752ed1c614fe10ed50edb4fc7ef967beff6cfdc0e767eacd87993a7e4f745478",
+      "size_bytes": 75698176
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/llm-factory/backups/llm_factory-pre-postgres-20260522T014711Z.db",
+      "sha256": "46ee843f535d10601ad3d1fa05983724f1c2da289cee038db5c4a9bc6ccf137d",
+      "size_bytes": 17649664
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/llm-factory/backups/llm_factory-pre-postgres-20260522T015309Z.db",
+      "sha256": "46ee843f535d10601ad3d1fa05983724f1c2da289cee038db5c4a9bc6ccf137d",
+      "size_bytes": 17649664
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/llm-factory/data/llm_factory.db",
+      "sha256": "fd4bcc1fee14d08856e68ed212c9f9cca71efd0151784d96faa7c66560b2d9f2",
+      "size_bytes": 17649664
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/cortex-pg-cutover-20260522T082503Z/operational.sqlite3",
+      "sha256": "da25f1d2292a2f39341d3b598c4836977467afaa8c6d9523512621c81812f0e7",
+      "size_bytes": 135168
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/cortex-pg-cutover-20260522T082503Z/operational.sqlite3.removed-from-data-dir",
+      "sha256": "da25f1d2292a2f39341d3b598c4836977467afaa8c6d9523512621c81812f0e7",
+      "size_bytes": 135168
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/device-db-delete-20260522T020133Z/device.db",
+      "sha256": "d7e9fe64a2302aad455e49391c17e26a5d63a5e3eb53f31cc7e4e2d9636c1e15",
+      "size_bytes": 20480
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db",
+      "sha256": "96107a55533acb5aa98d41b9dea2cb4ddf9ffad126b095a090642898e0e77974",
+      "size_bytes": 7106560
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-shm",
+      "sha256": "eb4106e7e27230ddf2d92116a341b2e8166affe5416583e4da832ff1951c2a27",
+      "size_bytes": 32768
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-shm.removed-from-active-path-20260522T121320Z",
+      "sha256": "eb4106e7e27230ddf2d92116a341b2e8166affe5416583e4da832ff1951c2a27",
+      "size_bytes": 32768
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-wal",
+      "sha256": "829dbdf7278421e6754dc02b6614d230237379a3926189a9c1c46c197dfd9f1f",
+      "size_bytes": 4169472
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-wal.removed-from-active-path-20260522T121320Z",
+      "sha256": "829dbdf7278421e6754dc02b6614d230237379a3926189a9c1c46c197dfd9f1f",
+      "size_bytes": 4169472
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.removed-from-active-path-20260522T121320Z",
+      "sha256": "96107a55533acb5aa98d41b9dea2cb4ddf9ffad126b095a090642898e0e77974",
+      "size_bytes": 7106560
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.sqlite-backup",
+      "sha256": "110b8dd073323d20c65d289beb873b95673556d753922e322a6dc25264de1c15",
+      "size_bytes": 7106560
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.sqlite-backup-shm",
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "size_bytes": 32768
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.sqlite-backup-wal",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/gateway-pg-cutover-20260522T041053Z/gateway.db",
+      "sha256": "e201e7e90dc987f3bd5b5ff639369dbc2f4e4425287253e8549535baebde923f",
+      "size_bytes": 176128
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/gateway-pg-cutover-20260522T041053Z/gateway.db.removed-from-data-dir",
+      "sha256": "e201e7e90dc987f3bd5b5ff639369dbc2f4e4425287253e8549535baebde923f",
+      "size_bytes": 176128
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/sqlite-20260522T013250Z/data/business.db",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/sqlite-20260522T013250Z/services/novaic-gateway/development.db",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.bak-20260418-200332",
+      "sha256": "a0a6877b2d81f805a6802029560890ec2ae78a4f8bc073913497895fe9b15e3c",
+      "size_bytes": 2985984
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.bak-20260418-200958",
+      "sha256": "a0a6877b2d81f805a6802029560890ec2ae78a4f8bc073913497895fe9b15e3c",
+      "size_bytes": 2985984
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.bak-20260418-201248",
+      "sha256": "a0a6877b2d81f805a6802029560890ec2ae78a4f8bc073913497895fe9b15e3c",
+      "size_bytes": 2985984
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.pr47.bak.1776851985",
+      "sha256": "a1dc6b7e0a1dfcdb3eaa947ad2126c847ef1dd00073058be339396abb5498e1d",
+      "size_bytes": 15282176
+    },
+    {
+      "deleted": true,
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.pr51.bak.1776852534",
+      "sha256": "a1dc6b7e0a1dfcdb3eaa947ad2126c847ef1dd00073058be339396abb5498e1d",
+      "size_bytes": 15282176
+    }
+  ],
+  "deleted_count": 30,
+  "generated_at": "2026-05-23T10:42:15.161214+08:00",
+  "health_checks": {
+    "docker_novaic-llm-factory": {
+      "ok": true,
+      "stderr": "",
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":3470477,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-05-22T01:53:11.88044329Z\",\"FinishedAt\":\"0001-01-01T00:00:00Z\",\"Health\":{\"Status\":\"healthy\",\"FailingStreak\":0,\"Log\":[{\"Start\":\"2026-05-23T10:39:54.214149354+08:00\",\"End\":\"2026-05-23T10:39:54.478302584+08:00\",\"ExitCode\":0,\"Output\":\"\"},{\"Start\":\"2026-05-23T10:40:24.479894286+08:00\",\"End\":\"2026-05-23T10:40:24.767864725+08:00\",\"ExitCode\":0,\"Output\":\"\"},{\"Start\":\"2026-05-23T10:40:54.76923685+08:00\",\"End\":\"2026-05-23T10:40:55.047693953+08:00\",\"ExitCode\":0,\"Output\":\"\"},{\"Start\":\"2026-05-23T10:41:25.049094098+08:00\",\"End\":\"2026-05-23T10:41:25.341765035+08:00\",\"ExitCode\":0,\"Output\":\"\"},{\"Start\":\"2026-05-23T10:41:55.342183958+08:00\",\"End\":\"2026-05-23T10:41:55.630187795+08:00\",\"ExitCode\":0,\"Output\":\"\"}]}}\n"
+    },
+    "docker_novaic-postgres": {
+      "ok": true,
+      "stderr": "",
+      "stdout": "{\"Status\":\"running\",\"Running\":true,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":3461766,\"ExitCode\":0,\"Error\":\"\",\"StartedAt\":\"2026-05-22T01:24:59.435265875Z\",\"FinishedAt\":\"2026-05-22T01:24:59.395787675Z\",\"Health\":{\"Status\":\"healthy\",\"FailingStreak\":0,\"Log\":[{\"Start\":\"2026-05-23T10:40:16.54633636+08:00\",\"End\":\"2026-05-23T10:40:16.588788245+08:00\",\"ExitCode\":0,\"Output\":\"127.0.0.1:5432 - accepting connections\\n\"},{\"Start\":\"2026-05-23T10:40:46.58966066+08:00\",\"End\":\"2026-05-23T10:40:46.634040512+08:00\",\"ExitCode\":0,\"Output\":\"127.0.0.1:5432 - accepting connections\\n\"},{\"Start\":\"2026-05-23T10:41:16.634803769+08:00\",\"End\":\"2026-05-23T10:41:16.670817566+08:00\",\"ExitCode\":0,\"Output\":\"127.0.0.1:5432 - accepting connections\\n\"},{\"Start\":\"2026-05-23T10:41:46.671394065+08:00\",\"End\":\"2026-05-23T10:41:46.714948732+08:00\",\"ExitCode\":0,\"Output\":\"127.0.0.1:5432 - accepting connections\\n\"},{\"Start\":\"2026-05-23T10:42:16.715776607+08:00\",\"End\":\"2026-05-23T10:42:16.763198467+08:00\","
+    },
+    "entangled_health": {
+      "json": {
+        "entities": 22,
+        "entity_names": [
+          "skills",
+          "API credential entity",
+          "agents",
+          "subagents",
+          "files",
+          "user-preferences",
+          "agent-skills",
+          "models",
+          "API credential model entity",
+          "available-models",
+          "agent-binding",
+          "agent-tools",
+          "agent-state",
+          "messages",
+          "agent-activity-records",
+          "agent-activity-participants",
+          "environment-events",
+          "environment-im-messages",
+          "environment-notifications",
+          "environment-resource-refs",
+          "devices",
+          "vm-users"
+        ],
+        "status": "ok"
+      },
+      "ok": true,
+      "status": 200
+    },
+    "entangled_ready": {
+      "json": {
+        "entities": 22,
+        "entity_names": [
+          "agent-activity-participants",
+          "agent-activity-records",
+          "agent-binding",
+          "agent-skills",
+          "agent-state",
+          "agent-tools",
+          "agents",
+          "API credential model entity",
+          "API credential entity",
+          "available-models",
+          "devices",
+          "environment-events",
+          "environment-im-messages",
+          "environment-notifications",
+          "environment-resource-refs",
+          "files",
+          "messages",
+          "models",
+          "skills",
+          "subagents",
+          "user-preferences",
+          "vm-users"
+        ],
+        "missing": [],
+        "status": "ready"
+      },
+      "ok": true,
+      "status": 200
+    },
+    "queue_health": {
+      "json": {
+        "database": "postgres:<redacted-credential-path>",
+        "database_backend": "postgres",
+        "service": "queue-service",
+        "status": "healthy",
+        "version": "1.0.0"
+      },
+      "ok": true,
+      "status": 200
+    },
+    "queue_ready": {
+      "json": {
+        "checks": {
+          "database": "ok",
+          "database_backend": "postgres",
+          "postgres": "ok",
+          "postgres_dsn_file": "<redacted-credential-path>",
+          "session_outbox": "ok",
+          "session_state": "ok",
+          "tq_sagas": "ok",
+          "tq_session_outbox": "ok",
+          "tq_session_state": "ok",
+          "tq_tasks": "ok"
+        },
+        "database_backend": "postgres",
+        "service": "queue-service",
+        "session_outbox": {
+          "dead_letter_count": 0,
+          "oldest_pending_created_at": null,
+          "pending_count": 0
+        },
+        "session_state": {
+          "oldest_starting_updated_at": null,
+          "starting_count": 0
+        },
+        "status": "ok"
+      },
+      "ok": true,
+      "status": 200
+    }
+  },
+  "note": "SQLite database files, sidecars, renamed rollback sources, and historical snapshots were deleted; docs/scripts/reports/source files were retained.",
+  "ok": true,
+  "post_remaining": [],
+  "pre_delete": [
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db",
+      "sha256": "07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153",
+      "size_bytes": 378683392
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db-shm",
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "size_bytes": 32768
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/archived-active-sqlite-20260523T021156Z/queue.db-wal",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/backups/queue-cutover/20260523T011125Z/queue.db",
+      "sha256": "07a65534bfd932694202c0a8f06df0426a1777b1bca5800d31c0f9d44df44153",
+      "size_bytes": 378683392
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/data/queue-db-backups/fsm-v18-20260507-135937/queue.db",
+      "sha256": "ea842472f41419edc447fa379e7f4fa0a22e63a98d57beffb6a4a6aafd307033",
+      "size_bytes": 116703232
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/data/queue.db.recovery-20260505-224500.bak",
+      "sha256": "752ed1c614fe10ed50edb4fc7ef967beff6cfdc0e767eacd87993a7e4f745478",
+      "size_bytes": 75698176
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/llm-factory/backups/llm_factory-pre-postgres-20260522T014711Z.db",
+      "sha256": "46ee843f535d10601ad3d1fa05983724f1c2da289cee038db5c4a9bc6ccf137d",
+      "size_bytes": 17649664
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/llm-factory/backups/llm_factory-pre-postgres-20260522T015309Z.db",
+      "sha256": "46ee843f535d10601ad3d1fa05983724f1c2da289cee038db5c4a9bc6ccf137d",
+      "size_bytes": 17649664
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/llm-factory/data/llm_factory.db",
+      "sha256": "fd4bcc1fee14d08856e68ed212c9f9cca71efd0151784d96faa7c66560b2d9f2",
+      "size_bytes": 17649664
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/cortex-pg-cutover-20260522T082503Z/operational.sqlite3",
+      "sha256": "da25f1d2292a2f39341d3b598c4836977467afaa8c6d9523512621c81812f0e7",
+      "size_bytes": 135168
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/cortex-pg-cutover-20260522T082503Z/operational.sqlite3.removed-from-data-dir",
+      "sha256": "da25f1d2292a2f39341d3b598c4836977467afaa8c6d9523512621c81812f0e7",
+      "size_bytes": 135168
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/device-db-delete-20260522T020133Z/device.db",
+      "sha256": "d7e9fe64a2302aad455e49391c17e26a5d63a5e3eb53f31cc7e4e2d9636c1e15",
+      "size_bytes": 20480
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db",
+      "sha256": "96107a55533acb5aa98d41b9dea2cb4ddf9ffad126b095a090642898e0e77974",
+      "size_bytes": 7106560
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-shm",
+      "sha256": "eb4106e7e27230ddf2d92116a341b2e8166affe5416583e4da832ff1951c2a27",
+      "size_bytes": 32768
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-shm.removed-from-active-path-20260522T121320Z",
+      "sha256": "eb4106e7e27230ddf2d92116a341b2e8166affe5416583e4da832ff1951c2a27",
+      "size_bytes": 32768
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-wal",
+      "sha256": "829dbdf7278421e6754dc02b6614d230237379a3926189a9c1c46c197dfd9f1f",
+      "size_bytes": 4169472
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db-wal.removed-from-active-path-20260522T121320Z",
+      "sha256": "829dbdf7278421e6754dc02b6614d230237379a3926189a9c1c46c197dfd9f1f",
+      "size_bytes": 4169472
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.removed-from-active-path-20260522T121320Z",
+      "sha256": "96107a55533acb5aa98d41b9dea2cb4ddf9ffad126b095a090642898e0e77974",
+      "size_bytes": 7106560
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.sqlite-backup",
+      "sha256": "110b8dd073323d20c65d289beb873b95673556d753922e322a6dc25264de1c15",
+      "size_bytes": 7106560
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.sqlite-backup-shm",
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "size_bytes": 32768
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/entangled-cutover-20260522T110431Z/entangled.db.sqlite-backup-wal",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/gateway-pg-cutover-20260522T041053Z/gateway.db",
+      "sha256": "e201e7e90dc987f3bd5b5ff639369dbc2f4e4425287253e8549535baebde923f",
+      "size_bytes": 176128
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/gateway-pg-cutover-20260522T041053Z/gateway.db.removed-from-data-dir",
+      "sha256": "e201e7e90dc987f3bd5b5ff639369dbc2f4e4425287253e8549535baebde923f",
+      "size_bytes": 176128
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/sqlite-20260522T013250Z/data/business.db",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/residue-archive/sqlite-20260522T013250Z/services/novaic-gateway/development.db",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.bak-20260418-200332",
+      "sha256": "a0a6877b2d81f805a6802029560890ec2ae78a4f8bc073913497895fe9b15e3c",
+      "size_bytes": 2985984
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.bak-20260418-200958",
+      "sha256": "a0a6877b2d81f805a6802029560890ec2ae78a4f8bc073913497895fe9b15e3c",
+      "size_bytes": 2985984
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.bak-20260418-201248",
+      "sha256": "a0a6877b2d81f805a6802029560890ec2ae78a4f8bc073913497895fe9b15e3c",
+      "size_bytes": 2985984
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.pr47.bak.1776851985",
+      "sha256": "a1dc6b7e0a1dfcdb3eaa947ad2126c847ef1dd00073058be339396abb5498e1d",
+      "size_bytes": 15282176
+    },
+    {
+      "lsof_returncode": 1,
+      "lsof_stderr": "",
+      "lsof_stdout": "",
+      "path": "/opt/novaic/snapshots/entangled.db.pr51.bak.1776852534",
+      "sha256": "a1dc6b7e0a1dfcdb3eaa947ad2126c847ef1dd00073058be339396abb5498e1d",
+      "size_bytes": 15282176
+    }
+  ],
+  "report_path": "/opt/novaic/residue-archive/sqlite-purge-20260523T104215+0800/sqlite-purge-report.json",
+  "target_count": 30
+}
