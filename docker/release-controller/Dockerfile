@@ -41,6 +41,7 @@ RUN set -eux; \
 COPY novaic-release-controller /opt/novaic/release-controller
 
 RUN python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install pytest \
     && python -m pip install /opt/novaic/release-controller \
     && python - <<'PY'
 import importlib
