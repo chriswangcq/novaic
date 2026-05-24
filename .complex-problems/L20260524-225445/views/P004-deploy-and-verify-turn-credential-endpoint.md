@@ -1,6 +1,6 @@
 # P004: Deploy and verify TURN credential endpoint
 
-Status: doing
+Status: done
 Parent: P001
 Root: P000
 Source Ticket: none (none)
@@ -22,14 +22,16 @@ The ICE/TURN code path is fixed locally, and the API host has the required `turn
 - none
 
 ## Results
-- none
+- R001
 
 ## Latest Check
-none
+C001
 
 ## Bodies
 - Problem: problems/P000/children/P001/children/P004/README.md
 - Ticket T002: problems/P000/children/P001/children/P004/tickets/T002.md
+- Result R001: problems/P000/children/P001/children/P004/results/R001.md
+- Check C001: problems/P000/children/P001/children/P004/checks/C001.md
 
 ## Follow-ups
 - none

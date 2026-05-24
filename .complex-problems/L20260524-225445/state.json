@@ -22,14 +22,125 @@
       "status": "not_success",
       "stress_test": [],
       "summary": "The implementation closes the discovered code/config bug, and the API host secret has been repaired, but the problem asked for deployed prod/staging ICE/TURN discovery to be working. The new Gateway route and fail-fast behavior are not yet running in prod/staging, so the deployed credential endpoint still has not been proven to return relay-capable ICE servers."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P004/checks/C001.md",
+      "created_at": "2026-05-24T15:21:19+00:00",
+      "criteria_map": [
+        "Deploy new image via Release Controller: satisfied by staging run and prod promote.",
+        "Verify `/api/turn/credentials` returns relay-capable ICE servers: satisfied by direct prod/staging checks.",
+        "Verify `turn_secret` is present: satisfied by the repaired namespace secret files and successful fail-fast startup.",
+        "Confirm no STUN-only silent fallback in deployed cross-network mode: satisfied by app code requiring relay-capable credentials and Gateway failing deployed envs without `turn_secret`."
+      ],
+      "evidence": [
+        "Staging Release Controller run `20260524-151622-main-163a782cb385` succeeded.",
+        "Prod Release Controller promote run `20260524-151846-promote-prod-staging-163a782cb385` succeeded.",
+        "Prod and staging current release pointers both reference commit `163a782cb385` and image `127.0.0.1:5000/novaic/api-backend:sha-163a782cb385`.",
+        "Prod and staging loopback TURN credential checks returned `turn:` and `turns:` URLs."
+      ],
+      "execution_map": [
+        "`R001` records commits, pushes, Release Controller run IDs, and remote endpoint verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Actual cross-network first-frame rendering still needs the separate media-path check; this follow-up only closes TURN discovery deployment."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Staging initially failed to start without namespace `turn_secret`, proving the new guard detects the dangerous misconfiguration instead of serving a degraded STUN-only path."
+      ],
+      "summary": "`R001` satisfies the follow-up problem: the fixed image was deployed through Release Controller, prod/staging now serve relay-capable TURN credentials, and namespace-specific runtime secrets are present."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C002.md",
+      "created_at": "2026-05-24T15:21:41+00:00",
+      "criteria_map": [
+        "Identify ICE server source of truth: satisfied by code trace and central `gateway.api.turn.build_turn_ice_servers`.",
+        "Confirm reachable TURN relay deployed/configured/advertised: satisfied by coturn/DNS checks and prod/staging endpoint responses.",
+        "Fix missing ICE/TURN config: satisfied by Gateway endpoint, App WS injection, app TURN requirement, and namespace secret repair.",
+        "Add guard/test: satisfied by Gateway tests, common strict config tests, and deployed fail-fast validation.",
+        "Document operational knobs: captured in `R000`/`R001` artifacts with `turn_secret`, `turn` URLs, `tls_port`, namespace secret paths, and coturn relationship."
+      ],
+      "evidence": [
+        "Gateway now exposes authenticated `/api/turn/credentials`.",
+        "Browser-side WebRTC no longer silently falls back to STUN-only when TURN credentials are missing.",
+        "Gateway App WS offer relay now injects the same relay-capable ICE server set into VmControl offers.",
+        "Prod and staging runtime secrets include `turn_secret` in namespace-specific secret files.",
+        "Prod and staging direct Gateway checks return `turn:relay.gradievo.com:3478?transport=udp`, `turn:relay.gradievo.com:3478?transport=tcp`, and `turns:relay.gradievo.com:5349?transport=tcp`."
+      ],
+      "execution_map": [
+        "`R000` contains local code changes and verification.",
+        "`R001` contains Release Controller deployment and endpoint verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P001",
+      "residual_risk": [
+        "ICE/TURN discovery is fixed; actual cross-network first video frame still needs media-path validation in the separate black-screen child problem."
+      ],
+      "result_ids": [
+        "R000",
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Staging failed when `turn_secret` was absent in `/opt/novaic/etc/staging/secrets.json`, then recovered after the namespace secret was repaired. This proves the new path fails loudly instead of running a hidden STUN-only degradation."
+      ],
+      "summary": "The original ICE/TURN discovery problem is now solved. `R000` fixed the code path and guard behavior, and `R001` deployed and verified the repaired path in prod and staging."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C003.md",
+      "created_at": "2026-05-24T15:26:51+00:00",
+      "criteria_map": [
+        "`ontrack` alone no longer proves visible video: satisfied.",
+        "Prompt keyframe request: satisfied via DataChannel open.",
+        "No-video timeout: satisfied with explicit 25s error.",
+        "Cleanup clears timeout/callback: satisfied.",
+        "Focused checks: satisfied by eslint, `tsc`, unit test, build, and OTA deployment."
+      ],
+      "evidence": [
+        "`useWebRtc` now waits for `requestVideoFrameCallback`, `loadeddata`, or ready-state evidence before setting `connected`.",
+        "DataChannel open now sends a `request_keyframe` control message.",
+        "A 25s no-video timeout produces an actionable error instead of an indefinite black stream.",
+        "Cleanup increments the media attempt id and clears timers/callbacks, preventing stale readiness events after disconnect.",
+        "TypeScript, build, lint, and relevant contract test passed; OTA frontend was deployed."
+      ],
+      "execution_map": [
+        "`R002` contains the code change, stale-test cleanup, verification commands, app commit, and OTA deployment."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Real cross-network first-frame validation still belongs to the root deployment/verification child problem. P002 intentionally closes the client-side black-screen state behavior."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The previous build-blocking stale contract test was removed and the full frontend build now passes, proving the media fix is not just locally lint-clean but deployable through the current OTA packaging path."
+      ],
+      "summary": "`R002` solves the connected-but-black media behavior at the frontend state boundary: a WebRTC track is no longer treated as visible video, first-frame readiness is explicit, keyframes are requested immediately, and no-video becomes a clear error."
     }
   },
   "counters": {
-    "check": 1,
-    "event": 26,
+    "check": 4,
+    "event": 51,
     "problem": 5,
-    "result": 1,
-    "ticket": 3
+    "result": 3,
+    "ticket": 5
   },
   "created_at": "2026-05-24T14:54:45+00:00",
   "ledger_id": "L20260524-225445",
@@ -70,7 +181,8 @@
     "P001": {
       "body_path": "problems/P000/children/P001/README.md",
       "check_ids": [
-        "C000"
+        "C000",
+        "C002"
       ],
       "created_at": "2026-05-24T14:57:16+00:00",
       "created_from_check_id": null,
@@ -87,7 +199,7 @@
         "R000"
       ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P004"
       ],
@@ -102,11 +214,13 @@
         "T001"
       ],
       "title": "Audit and fix cross-network ICE/TURN discovery",
-      "updated_at": "2026-05-24T15:06:53+00:00"
+      "updated_at": "2026-05-24T15:21:41+00:00"
     },
     "P002": {
       "body_path": "problems/P000/children/P002/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C003"
+      ],
       "created_at": "2026-05-24T14:57:16+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T000",
@@ -116,9 +230,11 @@
       "id": "P002",
       "package_path": "problems/P000/children/P002",
       "parent_id": "P000",
-      "result_ids": [],
+      "result_ids": [
+        "R002"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Trace the offer/answer/media pipeline from UI viewer request through Rust WebRTC peer creation to frame capture and video element rendering.",
@@ -127,9 +243,11 @@
         "Add a timeout/error state that distinguishes signaling connected from video-frame received instead of silently showing black.",
         "Verify same-LAN behavior remains working while cross-network behavior uses the corrected media path."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T003"
+      ],
       "title": "Fix connected-but-black WebRTC media behavior",
-      "updated_at": "2026-05-24T14:57:16+00:00"
+      "updated_at": "2026-05-24T15:26:51+00:00"
     },
     "P003": {
       "body_path": "problems/P000/children/P003/README.md",
@@ -145,7 +263,7 @@
       "parent_id": "P000",
       "result_ids": [],
       "root_id": "P000",
-      "status": "todo",
+      "status": "doing",
       "subproblem_ids": [],
       "success_criteria": [
         "Build, commit, and push all code/config changes in the relevant repo and parent repo pointers.",
@@ -154,13 +272,17 @@
         "Run local checks plus at least one deployment smoke check that proves ICE/TURN config is served and relay-capable.",
         "Record the final result in the complex-problems ledger with remaining known manual client-app update steps, if any."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T004"
+      ],
       "title": "Deploy and verify cross-network WebRTC release",
-      "updated_at": "2026-05-24T14:57:16+00:00"
+      "updated_at": "2026-05-24T15:28:19+00:00"
     },
     "P004": {
       "body_path": "problems/P000/children/P001/children/P004/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C001"
+      ],
       "created_at": "2026-05-24T15:06:53+00:00",
       "created_from_check_id": "C000",
       "created_from_ticket_id": null,
@@ -170,9 +292,11 @@
       "id": "P004",
       "package_path": "problems/P000/children/P001/children/P004",
       "parent_id": "P001",
-      "result_ids": [],
+      "result_ids": [
+        "R001"
+      ],
       "root_id": "P000",
-      "status": "doing",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Deploy a new API backend image containing the Gateway TURN endpoint and strict TURN config via the Release Controller path.",
@@ -184,7 +308,7 @@
         "T002"
       ],
       "title": "Deploy and verify TURN credential endpoint",
-      "updated_at": "2026-05-24T15:07:29+00:00"
+      "updated_at": "2026-05-24T15:21:19+00:00"
     }
   },
   "results": {
@@ -226,6 +350,78 @@
         "`npx tsc --noEmit --pretty false` in `novaic-app`: still fails on pre-existing `src/types/messageContract.test.ts` missing `MESSAGE_LIFECYCLE_STATES`; no new `useWebRtc.ts` error was reported.",
         "API host checks showed `novaic-coturn` running, `turnserver.conf` using `external-ip=43.106.113.95/172.17.220.140`, and `api.gradievo.com`/`relay.gradievo.com` resolving to `43.106.113.95` from the API host.",
         "Direct Gateway checks before this code deploy confirmed `http://127.0.0.1:19999/api/turn/credentials` and staging `:29999` were 404, matching the missing route diagnosis."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "Release Controller staging run `20260524-151622-main-163a782cb385`",
+        "Release Controller prod run `20260524-151846-promote-prod-staging-163a782cb385`",
+        "Parent repo commit `163a782cb3859b6e8d2528a26ad59bcf50480f85`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P004/results/R001.md",
+      "created_at": "2026-05-24T15:20:59+00:00",
+      "done": [
+        "Committed and pushed `novaic-gateway` commit `ece234f` (`Require TURN credentials for WebRTC`).",
+        "Committed and pushed `novaic-common` commit `a56ad28` (`Add TURN TLS port config`).",
+        "Committed and pushed `novaic-app` commit `610b407` (`Require TURN relay credentials for WebRTC`).",
+        "Committed and pushed parent repo commit `163a782c` (`Fix WebRTC TURN discovery path`).",
+        "Added `turn_secret` to `/opt/novaic/etc/staging/secrets.json` and `/opt/novaic/etc/prod/secrets.json`, matching coturn static auth secret.",
+        "Release Controller staging run succeeded: `20260524-151622-main-163a782cb385`.",
+        "Release Controller prod promote succeeded: `20260524-151846-promote-prod-staging-163a782cb385`."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "This verifies ICE/TURN discovery and deployment. It does not yet prove first video frame rendering across an actual different-network WebRTC session; that belongs to the media/black-screen child problem."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "The fixed TURN discovery code was committed, pushed, built by Release Controller as immutable `sha-163a782cb385` images, deployed to staging, then promoted to prod using the same image refs. Prod and staging now return relay-capable ICE server credentials.",
+      "ticket_id": "T002",
+      "verification": [
+        "Release Controller status now points both `staging` and `prod` to commit `163a782cb385` and API image `127.0.0.1:5000/novaic/api-backend:sha-163a782cb385`.",
+        "Direct prod Gateway check `http://127.0.0.1:19999/api/turn/credentials` with `X-User-ID` returned TTL `86400` and TURN URLs:",
+        "`turn:relay.gradievo.com:3478?transport=udp`",
+        "`turn:relay.gradievo.com:3478?transport=tcp`",
+        "`turns:relay.gradievo.com:5349?transport=tcp`",
+        "Direct staging Gateway check `http://127.0.0.1:29999/api/turn/credentials` returned the same relay-capable TURN URLs.",
+        "Prod Release Controller smoke `https://api.gradievo.com/health` succeeded.",
+        "Staging initially failed fast exactly as intended when namespace-specific `turn_secret` was absent, then succeeded after the correct namespace secret file was repaired."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-app/src/hooks/useWebRtc.ts`",
+        "`novaic-app/src/types/messageContract.test.ts` deleted",
+        "`novaic-app` commit `5cf45ad04...`",
+        "Frontend OTA v0.3.0 deployment"
+      ],
+      "body_path": "problems/P000/children/P002/results/R002.md",
+      "created_at": "2026-05-24T15:26:19+00:00",
+      "done": [
+        "Added per-attempt media readiness tracking in `useWebRtc`.",
+        "`ontrack` now attaches the stream and observes video readiness, but does not set `connected`.",
+        "`requestVideoFrameCallback` is used when available; `loadeddata`/ready-state are used as fallback.",
+        "The control DataChannel sends `{ \"type\": \"request_keyframe\" }` as soon as it opens.",
+        "A 25s no-video timeout sets an explicit error: `WebRTC connected but no video frame arrived within 25s`.",
+        "Disconnect/unmount clears media readiness timers and cancels pending video frame callbacks.",
+        "Removed stale `src/types/messageContract.test.ts`, which contradicted the current chat-message contract and blocked TypeScript builds.",
+        "Committed and pushed `novaic-app` commit `5cf45ad` (`Make WebRTC video readiness explicit`).",
+        "Deployed frontend OTA v0.3.0 to `https://relay.gradievo.com/resource/frontend/v0.3.0/`."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "This verifies the frontend media state behavior and OTA deployment. A real cross-network session still needs manual/interactive validation from a client outside the LAN."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "The frontend no longer treats `ontrack` as visible video. It now waits for an actual video frame/readiness signal, requests a keyframe when the control DataChannel opens, and reports a clear no-video error after 25 seconds instead of leaving the user staring at a black stream.",
+      "ticket_id": "T003",
+      "verification": [
+        "`npx eslint src/hooks/useWebRtc.ts --max-warnings 0`: passed.",
+        "`npx tsc --noEmit --pretty false`: passed after removing the stale conflicting test.",
+        "`npm run test:unit -- --run src/types/chatMessageContract.test.ts`: passed.",
+        "`npm run build`: passed.",
+        "`./deploy frontend 0.3.0`: passed and uploaded the rebuilt OTA bundle."
       ]
     }
   },
@@ -320,18 +516,83 @@
       "problem_definition": "Prod and staging still run API backend images without the new Gateway `/api/turn/credentials` endpoint. The API host secret has been repaired, but the fixed code path must be committed, built, deployed, and verified through the Release Controller.",
       "problem_id": "P004",
       "proposed_solution": "Commit the gateway/common/app changes and parent pointers, push them to `main`, build an immutable API backend image with the Release Controller path, deploy that image to staging and prod, then query the namespace Gateway loopback endpoints with trusted headers to confirm relay-capable ICE servers are returned.",
-      "result_ids": [],
+      "result_ids": [
+        "R001"
+      ],
       "risks": [
         "The existing app TypeScript suite has an unrelated pre-existing failing test import.",
         "If Release Controller build includes parent submodule pointers, the parent commit must be made after subrepo commits.",
         "Prod Gateway will fail fast if `turn_secret` is missing or unreadable, so verify secrets before deploy."
       ],
       "root_id": "P000",
-      "status": "executing",
+      "status": "done",
       "title": "Release fixed TURN discovery to prod and staging",
-      "updated_at": "2026-05-24T15:07:30+00:00",
+      "updated_at": "2026-05-24T15:20:59+00:00",
       "verification_plan": "Run focused unit/config/lint checks before commit. Use Release Controller or its CLI entrypoint for build/deploy. Verify remote container images, Gateway health, and direct loopback TURN endpoint responses after deployment."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "The frontend no longer treats `ontrack` alone as proof of visible video.",
+        "A keyframe request is sent promptly once the control DataChannel opens.",
+        "A no-video timeout produces an actionable error instead of an indefinite black screen.",
+        "Cleanup clears any media timeout and does not fire after disconnect.",
+        "Focused lint/type checks cover the modified media code path as far as existing test health allows."
+      ],
+      "assumptions": [
+        "Rust already writes cached codec config/IDR after connection; frontend should still explicitly request a keyframe to avoid waiting for an encoder cadence."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "The media-black-screen repair is a focused frontend media readiness change with bounded verification in useWebRtc.ts.",
+      "created_at": "2026-05-24T15:22:00+00:00",
+      "id": "T003",
+      "problem_definition": "Even after ICE succeeds, the UI can show a connected state before any decoded video frame is visible. This hides media-path failures as a black screen and makes it hard to distinguish signaling/ICE success from actual remote display success.",
+      "problem_id": "P002",
+      "proposed_solution": "Trace the media pipeline from frontend `ontrack` through video element playback and DataChannel keyframe request to Rust peer frame writing. Add explicit first-frame readiness handling: the UI should only mark the stream as truly connected after video metadata or first frame is observed, request a keyframe when the control channel opens, and surface a clear error if no frame arrives within a bounded timeout.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Browser video APIs differ; `requestVideoFrameCallback` may need a fallback.",
+        "A too-short timeout can mark slow cross-network sessions as failed even though relay eventually works.",
+        "Existing unrelated TypeScript failures may prevent full app build from being green."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make WebRTC media readiness explicit",
+      "updated_at": "2026-05-24T15:26:19+00:00",
+      "verification_plan": "Inspect `useWebRtc.ts` and the visual components that consume it. Patch the hook to track first frame readiness with `loadedmetadata`/`requestVideoFrameCallback` fallback behavior. Run eslint on the hook and available TypeScript checks, noting pre-existing unrelated failures."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Prod and staging backend releases point to the fixed immutable image containing the TURN endpoint.",
+        "Frontend OTA v0.3.0 is deployed from a build containing `useWebRtc` media readiness behavior.",
+        "Parent repo records the latest `novaic-app` submodule pointer and ledger updates.",
+        "Focused local checks and remote smoke checks are listed with outcomes.",
+        "Any remaining cross-network manual validation gap is explicit."
+      ],
+      "assumptions": [
+        "Backend Release Controller and frontend OTA are the two current authoritative deployment mechanisms for this combined WebRTC release."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "The remaining release verification is a bounded evidence-gathering and parent-pointer commit task; any true outside-LAN manual test gap can be recorded explicitly.",
+      "created_at": "2026-05-24T15:27:35+00:00",
+      "id": "T004",
+      "problem_definition": "The TURN backend fix and frontend media-readiness fix have been implemented and deployed through their respective release paths, but the root release state must be verified and recorded as one coherent WebRTC release.",
+      "problem_id": "P003",
+      "proposed_solution": "Confirm Release Controller prod/staging pointers, verify TURN endpoints in both namespaces, verify OTA frontend bundle contains the media readiness changes, commit the final parent repo pointer and ledger updates, and record any remaining need for a real outside-LAN manual session test.",
+      "result_ids": [],
+      "risks": [
+        "A true cross-network WebRTC screen session cannot be fully proven without a client on a different network initiating the stream.",
+        "Frontend OTA is still deployed through the existing OTA deploy target, not Release Controller."
+      ],
+      "root_id": "P000",
+      "status": "executing",
+      "title": "Verify released WebRTC fixes across backend and OTA frontend",
+      "updated_at": "2026-05-24T15:28:19+00:00",
+      "verification_plan": "Use Release Controller `/v1/status`, direct prod/staging `/api/turn/credentials`, remote OTA asset inspection, local `git status`, and build/test outputs already captured in P001/P002."
     }
   },
-  "updated_at": "2026-05-24T15:07:30+00:00"
+  "updated_at": "2026-05-24T15:28:19+00:00"
 }

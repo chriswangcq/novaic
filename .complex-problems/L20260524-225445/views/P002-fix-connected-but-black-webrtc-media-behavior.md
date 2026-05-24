@@ -1,13 +1,13 @@
 # P002: Fix connected-but-black WebRTC media behavior
 
-Status: todo
+Status: done
 Parent: P000
 Root: P000
 Source Ticket: T000 (split)
 Source Check: none
 Package: problems/P000/children/P002
 Body: problems/P000/children/P002/README.md
-Ticket(s): none
+Ticket(s): T003
 
 ## Problem
 The UI can reach a connected state while the remote video remains black, which means media tracks, keyframe delivery, transceiver direction, codec negotiation, stream attachment, or receiver-side readiness may not be handled correctly once ICE succeeds.
@@ -23,13 +23,16 @@ The UI can reach a connected state while the remote video remains black, which m
 - none
 
 ## Results
-- none
+- R002
 
 ## Latest Check
-none
+C003
 
 ## Bodies
 - Problem: problems/P000/children/P002/README.md
+- Ticket T003: problems/P000/children/P002/tickets/T003.md
+- Result R002: problems/P000/children/P002/results/R002.md
+- Check C003: problems/P000/children/P002/checks/C003.md
 
 ## Follow-ups
 - none

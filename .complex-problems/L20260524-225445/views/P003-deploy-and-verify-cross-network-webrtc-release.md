@@ -1,13 +1,13 @@
 # P003: Deploy and verify cross-network WebRTC release
 
-Status: todo
+Status: doing
 Parent: P000
 Root: P000
 Source Ticket: T000 (split)
 Source Check: none
 Package: problems/P000/children/P003
 Body: problems/P000/children/P003/README.md
-Ticket(s): none
+Ticket(s): T004
 
 ## Problem
 After code/config fixes, the deployed prod/staging stack must actually run the corrected WebRTC path, with host infrastructure and release records matching the immutable release-controller workflow.
@@ -30,6 +30,7 @@ none
 
 ## Bodies
 - Problem: problems/P000/children/P003/README.md
+- Ticket T004: problems/P000/children/P003/tickets/T004.md
 
 ## Follow-ups
 - none

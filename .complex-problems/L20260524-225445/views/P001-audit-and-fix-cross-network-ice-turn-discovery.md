@@ -1,6 +1,6 @@
 # P001: Audit and fix cross-network ICE/TURN discovery
 
-Status: followup
+Status: done
 Parent: P000
 Root: P000
 Source Ticket: T000 (split)
@@ -26,13 +26,14 @@ WebRTC works on the same LAN but shows a black screen across different networks,
 - R000
 
 ## Latest Check
-C000
+C002
 
 ## Bodies
 - Problem: problems/P000/children/P001/README.md
 - Ticket T001: problems/P000/children/P001/tickets/T001.md
 - Result R000: problems/P000/children/P001/results/R000.md
 - Check C000: problems/P000/children/P001/checks/C000.md
+- Check C002: problems/P000/children/P001/checks/C002.md
 
 ## Follow-ups
 - P004: Deploy and verify TURN credential endpoint
