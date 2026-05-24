@@ -111,12 +111,51 @@ def test_deploy_release_controller_image_guard() -> None:
         "release-controller-image) deploy_release_controller_image \"$2\" ;;",
         "services-image) deploy_services_image \"$2\" \"$3\" ;;",
         "factory-image)  deploy_factory_image \"$2\" \"$3\" ;;",
+        "NOVAIC_DEPLOY_CALLER",
+        "require_release_controller_invocation",
     ]:
         assert marker in deploy
 
     result = run_command(["./deploy", "release-controller-image", "novaic/release-controller:latest"])
     assert result.returncode != 0
     assert "禁止使用可变 tag" in result.stdout + result.stderr
+
+
+def test_backend_image_deploys_reject_manual_invocation() -> None:
+    image_refs = {
+        "services-image": "127.0.0.1:5000/novaic/api-backend:sha-abcdef1",
+        "factory-image": "127.0.0.1:5000/novaic/llm-factory:sha-abcdef1",
+    }
+
+    for target, image_ref in image_refs.items():
+        result = run_command(["./deploy", target, "staging", image_ref])
+        output = result.stdout + result.stderr
+        assert result.returncode != 0, output
+        assert "Release Controller" in output
+        assert "人工发布路径" in output
+
+
+def test_obsolete_backend_deploy_targets_are_disabled() -> None:
+    for target in [
+        "services",
+        "api-backend",
+        "services-legacy",
+        "gateway",
+        "business",
+        "device",
+        "runtime",
+        "cortex",
+        "blob-service",
+        "sandboxd",
+        "entangled",
+        "factory",
+        "all",
+    ]:
+        result = run_command(["./deploy", target])
+        output = result.stdout + result.stderr
+        assert result.returncode != 0, target + "\n" + output
+        assert "Release Controller" in output
+        assert "手动后端发布路径" in output
 
 
 def test_release_controller_guard_is_registered() -> None:

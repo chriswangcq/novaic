@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guard immutable backend image CI/CD workflows."""
+"""Guard that backend releases are owned by Release Controller, not GitHub workflows."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKEND_IMAGES = ROOT / ".github" / "workflows" / "backend-images.yml"
 PROMOTE_PROD = ROOT / ".github" / "workflows" / "backend-promote-prod.yml"
 DEPLOY_DOC = ROOT / "docs" / "runbooks" / "deploy.md"
+RELEASE_CONTROLLER_DOC = ROOT / "docs" / "architecture" / "release-controller.md"
 RUN_ALL_TESTS = ROOT / "scripts" / "run_all_tests.sh"
 WORKFLOW = ROOT / ".github" / "workflows" / "lint.yml"
 
@@ -26,83 +27,38 @@ def require_text(text: str, needle: str, label: str, errors: list[str]) -> None:
 
 def main() -> int:
     errors: list[str] = []
-    for path in [BACKEND_IMAGES, PROMOTE_PROD]:
-        require(path.exists(), f"workflow missing: {path.relative_to(ROOT)}", errors)
+    require(not BACKEND_IMAGES.exists(), "backend-images.yml must not exist; Release Controller owns backend builds/deploys", errors)
+    require(not PROMOTE_PROD.exists(), "backend-promote-prod.yml must not exist; Release Controller owns prod promotion", errors)
 
-    backend = BACKEND_IMAGES.read_text(encoding="utf-8")
-    promote = PROMOTE_PROD.read_text(encoding="utf-8")
     deploy_doc = DEPLOY_DOC.read_text(encoding="utf-8")
+    release_controller_doc = RELEASE_CONTROLLER_DOC.read_text(encoding="utf-8")
     run_all_tests = RUN_ALL_TESTS.read_text(encoding="utf-8")
     workflow = WORKFLOW.read_text(encoding="utf-8")
 
     for marker in [
-        "pull_request:",
-        "push:",
-        "branches: [\"main\"]",
-        "submodules: recursive",
-        "./scripts/run_all_tests.sh",
-        "docker/api-backend/env.prod.example",
-        "docker/api-backend/env.staging.example",
-        "docker/llm-factory/env.prod.example",
-        "docker/llm-factory/env.staging.example",
-        "docker build -f docker/api-backend/Dockerfile",
-        "docker build -f docker/llm-factory/Dockerfile",
-        "import common.service_runtime",
-        "import factory.app",
-        "docker/login-action@v3",
-        "docker push \"$api_tag\"",
-        "docker push \"$factory_tag\"",
-        "docker inspect --format='{{index .RepoDigests 0}}'",
-        "./deploy services-image staging",
-        "./deploy factory-image staging",
-        "staging-api.gradievo.com",
-    ]:
-        require_text(backend, marker, "backend-images.yml", errors)
-
-    for forbidden in [
-        "./deploy services\n",
-        "./deploy api-backend",
-        "./deploy factory\n",
-        "deploy services ",
-        "deploy factory ",
-    ]:
-        require(forbidden not in backend, f"backend-images.yml must not use remote-build deploy path: {forbidden!r}", errors)
-
-    for marker in [
-        "workflow_dispatch:",
-        "api_image:",
-        "factory_image:",
-        "environment: production",
-        "submodules: recursive",
-        "NOVAIC_API_SSH_PRIVATE_KEY",
-        "./deploy services-image prod",
-        "./deploy factory-image prod",
-        "api.gradievo.com",
-    ]:
-        require_text(promote, marker, "backend-promote-prod.yml", errors)
-
-    for forbidden in ["docker build", "docker push", "./deploy services\n", "./deploy factory\n"]:
-        require(forbidden not in promote, f"backend-promote-prod.yml must not rebuild or remote-build deploy: {forbidden!r}", errors)
-
-    for marker in [
-        "NOVAIC_API_SSH_PRIVATE_KEY",
-        "GITHUB_TOKEN",
-        "backend-images.yml",
-        "backend-promote-prod.yml",
-        "workflow_dispatch",
-        "production",
-        "不在生产机 build",
+        "Release Controller 是唯一后端/Factory 发布入口",
+        "GitHub Actions 不再承担 backend/factory 构建、发布、promote 或 rollback",
+        "POST /v1/promotions/prod",
+        "POST /v1/rollbacks/<namespace>",
+        "生产机不 build",
     ]:
         require_text(deploy_doc, marker, "docs/runbooks/deploy.md", errors)
 
+    for marker in [
+        "replaces GitHub Actions and direct operator scripts",
+        "Direct operator execution without that identity fails",
+        "It does not use GitHub Actions for backend/factory release orchestration",
+    ]:
+        require_text(release_controller_doc, marker, "docs/architecture/release-controller.md", errors)
+
     require(
         "scripts/ci/lint_immutable_image_workflows.py" in run_all_tests,
-        "scripts/run_all_tests.sh missing immutable image workflow guard",
+        "scripts/run_all_tests.sh missing release-controller workflow guard",
         errors,
     )
     require(
         "python3 scripts/ci/lint_immutable_image_workflows.py" in workflow,
-        ".github/workflows/lint.yml missing immutable image workflow guard",
+        ".github/workflows/lint.yml missing release-controller workflow guard",
         errors,
     )
 

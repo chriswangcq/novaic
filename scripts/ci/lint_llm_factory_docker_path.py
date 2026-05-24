@@ -70,16 +70,16 @@ def main() -> int:
         "FACTORY_DOCKER_DIR=\"/opt/novaic/llm-factory\"",
         "FACTORY_COMPOSE_FILE=\"$FACTORY_DOCKER_DIR/docker-compose.yml\"",
         "FACTORY_APP_DIR=\"$FACTORY_DOCKER_DIR/app\"",
-        "sync_factory_docker_package",
-        "write_factory_env \"$namespace\" \"$image_ref\"",
-        "verify_factory_runtime_inputs \"$namespace\"",
-        "compose_factory_env \"$factory_env_file\" \"build llm-factory\"",
-        "compose_factory_env \"$factory_env_file\" \"up -d llm-factory\"",
-        "curl -sf http://127.0.0.1:19990/health",
+        "disabled_backend_release_path \"factory\"",
     ]:
         require_text(deploy if needle.startswith("FACTORY_") else body, needle, "deploy", errors)
 
-    for stale in OLD_FACTORY_TEXT:
+    for stale in OLD_FACTORY_TEXT + [
+        "sync_factory_docker_package",
+        "build llm-factory",
+        "up -d llm-factory",
+        "factory_env_file",
+    ]:
         require(stale not in body, f"deploy_factory still contains old Factory path text {stale!r}", errors)
 
     for stale in ["FACTORY_HOST=", "FACTORY_SSH="]:
@@ -109,6 +109,7 @@ def main() -> int:
     require_text(common_config, 'LLM_FACTORY_URL = _CFG.get("services", "llm_factory", "url")', "novaic-common/common/config.py", errors)
     require_text(business_factory_admin, "return ServiceConfig.LLM_FACTORY_URL.rstrip(\"/\")", "novaic-business/business/factory_admin_client.py", errors)
     require_text(doc, "LLM Factory（API host Docker）", "docs/runbooks/deploy.md", errors)
+    require_text(doc, "Release Controller 内部执行器", "docs/runbooks/deploy.md", errors)
     require_text(doc, "/opt/novaic/llm-factory", "docs/runbooks/deploy.md", errors)
     require_text(doc, "127.0.0.1:19990", "docs/runbooks/deploy.md", errors)
     require_text(run_all_tests, "scripts/ci/lint_llm_factory_docker_path.py", "scripts/run_all_tests.sh", errors)

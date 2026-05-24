@@ -47,6 +47,7 @@ def main() -> int:
         "release_id_from_image_ref()",
         "api_backend_env_file_for_namespace()",
         "factory_env_file_for_namespace()",
+        "require_release_controller_invocation()",
         "services-image) deploy_services_image \"$2\" \"$3\" ;;",
         "factory-image)  deploy_factory_image \"$2\" \"$3\" ;;",
         "services-image <namespace> <image>",
@@ -65,6 +66,7 @@ def main() -> int:
 
     services_body = function_body(deploy, "deploy_services_image", errors)
     for marker in [
+        "require_release_controller_invocation \"services-image\" \"$namespace\"",
         "normalize_image_ref api-backend",
         "validate_immutable_image_ref \"$namespace\" \"$image_ref\"",
         "sync_api_backend_compose",
@@ -80,6 +82,7 @@ def main() -> int:
 
     factory_body = function_body(deploy, "deploy_factory_image", errors)
     for marker in [
+        "require_release_controller_invocation \"factory-image\" \"$namespace\"",
         "normalize_image_ref llm-factory",
         "validate_immutable_image_ref \"$namespace\" \"$image_ref\"",
         "ensure_host_infra_running",
@@ -129,8 +132,10 @@ def main() -> int:
     )
 
     for marker in [
+        "Release Controller 是唯一后端/Factory 发布入口",
         "deploy services-image <namespace> <image-ref>",
         "deploy factory-image <namespace> <image-ref>",
+        "人工直接调用会在连接远端前失败",
         "生产机不 build",
         "up -d --no-build",
         "api-backend.<namespace>.env",

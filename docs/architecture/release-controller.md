@@ -1,6 +1,6 @@
 # Release Controller
 
-NovAIC release-controller is the long-term CI/CD control plane. It replaces GitHub Actions as the primary release orchestrator, while keeping the existing image-based `deploy` commands as the only backend deployment authority.
+NovAIC release-controller is the backend and LLM Factory release control plane. It replaces GitHub Actions and direct operator scripts for backend/factory releases. The image-based `deploy` commands remain only as internal executor steps called by the controller with explicit run identity.
 
 ## Role
 
@@ -11,7 +11,7 @@ The controller owns release orchestration:
 - Run verification commands before building images.
 - Build immutable API backend and LLM Factory images.
 - Push images to the internal registry.
-- Deploy images by calling `./deploy services-image <namespace> <image-ref>` and `./deploy factory-image <namespace> <image-ref>`.
+- Deploy images through guarded internal executor steps: `./deploy services-image <namespace> <image-ref>` and `./deploy factory-image <namespace> <image-ref>`.
 - Record current and previous release pointers.
 - Expose health, status, run history, manual trigger, promotion, and rollback APIs.
 
@@ -23,8 +23,8 @@ The API host already has a namespace runtime platform:
 
 | Area | Current path |
 | --- | --- |
-| API backend deploy | `./deploy services-image <namespace> <image-ref>` |
-| LLM Factory deploy | `./deploy factory-image <namespace> <image-ref>` |
+| API backend deploy | Release Controller internal `services-image` executor |
+| LLM Factory deploy | Release Controller internal `factory-image` executor |
 | Prod API project | `novaic-prod` |
 | Staging API project | `novaic-staging` |
 | Prod Factory project | `novaic-llm-factory-prod` |
@@ -202,12 +202,12 @@ docker build -f docker/llm-factory/Dockerfile -t <factory-tag> novaic-llm-factor
 docker push <api-tag>
 docker push <factory-tag>
 docker inspect -> digest refs
-./deploy services-image <namespace> <api-digest>
-./deploy factory-image <namespace> <factory-digest>
+NOVAIC_DEPLOY_CALLER=release-controller ./deploy services-image <namespace> <api-digest>
+NOVAIC_DEPLOY_CALLER=release-controller ./deploy factory-image <namespace> <factory-digest>
 curl <namespace health URL>
 ```
 
-The controller records stdout/stderr summaries per step, but should avoid storing secrets.
+Those deploy commands also receive `NOVAIC_RELEASE_CONTROLLER_RUN_ID`, `NOVAIC_RELEASE_CONTROLLER_NAMESPACE`, and `NOVAIC_RELEASE_CONTROLLER_COMMIT`. Direct operator execution without that identity fails before remote side effects. The controller records stdout/stderr summaries per step, but should avoid storing secrets.
 
 ## API
 
@@ -266,7 +266,7 @@ Bootstrap note: the first deployed image was built on the API host because the l
 - It does not route traffic; nginx remains ingress.
 - It does not own application migrations beyond running existing startup/deploy paths.
 - It does not make prod automatic from branch polling.
-- It does not make GitHub Actions mandatory.
+- It does not use GitHub Actions for backend/factory release orchestration.
 - It does not expose a public release API.
 
 ## Migration Plan
@@ -278,4 +278,4 @@ Bootstrap note: the first deployed image was built on the API host because the l
 5. Enable `main -> staging` polling.
 6. Use manual promote for prod.
 7. Populate and manage the controller worktree with an explicit release submodule allowlist.
-8. Mark GitHub Actions as secondary verification/fallback path.
+8. Remove backend/factory GitHub release workflows and direct manual deploy paths.

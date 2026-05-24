@@ -129,7 +129,7 @@ proxy_pass http://127.0.0.1:29999;
 
 ### Image promotion and rollback
 
-CI 在 main 构建不可变镜像，staging 通过 `./deploy services-image staging <digest>` 和 `./deploy factory-image staging <digest>` 验证。prod 只 promotion 同一 digest：`./deploy services-image prod <digest>` / `./deploy factory-image prod <digest>`。回滚就是切回上一组已记录 digest，不在生产机重新 build。
+Release Controller 在 main 分支更新时构建不可变镜像并部署 staging。prod 只通过 `/v1/promotions/prod` promotion 同一组 digest；rollback 只通过 `/v1/rollbacks/<namespace>` 切回 previous pointer。`deploy services-image` 和 `deploy factory-image` 是控制器内部执行器，人工直接调用会失败。回滚就是切回上一组已记录 digest，不在生产机重新 build。
 
 ## 生产部署路径
 

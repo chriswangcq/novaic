@@ -33,7 +33,14 @@ def test_main_maps_to_staging_deploy_plan(tmp_path: Path) -> None:
         "git-submodule-update",
     ]
     assert planned.plan.steps[3].argv[-1] == "novaic-common"
-    assert any(step.argv[1:3] == ("services-image", "staging") for step in planned.plan.steps)
+    deploy_step = _step(planned.plan.steps, "deploy-api-staging")
+    assert deploy_step.argv[1:3] == ("services-image", "staging")
+    assert deploy_step.env == {
+        "NOVAIC_DEPLOY_CALLER": "release-controller",
+        "NOVAIC_RELEASE_CONTROLLER_RUN_ID": planned.run.run_id,
+        "NOVAIC_RELEASE_CONTROLLER_NAMESPACE": "staging",
+        "NOVAIC_RELEASE_CONTROLLER_COMMIT": "abcdef1234567890",
+    }
     assert any(step.name == "smoke-staging" for step in planned.plan.steps)
 
 
@@ -86,7 +93,12 @@ def test_prod_promotion_requires_immutable_refs(tmp_path: Path) -> None:
     )
 
     assert planned.namespace == "prod"
-    assert any(step.argv[1:3] == ("services-image", "prod") for step in planned.plan.steps)
+    deploy_step = _step(planned.plan.steps, "deploy-api-prod")
+    assert deploy_step.argv[1:3] == ("services-image", "prod")
+    assert deploy_step.env["NOVAIC_DEPLOY_CALLER"] == "release-controller"
+    assert deploy_step.env["NOVAIC_RELEASE_CONTROLLER_RUN_ID"] == planned.run.run_id
+    assert deploy_step.env["NOVAIC_RELEASE_CONTROLLER_NAMESPACE"] == "prod"
+    assert deploy_step.env["NOVAIC_RELEASE_CONTROLLER_COMMIT"] == "abcdef1234567890"
 
 
 def test_omitted_dry_run_executes_by_default_for_plans(tmp_path: Path) -> None:
@@ -121,7 +133,12 @@ def test_rollback_uses_previous_pointer(tmp_path: Path) -> None:
     planned = planner.plan_rollback("staging")
 
     assert planned.images.api_image.endswith(":sha-abcdef1")
-    assert any(step.argv[1:3] == ("services-image", "staging") for step in planned.plan.steps)
+    deploy_step = _step(planned.plan.steps, "deploy-api-staging")
+    assert deploy_step.argv[1:3] == ("services-image", "staging")
+    assert deploy_step.env["NOVAIC_DEPLOY_CALLER"] == "release-controller"
+    assert deploy_step.env["NOVAIC_RELEASE_CONTROLLER_RUN_ID"] == planned.run.run_id
+    assert deploy_step.env["NOVAIC_RELEASE_CONTROLLER_NAMESPACE"] == "staging"
+    assert deploy_step.env["NOVAIC_RELEASE_CONTROLLER_COMMIT"] == "abcdef1"
 
 
 def test_dry_run_runner_does_not_execute_commands() -> None:
@@ -157,8 +174,40 @@ def test_runner_captures_subprocess_failure() -> None:
     assert len(result.results) == 1
 
 
+def test_runner_merges_step_env_with_process_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    from release_controller.models import CommandPlan, CommandStep
+
+    monkeypatch.setenv("NOVAIC_EXISTING_ENV_MARKER", "kept")
+    plan = CommandPlan(
+        dry_run=False,
+        steps=(
+            CommandStep(
+                name="env",
+                argv=(
+                    "python3",
+                    "-c",
+                    "import os; print(os.environ['NOVAIC_EXISTING_ENV_MARKER']); print(os.environ['NOVAIC_STEP_ENV_MARKER'])",
+                ),
+                env={"NOVAIC_STEP_ENV_MARKER": "added"},
+            ),
+        ),
+    )
+
+    result = CommandRunner().run(plan)
+
+    assert result.succeeded
+    assert result.results[0].stdout == "kept\nadded\n"
+
+
 def _planner(tmp_path: Path) -> ReleasePlanner:
     return ReleasePlanner(_config(tmp_path), ReleaseStateStore(tmp_path / "state"), clock=_clock)
+
+
+def _step(steps, name: str):
+    for step in steps:
+        if step.name == name:
+            return step
+    raise AssertionError(f"missing step {name}")
 
 
 def _config(tmp_path: Path, preview_template: str = "preview-{slug}") -> ControllerConfig:

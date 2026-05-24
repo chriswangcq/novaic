@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 import subprocess
 
 from release_controller.models import CommandPlan, CommandResult, CommandStep
@@ -60,10 +61,12 @@ class CommandRunner:
         )
 
     def _run_step(self, step: CommandStep) -> CommandResult:
+        env = os.environ.copy()
+        env.update(step.env)
         completed = subprocess.run(
             step.argv,
             cwd=step.cwd,
-            env=dict(step.env) if step.env else None,
+            env=env,
             text=True,
             capture_output=True,
             check=False,

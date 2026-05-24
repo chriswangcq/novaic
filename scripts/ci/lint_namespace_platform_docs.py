@@ -67,7 +67,7 @@ def main() -> int:
         "api-backend.<namespace>.env",
         "redis://127.0.0.1:6379/1",
         "OSS 隔离必须由 bucket 或 prefix 完成",
-        "CI 在 main 构建不可变镜像",
+        "Release Controller 在 main 分支更新时构建不可变镜像",
         "回滚就是切回上一组已记录 digest",
         "/opt/novaic/postgres/secrets/<namespace>/novaic_registry_dsn",
     ]:
@@ -88,11 +88,10 @@ def main() -> int:
 
     for marker in [
         "image-based namespace deploy",
-        "远端 build 只作为回退",
-        "environment approval",
-        "不在生产机 build",
-        "Owner/removal gate",
-        "services-legacy",
+        "Release Controller 是唯一后端/Factory 发布入口",
+        "生产机不 build",
+        "已关闭的后端手动路径",
+        "NOVAIC_DEPLOY_CALLER=release-controller",
     ]:
         require_text(deploy, marker, "docs/runbooks/deploy.md", errors)
 

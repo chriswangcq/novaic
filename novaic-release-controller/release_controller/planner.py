@@ -74,7 +74,7 @@ class ReleasePlanner:
         )
         run_id = self._run_id(branch, commit)
         effective_dry_run = bool(dry_run)
-        steps = self._branch_steps(branch, commit, images, namespace, rule.mode)
+        steps = self._branch_steps(branch, commit, images, namespace, rule.mode, run_id)
         plan = CommandPlan(steps=tuple(steps), dry_run=effective_dry_run)
         candidate_id = None
         if rule.mode is ReleaseMode.CANDIDATE_ONLY:
@@ -111,12 +111,13 @@ class ReleasePlanner:
         assert_immutable_image_ref(factory_image)
         images = ImageRefs(api_image=api_image, factory_image=factory_image)
         effective_dry_run = bool(dry_run)
+        run_id = self._run_id(f"promote-prod-{promoted_from or 'manual'}", commit)
         plan = CommandPlan(
-            steps=tuple(self._deploy_steps("prod", images)),
+            steps=tuple(self._deploy_steps("prod", images, run_id, commit)),
             dry_run=effective_dry_run,
         )
         run = ReleaseRun(
-            run_id=self._run_id(f"promote-prod-{promoted_from or 'manual'}", commit),
+            run_id=run_id,
             trigger=TriggerKind.PROMOTION,
             branch=None,
             commit=commit,
@@ -141,12 +142,13 @@ class ReleasePlanner:
         assert_immutable_image_ref(previous.images.api_image)
         assert_immutable_image_ref(previous.images.factory_image)
         effective_dry_run = bool(dry_run)
+        run_id = self._run_id(f"rollback-{namespace}", previous.commit)
         plan = CommandPlan(
-            steps=tuple(self._deploy_steps(namespace, previous.images)),
+            steps=tuple(self._deploy_steps(namespace, previous.images, run_id, previous.commit)),
             dry_run=effective_dry_run,
         )
         run = ReleaseRun(
-            run_id=self._run_id(f"rollback-{namespace}", previous.commit),
+            run_id=run_id,
             trigger=TriggerKind.ROLLBACK,
             branch=None,
             commit=previous.commit,
@@ -189,6 +191,7 @@ class ReleasePlanner:
         images: ImageRefs,
         namespace: str | None,
         mode: ReleaseMode,
+        run_id: str,
     ) -> list[CommandStep]:
         repo_cwd = self.config.repo.path
         steps = [
@@ -260,18 +263,27 @@ class ReleasePlanner:
         if mode is ReleaseMode.AUTO_DEPLOY:
             if namespace is None:
                 raise PlanningError("auto_deploy branch plan needs a namespace")
-            steps.extend(self._deploy_steps(namespace, images))
+            steps.extend(self._deploy_steps(namespace, images, run_id, commit))
         return steps
 
-    def _deploy_steps(self, namespace: str, images: ImageRefs) -> list[CommandStep]:
+    def _deploy_steps(
+        self,
+        namespace: str,
+        images: ImageRefs,
+        run_id: str,
+        commit: str,
+    ) -> list[CommandStep]:
+        deploy_env = self._controller_deploy_env(namespace, run_id, commit)
         steps = [
             CommandStep(
                 name=f"deploy-api-{namespace}",
                 argv=(self.config.deploy.script_path, "services-image", namespace, images.api_image),
+                env=deploy_env,
             ),
             CommandStep(
                 name=f"deploy-factory-{namespace}",
                 argv=(self.config.deploy.script_path, "factory-image", namespace, images.factory_image),
+                env=deploy_env,
             ),
         ]
         health_url = self.config.deploy.health_urls.get(namespace)
@@ -283,6 +295,14 @@ class ReleasePlanner:
                 )
             )
         return steps
+
+    def _controller_deploy_env(self, namespace: str, run_id: str, commit: str) -> dict[str, str]:
+        return {
+            "NOVAIC_DEPLOY_CALLER": "release-controller",
+            "NOVAIC_RELEASE_CONTROLLER_RUN_ID": run_id,
+            "NOVAIC_RELEASE_CONTROLLER_NAMESPACE": namespace,
+            "NOVAIC_RELEASE_CONTROLLER_COMMIT": commit,
+        }
 
     def _run_id(self, name: str, commit: str) -> str:
         timestamp = self.clock().strftime("%Y%m%d-%H%M%S")

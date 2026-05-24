@@ -3,8 +3,8 @@
 # 用法: ./deploy <target> [options]
 #
 # 代码同步: 本地 rsync → 服务器
-# 后端主路径: API 机器 Docker Compose
-# 旧 host venv/start.sh 路径仅保留为 services-legacy 回滚入口
+# 后端发布入口: Release Controller
+# 本脚本中的 backend/factory image targets 只允许 Release Controller 作为内部执行器调用
 
 set -e
 
@@ -17,10 +17,8 @@ API_HOST="root@api.gradievo.com"
 API_SSH="ssh $API_HOST"
 VERSION="${2:-0.3.0}"
 SERVICES_DIR="/opt/novaic/services"
-API_BACKEND_BUILD_DIR="/opt/novaic/docker-builds/api-backend"
 API_BACKEND_COMPOSE_DIR="/opt/novaic/docker/api-backend"
 API_BACKEND_ENV_FILE="/opt/novaic/docker/api-backend.env"
-API_BACKEND_IMAGE="${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}"
 HOST_INFRA_COMPOSE_DIR="/opt/novaic/docker/host-infra"
 HOST_INFRA_ENV_FILE="/opt/novaic/docker/host-infra.env"
 HOST_INFRA_BUILD_DIR="/opt/novaic/docker-builds/host-infra"
@@ -49,21 +47,6 @@ TAR_EXCLUDE_ARGS=(
   --exclude=node_modules
   --exclude='*.db'
 )
-API_BACKEND_CONTEXT_DIRS=(
-  docker
-  Entangled
-  novaic-agent-runtime
-  novaic-blob-service
-  novaic-business
-  novaic-common
-  novaic-cortex
-  novaic-device
-  novaic-gateway
-  novaic-logicalfs
-  novaic-sandbox-sdk
-  novaic-sandbox-service
-)
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -74,6 +57,27 @@ info()  { echo -e "${CYAN}▸ $1${NC}"; }
 ok()    { echo -e "${GREEN}✓ $1${NC}"; }
 warn()  { echo -e "${YELLOW}⚠ $1${NC}"; }
 fail()  { echo -e "${RED}✗ $1${NC}"; exit 1; }
+
+require_release_controller_invocation() {
+  local target="$1"
+  local namespace="$2"
+  if [ "${NOVAIC_DEPLOY_CALLER:-}" != "release-controller" ]; then
+    fail "$target 已关闭人工发布路径：请通过 Release Controller 触发 branch release / promotion / rollback"
+  fi
+  [ -n "${NOVAIC_RELEASE_CONTROLLER_RUN_ID:-}" ] \
+    || fail "$target 缺少 NOVAIC_RELEASE_CONTROLLER_RUN_ID，拒绝执行"
+  [ -n "${NOVAIC_RELEASE_CONTROLLER_NAMESPACE:-}" ] \
+    || fail "$target 缺少 NOVAIC_RELEASE_CONTROLLER_NAMESPACE，拒绝执行"
+  [ "$NOVAIC_RELEASE_CONTROLLER_NAMESPACE" = "$namespace" ] \
+    || fail "$target namespace 不匹配：request=$namespace controller=$NOVAIC_RELEASE_CONTROLLER_NAMESPACE"
+  [ -n "${NOVAIC_RELEASE_CONTROLLER_COMMIT:-}" ] \
+    || fail "$target 缺少 NOVAIC_RELEASE_CONTROLLER_COMMIT，拒绝执行"
+}
+
+disabled_backend_release_path() {
+  local target="$1"
+  fail "$target 是已消灭的手动后端发布路径；请通过 Release Controller API/polling/promotion/rollback 发布"
+}
 
 have_rsync() {
   command -v rsync >/dev/null 2>&1
@@ -429,26 +433,12 @@ sync_api_backend_config_snapshot() {
   copy_file_to_api "$REPO_ROOT/novaic-common/config/services.json" "$API_BACKEND_COMPOSE_DIR/services.json"
 }
 
-sync_api_backend_build_context() {
-  info "同步 API backend Docker build context..."
-  $API_SSH "rm -rf '$API_BACKEND_BUILD_DIR' && mkdir -p '$API_BACKEND_BUILD_DIR'" \
-    || fail "准备 Docker build context 失败"
-  rsync -avz -e ssh "$REPO_ROOT/.dockerignore" "$API_HOST:$API_BACKEND_BUILD_DIR/.dockerignore" \
-    || fail "同步 .dockerignore 失败"
-  for path in "${API_BACKEND_CONTEXT_DIRS[@]}"; do
-    [ -e "$REPO_ROOT/$path" ] || fail "本地路径不存在: $path"
-    rsync -avzL --delete $RSYNC_EXCLUDE -e ssh \
-      "$REPO_ROOT/$path/" \
-      "$API_HOST:$API_BACKEND_BUILD_DIR/$path/" \
-      || fail "同步 build context/$path 失败"
-  done
-}
-
 write_api_backend_env() {
   local namespace="${1:-prod}"
-  local image_ref="${2:-$API_BACKEND_IMAGE}"
+  local image_ref="${2:-}"
   local env_file="${3:-$API_BACKEND_ENV_FILE}"
-  local services_json="${4:-$API_BACKEND_BUILD_DIR/novaic-common/config/services.json}"
+  local services_json="${4:-$API_BACKEND_COMPOSE_DIR/services.json}"
+  [ -n "$image_ref" ] || fail "write_api_backend_env 需要 image_ref"
   validate_namespace "$namespace"
   local release_id image_digest port_base redis_url etc_dir data_dir postgres_secrets_dir compose_project
   release_id="$(release_id_from_image_ref "$image_ref")"
@@ -487,18 +477,6 @@ compose_api_backend_env() {
   $API_SSH "cd '$API_BACKEND_COMPOSE_DIR' && docker compose \
     --env-file '$env_file' \
     -f compose.yaml $*"
-}
-
-compose_api_backend() {
-  compose_api_backend_env "$API_BACKEND_ENV_FILE" "$@"
-}
-
-build_api_backend_image() {
-  info "构建 API backend Docker image ($API_BACKEND_IMAGE)..."
-  $API_SSH "cd '$API_BACKEND_BUILD_DIR' && docker build \
-    -f docker/api-backend/Dockerfile \
-    -t '$API_BACKEND_IMAGE' ." \
-    || fail "API backend Docker image 构建失败"
 }
 
 validate_api_backend_compose() {
@@ -548,19 +526,7 @@ fi" || fail "停止旧 LLM Factory Compose/container 失败"
 }
 
 deploy_api_backend_compose() {
-  local namespace="prod"
-  warn "services/api-backend 是远端 build 回退路径；主 CD 路径请用 ./deploy services-image <namespace> <image-ref>"
-  info "部署 API backend Docker Compose 到 api.gradievo.com (remote build fallback, namespace=$namespace)"
-  sync_api_backend_compose
-  sync_api_backend_build_context
-  build_api_backend_image
-  write_api_backend_env "$namespace" "$API_BACKEND_IMAGE" "$API_BACKEND_ENV_FILE" "$API_BACKEND_BUILD_DIR/novaic-common/config/services.json"
-  validate_api_backend_compose "$API_BACKEND_ENV_FILE" "$namespace"
-  stop_legacy_host_backends
-  info "启动 API backend Compose topology..."
-  compose_api_backend "up -d --remove-orphans" || fail "docker compose up 失败"
-  compose_api_backend "ps" || fail "docker compose ps 失败"
-  ok "API backend Docker Compose 已部署"
+  disabled_backend_release_path "services/api-backend"
 }
 
 deploy_services_image() {
@@ -568,6 +534,7 @@ deploy_services_image() {
   local raw_image_ref="${2:-}"
   [ -n "$namespace" ] || fail "用法: ./deploy services-image <namespace> <image-ref|sha|digest>"
   [ -n "$raw_image_ref" ] || fail "用法: ./deploy services-image <namespace> <image-ref|sha|digest>"
+  require_release_controller_invocation "services-image" "$namespace"
   validate_namespace "$namespace"
   local image_ref env_file
   image_ref="$(normalize_image_ref api-backend "$raw_image_ref")"
@@ -593,70 +560,26 @@ deploy_services_image() {
 # ── 后端服务回滚路径（legacy host venv + start.sh） ──────────────────────────
 
 deploy_gateway() {
-  info "部署 Gateway + Business + Device + Entangled"
-  rsync_service "novaic-common"
-  sync_backend_infra_bootstrap
-  rsync_service "novaic-gateway"
-  rsync_service "novaic-business"
-  rsync_service "novaic-device"
-  rsync_service "Entangled"
-  sync_start_sh
-  restart_all
-  ok "Gateway 全栈已部署（全部服务已重启）"
+  disabled_backend_release_path "gateway"
 }
 
 deploy_single_service() {
   local name="$1"
-  rsync_service "novaic-common"
-  sync_backend_infra_bootstrap
-  if [ "$name" != "novaic-sandbox-service" ]; then
-    rsync_service "$name"
-    install_service_requirements "$name"
-  fi
-  sync_start_sh
-  restart_all
-  ok "$name 已部署（全部服务已重启）"
+  disabled_backend_release_path "$name"
 }
 
 # Business / Device 共用 Gateway 的 venv，不需要单独 pip install
 deploy_shared_venv_service() {
   local name="$1"
-  rsync_service "novaic-common"
-  sync_backend_infra_bootstrap
-  rsync_service "$name"
-  sync_start_sh
-  restart_all
-  ok "$name 已部署（全部服务已重启）"
+  disabled_backend_release_path "$name"
 }
 
 deploy_legacy_host_services() {
-  warn "services-legacy 是 host venv + /opt/novaic/start.sh 回滚路径；当前主路径是 ./deploy services"
-  info "部署全部 legacy host-process 后端服务到 api.gradievo.com"
-  echo ""
-
-  # novaic-common / novaic-sandbox-sdk / novaic-logicalfs
-  # 必须先同步（后端服务通过 PYTHONPATH 显式依赖）
-  remove_retired_backend_package "novaic-sandbox-core"
-  for svc in novaic-common novaic-sandbox-sdk novaic-logicalfs novaic-gateway novaic-business novaic-device \
-             novaic-agent-runtime novaic-blob-service novaic-sandbox-service novaic-cortex Entangled; do
-    rsync_service "$svc"
-  done
-
-  for svc in novaic-blob-service novaic-sandbox-service novaic-cortex novaic-agent-runtime; do
-    install_service_requirements "$svc"
-  done
-
-  sync_start_sh
-  echo ""
-  restart_all
-
-  echo ""
-  ok "全部后端服务已部署！"
+  disabled_backend_release_path "services-legacy"
 }
 
 deploy_services() {
-  ensure_host_infra_running
-  deploy_api_backend_compose
+  disabled_backend_release_path "services"
 }
 
 # ── Host infra deployment: Dockerize everything except nginx ─────────────────
@@ -867,16 +790,6 @@ deploy_relay() {
   $RELAY_SSH 'systemctl is-active novaic-quic-service' && ok "Relay 已部署" || warn "服务未运行"
 }
 
-sync_factory_docker_package() {
-  local local_dir="$1"
-  info "同步 LLM Factory Docker package..."
-  $API_SSH "mkdir -p '$FACTORY_DOCKER_DIR' '$FACTORY_APP_DIR'" || fail "创建 Factory Docker 目录失败"
-  sync_dir_to_api "$local_dir" "$FACTORY_APP_DIR"
-  copy_file_to_api "$REPO_ROOT/docker/llm-factory/Dockerfile" "$FACTORY_APP_DIR/Dockerfile"
-  copy_file_to_api "$REPO_ROOT/docker/llm-factory/.dockerignore" "$FACTORY_APP_DIR/.dockerignore"
-  copy_file_to_api "$REPO_ROOT/docker/llm-factory/compose.yaml" "$FACTORY_COMPOSE_FILE"
-}
-
 sync_factory_compose_package() {
   info "同步 LLM Factory Compose package..."
   copy_file_to_api "$REPO_ROOT/docker/llm-factory/compose.yaml" "$FACTORY_COMPOSE_FILE"
@@ -951,30 +864,7 @@ wait_for_remote_http() {
 }
 
 deploy_factory() {
-  local namespace="prod"
-  local image_ref="${NOVAIC_LLM_FACTORY_IMAGE:-novaic/llm-factory:local}"
-  local factory_env_file
-  factory_env_file="$(factory_env_file_for_namespace "$namespace")"
-  warn "factory 是远端 build 回退路径；主 CD 路径请用 ./deploy factory-image <namespace> <image-ref>"
-  info "部署 LLM Factory Docker 到 api.gradievo.com (remote build fallback, namespace=$namespace)"
-  local local_dir="$REPO_ROOT/novaic-llm-factory"
-  [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
-  info "同步公网 Factory Logs 页面..."
-  $API_SSH "mkdir -p /opt/novaic/static" || fail "创建公网静态目录失败"
-  rsync -avz -e ssh "$local_dir/static/factory-logs.html" "$API_HOST:/opt/novaic/static/factory-logs.html" || fail "同步 Factory Logs 页面失败"
-  sync_factory_docker_package "$local_dir"
-  write_factory_env "$namespace" "$image_ref"
-  verify_factory_runtime_inputs "$namespace"
-  info "构建并启动 LLM Factory Docker container..."
-  compose_factory_env "$factory_env_file" "build llm-factory" \
-    || fail "LLM Factory Docker build 失败"
-  compose_factory_env "$factory_env_file" "up -d llm-factory" \
-    || fail "LLM Factory Docker up 失败"
-  sleep 2
-  compose_factory_env "$factory_env_file" "ps llm-factory" \
-    || fail "LLM Factory Docker ps 失败"
-  wait_for_remote_http "http://127.0.0.1:19990/health" "LLM Factory Docker"
-  ok "LLM Factory Docker 已部署 (api.gradievo.com)"
+  disabled_backend_release_path "factory"
 }
 
 deploy_factory_image() {
@@ -982,6 +872,7 @@ deploy_factory_image() {
   local raw_image_ref="${2:-}"
   [ -n "$namespace" ] || fail "用法: ./deploy factory-image <namespace> <image-ref|sha|digest>"
   [ -n "$raw_image_ref" ] || fail "用法: ./deploy factory-image <namespace> <image-ref|sha|digest>"
+  require_release_controller_invocation "factory-image" "$namespace"
   validate_namespace "$namespace"
   local image_ref env_file port
   image_ref="$(normalize_image_ref llm-factory "$raw_image_ref")"
@@ -1073,13 +964,7 @@ deploy_release_controller_image() {
 # ── 聚合命令 ──────────────────────────────────────────────────────────────────
 
 deploy_all() {
-  deploy_frontend "$1"
-  deploy_services
-  deploy_relay
-  deploy_ios
-  deploy_desktop
-  echo ""
-  ok "🎉 全部部署完成！"
+  disabled_backend_release_path "all"
 }
 
 # ── 状态检查 ──────────────────────────────────────────────────────────────────
@@ -1264,28 +1149,18 @@ show_help() {
   echo "  desktop           构建 macOS 桌面应用"
   echo ""
   echo -e "${CYAN}后端服务 (api.gradievo.com):${NC}"
-  echo "  services-image <namespace> <image>  按 namespace 部署不可变后端镜像（CD 主路径）"
-  echo "  factory-image <namespace> <image>   按 namespace 部署不可变 Factory 镜像（CD 主路径）"
+  echo "  services-image <namespace> <image>  Release Controller 内部执行器；人工直接调用会失败"
+  echo "  factory-image <namespace> <image>   Release Controller 内部执行器；人工直接调用会失败"
   echo "  release-controller-image <image>    部署不可变 Release Controller 镜像（中心化 CD 控制面）"
-  echo "  services          回退：远端 build 后部署全部后端 Docker Compose"
-  echo "  api-backend       services 的别名"
-  echo "  services-legacy   回滚：host venv + /opt/novaic/start.sh"
-  echo "  gateway           legacy 单服务部署（会触发 start.sh 全量重启）"
-  echo "  business          legacy 单服务部署（会触发 start.sh 全量重启）"
-  echo "  device            legacy 单服务部署（会触发 start.sh 全量重启）"
-  echo "  runtime           legacy 单服务部署（workers）"
-  echo "  cortex            legacy 单服务部署（LLM 编排）"
-  echo "  blob-service      legacy 单服务部署"
-  echo "  sandboxd          legacy 单服务部署"
-  echo "  entangled         legacy 单服务部署（实体同步）"
+  echo "  services/api-backend/factory/legacy 单服务发布路径已关闭；请使用 Release Controller"
   echo ""
   echo -e "${CYAN}基础设施:${NC}"
   echo "  host-infra        部署 Redis/coturn/QUIC Docker（nginx 保留 host）"
   echo "  relay             部署 QUIC/Relay 到 relay 服务器"
-  echo "  factory           回退：远端 build 后部署 LLM Factory Docker"
+  echo "  factory           已关闭；Factory 发布请使用 Release Controller"
   echo ""
   echo -e "${CYAN}聚合 & 运维:${NC}"
-  echo "  all [ver]         部署全部"
+  echo "  all [ver]         已关闭；后端发布请使用 Release Controller"
   echo "  status            检查所有服务状态"
   echo "  fresh-smoke [epoch] 检查关键后端日志是否在 epoch 后更新（默认最近 15 分钟）"
   echo "  logs [svc]        查看日志 (gateway|business|device|entangled|sandboxd|cortex|runtime|worker|health|scheduler|subscriber|factory|redis|coturn|quic|host-infra|relay)"
@@ -1301,7 +1176,7 @@ case "${1}" in
   blob-service)   deploy_single_service "novaic-blob-service" ;;
   sandboxd)       deploy_single_service "novaic-sandbox-service" ;;
   cortex)         deploy_single_service "novaic-cortex" ;;
-  entangled)      rsync_service "novaic-common"; sync_backend_infra_bootstrap; rsync_service "Entangled"; sync_start_sh; restart_all; ok "Entangled 已部署" ;;
+  entangled)      disabled_backend_release_path "entangled" ;;
   services-image) deploy_services_image "$2" "$3" ;;
   factory-image)  deploy_factory_image "$2" "$3" ;;
   release-controller-image) deploy_release_controller_image "$2" ;;
