@@ -23,6 +23,9 @@ def test_poll_changed_main_creates_poll_run_and_persists_head(tmp_path: Path) ->
     run = state.list_runs()[0]
     assert run.trigger is TriggerKind.POLL
     assert run.namespace == "staging"
+    assert run.execution_result is not None
+    assert run.execution_result.dry_run is True
+    assert all(result.skipped for result in run.execution_result.results)
 
 
 def test_poll_unchanged_head_skips_duplicate_run(tmp_path: Path) -> None:
@@ -63,7 +66,28 @@ def test_poll_without_dry_run_executes_by_default(tmp_path: Path) -> None:
     assert outcomes[0].status == "planned"
     run = state.list_runs()[0]
     assert run.command_plan.dry_run is False
+    assert run.execution_result is not None
+    assert run.execution_result.results[0].stdout == "executed by test runner"
     assert state.get_current_release("staging").commit == "abcdef1234567890"
+
+
+def test_poll_failed_run_persists_partial_execution_result_without_head(tmp_path: Path) -> None:
+    state = ReleaseStateStore(tmp_path / "state")
+    poller = _poller(
+        tmp_path,
+        state,
+        (BranchHead("main", "abcdef1234567890"),),
+        runner=_FailingRunner(),
+    )
+
+    outcomes = poller.poll_once()
+
+    assert outcomes[0].status == "failed"
+    assert state.read_branch_heads() == {}
+    run = state.list_runs()[0]
+    assert run.execution_result is not None
+    assert run.execution_result.failure == "quality-controller-tests failed with exit code 5"
+    assert [result.name for result in run.execution_result.results] == ["quality-controller-tests"]
 
 
 def test_poll_unmatched_branch_skips_without_recording_head(tmp_path: Path) -> None:
@@ -163,6 +187,22 @@ class _SuccessfulRunner(CommandRunner):
                     exit_code=0,
                     stdout="executed by test runner",
                     skipped=plan.dry_run,
+                ),
+            ),
+        )
+
+
+class _FailingRunner(CommandRunner):
+    def run(self, plan: CommandPlan) -> PlanExecutionResult:
+        return PlanExecutionResult(
+            dry_run=plan.dry_run,
+            results=(
+                CommandResult(
+                    name="quality-controller-tests",
+                    argv=("python3", "-m", "pytest"),
+                    exit_code=5,
+                    stdout="partial output",
+                    stderr="failed by test runner",
                 ),
             ),
         )

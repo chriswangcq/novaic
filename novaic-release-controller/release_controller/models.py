@@ -388,6 +388,48 @@ class CommandResult:
 
 
 @dataclass(frozen=True)
+class PlanExecutionResult:
+    """Result of executing or dry-running a command plan."""
+
+    dry_run: bool
+    results: tuple[CommandResult, ...]
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "PlanExecutionResult":
+        dry_run = data.get("dry_run")
+        if not isinstance(dry_run, bool):
+            raise ValueError("plan execution result dry_run must be a boolean")
+        results = data.get("results")
+        if not isinstance(results, Sequence) or isinstance(results, (str, bytes)):
+            raise ValueError("plan execution result results must be an array")
+        parsed_results = tuple(
+            CommandResult.from_mapping(result) for result in results if isinstance(result, Mapping)
+        )
+        if len(parsed_results) != len(results):
+            raise ValueError("plan execution result results must contain only objects")
+        return cls(dry_run=dry_run, results=parsed_results)
+
+    @property
+    def succeeded(self) -> bool:
+        return all(result.exit_code == 0 for result in self.results)
+
+    @property
+    def failure(self) -> str | None:
+        for result in self.results:
+            if result.exit_code != 0:
+                return f"{result.name} failed with exit code {result.exit_code}"
+        return None
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "dry_run": self.dry_run,
+            "succeeded": self.succeeded,
+            "failure": self.failure,
+            "results": [result.to_mapping() for result in self.results],
+        }
+
+
+@dataclass(frozen=True)
 class ReleasePointer:
     """Current, previous, or candidate release pointer."""
 
@@ -433,6 +475,7 @@ class ReleaseRun:
     namespace: str | None = None
     images: ImageRefs | None = None
     command_plan: CommandPlan | None = None
+    execution_result: PlanExecutionResult | None = None
     failure: str | None = None
     started_at: str | None = None
     finished_at: str | None = None
@@ -445,6 +488,9 @@ class ReleaseRun:
         command_plan = None
         if isinstance(data.get("command_plan"), Mapping):
             command_plan = CommandPlan.from_mapping(data["command_plan"])
+        execution_result = None
+        if isinstance(data.get("execution_result"), Mapping):
+            execution_result = PlanExecutionResult.from_mapping(data["execution_result"])
         return cls(
             run_id=_required_str(data, "run_id"),
             trigger=TriggerKind(_required_str(data, "trigger")),
@@ -454,6 +500,7 @@ class ReleaseRun:
             status=RunStatus(_required_str(data, "status")),
             images=images,
             command_plan=command_plan,
+            execution_result=execution_result,
             failure=_optional_str(data, "failure"),
             started_at=_optional_str(data, "started_at"),
             finished_at=_optional_str(data, "finished_at"),
@@ -475,6 +522,8 @@ class ReleaseRun:
             data.update(self.images.to_mapping())
         if self.command_plan is not None:
             data["command_plan"] = self.command_plan.to_mapping()
+        if self.execution_result is not None:
+            data["execution_result"] = self.execution_result.to_mapping()
         return data
 
 

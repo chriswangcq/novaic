@@ -7,13 +7,14 @@ from release_controller.models import (
     CommandResult,
     CommandStep,
     ControllerConfig,
+    PlanExecutionResult,
     QualityGate,
     ReleaseMode,
     RunStatus,
 )
 from release_controller.poller import BranchHead, BranchPoller, InMemoryBranchHeadProvider
 from release_controller.planner import PlannedRelease, PlanningError, ReleasePlanner
-from release_controller.runner import CommandRunner, PlanExecutionResult
+from release_controller.runner import CommandRunner
 from release_controller.service import create_app
 from release_controller.state import ReleaseStateStore
 

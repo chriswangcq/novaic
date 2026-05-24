@@ -6,8 +6,10 @@ from release_controller import ConfigError, ReleaseMode, load_config
 from release_controller.models import (
     BranchRule,
     CommandPlan,
+    CommandResult,
     CommandStep,
     ControllerConfig,
+    PlanExecutionResult,
     QualityGate,
 )
 
@@ -150,6 +152,34 @@ def test_model_mapping_uses_explicit_enum_values() -> None:
             }
         ],
     }
+
+
+def test_plan_execution_result_round_trips_command_results() -> None:
+    execution = PlanExecutionResult(
+        dry_run=False,
+        results=(
+            CommandResult(
+                name="quality-controller-tests",
+                argv=("python3", "-m", "pytest"),
+                exit_code=0,
+                stdout="passed",
+            ),
+            CommandResult(
+                name="build-api-backend",
+                argv=("docker", "build"),
+                exit_code=9,
+                stderr="failed",
+            ),
+        ),
+    )
+
+    data = execution.to_mapping()
+    restored = PlanExecutionResult.from_mapping(data)
+
+    assert data["succeeded"] is False
+    assert data["failure"] == "build-api-backend failed with exit code 9"
+    assert restored == execution
+    assert restored.failure == "build-api-backend failed with exit code 9"
 
 
 def _base_config() -> dict:

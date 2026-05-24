@@ -1,6 +1,14 @@
 from pathlib import Path
 
-from release_controller.models import ImageRefs, ReleasePointer, ReleaseRun, RunStatus, TriggerKind
+from release_controller.models import (
+    CommandResult,
+    ImageRefs,
+    PlanExecutionResult,
+    ReleasePointer,
+    ReleaseRun,
+    RunStatus,
+    TriggerKind,
+)
 from release_controller.state import ReleaseStateStore
 
 
@@ -30,6 +38,58 @@ def test_run_create_update_fetch_and_list(tmp_path: Path) -> None:
     assert updated.status is RunStatus.FAILED
     assert store.get_run(run.run_id).failure == "verify failed"
     assert [item.run_id for item in store.list_runs()] == [run.run_id]
+
+
+def test_run_execution_result_survives_store_reload(tmp_path: Path) -> None:
+    store = ReleaseStateStore(tmp_path)
+    run = ReleaseRun(
+        run_id="run-with-execution",
+        trigger=TriggerKind.MANUAL,
+        branch="main",
+        commit="abc123",
+        namespace="staging",
+        status=RunStatus.FAILED,
+        failure="build failed",
+        execution_result=PlanExecutionResult(
+            dry_run=False,
+            results=(
+                CommandResult(
+                    name="quality",
+                    argv=("true",),
+                    exit_code=0,
+                    stdout="ok",
+                ),
+                CommandResult(
+                    name="build",
+                    argv=("false",),
+                    exit_code=1,
+                    stderr="nope",
+                ),
+            ),
+        ),
+    )
+
+    store.put_run(run)
+    reloaded = ReleaseStateStore(tmp_path).get_run(run.run_id)
+
+    assert reloaded.execution_result == run.execution_result
+    assert reloaded.execution_result.failure == "build failed with exit code 1"
+
+
+def test_old_run_without_execution_result_still_loads(tmp_path: Path) -> None:
+    store = ReleaseStateStore(tmp_path)
+    run = ReleaseRun(
+        run_id="legacy-run",
+        trigger=TriggerKind.MANUAL,
+        branch="main",
+        commit="abc123",
+        status=RunStatus.SUCCEEDED,
+    )
+
+    store.put_run(run)
+    reloaded = ReleaseStateStore(tmp_path).get_run(run.run_id)
+
+    assert reloaded.execution_result is None
 
 
 def test_current_previous_pointer_rollover(tmp_path: Path) -> None:

@@ -39,6 +39,14 @@ def test_trigger_dry_run_persists_run_without_release_pointer(tmp_path: Path) ->
     assert body["namespace"] == "staging"
     assert body["execution"]["succeeded"] is True
     assert all(result["skipped"] for result in body["execution"]["results"])
+    assert body["run"]["execution_result"]["dry_run"] is True
+    assert all(result["skipped"] for result in body["run"]["execution_result"]["results"])
+    stored = client.get(f"/v1/runs/{body['run']['run_id']}").json()
+    listed = client.get("/v1/runs").json()["runs"][0]
+    recent = client.get("/v1/status").json()["recent_runs"][0]
+    assert stored["execution_result"] == body["run"]["execution_result"]
+    assert listed["execution_result"] == body["run"]["execution_result"]
+    assert recent["execution_result"] == body["run"]["execution_result"]
     assert state.get_current_release("staging") is None
     assert len(client.get("/v1/runs").json()["runs"]) == 1
 
@@ -56,7 +64,30 @@ def test_trigger_without_dry_run_executes_and_updates_release_pointer(tmp_path: 
     body = response.json()
     assert body["execution"]["dry_run"] is False
     assert body["execution"]["succeeded"] is True
+    assert body["run"]["execution_result"] == body["execution"]
+    assert client.get(f"/v1/runs/{body['run']['run_id']}").json()["execution_result"] == body["execution"]
     assert state.get_current_release("staging").commit == "abcdef1234567890"
+
+
+def test_failed_trigger_persists_partial_execution_result(tmp_path: Path) -> None:
+    state = ReleaseStateStore(tmp_path / "state")
+    client = _client(tmp_path, state=state, runner=_FailingRunner())
+
+    response = client.post(
+        "/v1/triggers",
+        json={"branch": "main", "commit": "abcdef1234567890"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    stored = client.get(f"/v1/runs/{body['run']['run_id']}").json()
+    assert body["run"]["status"] == "failed"
+    assert body["execution"]["failure"] == "quality-controller-tests failed with exit code 5"
+    assert stored["execution_result"] == body["execution"]
+    assert [result["name"] for result in stored["execution_result"]["results"]] == [
+        "quality-controller-tests"
+    ]
+    assert state.get_current_release("staging") is None
 
 
 def test_run_lookup_404(tmp_path: Path) -> None:
@@ -228,6 +259,22 @@ class _SuccessfulRunner:
                     exit_code=0,
                     stdout="executed by test runner",
                     skipped=plan.dry_run,
+                ),
+            ),
+        )
+
+
+class _FailingRunner:
+    def run(self, plan: CommandPlan) -> PlanExecutionResult:
+        return PlanExecutionResult(
+            dry_run=plan.dry_run,
+            results=(
+                CommandResult(
+                    name="quality-controller-tests",
+                    argv=("python3", "-m", "pytest"),
+                    exit_code=5,
+                    stdout="partial output",
+                    stderr="failed by test runner",
                 ),
             ),
         )

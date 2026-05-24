@@ -34,6 +34,7 @@ def execute_planned_release(
         planned.run,
         status=status,
         failure=execution.failure,
+        execution_result=execution,
         finished_at=_now(),
     )
     store.put_run(final_run)
