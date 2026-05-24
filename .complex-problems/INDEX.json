@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260524-205046",
+  "active_ledger_id": "L20260524-225445",
   "ledgers": [
     {
       "active_count": 0,
@@ -891,7 +891,18 @@
       "status": "done",
       "title": "Persist Release Controller PlanExecutionResult in run records",
       "updated_at": "2026-05-24T13:05:28+00:00"
+    },
+    {
+      "active_count": 5,
+      "blocked_count": 0,
+      "ledger_id": "L20260524-225445",
+      "path": "L20260524-225445",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "doing",
+      "title": "Fix WebRTC black screen across different networks",
+      "updated_at": "2026-05-24T15:07:30+00:00"
     }
   ],
-  "updated_at": "2026-05-24T13:05:28+00:00"
+  "updated_at": "2026-05-24T15:07:30+00:00"
 }

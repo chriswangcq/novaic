@@ -1,0 +1,337 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [
+        "`R000` explicitly records that the new Gateway/app/common code is not deployed yet.",
+        "The pre-deploy direct Gateway check showed `/api/turn/credentials` returning 404 on prod and staging loopback ports.",
+        "Cross-network peers cannot rely on the fixed ICE/TURN discovery path until a Release Controller deployment puts the new Gateway code behind both namespace ports and verifies the endpoint."
+      ],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-24T15:06:53+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P004",
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "The implementation closes the discovered code/config bug, and the API host secret has been repaired, but the problem asked for deployed prod/staging ICE/TURN discovery to be working. The new Gateway route and fail-fast behavior are not yet running in prod/staging, so the deployed credential endpoint still has not been proven to return relay-capable ICE servers."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 26,
+    "problem": 5,
+    "result": 1,
+    "ticket": 3
+  },
+  "created_at": "2026-05-24T14:54:45+00:00",
+  "ledger_id": "L20260524-225445",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-24T14:54:45+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "When the viewer and the controlled NovAIC desktop device are not on the same LAN, the WebRTC connection can report connected but render a black screen. This affects host desktop viewing/control and makes remote use unreliable across NAT/public network boundaries. Diagnose the signaling, ICE/TURN, media pipeline, and frontend receiver path, then implement the smallest correct fix that makes cross-network WebRTC use relay-capable and avoids connected-but-no-video failure modes.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "WebRTC session setup uses valid relay-capable ICE/TURN configuration for non-LAN clients, not just host/local/mDNS candidates.",
+        "The app can detect or avoid the connected-but-no-video black-screen state with clear signaling or recovery behavior.",
+        "The fix preserves same-LAN WebRTC behavior.",
+        "The implementation is covered by focused tests or compile/type checks for the touched layers.",
+        "Evidence is recorded for production/staging configuration needed by the fix, including coturn/release-controller deployment implications if any."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Fix WebRTC black screen across different networks",
+      "updated_at": "2026-05-24T14:54:45+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-24T14:57:16+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "WebRTC works on the same LAN but shows a black screen across different networks, which strongly suggests that signaling may complete while ICE candidates, relay candidates, TURN credentials, or advertised ICE server configuration are incomplete or incorrect for NAT traversal.",
+      "followup_ids": [
+        "P004"
+      ],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "followup",
+      "subproblem_ids": [
+        "P004"
+      ],
+      "success_criteria": [
+        "Identify the exact path that provides ICE servers from deployed backend/config to the app and Rust peer.",
+        "Confirm whether a reachable TURN relay is deployed, configured, and advertised to both sides.",
+        "Fix missing or incorrect ICE/TURN config so cross-network peers can negotiate relay candidates without relying on LAN host candidates.",
+        "Add a guard or test that fails when production/staging WebRTC config does not include namespace-appropriate relay-capable ICE servers.",
+        "Document the operational knobs needed for TURN host, ports, credentials, and namespace-specific rollout."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Audit and fix cross-network ICE/TURN discovery",
+      "updated_at": "2026-05-24T15:06:53+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-24T14:57:16+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The UI can reach a connected state while the remote video remains black, which means media tracks, keyframe delivery, transceiver direction, codec negotiation, stream attachment, or receiver-side readiness may not be handled correctly once ICE succeeds.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Trace the offer/answer/media pipeline from UI viewer request through Rust WebRTC peer creation to frame capture and video element rendering.",
+        "Identify why a connected peer can produce no visible frames.",
+        "Fix the media path so video track creation, negotiation, and first-frame delivery are explicit and observable.",
+        "Add a timeout/error state that distinguishes signaling connected from video-frame received instead of silently showing black.",
+        "Verify same-LAN behavior remains working while cross-network behavior uses the corrected media path."
+      ],
+      "ticket_ids": [],
+      "title": "Fix connected-but-black WebRTC media behavior",
+      "updated_at": "2026-05-24T14:57:16+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-24T14:57:16+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "After code/config fixes, the deployed prod/staging stack must actually run the corrected WebRTC path, with host infrastructure and release records matching the immutable release-controller workflow.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Build, commit, and push all code/config changes in the relevant repo and parent repo pointers.",
+        "Use Release Controller, not manual production scripts, to deploy the corrected backend/app-side service artifacts where applicable.",
+        "Verify deployed TURN/registry/gateway configuration from the API host and confirm no stale host-process or manual paths are needed.",
+        "Run local checks plus at least one deployment smoke check that proves ICE/TURN config is served and relay-capable.",
+        "Record the final result in the complex-problems ledger with remaining known manual client-app update steps, if any."
+      ],
+      "ticket_ids": [],
+      "title": "Deploy and verify cross-network WebRTC release",
+      "updated_at": "2026-05-24T14:57:16+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P001/children/P004/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-24T15:06:53+00:00",
+      "created_from_check_id": "C000",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The ICE/TURN code path is fixed locally, and the API host has the required `turn_secret`, but prod/staging are still running the old Gateway image where `/api/turn/credentials` is missing. The fixed route must be deployed and verified before ICE/TURN discovery can be considered solved.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P001/children/P004",
+      "parent_id": "P001",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "doing",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Deploy a new API backend image containing the Gateway TURN endpoint and strict TURN config via the Release Controller path.",
+        "Verify prod and staging Gateway instances return authenticated `/api/turn/credentials` responses with at least one `turn:` or `turns:` URL.",
+        "Verify Gateway startup would fail in deployed envs without `turn_secret`, and the current API host secret is present.",
+        "Confirm no WebRTC code path still silently uses STUN-only in deployed cross-network mode."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Deploy and verify TURN credential endpoint",
+      "updated_at": "2026-05-24T15:07:29+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-gateway/gateway/api/turn.py`",
+        "`novaic-gateway/gateway/api/app_client.py`",
+        "`novaic-gateway/main_gateway.py`",
+        "`novaic-gateway/tests/test_turn_credentials.py`",
+        "`novaic-common/common/config.py`",
+        "`novaic-common/config/services.json`",
+        "`novaic-common/tests/test_strict_config.py`",
+        "`novaic-app/src/hooks/useWebRtc.ts`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-24T15:06:19+00:00",
+      "done": [
+        "Added authenticated `GET /api/turn/credentials` in Gateway.",
+        "Centralized Gateway TURN ICE server construction for both browser credentials and App WS offer relay.",
+        "Included UDP TURN, TCP TURN, and TLS TURN URLs.",
+        "Added `services.turn.tls_port` to the strict service config and tests.",
+        "Changed the frontend WebRTC hook to require relay-capable TURN credentials instead of silently using STUN-only.",
+        "Added deployed-environment fail-fast validation: `prod`, `staging`, and `preview-pr-*` Gateway runtimes require `turn_secret`.",
+        "Updated the API host `/opt/novaic/etc/secrets.json` with the coturn `static-auth-secret` as `turn_secret`."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "The new Gateway/app/common code is not deployed yet; deployment belongs to the release/deploy child problem.",
+        "Cross-network media still needs end-to-end verification after deployment, because ICE repair removes the main relay gap but black screen can also come from media/keyframe readiness."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The cross-network WebRTC path was missing a relay-capable TURN configuration. The browser tried `/api/turn/credentials`, but the deployed Gateway returned 404, then the app silently fell back to STUN-only. The Gateway also did not have `turn_secret` in `/opt/novaic/etc/secrets.json`, so App WS offer relay could not inject TURN servers for VmControl either. Coturn itself was running on the API host and `relay.gradievo.com` resolved to that host.",
+      "ticket_id": "T001",
+      "verification": [
+        "`pytest -q tests/test_turn_credentials.py tests/test_pr152_gateway_boundary.py` in `novaic-gateway`: passed, 16 tests.",
+        "`python3 -m pytest -q tests/test_strict_config.py` in `novaic-common`: passed, 10 tests.",
+        "`npx eslint src/hooks/useWebRtc.ts --max-warnings 0` in `novaic-app`: passed.",
+        "`npx tsc --noEmit --pretty false` in `novaic-app`: still fails on pre-existing `src/types/messageContract.test.ts` missing `MESSAGE_LIFECYCLE_STATES`; no new `useWebRtc.ts` error was reported.",
+        "API host checks showed `novaic-coturn` running, `turnserver.conf` using `external-ip=43.106.113.95/172.17.220.140`, and `api.gradievo.com`/`relay.gradievo.com` resolving to `43.106.113.95` from the API host.",
+        "Direct Gateway checks before this code deploy confirmed `http://127.0.0.1:19999/api/turn/credentials` and staging `:29999` were 404, matching the missing route diagnosis."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "ICE server configuration is traced from production environment to frontend/Rust peer use.",
+        "Remote/non-LAN candidate failure mode is identified with concrete code or deployment evidence.",
+        "Code or deployment configuration is fixed so relay-capable sessions do not silently black-screen after connection.",
+        "Same-LAN behavior remains compatible.",
+        "Focused tests, type checks, or Rust checks cover the touched code path.",
+        "Any remaining deployment or network requirement is explicitly recorded."
+      ],
+      "assumptions": [
+        "The intended long-term path is direct WebRTC with TURN relay fallback, not a separate video proxy service.",
+        "Nginx remains ingress-only; coturn should be exposed as the media relay layer.",
+        "The current production machine can host coturn or already has the host-infra container intended for this role."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Cross-network WebRTC black screen spans ICE/TURN discovery, Rust peer media path, frontend receiver behavior, and deployment verification; it needs independent diagnosis/fix/verification slices.",
+      "created_at": "2026-05-24T14:55:11+00:00",
+      "id": "T000",
+      "problem_definition": "Cross-network host desktop WebRTC sessions can reach a connected state but show a black screen. The failure may be in ICE/TURN advertisement, candidate routing, browser receiver behavior, keyframe/media pump startup, or production coturn exposure. The repair needs to be correct for remote NAT use while preserving same-LAN sessions.",
+      "problem_id": "P000",
+      "proposed_solution": "Trace the end-to-end WebRTC path from gateway-provided ICE server configuration through frontend offer creation, Rust peer setup, candidate trickle, media track setup, keyframe delivery, and coturn/container deployment. Identify the deterministic reason remote sessions connect without usable media. Patch the narrow broken layer, add guards/tests where feasible, then verify with code checks and local/remote configuration evidence.",
+      "result_ids": [],
+      "risks": [
+        "WebRTC failures can be environment-sensitive; code checks may not prove all NAT combinations.",
+        "TURN credentials or public port exposure may require production configuration changes as well as code changes.",
+        "Aggressive ICE policy changes could break same-LAN performance if not scoped carefully."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Diagnose and repair cross-network WebRTC media path",
+      "updated_at": "2026-05-24T14:57:16+00:00",
+      "verification_plan": "- Inspect app frontend WebRTC offer creation and Rust peer/candidate handling.\n- Inspect backend/gateway ICE server APIs and production compose/coturn environment.\n- Run targeted unit/type/Rust checks for changed layers.\n- Use local logs/config queries to confirm the repaired path advertises TURN/relay where needed.\n- Record residual risk if a real off-LAN media test cannot be fully simulated locally."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "The code path serving and consuming ICE servers is identified with file/function evidence.",
+        "Deployed prod/staging config advertises a reachable STUN/TURN set, including relay URLs usable outside the LAN.",
+        "Missing TURN config fails loudly in deployed environments instead of falling back to LAN-only behavior.",
+        "A focused test or guard covers the required ICE/TURN config shape.",
+        "Any required host-infra/coturn deployment change is documented for the release-controller flow."
+      ],
+      "assumptions": [
+        "Cross-network black screen is at least partly caused by ICE/TURN relay gaps until proven otherwise.",
+        "Same-LAN should keep working after making deployed TURN config explicit."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "ICE/TURN audit and config repair can be solved as one focused slice by tracing configuration, applying targeted guard/config changes, and verifying the deployed host-infra.",
+      "created_at": "2026-05-24T14:57:38+00:00",
+      "id": "T001",
+      "problem_definition": "Cross-network WebRTC can connect at the signaling layer while rendering black video if the deployed app and Rust peer do not receive relay-capable ICE servers or if TURN is not reachable from both peers. Same-LAN success can hide this because host candidates are enough on LAN.",
+      "problem_id": "P001",
+      "proposed_solution": "Trace the ICE server source of truth across app, backend, Rust WebRTC peer, deployment env, coturn container, and API host ingress. Make TURN relay mandatory for deployed non-local environments, normalize how ICE servers are passed into WebRTC peer creation, and add validation so prod/staging cannot silently run with LAN-only ICE config.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Existing local development may rely on implicit host-candidate-only behavior and needs a clear local-mode exception.",
+        "Coturn credential generation may live outside the app repo and require deploy-script updates.",
+        "Browsers may hide host candidates behind mDNS, so validation must focus on relay candidates rather than host candidates."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Repair namespace-safe ICE/TURN configuration",
+      "updated_at": "2026-05-24T15:06:19+00:00",
+      "verification_plan": "Run targeted repository tests/guards for ICE config, inspect the rendered compose/env config, query the deployed API endpoint that returns ICE servers if one exists, and verify coturn is running/listening on the API host."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Relevant subrepo commits are created and pushed.",
+        "Parent repo records updated submodule pointers and ledger artifacts.",
+        "Release Controller deploys an immutable API backend image containing the TURN endpoint to staging and prod.",
+        "Prod and staging `/api/turn/credentials` return `ice_servers` with `turn:` or `turns:` URLs.",
+        "The API host has `turn_secret` in `/opt/novaic/etc/secrets.json`, matching coturn."
+      ],
+      "assumptions": [
+        "The API host remains the deployment target for both staging and prod.",
+        "Release Controller has the necessary credentials/config already installed from prior deployment work."
+      ],
+      "body_path": "problems/P000/children/P001/children/P004/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "The deployment follow-up has a concrete path: commit and push the focused changes, run Release Controller deploy, and verify the TURN endpoint on prod/staging.",
+      "created_at": "2026-05-24T15:07:11+00:00",
+      "id": "T002",
+      "problem_definition": "Prod and staging still run API backend images without the new Gateway `/api/turn/credentials` endpoint. The API host secret has been repaired, but the fixed code path must be committed, built, deployed, and verified through the Release Controller.",
+      "problem_id": "P004",
+      "proposed_solution": "Commit the gateway/common/app changes and parent pointers, push them to `main`, build an immutable API backend image with the Release Controller path, deploy that image to staging and prod, then query the namespace Gateway loopback endpoints with trusted headers to confirm relay-capable ICE servers are returned.",
+      "result_ids": [],
+      "risks": [
+        "The existing app TypeScript suite has an unrelated pre-existing failing test import.",
+        "If Release Controller build includes parent submodule pointers, the parent commit must be made after subrepo commits.",
+        "Prod Gateway will fail fast if `turn_secret` is missing or unreadable, so verify secrets before deploy."
+      ],
+      "root_id": "P000",
+      "status": "executing",
+      "title": "Release fixed TURN discovery to prod and staging",
+      "updated_at": "2026-05-24T15:07:30+00:00",
+      "verification_plan": "Run focused unit/config/lint checks before commit. Use Release Controller or its CLI entrypoint for build/deploy. Verify remote container images, Gateway health, and direct loopback TURN endpoint responses after deployment."
+    }
+  },
+  "updated_at": "2026-05-24T15:07:30+00:00"
+}
