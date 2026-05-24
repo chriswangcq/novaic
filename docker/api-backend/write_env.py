@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import uuid
 from typing import Any
 
 DEFAULT_PORT_OFFSETS = {
@@ -91,7 +92,7 @@ def _optional(raw: dict[str, Any], section: str, key: str, default: str) -> str:
 
 def _write_env(path: Path, values: dict[str, str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
     previous_umask = os.umask(0o177)
     try:
         with tmp.open("w", encoding="utf-8") as handle:
@@ -104,6 +105,7 @@ def _write_env(path: Path, values: dict[str, str]) -> None:
         tmp.replace(path)
         path.chmod(0o600)
     finally:
+        tmp.unlink(missing_ok=True)
         os.umask(previous_umask)
 
 
