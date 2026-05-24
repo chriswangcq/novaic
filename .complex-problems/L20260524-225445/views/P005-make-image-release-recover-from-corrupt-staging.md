@@ -1,6 +1,6 @@
 # P005: Make image release recover from corrupt staging Compose state
 
-Status: doing
+Status: done
 Parent: P003
 Root: P000
 Source Ticket: none (none)
@@ -24,14 +24,16 @@ The final WebRTC release cannot finish because Docker Compose left the `novaic-s
 - none
 
 ## Results
-- none
+- R004
 
 ## Latest Check
-none
+C005
 
 ## Bodies
 - Problem: problems/P000/children/P003/children/P005/README.md
 - Ticket T005: problems/P000/children/P003/children/P005/tickets/T005.md
+- Result R004: problems/P000/children/P003/children/P005/results/R004.md
+- Check C005: problems/P000/children/P003/children/P005/checks/C005.md
 
 ## Follow-ups
 - none

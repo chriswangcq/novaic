@@ -893,16 +893,16 @@
       "updated_at": "2026-05-24T13:05:28+00:00"
     },
     {
-      "active_count": 3,
+      "active_count": 0,
       "blocked_count": 0,
       "ledger_id": "L20260524-225445",
       "path": "L20260524-225445",
       "root_id": "P000",
       "schema_version": 6,
-      "status": "doing",
+      "status": "done",
       "title": "Fix WebRTC black screen across different networks",
-      "updated_at": "2026-05-24T15:35:06+00:00"
+      "updated_at": "2026-05-24T15:52:33+00:00"
     }
   ],
-  "updated_at": "2026-05-24T15:35:06+00:00"
+  "updated_at": "2026-05-24T15:52:33+00:00"
 }

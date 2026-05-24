@@ -157,13 +157,136 @@
       "status": "not_success",
       "stress_test": [],
       "summary": "P003 is not solved by result R003. The final release image was built and pushed, but staging deployment failed in Docker Compose before smoke verification, so the final commit cannot be promoted to prod yet."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P005/checks/C005.md",
+      "created_at": "2026-05-24T15:51:06+00:00",
+      "criteria_map": [
+        "`services-image` retries a failed `docker compose up` after namespace-scoped reset: satisfied by `reset_api_backend_compose_project()` and the retry branch in `deploy_services_image()`.",
+        "Cleanup targets only `novaic-<namespace>`: satisfied by label filter `com.docker.compose.project=novaic-$namespace`.",
+        "Final commit reaches staging through Release Controller: satisfied by run `20260524-154416-main-b6ba02e4165b`.",
+        "Staging smoke passes: satisfied by the successful `smoke-staging` step in that run.",
+        "Prod is promoted from the same images: satisfied by promotion run `20260524-154727-promote-prod-staging-b6ba02e4165b`.",
+        "Prod and staging release pointers both reference the final parent commit: satisfied by Release Controller status after promotion."
+      ],
+      "evidence": [
+        "`bash -n deploy` passed locally after the recovery changes.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` passed locally with `9 passed`.",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py` passed locally.",
+        "Release Controller staging run `20260524-154416-main-b6ba02e4165b` succeeded.",
+        "Release Controller prod promotion run `20260524-154727-promote-prod-staging-b6ba02e4165b` succeeded.",
+        "Release Controller current pointers show both prod and staging on commit `b6ba02e4165b9ad3d7754d2b9227740aaf13b380`."
+      ],
+      "execution_map": [
+        "Result R004 records the code changes, local validation, staging run, prod promotion run, and live endpoint checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Docker Compose may still emit noisy transient errors during recreate, but the release result now follows health convergence rather than raw transient output.",
+        "The reset helper is intentionally scoped to one namespace project; it does not clean cross-namespace or host infrastructure state."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The failure mode reproduced during deployment: Docker Compose returned non-zero because of stale or racing container handles, while services later converged healthy. The new deploy path tolerated this exact condition by checking key service health before failing the release.",
+        "A true application failure still fails because the health wait returns non-zero when key services do not become healthy."
+      ],
+      "summary": "P005 is successful. The deployment path now has namespace-scoped recovery and health-based convergence, and the final commit was released to staging and promoted to prod through Release Controller."
+    },
+    "C006": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C006.md",
+      "created_at": "2026-05-24T15:51:34+00:00",
+      "criteria_map": [
+        "Deploy final WebRTC backend to staging: satisfied by `20260524-154416-main-b6ba02e4165b`.",
+        "Promote the same release to prod: satisfied by `20260524-154727-promote-prod-staging-b6ba02e4165b`.",
+        "Verify TURN credential endpoint on prod and staging: satisfied by direct Gateway checks returning `stun:`, `turn:`, and `turns:` relay URLs.",
+        "Verify frontend OTA contains no-fallback and media-readiness changes: satisfied by deployed bundle marker checks.",
+        "Avoid manual backend release path: satisfied because staging and prod backend/factory changes were executed by Release Controller internal deploy steps."
+      ],
+      "evidence": [
+        "R003 proved the final images could build and push but identified the staging Compose corruption gap.",
+        "R004 added recovery logic and health-based release convergence.",
+        "Release Controller staging run `20260524-154416-main-b6ba02e4165b` succeeded.",
+        "Release Controller prod promotion run `20260524-154727-promote-prod-staging-b6ba02e4165b` succeeded.",
+        "Prod and staging Release Controller pointers both reference `b6ba02e4165b9ad3d7754d2b9227740aaf13b380`.",
+        "Prod and staging `/api/turn/credentials` return TTL `86400` and STUN/TURN/TURNS URLs for `relay.gradievo.com`.",
+        "Frontend OTA `v0.3.0` serves bundle `assets/index-D2ZcBCbV.js` containing the new WebRTC markers."
+      ],
+      "execution_map": [
+        "R003: first final-release attempt and precise deployment gap capture.",
+        "R004: recovery implementation, successful Release Controller staging/prod deployment, and verification evidence."
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P003",
+      "residual_risk": [
+        "A live off-LAN WebRTC video session still needs user-side experiential confirmation because I cannot initiate a real client screen session from a separate network here.",
+        "The deploy and runtime evidence directly covers the known failure class: missing relay-capable ICE credentials plus connected/no-frame ambiguity."
+      ],
+      "result_ids": [
+        "R003",
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The deployment path was tested against the actual corrupt staging Compose state created by failed releases. The final successful run handled the transient Compose return-code failure by waiting for service health and completed staging smoke.",
+        "Prod promotion used the same code path and health gate, then passed `https://api.gradievo.com/health`."
+      ],
+      "summary": "P003 is successful after follow-up R004. The initial release attempt R003 exposed a deployment recovery gap; R004 closed that gap, released the final commit to staging, promoted the same image set to prod, and verified TURN credentials plus frontend OTA markers."
+    },
+    "C007": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C007.md",
+      "created_at": "2026-05-24T15:52:21+00:00",
+      "criteria_map": [
+        "WebRTC off-LAN must not silently use STUN-only ICE: satisfied by hard failure when relay-capable TURN credentials are absent.",
+        "Backend must provide usable relay credentials in prod/staging: satisfied by deployed `/api/turn/credentials` responses and `TURN_SECRET` startup guard.",
+        "Connected-but-black must be observable and actively remediated: satisfied by video-frame readiness gating, `request_keyframe`, and no-frame timeout.",
+        "Fix must be deployed through the intended release path: satisfied by Release Controller staging run and prod promotion run.",
+        "Old/manual deployment residue must not be the path used for this release: satisfied because backend/factory deploy steps ran as Release Controller internal executors."
+      ],
+      "evidence": [
+        "P001 success check C002 covers backend TURN credential generation and deployment.",
+        "P002 success check C003 covers frontend media readiness and no-fallback behavior.",
+        "P003 success check C006 covers final staging/prod deployment and verification.",
+        "Prod and staging Release Controller current pointers both reference `b6ba02e4165b9ad3d7754d2b9227740aaf13b380`.",
+        "Prod and staging TURN endpoints return `stun:`, `turn:`, and `turns:` URLs for `relay.gradievo.com`.",
+        "The deployed frontend OTA bundle contains the new WebRTC request-keyframe, no-video-frame timeout, and relay-capable TURN enforcement markers."
+      ],
+      "execution_map": [
+        "R005 summarizes child problem results C002, C003, and C006."
+      ],
+      "followup_problem_id": null,
+      "id": "C007",
+      "problem_id": "P000",
+      "residual_risk": [
+        "A physical off-LAN viewing session is still the final experiential test. If the screen still appears black after this release, the app should now surface a precise no-frame timeout instead of silently showing a connected black screen, which gives the next diagnosis a concrete signal."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The release was tested against a real corrupt Docker Compose staging state during deployment; recovery and health-gated release succeeded.",
+        "Both namespaces were checked after deployment, so prod/staging isolation did not hide a staging-only success."
+      ],
+      "summary": "P000 is successful. The likely root causes of off-LAN black screen were removed: relay-capable TURN is now required and served, STUN-only fallback is gone, the app waits for actual video frames, and the complete fix is deployed to both staging and prod through Release Controller."
     }
   },
   "counters": {
-    "check": 5,
-    "event": 62,
+    "check": 8,
+    "event": 76,
     "problem": 6,
-    "result": 4,
+    "result": 6,
     "ticket": 6
   },
   "created_at": "2026-05-24T14:54:45+00:00",
@@ -171,7 +294,9 @@
   "problems": {
     "P000": {
       "body_path": "problems/P000/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C007"
+      ],
       "created_at": "2026-05-24T14:54:45+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": null,
@@ -181,9 +306,11 @@
       "id": "P000",
       "package_path": "problems/P000",
       "parent_id": null,
-      "result_ids": [],
+      "result_ids": [
+        "R005"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [
         "P001",
         "P002",
@@ -200,7 +327,7 @@
         "T000"
       ],
       "title": "Fix WebRTC black screen across different networks",
-      "updated_at": "2026-05-24T14:54:45+00:00"
+      "updated_at": "2026-05-24T15:52:21+00:00"
     },
     "P001": {
       "body_path": "problems/P000/children/P001/README.md",
@@ -276,7 +403,8 @@
     "P003": {
       "body_path": "problems/P000/children/P003/README.md",
       "check_ids": [
-        "C004"
+        "C004",
+        "C006"
       ],
       "created_at": "2026-05-24T14:57:16+00:00",
       "created_from_check_id": null,
@@ -293,7 +421,7 @@
         "R003"
       ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P005"
       ],
@@ -308,7 +436,7 @@
         "T004"
       ],
       "title": "Deploy and verify cross-network WebRTC release",
-      "updated_at": "2026-05-24T15:34:20+00:00"
+      "updated_at": "2026-05-24T15:51:34+00:00"
     },
     "P004": {
       "body_path": "problems/P000/children/P001/children/P004/README.md",
@@ -344,7 +472,9 @@
     },
     "P005": {
       "body_path": "problems/P000/children/P003/children/P005/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C005"
+      ],
       "created_at": "2026-05-24T15:34:20+00:00",
       "created_from_check_id": "C004",
       "created_from_ticket_id": null,
@@ -354,9 +484,11 @@
       "id": "P005",
       "package_path": "problems/P000/children/P003/children/P005",
       "parent_id": "P003",
-      "result_ids": [],
+      "result_ids": [
+        "R004"
+      ],
       "root_id": "P000",
-      "status": "doing",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "The `services-image` deploy path has a clear namespace-scoped recovery step for Compose recreate corruption.",
@@ -370,7 +502,7 @@
         "T005"
       ],
       "title": "Make image release recover from corrupt staging Compose state",
-      "updated_at": "2026-05-24T15:35:06+00:00"
+      "updated_at": "2026-05-24T15:51:06+00:00"
     }
   },
   "results": {
@@ -520,6 +652,94 @@
         "Final run failed at `deploy-api-staging` with Docker Compose error: `No such container: fbd1afd0b71a_novaic-staging-entangled-1`.",
         "Direct `docker compose ps -a` for the staging project currently also fails with `No such container`, confirming the Compose project state is corrupt rather than the application image failing to start."
       ]
+    },
+    "R004": {
+      "artifacts": [
+        "Release Controller staging run: `20260524-154416-main-b6ba02e4165b`.",
+        "Release Controller prod promotion run: `20260524-154727-promote-prod-staging-b6ba02e4165b`.",
+        "Final parent commit: `b6ba02e4165b9ad3d7754d2b9227740aaf13b380`.",
+        "Staging API image: `127.0.0.1:5000/novaic/api-backend:sha-b6ba02e4165b`.",
+        "Staging Factory image: `127.0.0.1:5000/novaic/llm-factory:sha-b6ba02e4165b`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/results/R004.md",
+      "created_at": "2026-05-24T15:50:44+00:00",
+      "done": [
+        "Added `reset_api_backend_compose_project()` to clean only the requested `novaic-<namespace>` Compose project.",
+        "Added `start_api_backend_release()` to bootstrap `service-registry` before starting the full API backend stack.",
+        "Added `wait_api_backend_release_healthy()` and `wait_api_backend_compose_service_healthy()` so release success is judged by key service health rather than a Docker Compose transient return code alone.",
+        "Updated Release Controller CI guard and deployment runbook to document and lock the recovery behavior.",
+        "Committed and pushed recovery fixes:",
+        "`9b2904354253` `Make image deploy recover Compose state`",
+        "`203119f4196a` `Start registry before backend release`",
+        "`b6ba02e4165b` `Judge backend release by service health`",
+        "Released final commit `b6ba02e4165b9ad3d7754d2b9227740aaf13b380` to staging through Release Controller.",
+        "Promoted the exact same API and Factory images from staging to prod through Release Controller."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "I could not personally perform a live off-LAN screen session from a separate network in this environment. The deployed changes remove the known cross-network ICE/TURN fallback failure and add an explicit no-frame error path, but a real user-device WebRTC session is still the final experiential confirmation."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "The image release path now survives the observed Docker Compose recreate race and the final WebRTC release was deployed through Release Controller. The deploy script starts `service-registry` first, waits for key services to become healthy, treats Docker Compose transient non-zero exits as recoverable only when service health proves convergence, and still keeps namespace-scoped reset as the retry path for genuinely corrupt project state.",
+      "ticket_id": "T005",
+      "verification": [
+        "Local checks passed:",
+        "`bash -n deploy`",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py`",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py`",
+        "Staging Release Controller run `20260524-154416-main-b6ba02e4165b` succeeded.",
+        "Prod promotion run `20260524-154727-promote-prod-staging-b6ba02e4165b` succeeded.",
+        "Release Controller current pointers:",
+        "`staging -> b6ba02e4165b`",
+        "`prod -> b6ba02e4165b`",
+        "Prod and staging `/api/turn/credentials` both return TTL `86400` and these relay URLs:",
+        "`stun:relay.gradievo.com:3478`",
+        "`turn:relay.gradievo.com:3478?transport=udp`",
+        "`turn:relay.gradievo.com:3478?transport=tcp`",
+        "`turns:relay.gradievo.com:5349?transport=tcp`",
+        "Frontend OTA `v0.3.0` references `assets/index-D2ZcBCbV.js`; the deployed bundle contains `request_keyframe`, `no video frame arrived`, and `relay-capable TURN credentials`."
+      ]
+    },
+    "R005": {
+      "artifacts": [
+        "Child success checks: C002, C003, C006.",
+        "Final parent commit: `b6ba02e4165b9ad3d7754d2b9227740aaf13b380`.",
+        "Prod promotion run: `20260524-154727-promote-prod-staging-b6ba02e4165b`."
+      ],
+      "body_path": "problems/P000/results/R005.md",
+      "created_at": "2026-05-24T15:51:58+00:00",
+      "done": [
+        "P001 fixed ICE/TURN discovery:",
+        "Gateway exposes authenticated `/api/turn/credentials`.",
+        "Prod/staging startup requires `TURN_SECRET`.",
+        "App WebRTC offers receive relay-capable STUN/TURN/TURNS servers.",
+        "P002 fixed connected-but-black media behavior:",
+        "Frontend fails fast when relay-capable TURN credentials are absent.",
+        "`ontrack` no longer marks video connected before actual frame readiness.",
+        "DataChannel open sends `request_keyframe`.",
+        "A 25-second no-frame timeout surfaces a clear error instead of silent black screen.",
+        "P003/P005 completed deployment:",
+        "Release Controller staging run `20260524-154416-main-b6ba02e4165b` succeeded.",
+        "Release Controller prod promotion run `20260524-154727-promote-prod-staging-b6ba02e4165b` succeeded.",
+        "Prod and staging both point at final commit `b6ba02e4165b9ad3d7754d2b9227740aaf13b380`."
+      ],
+      "id": "R005",
+      "known_gaps": [
+        "I cannot personally perform the final off-LAN live screen viewing test from a separate physical network in this environment. The deployed code and infrastructure now cover the technical root causes and make failure observable if video frames still do not arrive."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The known cross-network black-screen path is fixed and deployed. The backend now requires relay-capable TURN credentials in prod/staging, the app no longer falls back to STUN-only ICE, the WebRTC hook waits for real video frames before declaring media connected, and the final release is deployed to staging and prod through Release Controller.",
+      "ticket_id": "T000",
+      "verification": [
+        "Gateway tests: `pytest -q tests/test_turn_credentials.py tests/test_pr152_gateway_boundary.py`.",
+        "Common config test: `python3 -m pytest -q tests/test_strict_config.py`.",
+        "Frontend checks: `npx eslint src/hooks/useWebRtc.ts --max-warnings 0`, `npx tsc --noEmit --pretty false`, `npm run test:unit -- --run src/types/chatMessageContract.test.ts`, and `npm run build`.",
+        "Deploy checks: `bash -n deploy`, `python3 -m pytest -q scripts/ci/test_release_controller_ci.py`, and `python3 scripts/ci/lint_immutable_image_workflows.py`.",
+        "Prod and staging TURN endpoints return `stun:relay.gradievo.com:3478`, `turn:relay.gradievo.com:3478?transport=udp`, `turn:relay.gradievo.com:3478?transport=tcp`, and `turns:relay.gradievo.com:5349?transport=tcp`.",
+        "Frontend OTA `v0.3.0` serves bundle `assets/index-D2ZcBCbV.js` with `request_keyframe`, `no video frame arrived`, and `relay-capable TURN credentials`."
+      ]
     }
   },
   "root_id": "P000",
@@ -547,16 +767,18 @@
       "problem_definition": "Cross-network host desktop WebRTC sessions can reach a connected state but show a black screen. The failure may be in ICE/TURN advertisement, candidate routing, browser receiver behavior, keyframe/media pump startup, or production coturn exposure. The repair needs to be correct for remote NAT use while preserving same-LAN sessions.",
       "problem_id": "P000",
       "proposed_solution": "Trace the end-to-end WebRTC path from gateway-provided ICE server configuration through frontend offer creation, Rust peer setup, candidate trickle, media track setup, keyframe delivery, and coturn/container deployment. Identify the deterministic reason remote sessions connect without usable media. Patch the narrow broken layer, add guards/tests where feasible, then verify with code checks and local/remote configuration evidence.",
-      "result_ids": [],
+      "result_ids": [
+        "R005"
+      ],
       "risks": [
         "WebRTC failures can be environment-sensitive; code checks may not prove all NAT combinations.",
         "TURN credentials or public port exposure may require production configuration changes as well as code changes.",
         "Aggressive ICE policy changes could break same-LAN performance if not scoped carefully."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Diagnose and repair cross-network WebRTC media path",
-      "updated_at": "2026-05-24T14:57:16+00:00",
+      "updated_at": "2026-05-24T15:51:58+00:00",
       "verification_plan": "- Inspect app frontend WebRTC offer creation and Rust peer/candidate handling.\n- Inspect backend/gateway ICE server APIs and production compose/coturn environment.\n- Run targeted unit/type/Rust checks for changed layers.\n- Use local logs/config queries to confirm the repaired path advertises TURN/relay where needed.\n- Record residual risk if a real off-LAN media test cannot be fully simulated locally."
     },
     "T001": {
@@ -714,18 +936,20 @@
       "problem_definition": "The final WebRTC release image path can fail when Docker Compose leaves a namespace project in a corrupt recreate state. The observed staging failure leaves renamed half-created containers and makes `docker compose ps -a` fail, which blocks Release Controller from completing staging and prevents prod promotion.",
       "problem_id": "P005",
       "proposed_solution": "Make the `services-image` deployment path recovery-safe by adding a namespace-scoped Compose project reset helper and using it only as a retry path when `docker compose up -d --no-build --remove-orphans` fails. The helper should target the compose project derived from the requested namespace, clear only that project's containers through Compose labels and project-name patterns, then retry the same immutable image deployment. After patching, publish the deploy script through the normal main branch path, rerun Release Controller for the final commit, and promote prod from the passing staging images.",
-      "result_ids": [],
+      "result_ids": [
+        "R004"
+      ],
       "risks": [
         "A too-broad cleanup command could affect the wrong namespace.",
         "Retrying after every failure could mask application startup bugs if not scoped only to Compose state recovery.",
         "The remote staging project may already be partially down and need the recovery helper to remove both normal and renamed Compose containers."
       ],
       "root_id": "P000",
-      "status": "executing",
+      "status": "done",
       "title": "Add namespace-scoped Compose release recovery",
-      "updated_at": "2026-05-24T15:35:06+00:00",
+      "updated_at": "2026-05-24T15:50:44+00:00",
       "verification_plan": "Run shell syntax checks, run existing release-controller tests/lints if changed behavior needs coverage, deploy the final commit through Release Controller, verify `/api/turn/credentials` on prod and staging, and query Release Controller status for prod/staging pointers."
     }
   },
-  "updated_at": "2026-05-24T15:35:06+00:00"
+  "updated_at": "2026-05-24T15:52:33+00:00"
 }

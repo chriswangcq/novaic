@@ -1,6 +1,6 @@
 # P003: Deploy and verify cross-network WebRTC release
 
-Status: followup
+Status: done
 Parent: P000
 Root: P000
 Source Ticket: T000 (split)
@@ -26,13 +26,14 @@ After code/config fixes, the deployed prod/staging stack must actually run the c
 - R003
 
 ## Latest Check
-C004
+C006
 
 ## Bodies
 - Problem: problems/P000/children/P003/README.md
 - Ticket T004: problems/P000/children/P003/tickets/T004.md
 - Result R003: problems/P000/children/P003/results/R003.md
 - Check C004: problems/P000/children/P003/checks/C004.md
+- Check C006: problems/P000/children/P003/checks/C006.md
 
 ## Follow-ups
 - P005: Make image release recover from corrupt staging Compose state

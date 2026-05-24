@@ -1,6 +1,6 @@
 # P000: Fix WebRTC black screen across different networks
 
-Status: todo
+Status: done
 Parent: none
 Root: P000
 Source Ticket: none (none)
@@ -25,14 +25,16 @@ When the viewer and the controlled NovAIC desktop device are not on the same LAN
 - P003: Deploy and verify cross-network WebRTC release
 
 ## Results
-- none
+- R005
 
 ## Latest Check
-none
+C007
 
 ## Bodies
 - Problem: problems/P000/README.md
 - Ticket T000: problems/P000/tickets/T000.md
+- Result R005: problems/P000/results/R005.md
+- Check C007: problems/P000/checks/C007.md
 
 ## Follow-ups
 - none
