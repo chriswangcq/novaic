@@ -135,6 +135,8 @@ def test_deploy_release_controller_image_guard() -> None:
         "factory-image)  deploy_factory_image \"$2\" \"$3\" ;;",
         "NOVAIC_DEPLOY_CALLER",
         "require_release_controller_invocation",
+        "start_api_backend_release()",
+        "wait_api_backend_compose_service_healthy()",
         "reset_api_backend_compose_project()",
         "label=com.docker.compose.project=",
     ]:

@@ -479,6 +479,41 @@ compose_api_backend_env() {
     -f compose.yaml $*"
 }
 
+wait_api_backend_compose_service_healthy() {
+  local namespace="$1"
+  local service="$2"
+  local container="novaic-$namespace-$service-1"
+  validate_namespace "$namespace"
+  info "等待 API backend Compose service healthy (namespace=$namespace, service=$service)..."
+  if ! $API_SSH "set -euo pipefail
+for _ in \$(seq 1 90); do
+  state=\$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' '$container' 2>/dev/null || true)
+  if [ \"\$state\" = healthy ]; then
+    exit 0
+  fi
+  if [ \"\$state\" = exited ] || [ \"\$state\" = dead ]; then
+    docker logs --tail 80 '$container' >&2 || true
+    exit 1
+  fi
+  sleep 1
+done
+docker inspect '$container' >&2 || true
+docker logs --tail 80 '$container' >&2 || true
+exit 1"; then
+    warn "API backend Compose service 未健康: $container"
+    return 1
+  fi
+}
+
+start_api_backend_release() {
+  local namespace="$1"
+  local env_file="$2"
+  validate_namespace "$namespace"
+  compose_api_backend_env "$env_file" "up -d --no-build service-registry" || return 1
+  wait_api_backend_compose_service_healthy "$namespace" "service-registry" || return 1
+  compose_api_backend_env "$env_file" "up -d --no-build --remove-orphans" || return 1
+}
+
 reset_api_backend_compose_project() {
   local namespace="$1"
   local env_file="$2"
@@ -490,14 +525,14 @@ cd '$API_BACKEND_COMPOSE_DIR'
 docker compose --env-file '$env_file' -f compose.yaml down --remove-orphans --timeout 30 || true
 ids=\$(docker ps -aq --filter label=com.docker.compose.project='$project' || true)
 if [ -n \"\$(printf '%s' \"\$ids\" | tr -d '[:space:]')\" ]; then
-  docker rm -f \$ids || true
+  docker rm -f \$ids >/dev/null || true
 fi
 for _ in \$(seq 1 30); do
   remaining=\$(docker ps -aq --filter label=com.docker.compose.project='$project' || true)
   if [ -z \"\$(printf '%s' \"\$remaining\" | tr -d '[:space:]')\" ]; then
     exit 0
   fi
-  docker rm -f \$remaining || true
+  docker rm -f \$remaining >/dev/null || true
   sleep 1
 done
 echo 'API backend Compose project cleanup did not settle: $project' >&2
@@ -578,10 +613,10 @@ deploy_services_image() {
   info "拉取 API backend image (namespace=$namespace, image=$image_ref)..."
   compose_api_backend_env "$env_file" "pull" || fail "API backend image pull 失败"
   info "启动 API backend image release (namespace=$namespace)..."
-  if ! compose_api_backend_env "$env_file" "up -d --no-build --remove-orphans"; then
+  if ! start_api_backend_release "$namespace" "$env_file"; then
     reset_api_backend_compose_project "$namespace" "$env_file"
     info "重试启动 API backend image release (namespace=$namespace)..."
-    compose_api_backend_env "$env_file" "up -d --no-build --remove-orphans" || fail "API backend image up 失败"
+    start_api_backend_release "$namespace" "$env_file" || fail "API backend image up 失败"
   fi
   compose_api_backend_env "$env_file" "ps" || fail "API backend image ps 失败"
   ok "API backend image release 已部署 (namespace=$namespace, image=$image_ref)"
