@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from release_controller.models import ControllerConfig, TriggerKind
+from release_controller.models import CommandPlan, CommandResult, ControllerConfig, TriggerKind
 from release_controller.planner import ReleasePlanner
 from release_controller.poller import (
     BranchHead,
@@ -8,7 +8,7 @@ from release_controller.poller import (
     InMemoryBranchHeadProvider,
     parse_ls_remote_heads,
 )
-from release_controller.runner import CommandRunner
+from release_controller.runner import CommandRunner, PlanExecutionResult
 from release_controller.state import ReleaseStateStore
 
 
@@ -47,6 +47,23 @@ def test_poll_release_branch_creates_candidate_run(tmp_path: Path) -> None:
     run = state.list_runs()[0]
     assert run.trigger is TriggerKind.POLL
     assert run.namespace is None
+
+
+def test_poll_without_dry_run_executes_by_default(tmp_path: Path) -> None:
+    state = ReleaseStateStore(tmp_path / "state")
+    poller = _poller(
+        tmp_path,
+        state,
+        (BranchHead("main", "abcdef1234567890"),),
+        runner=_SuccessfulRunner(),
+    )
+
+    outcomes = poller.poll_once()
+
+    assert outcomes[0].status == "planned"
+    run = state.list_runs()[0]
+    assert run.command_plan.dry_run is False
+    assert state.get_current_release("staging").commit == "abcdef1234567890"
 
 
 def test_poll_unmatched_branch_skips_without_recording_head(tmp_path: Path) -> None:
@@ -95,6 +112,7 @@ def _poller(
     state: ReleaseStateStore,
     heads: tuple[BranchHead, ...],
     preview_template: str = "preview-{slug}",
+    runner: CommandRunner | None = None,
 ) -> BranchPoller:
     config = _config(tmp_path, preview_template=preview_template)
     planner = ReleasePlanner(config, state)
@@ -102,7 +120,7 @@ def _poller(
         config=config,
         state=state,
         planner=planner,
-        runner=CommandRunner(),
+        runner=runner or CommandRunner(),
         provider=InMemoryBranchHeadProvider(heads),
     )
 
@@ -130,6 +148,21 @@ def _config(tmp_path: Path, preview_template: str) -> ControllerConfig:
                 },
                 {"pattern": "release/*", "mode": "candidate_only"},
             ],
-            "dry_run_default": True,
         }
     )
+
+
+class _SuccessfulRunner(CommandRunner):
+    def run(self, plan: CommandPlan) -> PlanExecutionResult:
+        return PlanExecutionResult(
+            dry_run=plan.dry_run,
+            results=(
+                CommandResult(
+                    name="test-runner",
+                    argv=("true",),
+                    exit_code=0,
+                    stdout="executed by test runner",
+                    skipped=plan.dry_run,
+                ),
+            ),
+        )

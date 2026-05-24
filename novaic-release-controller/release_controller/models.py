@@ -194,7 +194,6 @@ class ControllerConfig:
     branch_rules: tuple[BranchRule, ...]
     poll_interval_seconds: int = 60
     polling_enabled: bool = False
-    dry_run_default: bool = False
     server: ServerConfig = field(default_factory=ServerConfig)
 
     @classmethod
@@ -207,9 +206,6 @@ class ControllerConfig:
         polling_enabled = data.get("polling_enabled", False)
         if not isinstance(polling_enabled, bool):
             raise ValueError("polling_enabled must be a boolean")
-        dry_run_default = data.get("dry_run_default", False)
-        if not isinstance(dry_run_default, bool):
-            raise ValueError("dry_run_default must be a boolean")
         return cls(
             state_dir=state_dir,
             repo=RepoConfig.from_mapping(_required_mapping(data, "repo")),
@@ -218,7 +214,6 @@ class ControllerConfig:
             branch_rules=branch_rules,
             poll_interval_seconds=poll_interval,
             polling_enabled=polling_enabled,
-            dry_run_default=dry_run_default,
             server=ServerConfig.from_mapping(_optional_mapping(data, "server")),
         )
 
@@ -231,7 +226,6 @@ class ControllerConfig:
             "branch_rules": [rule.to_mapping() for rule in self.branch_rules],
             "poll_interval_seconds": self.poll_interval_seconds,
             "polling_enabled": self.polling_enabled,
-            "dry_run_default": self.dry_run_default,
             "server": self.server.to_mapping(),
         }
 

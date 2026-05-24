@@ -49,7 +49,7 @@ config: /opt/novaic/release-controller/config.json
 state: /opt/novaic/release-controller/state
 compose: /opt/novaic/docker/release-controller
 worktree: /opt/novaic/release-controller/worktree
-polling: enabled, dry_run_default=false, interval=60s
+polling: enabled, interval=60s
 executor: Docker CLI + Docker Compose plugin + SSH/rsync inside the controller container, host Docker socket mounted, `/root/.ssh` mounted read-only
 ```
 
@@ -82,8 +82,7 @@ Autonomous polling is owned by the release-controller process. Enable or pause i
 
 ```json
 {
-  "polling_enabled": true,
-  "dry_run_default": false
+  "polling_enabled": true
 }
 ```
 
@@ -272,11 +271,11 @@ Bootstrap note: the first deployed image was built on the API host because the l
 
 ## Migration Plan
 
-1. Implement controller with explicit dry-run support and local state.
+1. Implement controller with explicit request-scoped dry-run support and local state.
 2. Add Docker package and deploy command.
 3. Deploy controller to API host.
-4. Verify branch observation, dry-run override, and real staging execution.
-5. Enable `main -> staging` polling with `dry_run_default=false`.
+4. Verify branch observation, explicit dry-run requests, and real staging execution.
+5. Enable `main -> staging` polling.
 6. Use manual promote for prod.
 7. Populate and manage the controller worktree with an explicit release submodule allowlist.
 8. Mark GitHub Actions as secondary verification/fallback path.

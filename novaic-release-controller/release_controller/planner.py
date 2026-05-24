@@ -73,7 +73,7 @@ class ReleasePlanner:
             factory_image=f"{self.config.registry.factory_image}:sha-{short_commit}",
         )
         run_id = self._run_id(branch, commit)
-        effective_dry_run = self.config.dry_run_default if dry_run is None else dry_run
+        effective_dry_run = bool(dry_run)
         steps = self._branch_steps(branch, commit, images, namespace, rule.mode)
         plan = CommandPlan(steps=tuple(steps), dry_run=effective_dry_run)
         candidate_id = None
@@ -110,7 +110,7 @@ class ReleasePlanner:
         assert_immutable_image_ref(api_image)
         assert_immutable_image_ref(factory_image)
         images = ImageRefs(api_image=api_image, factory_image=factory_image)
-        effective_dry_run = self.config.dry_run_default if dry_run is None else dry_run
+        effective_dry_run = bool(dry_run)
         plan = CommandPlan(
             steps=tuple(self._deploy_steps("prod", images)),
             dry_run=effective_dry_run,
@@ -140,7 +140,7 @@ class ReleasePlanner:
             raise PlanningError(f"no previous release pointer exists for namespace {namespace!r}")
         assert_immutable_image_ref(previous.images.api_image)
         assert_immutable_image_ref(previous.images.factory_image)
-        effective_dry_run = self.config.dry_run_default if dry_run is None else dry_run
+        effective_dry_run = bool(dry_run)
         plan = CommandPlan(
             steps=tuple(self._deploy_steps(namespace, previous.images)),
             dry_run=effective_dry_run,

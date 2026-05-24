@@ -4,8 +4,15 @@ import time
 from fastapi.testclient import TestClient
 
 from release_controller import create_app
-from release_controller.models import ControllerConfig, ImageRefs, ReleasePointer
+from release_controller.models import (
+    CommandPlan,
+    CommandResult,
+    ControllerConfig,
+    ImageRefs,
+    ReleasePointer,
+)
 from release_controller.poller import BranchHead, InMemoryBranchHeadProvider
+from release_controller.runner import PlanExecutionResult
 from release_controller.state import ReleaseStateStore
 
 
@@ -34,6 +41,22 @@ def test_trigger_dry_run_persists_run_without_release_pointer(tmp_path: Path) ->
     assert all(result["skipped"] for result in body["execution"]["results"])
     assert state.get_current_release("staging") is None
     assert len(client.get("/v1/runs").json()["runs"]) == 1
+
+
+def test_trigger_without_dry_run_executes_and_updates_release_pointer(tmp_path: Path) -> None:
+    state = ReleaseStateStore(tmp_path / "state")
+    client = _client(tmp_path, state=state, runner=_SuccessfulRunner())
+
+    response = client.post(
+        "/v1/triggers",
+        json={"branch": "main", "commit": "abcdef1234567890"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["execution"]["dry_run"] is False
+    assert body["execution"]["succeeded"] is True
+    assert state.get_current_release("staging").commit == "abcdef1234567890"
 
 
 def test_run_lookup_404(tmp_path: Path) -> None:
@@ -111,6 +134,7 @@ def test_autonomous_polling_loop_runs_when_enabled(tmp_path: Path) -> None:
     app = create_app(
         config,
         state=state,
+        runner=_SuccessfulRunner(),
         branch_head_provider=InMemoryBranchHeadProvider(
             (BranchHead("main", "abcdef1234567890"),)
         ),
@@ -150,6 +174,7 @@ def _client(
     tmp_path: Path,
     state: ReleaseStateStore | None = None,
     branch_heads: tuple[BranchHead, ...] = (),
+    runner: object | None = None,
 ) -> TestClient:
     config = _config(tmp_path)
     store = state or ReleaseStateStore(tmp_path / "state")
@@ -157,6 +182,7 @@ def _client(
         create_app(
             config,
             state=store,
+            runner=runner,
             branch_head_provider=InMemoryBranchHeadProvider(branch_heads),
         )
     )
@@ -187,9 +213,24 @@ def _config(tmp_path: Path, polling_enabled: bool = False) -> ControllerConfig:
             ],
             "poll_interval_seconds": 1,
             "polling_enabled": polling_enabled,
-            "dry_run_default": True,
         }
     )
+
+
+class _SuccessfulRunner:
+    def run(self, plan: CommandPlan) -> PlanExecutionResult:
+        return PlanExecutionResult(
+            dry_run=plan.dry_run,
+            results=(
+                CommandResult(
+                    name="test-runner",
+                    argv=("true",),
+                    exit_code=0,
+                    stdout="executed by test runner",
+                    skipped=plan.dry_run,
+                ),
+            ),
+        )
 
 
 def _wait_for_polling_iteration(client: TestClient) -> dict:

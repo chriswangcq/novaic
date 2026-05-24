@@ -89,6 +89,25 @@ def test_prod_promotion_requires_immutable_refs(tmp_path: Path) -> None:
     assert any(step.argv[1:3] == ("services-image", "prod") for step in planned.plan.steps)
 
 
+def test_omitted_dry_run_executes_by_default_for_plans(tmp_path: Path) -> None:
+    state = ReleaseStateStore(tmp_path / "state")
+    planner = ReleasePlanner(_config(tmp_path), state, clock=_clock)
+
+    branch_plan = planner.plan_branch_release("main", "abcdef1234567890").plan
+    promotion_plan = planner.plan_prod_promotion(
+        "repo/api:sha-abcdef1",
+        "repo/factory:sha-abcdef1",
+        "abcdef1234567890",
+    ).plan
+    state.update_namespace_release(_pointer("run-1", "abcdef1"))
+    state.update_namespace_release(_pointer("run-2", "abcdef2"))
+    rollback_plan = planner.plan_rollback("staging").plan
+
+    assert branch_plan.dry_run is False
+    assert promotion_plan.dry_run is False
+    assert rollback_plan.dry_run is False
+
+
 def test_rollback_uses_previous_pointer(tmp_path: Path) -> None:
     state = ReleaseStateStore(tmp_path / "state")
     config = _config(tmp_path)
@@ -168,7 +187,6 @@ def _config(tmp_path: Path, preview_template: str = "preview-{slug}") -> Control
                 },
                 {"pattern": "release/*", "mode": "candidate_only"},
             ],
-            "dry_run_default": True,
         }
     )
 

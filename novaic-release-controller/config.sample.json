@@ -50,7 +50,6 @@
   ],
   "poll_interval_seconds": 60,
   "polling_enabled": false,
-  "dry_run_default": false,
   "server": {
     "host": "127.0.0.1",
     "port": 19880
