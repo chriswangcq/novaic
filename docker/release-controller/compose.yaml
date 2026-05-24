@@ -16,6 +16,7 @@ services:
       - ${NOVAIC_RELEASES_DIR:?NOVAIC_RELEASES_DIR required}:/opt/novaic/releases
       - ${NOVAIC_RELEASE_CONTROLLER_WORKTREE:?NOVAIC_RELEASE_CONTROLLER_WORKTREE required}:/opt/novaic/release-controller/worktree
       - ${NOVAIC_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - ${NOVAIC_RELEASE_CONTROLLER_SSH_DIR:-/root/.ssh}:/root/.ssh:ro
     ports:
       - "127.0.0.1:${NOVAIC_RELEASE_CONTROLLER_PORT:-19880}:19880"
     extra_hosts:

@@ -43,11 +43,14 @@ As of 2026-05-24, the release-controller is deployed on the API host as Docker C
 
 ```text
 container: novaic-release-controller-release_controller-1
-image: 127.0.0.1:5000/novaic/release-controller@sha256:97cd1948122732a6aa6b973a714f33493b075d75dda8edd8fdd386078d4edeb5
+image: 127.0.0.1:5000/novaic/release-controller@sha256:9ebe598d9dd8dca0810bc292adc825b6717a3e0041a96d60ea9e95a2e99866e1
 bind: 127.0.0.1:19880 -> 19880/tcp
 config: /opt/novaic/release-controller/config.json
 state: /opt/novaic/release-controller/state
 compose: /opt/novaic/docker/release-controller
+worktree: /opt/novaic/release-controller/worktree @ 78411ddc0bbf
+polling: enabled, dry_run_default=true, interval=60s
+executor: Docker CLI + Docker Compose plugin + SSH/rsync inside the controller container, host Docker socket mounted, `/root/.ssh` mounted read-only
 ```
 
 Health and status checks:
@@ -66,8 +69,34 @@ Worktree bootstrap on the API host:
 
 ```bash
 rm -rf /opt/novaic/release-controller/worktree
-git clone --recurse-submodules https://github.com/chriswangcq/novaic.git /opt/novaic/release-controller/worktree
+git clone git@github.com:chriswangcq/novaic.git /opt/novaic/release-controller/worktree
+cd /opt/novaic/release-controller/worktree
+git config submodule.novaic-llm-factory.url git@github.com:chriswangcq/novaic-llm-factory.git
+git submodule update --init --recursive -- \
+  Entangled novaic-agent-runtime novaic-blob-service novaic-business novaic-common \
+  novaic-cortex novaic-device novaic-gateway novaic-logicalfs \
+  novaic-sandbox-service novaic-llm-factory
 ```
+
+Autonomous polling is owned by the release-controller process. Enable or pause it by editing `/opt/novaic/release-controller/config.json`, then redeploying the same controller image digest with `./deploy release-controller-image <digest>`.
+
+```json
+{
+  "polling_enabled": true,
+  "dry_run_default": true
+}
+```
+
+Inspection:
+
+```bash
+curl -fsS http://127.0.0.1:19880/v1/status
+docker logs --tail 100 novaic-release-controller-release_controller-1
+```
+
+Prod remains promotion-only. Branch polling must never resolve to `prod`; `release/*` can create candidates, and `/v1/promotions/prod` requires immutable image refs.
+
+`deploy.verify_commands` must be executable inside the release-controller container. Keep this list to release preflight checks such as `bash -n deploy` and config rendering/compile checks. Full application test suites belong in a builder job/image; the controller then builds immutable service images whose Dockerfiles contain import smoke checks before deployment.
 
 ## Branch Rules
 

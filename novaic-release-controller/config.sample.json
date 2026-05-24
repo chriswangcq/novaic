@@ -11,7 +11,8 @@
   "deploy": {
     "script_path": "/opt/novaic/release-controller/worktree/deploy",
     "verify_commands": [
-      ["./scripts/run_all_tests.sh"]
+      ["bash", "-n", "deploy"],
+      ["python3", "-m", "py_compile", "docker/api-backend/write_env.py"]
     ],
     "health_urls": {
       "staging": "https://staging-api.gradievo.com/api/health",

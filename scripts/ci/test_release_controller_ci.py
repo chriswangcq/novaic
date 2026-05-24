@@ -50,6 +50,9 @@ def test_release_controller_dockerfile_invariants() -> None:
         "COPY novaic-release-controller",
         "python -m pip install /opt/novaic/release-controller",
         "release_controller.service",
+        "DOCKER_CLI_VERSION",
+        "DOCKER_COMPOSE_VERSION",
+        "docker compose version",
         'CMD ["python", "-m", "release_controller.main"]',
     ]:
         assert marker in text
@@ -67,12 +70,14 @@ def test_release_controller_compose_invariants() -> None:
         "NOVAIC_RELEASES_DIR",
         "NOVAIC_RELEASE_CONTROLLER_WORKTREE",
         "NOVAIC_DOCKER_SOCKET",
+        "NOVAIC_RELEASE_CONTROLLER_SSH_DIR",
         "127.0.0.1:${NOVAIC_RELEASE_CONTROLLER_PORT:-19880}:19880",
     ]:
         assert marker in compose
     assert "server_name" not in compose
     assert "proxy_pass" not in compose
     assert "NOVAIC_RELEASE_CONTROLLER_IMAGE=127.0.0.1:5000/novaic/release-controller:sha-example" in env_sample
+    assert "NOVAIC_RELEASE_CONTROLLER_SSH_DIR=/root/.ssh" in env_sample
 
 
 def test_release_controller_compose_renders_when_tooling_exists() -> None:
