@@ -36,6 +36,7 @@ Release Controller 是后端和 LLM Factory 的唯一发布入口。父仓库根
 - **Release Controller CI/CD**：
   - 当前控制面：API host Docker Compose project `novaic-release-controller`。
   - 本机 API：`http://127.0.0.1:19880`。
+  - 正规开发流：开发机先跑聚焦单元测试做快速反馈；push/merge 后由 Release Controller 的 `quality_gates` 做权威 staging 准入；staging deploy 后再跑 smoke/integration；prod 只 promote 已通过 staging 的不可变镜像，不从 branch 直接发布。
   - 健康检查：`curl -fsS http://127.0.0.1:19880/health`。
   - 状态检查：`curl -fsS http://127.0.0.1:19880/v1/status`。
   - 手动 trigger：`POST /v1/triggers`；省略 `dry_run` 就是真实执行。需要只观察时显式传 `dry_run=true`。
@@ -45,7 +46,8 @@ Release Controller 是后端和 LLM Factory 的唯一发布入口。父仓库根
   - inspect：`curl -fsS http://127.0.0.1:19880/v1/status`，看 `polling.enabled`、`polling.running`、`polling.iteration_count`、`polling.last_error`、`recent_runs`。
   - pause：把 `/opt/novaic/release-controller/config.json` 里的 `polling_enabled` 改成 `false`，再执行 `./deploy release-controller-image <当前digest>`。
   - enable：把 `polling_enabled` 改成 `true`；如需临时观察/计划，调用 trigger/poll 时显式传 `dry_run=true`。
-  - verify command rule：`deploy.verify_commands` 必须能在 release-controller 容器内执行；不要放依赖本机 venv 的整仓测试。完整测试放 builder/CI，controller 负责 release preflight + image build/import smoke + deploy。
+  - quality gate rule：`quality_gates` 是 branch release 的 CI 门禁，运行在 checkout/submodule update 之后、image build 之前；失败会阻断 build/deploy，并把 run 标成 failed。
+  - verify command rule：`deploy.verify_commands` 必须能在 release-controller 容器内执行；只放轻量 release preflight，例如 `bash -n deploy` 和配置/编译检查。不要把它当第二套 CI，也不要放依赖本机 venv 的整仓测试。
   - prod promotion：`POST /v1/promotions/prod`，只接收 digest 或 `sha-<hex>` tag。
   - rollback：`POST /v1/rollbacks/<namespace>`，使用 previous pointer。
   - prod guard：branch release 默认执行只适用于非 prod 命名空间；prod 仍不通过 branch 触发，只能走 promotion/rollback API。

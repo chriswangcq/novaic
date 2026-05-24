@@ -23,16 +23,20 @@ def test_main_maps_to_staging_deploy_plan(tmp_path: Path) -> None:
     planner = _planner(tmp_path)
 
     planned = planner.plan_branch_release("main", "abcdef1234567890", dry_run=True)
+    step_names = [step.name for step in planned.plan.steps]
 
     assert planned.namespace == "staging"
     assert planned.mode is ReleaseMode.AUTO_DEPLOY
-    assert [step.name for step in planned.plan.steps[:4]] == [
+    assert step_names[:4] == [
         "git-fetch",
         "git-checkout",
         "git-submodule-sync",
         "git-submodule-update",
     ]
     assert planned.plan.steps[3].argv[-1] == "novaic-common"
+    assert step_names.index("quality-controller-tests") > step_names.index("git-submodule-update")
+    assert step_names.index("quality-controller-tests") < step_names.index("build-api-backend")
+    assert step_names.index("quality-release-guards") < step_names.index("build-api-backend")
     deploy_step = _step(planned.plan.steps, "deploy-api-staging")
     assert deploy_step.argv[1:3] == ("services-image", "staging")
     assert deploy_step.env == {
@@ -93,6 +97,8 @@ def test_prod_promotion_requires_immutable_refs(tmp_path: Path) -> None:
     )
 
     assert planned.namespace == "prod"
+    assert not any(step.name.startswith("quality-") for step in planned.plan.steps)
+    assert not any(step.name.startswith("build-") for step in planned.plan.steps)
     deploy_step = _step(planned.plan.steps, "deploy-api-prod")
     assert deploy_step.argv[1:3] == ("services-image", "prod")
     assert deploy_step.env["NOVAIC_DEPLOY_CALLER"] == "release-controller"
@@ -133,6 +139,8 @@ def test_rollback_uses_previous_pointer(tmp_path: Path) -> None:
     planned = planner.plan_rollback("staging")
 
     assert planned.images.api_image.endswith(":sha-abcdef1")
+    assert not any(step.name.startswith("quality-") for step in planned.plan.steps)
+    assert not any(step.name.startswith("build-") for step in planned.plan.steps)
     deploy_step = _step(planned.plan.steps, "deploy-api-staging")
     assert deploy_step.argv[1:3] == ("services-image", "staging")
     assert deploy_step.env["NOVAIC_DEPLOY_CALLER"] == "release-controller"
@@ -172,6 +180,28 @@ def test_runner_captures_subprocess_failure() -> None:
     assert result.failure == "fail failed with exit code 7"
     assert result.results[0].stdout == "bad\n"
     assert len(result.results) == 1
+
+
+def test_runner_stops_after_failing_quality_gate() -> None:
+    from release_controller.models import CommandPlan, CommandStep
+
+    plan = CommandPlan(
+        dry_run=False,
+        steps=(
+            CommandStep(
+                name="quality-controller-tests",
+                argv=("python3", "-c", "import sys; sys.exit(5)"),
+            ),
+            CommandStep(name="build-api-backend", argv=("python3", "-c", "print('must not build')")),
+            CommandStep(name="deploy-api-staging", argv=("python3", "-c", "print('must not deploy')")),
+        ),
+    )
+
+    result = CommandRunner().run(plan)
+
+    assert not result.succeeded
+    assert result.failure == "quality-controller-tests failed with exit code 5"
+    assert [item.name for item in result.results] == ["quality-controller-tests"]
 
 
 def test_runner_merges_step_env_with_process_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -227,6 +257,16 @@ def _config(tmp_path: Path, preview_template: str = "preview-{slug}") -> Control
                     "prod": "https://api.gradievo.com/api/health",
                 },
             },
+            "quality_gates": [
+                {
+                    "name": "controller-tests",
+                    "argv": ["python3", "-m", "pytest", "novaic-release-controller/tests", "-q"],
+                },
+                {
+                    "name": "release-guards",
+                    "argv": ["python3", "-m", "pytest", "-q", "scripts/ci/test_release_controller_ci.py"],
+                },
+            ],
             "branch_rules": [
                 {"pattern": "main", "mode": "auto_deploy", "namespace": "staging"},
                 {

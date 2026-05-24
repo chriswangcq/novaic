@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -11,12 +12,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "novaic-release-controller"
+CONFIG_SAMPLE = PACKAGE / "config.sample.json"
 DOCKERFILE = ROOT / "docker" / "release-controller" / "Dockerfile"
 COMPOSE = ROOT / "docker" / "release-controller" / "compose.yaml"
 ENV_SAMPLE = ROOT / "docker" / "release-controller" / "env.sample"
 DEPLOY = ROOT / "deploy"
 RUN_ALL_TESTS = ROOT / "scripts" / "run_all_tests.sh"
 WORKFLOW = ROOT / ".github" / "workflows" / "lint.yml"
+DEPLOY_DOC = ROOT / "docs" / "runbooks" / "deploy.md"
+RELEASE_CONTROLLER_DOC = ROOT / "docs" / "architecture" / "release-controller.md"
 
 
 def run_command(args: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
@@ -56,6 +60,23 @@ def test_release_controller_dockerfile_invariants() -> None:
         'CMD ["python", "-m", "release_controller.main"]',
     ]:
         assert marker in text
+
+
+def test_release_controller_quality_gate_contract_is_documented() -> None:
+    config = json.loads(CONFIG_SAMPLE.read_text(encoding="utf-8"))
+    gate_names = [gate["name"] for gate in config["quality_gates"]]
+    deploy_doc = DEPLOY_DOC.read_text(encoding="utf-8")
+    release_controller_doc = RELEASE_CONTROLLER_DOC.read_text(encoding="utf-8")
+
+    assert gate_names == ["release-controller-ci", "release-path-lints"]
+    assert config["deploy"]["verify_commands"] == [
+        ["bash", "-n", "deploy"],
+        ["python3", "-m", "py_compile", "docker/api-backend/write_env.py"],
+    ]
+    assert "quality_gates" in deploy_doc
+    assert "权威 staging 准入" in deploy_doc
+    assert "`quality_gates` are the authoritative CI admission checks" in release_controller_doc
+    assert "Prod promotion never rebuilds" in release_controller_doc
 
 
 def test_release_controller_compose_invariants() -> None:

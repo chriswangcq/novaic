@@ -8,7 +8,8 @@ The controller owns release orchestration:
 
 - Poll git branches or accept manual trigger requests.
 - Resolve branch rules into a target namespace.
-- Run verification commands before building images.
+- Run configured CI quality gates before building images.
+- Run lightweight release preflight commands before deployment.
 - Build immutable API backend and LLM Factory images.
 - Push images to the internal registry.
 - Deploy images through guarded internal executor steps: `./deploy services-image <namespace> <image-ref>` and `./deploy factory-image <namespace> <image-ref>`.
@@ -43,7 +44,7 @@ As of 2026-05-24, the release-controller is deployed on the API host as Docker C
 
 ```text
 container: novaic-release-controller-release_controller-1
-image: 127.0.0.1:5000/novaic/release-controller@sha256:9ebe598d9dd8dca0810bc292adc825b6717a3e0041a96d60ea9e95a2e99866e1
+image: 127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7
 bind: 127.0.0.1:19880 -> 19880/tcp
 config: /opt/novaic/release-controller/config.json
 state: /opt/novaic/release-controller/state
@@ -95,7 +96,9 @@ docker logs --tail 100 novaic-release-controller-release_controller-1
 
 Prod remains promotion-only. Branch polling must never resolve to `prod`; `release/*` can create candidates, and `/v1/promotions/prod` requires immutable image refs.
 
-`deploy.verify_commands` must be executable inside the release-controller container. Keep this list to release preflight checks such as `bash -n deploy` and config rendering/compile checks. Full application test suites belong in a builder job/image; the controller then builds immutable service images whose Dockerfiles contain import smoke checks before deployment.
+`quality_gates` are the authoritative CI admission checks for branch releases. They run in the checked-out controller worktree after git checkout/submodule update and before image build. Developer-local unit tests are still expected for fast feedback, but they are not the staging admission authority.
+
+`deploy.verify_commands` must be executable inside the release-controller container. Keep this list to lightweight release preflight checks such as `bash -n deploy` and config rendering/compile checks. Do not use it as a second CI system. Full application integration suites should graduate into named `quality_gates` once they are deterministic in the controller/builder environment.
 
 ## Branch Rules
 
@@ -105,13 +108,35 @@ Initial rules:
 
 | Branch pattern | Action | Namespace | Safety |
 | --- | --- | --- | --- |
-| `main` | verify, build, publish, deploy | `staging` | automatic |
-| `preview/*` | verify, build, publish, deploy | `preview-pr-<id>` or configured preview namespace | automatic after rule match |
-| `release/*` | verify, build, publish | none by default | produces a promotion candidate |
+| `main` | quality gate, preflight, build, publish, deploy | `staging` | automatic |
+| `preview/*` | quality gate, preflight, build, publish, deploy | `preview-pr-<id>` or configured preview namespace | automatic after rule match |
+| `release/*` | quality gate, preflight, build, publish | none by default | produces a promotion candidate |
 | manual promote | deploy existing refs | `prod` | explicit API call only |
 | manual rollback | deploy previous refs | selected namespace | explicit API call only |
 
 Prod must not deploy directly from branch polling. Prod receives an already-built immutable release pair through a promote command.
+
+## CI/CD Flow
+
+The canonical flow is:
+
+```text
+local developer machine
+  -> run focused unit tests for fast feedback
+  -> push/merge branch
+  -> Release Controller polling or trigger observes commit
+  -> checkout commit and allowlisted submodules
+  -> run quality_gates as authoritative CI admission
+  -> run release preflight commands
+  -> build immutable API and Factory images
+  -> push images to the internal registry
+  -> deploy staging namespace
+  -> smoke/integration check staging endpoint
+  -> promote the same image refs to prod through /v1/promotions/prod
+  -> smoke prod
+```
+
+Quality gates decide whether a commit can become a staging release. Staging smoke checks decide whether the deployed namespace is healthy. Prod promotion never rebuilds and never deploys directly from a branch; it promotes immutable image refs that already passed the branch-release path.
 
 ## Run Lifecycle
 
@@ -196,7 +221,11 @@ The controller may execute only configured commands. The default command plan is
 ```text
 git fetch origin <branch>
 git checkout --detach <commit>
-./scripts/run_all_tests.sh
+git submodule update --init --recursive <allowlisted-submodules>
+quality-release-controller-ci
+quality-release-path-lints
+bash -n deploy
+python3 -m py_compile docker/api-backend/write_env.py
 docker build -f docker/api-backend/Dockerfile -t <api-tag> .
 docker build -f docker/llm-factory/Dockerfile -t <factory-tag> novaic-llm-factory
 docker push <api-tag>

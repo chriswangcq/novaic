@@ -32,6 +32,16 @@
       "prod": "https://api.gradievo.com/health"
     }
   },
+  "quality_gates": [
+    {
+      "name": "release-controller-ci",
+      "argv": ["python3", "-m", "pytest", "-q", "scripts/ci/test_release_controller_ci.py"]
+    },
+    {
+      "name": "release-path-lints",
+      "argv": ["python3", "scripts/ci/lint_immutable_image_workflows.py"]
+    }
+  ],
   "branch_rules": [
     {
       "pattern": "main",

@@ -226,6 +226,14 @@ class ReleasePlanner:
                     cwd=repo_cwd,
                 )
             )
+        for gate in self.config.quality_gates:
+            steps.append(
+                CommandStep(
+                    name=f"quality-{gate.name}",
+                    argv=gate.argv,
+                    cwd=repo_cwd,
+                )
+            )
         for index, command in enumerate(self.config.deploy.verify_commands, start=1):
             steps.append(CommandStep(name=f"verify-{index}", argv=command, cwd=repo_cwd))
         steps.extend(

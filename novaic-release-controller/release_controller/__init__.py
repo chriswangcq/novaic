@@ -7,6 +7,7 @@ from release_controller.models import (
     CommandResult,
     CommandStep,
     ControllerConfig,
+    QualityGate,
     ReleaseMode,
     RunStatus,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "PlannedRelease",
     "PlanExecutionResult",
     "PlanningError",
+    "QualityGate",
     "ReleaseMode",
     "ReleasePlanner",
     "ReleaseStateStore",

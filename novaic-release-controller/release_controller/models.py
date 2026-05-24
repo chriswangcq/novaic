@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+import re
 from typing import Any, Mapping, Sequence
 
 
@@ -163,6 +164,30 @@ class DeployConfig:
 
 
 @dataclass(frozen=True)
+class QualityGate:
+    """A named CI gate that must pass before branch release image builds."""
+
+    name: str
+    argv: tuple[str, ...]
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "QualityGate":
+        name = _required_str(data, "name")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name):
+            raise ValueError("quality gate name must be lowercase slug text")
+        return cls(
+            name=name,
+            argv=_argv_array(data.get("argv"), "quality gate argv"),
+        )
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "argv": list(self.argv),
+        }
+
+
+@dataclass(frozen=True)
 class ServerConfig:
     """HTTP server bind settings."""
 
@@ -192,6 +217,7 @@ class ControllerConfig:
     registry: RegistryConfig
     deploy: DeployConfig
     branch_rules: tuple[BranchRule, ...]
+    quality_gates: tuple[QualityGate, ...] = field(default_factory=tuple)
     poll_interval_seconds: int = 60
     polling_enabled: bool = False
     server: ServerConfig = field(default_factory=ServerConfig)
@@ -212,6 +238,7 @@ class ControllerConfig:
             registry=RegistryConfig.from_mapping(_required_mapping(data, "registry")),
             deploy=DeployConfig.from_mapping(_required_mapping(data, "deploy")),
             branch_rules=branch_rules,
+            quality_gates=_quality_gates(data.get("quality_gates", [])),
             poll_interval_seconds=poll_interval,
             polling_enabled=polling_enabled,
             server=ServerConfig.from_mapping(_optional_mapping(data, "server")),
@@ -223,6 +250,7 @@ class ControllerConfig:
             "repo": self.repo.to_mapping(),
             "registry": self.registry.to_mapping(),
             "deploy": self.deploy.to_mapping(),
+            "quality_gates": [gate.to_mapping() for gate in self.quality_gates],
             "branch_rules": [rule.to_mapping() for rule in self.branch_rules],
             "poll_interval_seconds": self.poll_interval_seconds,
             "polling_enabled": self.polling_enabled,
@@ -496,13 +524,29 @@ def _command_list(value: Any) -> tuple[tuple[str, ...], ...]:
         raise ValueError("verify_commands must be an array of argv arrays")
     commands: list[tuple[str, ...]] = []
     for item in value:
-        if not isinstance(item, Sequence) or isinstance(item, (str, bytes)):
-            raise ValueError("each verify command must be an argv array")
-        command = tuple(str(part) for part in item)
-        if not command:
-            raise ValueError("verify command argv arrays must not be empty")
-        commands.append(command)
+        commands.append(_argv_array(item, "verify command"))
     return tuple(commands)
+
+
+def _quality_gates(value: Any) -> tuple[QualityGate, ...]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise ValueError("quality_gates must be an array of gate objects")
+    gates = tuple(QualityGate.from_mapping(item) for item in value if isinstance(item, Mapping))
+    if len(gates) != len(value):
+        raise ValueError("quality_gates must contain only gate objects")
+    names = [gate.name for gate in gates]
+    if len(names) != len(set(names)):
+        raise ValueError("quality gate names must be unique")
+    return gates
+
+
+def _argv_array(value: Any, field_name: str) -> tuple[str, ...]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise ValueError(f"{field_name} must be an argv array")
+    command = tuple(str(part) for part in value)
+    if not command:
+        raise ValueError(f"{field_name} argv array must not be empty")
+    return command
 
 
 def _string_list(value: Any, field_name: str) -> tuple[str, ...]:

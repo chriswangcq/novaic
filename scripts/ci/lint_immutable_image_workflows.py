@@ -37,6 +37,8 @@ def main() -> int:
 
     for marker in [
         "Release Controller 是唯一后端/Factory 发布入口",
+        "quality_gates",
+        "权威 staging 准入",
         "GitHub Actions 不再承担 backend/factory 构建、发布、promote 或 rollback",
         "POST /v1/promotions/prod",
         "POST /v1/rollbacks/<namespace>",
@@ -46,6 +48,8 @@ def main() -> int:
 
     for marker in [
         "replaces GitHub Actions and direct operator scripts",
+        "`quality_gates` are the authoritative CI admission checks",
+        "Prod promotion never rebuilds",
         "Direct operator execution without that identity fails",
         "It does not use GitHub Actions for backend/factory release orchestration",
     ]:

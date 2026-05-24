@@ -3,7 +3,13 @@ from pathlib import Path
 import pytest
 
 from release_controller import ConfigError, ReleaseMode, load_config
-from release_controller.models import BranchRule, CommandPlan, CommandStep, ControllerConfig
+from release_controller.models import (
+    BranchRule,
+    CommandPlan,
+    CommandStep,
+    ControllerConfig,
+    QualityGate,
+)
 
 
 def test_load_sample_config() -> None:
@@ -15,12 +21,17 @@ def test_load_sample_config() -> None:
     assert config.branch_rules[0].pattern == "main"
     assert config.branch_rules[0].namespace == "staging"
     assert "novaic-common" in config.repo.submodules
+    assert [gate.name for gate in config.quality_gates] == [
+        "release-controller-ci",
+        "release-path-lints",
+    ]
     assert config.polling_enabled is False
     assert set(config.to_mapping()) == {
         "state_dir",
         "repo",
         "registry",
         "deploy",
+        "quality_gates",
         "branch_rules",
         "poll_interval_seconds",
         "polling_enabled",
@@ -53,6 +64,62 @@ def test_rejects_non_boolean_polling_enabled() -> None:
     data["polling_enabled"] = "yes"
 
     with pytest.raises(ValueError, match="polling_enabled"):
+        ControllerConfig.from_mapping(data)
+
+
+def test_quality_gate_config_round_trip() -> None:
+    data = _base_config()
+    data["quality_gates"] = [
+        {
+            "name": "controller-tests",
+            "argv": ["python3", "-m", "pytest", "novaic-release-controller/tests", "-q"],
+        },
+        {
+            "name": "repo-guards",
+            "argv": ["python3", "-m", "pytest", "-q", "scripts/ci/test_release_controller_ci.py"],
+        },
+    ]
+
+    config = ControllerConfig.from_mapping(data)
+
+    assert config.quality_gates == (
+        QualityGate(
+            name="controller-tests",
+            argv=("python3", "-m", "pytest", "novaic-release-controller/tests", "-q"),
+        ),
+        QualityGate(
+            name="repo-guards",
+            argv=("python3", "-m", "pytest", "-q", "scripts/ci/test_release_controller_ci.py"),
+        ),
+    )
+    assert config.to_mapping()["quality_gates"] == data["quality_gates"]
+
+
+@pytest.mark.parametrize(
+    "gate, match",
+    [
+        ({}, "name"),
+        ({"name": "Controller Tests", "argv": ["true"]}, "lowercase slug"),
+        ({"name": "controller-tests", "argv": []}, "argv array must not be empty"),
+        ({"name": "controller-tests", "argv": "true"}, "argv array"),
+    ],
+)
+def test_rejects_malformed_quality_gates(gate: dict, match: str) -> None:
+    data = _base_config()
+    data["quality_gates"] = [gate]
+
+    with pytest.raises(ValueError, match=match):
+        ControllerConfig.from_mapping(data)
+
+
+def test_rejects_duplicate_quality_gate_names() -> None:
+    data = _base_config()
+    data["quality_gates"] = [
+        {"name": "controller-tests", "argv": ["true"]},
+        {"name": "controller-tests", "argv": ["true"]},
+    ]
+
+    with pytest.raises(ValueError, match="unique"):
         ControllerConfig.from_mapping(data)
 
 
