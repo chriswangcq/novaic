@@ -29,7 +29,7 @@
     ],
     "health_urls": {
       "staging": "https://staging-api.gradievo.com/api/health",
-      "prod": "https://api.gradievo.com/api/health"
+      "prod": "https://api.gradievo.com/health"
     }
   },
   "branch_rules": [

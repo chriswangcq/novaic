@@ -53,6 +53,7 @@
   - prod promotion：`POST /v1/promotions/prod`，只接收 digest 或 `sha-<hex>` tag。
   - rollback：`POST /v1/rollbacks/<namespace>`，使用 previous pointer。
   - prod guard：branch release 默认执行只适用于非 prod 命名空间；prod 仍不通过 branch 触发，只能走 promotion/rollback API。
+  - prod smoke：Release Controller 使用 `https://api.gradievo.com/health` 作为公网 ingress smoke；`https://api.gradievo.com/api/health` 当前需要认证会返回 401，本地应用健康用 `127.0.0.1:19999/api/health` 单独核验。
   - worktree repair：在 API host 执行 `cd /opt/novaic/release-controller/worktree && git pull --ff-only origin main && git submodule update --init --recursive -- Entangled novaic-agent-runtime novaic-blob-service novaic-business novaic-common novaic-cortex novaic-device novaic-gateway novaic-logicalfs novaic-sandbox-service novaic-llm-factory`。
 - **GitHub Actions fallback**：旧 workflow 可继续做验证和镜像构建参考，但长期不作为发布编排中心。
 - **`deploy host-infra`**：同步 `docker/host-infra` Compose 包，构建 `novaic/quic-service:local`，迁移 Redis RDB 和 coturn 运行时配置，停止并禁用宿主机 `redis-server` / `coturn` / `novaic-quic-service`，启动 Docker Compose，验证 Redis/coturn/QUIC 端口归属 Docker 后清理 host 残留，包括旧 `/opt/novaic/start.sh`、`/opt/novaic/services` 和 API-host QUIC 目录。nginx 保留 host 管理。
