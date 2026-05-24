@@ -941,6 +941,15 @@ compose_factory_env() {
   $API_SSH "cd '$FACTORY_DOCKER_DIR' && docker compose --env-file '$env_file' -f '$FACTORY_COMPOSE_FILE' $*"
 }
 
+wait_for_remote_http() {
+  local url="$1"
+  local label="$2"
+  local attempts="${3:-30}"
+  local delay_seconds="${4:-2}"
+  $API_SSH "for i in \$(seq 1 $attempts); do curl -sf '$url' >/dev/null && exit 0; sleep $delay_seconds; done; exit 1" \
+    || fail "$label 健康检查失败: $url"
+}
+
 deploy_factory() {
   local namespace="prod"
   local image_ref="${NOVAIC_LLM_FACTORY_IMAGE:-novaic/llm-factory:local}"
@@ -964,7 +973,8 @@ deploy_factory() {
   sleep 2
   compose_factory_env "$factory_env_file" "ps llm-factory" \
     || fail "LLM Factory Docker ps 失败"
-  $API_SSH 'curl -sf http://127.0.0.1:19990/health' && ok "LLM Factory Docker 已部署 (api.gradievo.com)" || fail "健康检查失败"
+  wait_for_remote_http "http://127.0.0.1:19990/health" "LLM Factory Docker"
+  ok "LLM Factory Docker 已部署 (api.gradievo.com)"
 }
 
 deploy_factory_image() {
@@ -990,7 +1000,8 @@ deploy_factory_image() {
   info "启动 LLM Factory image release (namespace=$namespace)..."
   compose_factory_env "$env_file" "up -d --no-build llm-factory" || fail "LLM Factory image up 失败"
   compose_factory_env "$env_file" "ps llm-factory" || fail "LLM Factory image ps 失败"
-  $API_SSH "curl -sf http://127.0.0.1:$port/health" && ok "LLM Factory image release 已部署 (namespace=$namespace, image=$image_ref)" || fail "健康检查失败"
+  wait_for_remote_http "http://127.0.0.1:$port/health" "LLM Factory image release"
+  ok "LLM Factory image release 已部署 (namespace=$namespace, image=$image_ref)"
 }
 
 # ── Release Controller 部署（Docker Compose, image-based） ────────────────────
