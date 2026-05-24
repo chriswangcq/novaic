@@ -202,6 +202,16 @@ class ReleasePlanner:
                 argv=("git", "checkout", "--detach", commit),
                 cwd=repo_cwd,
             ),
+            CommandStep(
+                name="git-submodule-sync",
+                argv=("git", "submodule", "sync", "--recursive"),
+                cwd=repo_cwd,
+            ),
+            CommandStep(
+                name="git-submodule-update",
+                argv=("git", "submodule", "update", "--init", "--recursive"),
+                cwd=repo_cwd,
+            ),
         ]
         for index, command in enumerate(self.config.deploy.verify_commands, start=1):
             steps.append(CommandStep(name=f"verify-{index}", argv=command, cwd=repo_cwd))

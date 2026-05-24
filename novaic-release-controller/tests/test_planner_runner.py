@@ -26,6 +26,12 @@ def test_main_maps_to_staging_deploy_plan(tmp_path: Path) -> None:
 
     assert planned.namespace == "staging"
     assert planned.mode is ReleaseMode.AUTO_DEPLOY
+    assert [step.name for step in planned.plan.steps[:4]] == [
+        "git-fetch",
+        "git-checkout",
+        "git-submodule-sync",
+        "git-submodule-update",
+    ]
     assert any(step.argv[1:3] == ("services-image", "staging") for step in planned.plan.steps)
     assert any(step.name == "smoke-staging" for step in planned.plan.steps)
 
