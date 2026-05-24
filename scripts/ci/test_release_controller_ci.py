@@ -52,7 +52,7 @@ def test_release_controller_dockerfile_invariants() -> None:
     for marker in [
         "NOVAIC_RELEASE_CONTROLLER_CONFIG",
         "COPY novaic-release-controller",
-        "python -m pip install pytest",
+        "python -m pip install pytest httpx",
         "python -m pip install /opt/novaic/release-controller",
         "release_controller.service",
         "DOCKER_CLI_VERSION",
