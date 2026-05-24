@@ -32,6 +32,7 @@ def test_main_maps_to_staging_deploy_plan(tmp_path: Path) -> None:
         "git-submodule-sync",
         "git-submodule-update",
     ]
+    assert planned.plan.steps[3].argv[-1] == "novaic-common"
     assert any(step.argv[1:3] == ("services-image", "staging") for step in planned.plan.steps)
     assert any(step.name == "smoke-staging" for step in planned.plan.steps)
 
@@ -145,7 +146,7 @@ def _config(tmp_path: Path, preview_template: str = "preview-{slug}") -> Control
     return ControllerConfig.from_mapping(
         {
             "state_dir": str(tmp_path / "state"),
-            "repo": {"path": str(tmp_path / "worktree")},
+            "repo": {"path": str(tmp_path / "worktree"), "submodules": ["novaic-common"]},
             "registry": {
                 "api_image": "127.0.0.1:5000/novaic/api-backend",
                 "factory_image": "127.0.0.1:5000/novaic/llm-factory",

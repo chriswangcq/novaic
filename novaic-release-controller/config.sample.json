@@ -2,7 +2,20 @@
   "state_dir": "/opt/novaic/release-controller/state",
   "repo": {
     "path": "/opt/novaic/release-controller/worktree",
-    "remote": "origin"
+    "remote": "origin",
+    "submodules": [
+      "Entangled",
+      "novaic-agent-runtime",
+      "novaic-blob-service",
+      "novaic-business",
+      "novaic-common",
+      "novaic-cortex",
+      "novaic-device",
+      "novaic-gateway",
+      "novaic-llm-factory",
+      "novaic-logicalfs",
+      "novaic-sandbox-service"
+    ]
   },
   "registry": {
     "api_image": "127.0.0.1:5000/novaic/api-backend",

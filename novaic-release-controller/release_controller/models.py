@@ -94,6 +94,7 @@ class RepoConfig:
     path: str | None = None
     url: str | None = None
     remote: str = "origin"
+    submodules: tuple[str, ...] = field(default_factory=tuple)
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> "RepoConfig":
@@ -102,7 +103,8 @@ class RepoConfig:
         remote = _optional_str(data, "remote") or "origin"
         if not path and not url:
             raise ValueError("repo.path or repo.url is required")
-        return cls(path=path, url=url, remote=remote)
+        submodules = _string_list(data.get("submodules", []), "repo.submodules")
+        return cls(path=path, url=url, remote=remote, submodules=submodules)
 
     def to_mapping(self) -> dict[str, Any]:
         data = {"remote": self.remote}
@@ -110,6 +112,8 @@ class RepoConfig:
             data["path"] = self.path
         if self.url is not None:
             data["url"] = self.url
+        if self.submodules:
+            data["submodules"] = list(self.submodules)
         return data
 
 
@@ -505,6 +509,17 @@ def _command_list(value: Any) -> tuple[tuple[str, ...], ...]:
             raise ValueError("verify command argv arrays must not be empty")
         commands.append(command)
     return tuple(commands)
+
+
+def _string_list(value: Any, field_name: str) -> tuple[str, ...]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise ValueError(f"{field_name} must be an array of strings")
+    result: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"{field_name} must contain non-empty strings")
+        result.append(item)
+    return tuple(result)
 
 
 def _str_mapping(value: Any, field_name: str) -> Mapping[str, str]:

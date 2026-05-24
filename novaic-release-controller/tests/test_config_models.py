@@ -14,6 +14,7 @@ def test_load_sample_config() -> None:
     assert config.registry.api_image == "127.0.0.1:5000/novaic/api-backend"
     assert config.branch_rules[0].pattern == "main"
     assert config.branch_rules[0].namespace == "staging"
+    assert "novaic-common" in config.repo.submodules
     assert config.polling_enabled is False
     assert config.server.port == 19880
 
@@ -77,7 +78,7 @@ def test_model_mapping_uses_explicit_enum_values() -> None:
 def _base_config() -> dict:
     return {
         "state_dir": "/tmp/release-controller/state",
-        "repo": {"path": "/tmp/worktree"},
+        "repo": {"path": "/tmp/worktree", "submodules": ["novaic-common"]},
         "registry": {
             "api_image": "127.0.0.1:5000/novaic/api-backend",
             "factory_image": "127.0.0.1:5000/novaic/llm-factory",
