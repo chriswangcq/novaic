@@ -1066,9 +1066,8 @@ deploy_release_controller_image() {
     || fail "Release Controller image up 失败"
   compose_release_controller_env "$RELEASE_CONTROLLER_ENV_FILE" "ps release_controller" \
     || fail "Release Controller image ps 失败"
-  $API_SSH "curl -sf http://127.0.0.1:$port/health" \
-    && ok "Release Controller image release 已部署 (image=$image_ref)" \
-    || fail "Release Controller 健康检查失败"
+  wait_for_remote_http "http://127.0.0.1:$port/health" "Release Controller image release"
+  ok "Release Controller image release 已部署 (image=$image_ref)"
 }
 
 # ── 聚合命令 ──────────────────────────────────────────────────────────────────
