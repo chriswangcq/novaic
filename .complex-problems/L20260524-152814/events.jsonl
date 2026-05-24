@@ -1,0 +1,48 @@
+{"at": "2026-05-24T07:28:14+00:00", "id": "E000", "payload": {"ledger_id": "L20260524-152814", "root_id": "P000", "title": "Remove release-controller transitional dry-run paths and stale work-package residue"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-24T07:28:36+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Clean release-controller dry-run contract and stale residue"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T07:28:36+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:28:40+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:28:40+00:00", "id": "E004", "payload": {"classification": "split", "reason": "The cleanup spans active code contract changes, remote deployment verification, and stale residue deletion. Splitting keeps source edits, runtime migration, and path hygiene independently checkable.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T07:28:52+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:28:52+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "source": "split", "title": "Remove dry_run_default from source contract"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-24T07:28:52+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "source": "split", "title": "Deploy and verify cleaned release-controller runtime"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-24T07:28:52+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "source": "split", "title": "Clean stale workspace path residue safely"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-24T07:29:03+00:00", "id": "E009", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Delete dry_run_default from active release-controller contract"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T07:29:03+00:00", "id": "E010", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:29:08+00:00", "id": "E011", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:29:08+00:00", "id": "E012", "payload": {"classification": "one_go", "reason": "The source cleanup is a bounded contract deletion with direct tests and grep verification; deployment and residue cleanup are separate child problems.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T07:29:17+00:00", "id": "E013", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:29:17+00:00", "id": "E014", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:31:29+00:00", "id": "E015", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:31:29+00:00", "id": "E016", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T07:31:43+00:00", "id": "E017", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:31:43+00:00", "id": "E018", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:31:43+00:00", "id": "E019", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T07:31:59+00:00", "id": "E020", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "Deploy cleaned release-controller runtime"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T07:31:59+00:00", "id": "E021", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:32:03+00:00", "id": "E022", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:32:03+00:00", "id": "E023", "payload": {"classification": "one_go", "reason": "Runtime cleanup is a bounded deploy-and-smoke task now that source cleanup is closed; failures can be recorded or spawned as runtime blockers.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T07:32:06+00:00", "id": "E024", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:32:06+00:00", "id": "E025", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:37:57+00:00", "id": "E026", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:37:57+00:00", "id": "E027", "payload": {"result_id": "R001", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T07:38:07+00:00", "id": "E028", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:38:07+00:00", "id": "E029", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:38:07+00:00", "id": "E030", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T07:38:29+00:00", "id": "E031", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "Inventory and clean stale workspace residue"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T07:38:29+00:00", "id": "E032", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:38:33+00:00", "id": "E033", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:38:33+00:00", "id": "E034", "payload": {"classification": "one_go", "reason": "The residue cleanup has a clear safe scope: remove old untracked problem-package files only, inventory branch/path residue, and leave unrelated tracked user changes untouched.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T07:38:37+00:00", "id": "E035", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:38:37+00:00", "id": "E036", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:40:27+00:00", "id": "E037", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:40:27+00:00", "id": "E038", "payload": {"result_id": "R002", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T07:40:41+00:00", "id": "E039", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:40:41+00:00", "id": "E040", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:40:41+00:00", "id": "E041", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T07:40:55+00:00", "id": "E042", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:40:55+00:00", "id": "E043", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T07:40:55+00:00", "id": "E044", "payload": {"result_id": "R003", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T07:41:08+00:00", "id": "E045", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:41:08+00:00", "id": "E046", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T07:41:08+00:00", "id": "E047", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
