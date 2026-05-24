@@ -133,14 +133,38 @@
         "The previous build-blocking stale contract test was removed and the full frontend build now passes, proving the media fix is not just locally lint-clean but deployable through the current OTA packaging path."
       ],
       "summary": "`R002` solves the connected-but-black media behavior at the frontend state boundary: a WebRTC track is no longer treated as visible video, first-frame readiness is explicit, keyframes are requested immediately, and no-video becomes a clear error."
+    },
+    "C004": {
+      "blocking_gaps": [
+        "Staging is not cleanly running the final parent commit `082b3b1de24d672b42cb129d45101d8e40d0872f`.",
+        "Docker Compose project state for `novaic-staging` is inconsistent enough that `docker compose ps -a` fails with `No such container`.",
+        "The image deployment path lacks a namespace-scoped recovery step for this recreate failure.",
+        "Prod promotion of the final commit would violate the release rule because the same digest has not passed staging."
+      ],
+      "body_path": "problems/P000/children/P003/checks/C004.md",
+      "created_at": "2026-05-24T15:34:20+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P005",
+      "id": "C004",
+      "problem_id": "P003",
+      "residual_risk": [],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "P003 is not solved by result R003. The final release image was built and pushed, but staging deployment failed in Docker Compose before smoke verification, so the final commit cannot be promoted to prod yet."
     }
   },
   "counters": {
-    "check": 4,
-    "event": 51,
-    "problem": 5,
-    "result": 3,
-    "ticket": 5
+    "check": 5,
+    "event": 62,
+    "problem": 6,
+    "result": 4,
+    "ticket": 6
   },
   "created_at": "2026-05-24T14:54:45+00:00",
   "ledger_id": "L20260524-225445",
@@ -251,20 +275,28 @@
     },
     "P003": {
       "body_path": "problems/P000/children/P003/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C004"
+      ],
       "created_at": "2026-05-24T14:57:16+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T000",
       "created_from_ticket_mode": "split",
       "description": "After code/config fixes, the deployed prod/staging stack must actually run the corrected WebRTC path, with host infrastructure and release records matching the immutable release-controller workflow.",
-      "followup_ids": [],
+      "followup_ids": [
+        "P005"
+      ],
       "id": "P003",
       "package_path": "problems/P000/children/P003",
       "parent_id": "P000",
-      "result_ids": [],
+      "result_ids": [
+        "R003"
+      ],
       "root_id": "P000",
-      "status": "doing",
-      "subproblem_ids": [],
+      "status": "followup",
+      "subproblem_ids": [
+        "P005"
+      ],
       "success_criteria": [
         "Build, commit, and push all code/config changes in the relevant repo and parent repo pointers.",
         "Use Release Controller, not manual production scripts, to deploy the corrected backend/app-side service artifacts where applicable.",
@@ -276,7 +308,7 @@
         "T004"
       ],
       "title": "Deploy and verify cross-network WebRTC release",
-      "updated_at": "2026-05-24T15:28:19+00:00"
+      "updated_at": "2026-05-24T15:34:20+00:00"
     },
     "P004": {
       "body_path": "problems/P000/children/P001/children/P004/README.md",
@@ -309,6 +341,36 @@
       ],
       "title": "Deploy and verify TURN credential endpoint",
       "updated_at": "2026-05-24T15:21:19+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P003/children/P005/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-24T15:34:20+00:00",
+      "created_from_check_id": "C004",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The final WebRTC release cannot finish because Docker Compose left the `novaic-staging` project in a corrupt recreate state: half-created containers exist, some normal staging containers still point at the previous image, and even `docker compose ps -a` fails with `No such container`. The Release Controller path must be able to recover from this state without manual release scripts becoming the normal deployment path.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P003/children/P005",
+      "parent_id": "P003",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "doing",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "The `services-image` deploy path has a clear namespace-scoped recovery step for Compose recreate corruption.",
+        "Recovery only targets the requested namespace project, not unrelated prod or host infrastructure containers.",
+        "The final parent commit is released to staging through Release Controller using immutable images.",
+        "Staging smoke checks pass after recovery.",
+        "Prod is promoted through Release Controller from the exact staging images that passed.",
+        "The final prod/staging release pointers reference the final parent commit."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Make image release recover from corrupt staging Compose state",
+      "updated_at": "2026-05-24T15:35:06+00:00"
     }
   },
   "results": {
@@ -422,6 +484,41 @@
         "`npm run test:unit -- --run src/types/chatMessageContract.test.ts`: passed.",
         "`npm run build`: passed.",
         "`./deploy frontend 0.3.0`: passed and uploaded the rebuilt OTA bundle."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "Release Controller run: `20260524-153107-main-082b3b1de24d`.",
+        "API image: `127.0.0.1:5000/novaic/api-backend:sha-082b3b1de24d`.",
+        "Factory image: `127.0.0.1:5000/novaic/llm-factory:sha-082b3b1de24d`.",
+        "Frontend bundle marker: `assets/index-D2ZcBCbV.js`."
+      ],
+      "body_path": "problems/P000/children/P003/results/R003.md",
+      "created_at": "2026-05-24T15:33:52+00:00",
+      "done": [
+        "Release Controller built immutable API backend image `127.0.0.1:5000/novaic/api-backend:sha-082b3b1de24d`.",
+        "Release Controller built immutable LLM Factory image `127.0.0.1:5000/novaic/llm-factory:sha-082b3b1de24d`.",
+        "Both images were pushed to the host registry and recorded in run `20260524-153107-main-082b3b1de24d`.",
+        "The frontend OTA deploy was re-run after changing the deploy relay host to the DNS-backed API host, and `https://relay.gradievo.com/resource/frontend/v0.3.0/index.html` references bundle `assets/index-D2ZcBCbV.js`.",
+        "The deployed frontend bundle contains the expected no-fallback WebRTC markers: `request_keyframe`, `no video frame arrived`, and `relay-capable TURN credentials`."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "The final parent commit `082b3b1de24d672b42cb129d45101d8e40d0872f` is not yet fully deployed through Release Controller.",
+        "Staging must be cleaned and redeployed from the immutable image path.",
+        "The deploy script should make image deployment recovery-safe for this exact Compose recreate failure so future Release Controller runs do not require manual surgery.",
+        "Prod must only be promoted after the final staging release succeeds."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "The WebRTC fix was built, pushed, and partially released through Release Controller, but the final parent commit release did not pass staging deployment. The failure is operationally specific: Docker Compose entered an inconsistent staging project state during container recreation, leaving stale `novaic-staging-*` containers and renamed half-created containers. This means P003 is not complete yet, because the release needs a recovery-safe Compose image deployment path before the final commit can be promoted.",
+      "ticket_id": "T004",
+      "verification": [
+        "Gateway/common/app local tests and builds passed before deployment.",
+        "Earlier Release Controller staging/prod release for backend commit `163a782cb385` succeeded and exposed `/api/turn/credentials` on both prod and staging.",
+        "Final Release Controller run `20260524-153107-main-082b3b1de24d` passed CI, lint, image build, and image push steps.",
+        "Final run failed at `deploy-api-staging` with Docker Compose error: `No such container: fbd1afd0b71a_novaic-staging-entangled-1`.",
+        "Direct `docker compose ps -a` for the staging project currently also fails with `No such container`, confirming the Compose project state is corrupt rather than the application image failing to start."
       ]
     }
   },
@@ -582,17 +679,53 @@
       "problem_definition": "The TURN backend fix and frontend media-readiness fix have been implemented and deployed through their respective release paths, but the root release state must be verified and recorded as one coherent WebRTC release.",
       "problem_id": "P003",
       "proposed_solution": "Confirm Release Controller prod/staging pointers, verify TURN endpoints in both namespaces, verify OTA frontend bundle contains the media readiness changes, commit the final parent repo pointer and ledger updates, and record any remaining need for a real outside-LAN manual session test.",
-      "result_ids": [],
+      "result_ids": [
+        "R003"
+      ],
       "risks": [
         "A true cross-network WebRTC screen session cannot be fully proven without a client on a different network initiating the stream.",
         "Frontend OTA is still deployed through the existing OTA deploy target, not Release Controller."
       ],
       "root_id": "P000",
-      "status": "executing",
+      "status": "done",
       "title": "Verify released WebRTC fixes across backend and OTA frontend",
-      "updated_at": "2026-05-24T15:28:19+00:00",
+      "updated_at": "2026-05-24T15:33:52+00:00",
       "verification_plan": "Use Release Controller `/v1/status`, direct prod/staging `/api/turn/credentials`, remote OTA asset inspection, local `git status`, and build/test outputs already captured in P001/P002."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "`deploy services-image <namespace> <image>` retries a failed `docker compose up` after a namespace-scoped project reset.",
+        "Cleanup targets only `novaic-<namespace>` containers and does not touch prod when recovering staging.",
+        "The final commit reaches staging through Release Controller.",
+        "Staging smoke passes.",
+        "Prod is promoted through Release Controller from the same final commit images.",
+        "Prod and staging release pointers both reference the final parent commit."
+      ],
+      "assumptions": [
+        "Staging may be reset during this recovery.",
+        "Prod must not be reset until staging passes and prod is intentionally promoted.",
+        "Release Controller remains the owner of image release execution."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Namespace-scoped recovery, redeploy, and promote are one bounded operational repair with direct release-controller verification.",
+      "created_at": "2026-05-24T15:34:44+00:00",
+      "id": "T005",
+      "problem_definition": "The final WebRTC release image path can fail when Docker Compose leaves a namespace project in a corrupt recreate state. The observed staging failure leaves renamed half-created containers and makes `docker compose ps -a` fail, which blocks Release Controller from completing staging and prevents prod promotion.",
+      "problem_id": "P005",
+      "proposed_solution": "Make the `services-image` deployment path recovery-safe by adding a namespace-scoped Compose project reset helper and using it only as a retry path when `docker compose up -d --no-build --remove-orphans` fails. The helper should target the compose project derived from the requested namespace, clear only that project's containers through Compose labels and project-name patterns, then retry the same immutable image deployment. After patching, publish the deploy script through the normal main branch path, rerun Release Controller for the final commit, and promote prod from the passing staging images.",
+      "result_ids": [],
+      "risks": [
+        "A too-broad cleanup command could affect the wrong namespace.",
+        "Retrying after every failure could mask application startup bugs if not scoped only to Compose state recovery.",
+        "The remote staging project may already be partially down and need the recovery helper to remove both normal and renamed Compose containers."
+      ],
+      "root_id": "P000",
+      "status": "executing",
+      "title": "Add namespace-scoped Compose release recovery",
+      "updated_at": "2026-05-24T15:35:06+00:00",
+      "verification_plan": "Run shell syntax checks, run existing release-controller tests/lints if changed behavior needs coverage, deploy the final commit through Release Controller, verify `/api/turn/credentials` on prod and staging, and query Release Controller status for prod/staging pointers."
     }
   },
-  "updated_at": "2026-05-24T15:28:19+00:00"
+  "updated_at": "2026-05-24T15:35:06+00:00"
 }

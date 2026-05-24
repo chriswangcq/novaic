@@ -479,6 +479,32 @@ compose_api_backend_env() {
     -f compose.yaml $*"
 }
 
+reset_api_backend_compose_project() {
+  local namespace="$1"
+  local env_file="$2"
+  local project="novaic-$namespace"
+  validate_namespace "$namespace"
+  warn "API backend Compose project 状态异常，清理 namespace=$namespace project=$project 后重试..."
+  $API_SSH "set -euo pipefail
+cd '$API_BACKEND_COMPOSE_DIR'
+docker compose --env-file '$env_file' -f compose.yaml down --remove-orphans --timeout 30 || true
+ids=\$(docker ps -aq --filter label=com.docker.compose.project='$project' || true)
+if [ -n \"\$(printf '%s' \"\$ids\" | tr -d '[:space:]')\" ]; then
+  docker rm -f \$ids || true
+fi
+for _ in \$(seq 1 30); do
+  remaining=\$(docker ps -aq --filter label=com.docker.compose.project='$project' || true)
+  if [ -z \"\$(printf '%s' \"\$remaining\" | tr -d '[:space:]')\" ]; then
+    exit 0
+  fi
+  docker rm -f \$remaining || true
+  sleep 1
+done
+echo 'API backend Compose project cleanup did not settle: $project' >&2
+docker ps -a --filter label=com.docker.compose.project='$project' --format '{{.ID}} {{.Names}} {{.Status}}' >&2 || true
+exit 1" || fail "清理 API backend Compose project 失败: $project"
+}
+
 validate_api_backend_compose() {
   local env_file="${1:-$API_BACKEND_ENV_FILE}"
   local namespace="${2:-prod}"
@@ -552,7 +578,11 @@ deploy_services_image() {
   info "拉取 API backend image (namespace=$namespace, image=$image_ref)..."
   compose_api_backend_env "$env_file" "pull" || fail "API backend image pull 失败"
   info "启动 API backend image release (namespace=$namespace)..."
-  compose_api_backend_env "$env_file" "up -d --no-build --remove-orphans" || fail "API backend image up 失败"
+  if ! compose_api_backend_env "$env_file" "up -d --no-build --remove-orphans"; then
+    reset_api_backend_compose_project "$namespace" "$env_file"
+    info "重试启动 API backend image release (namespace=$namespace)..."
+    compose_api_backend_env "$env_file" "up -d --no-build --remove-orphans" || fail "API backend image up 失败"
+  fi
   compose_api_backend_env "$env_file" "ps" || fail "API backend image ps 失败"
   ok "API backend image release 已部署 (namespace=$namespace, image=$image_ref)"
 }
