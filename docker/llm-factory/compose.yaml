@@ -1,0 +1,65 @@
+name: "${COMPOSE_PROJECT_NAME:-novaic-llm-factory}"
+
+x-factory-image: &factory_image "${NOVAIC_LLM_FACTORY_IMAGE:-novaic/llm-factory:local}"
+
+services:
+  llm-factory:
+    build:
+      context: "${NOVAIC_LLM_FACTORY_BUILD_CONTEXT:-./app}"
+    image: *factory_image
+    restart: unless-stopped
+    env_file:
+      - path: ${NOVAIC_LLM_FACTORY_RUNTIME_ENV:?NOVAIC_LLM_FACTORY_RUNTIME_ENV required}
+        required: false
+    environment:
+      NOVAIC_NAMESPACE: "${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}"
+      NOVAIC_RELEASE_ID: "${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}"
+      NOVAIC_HOST_ID: "${NOVAIC_HOST_ID:-api-host-1}"
+      NOVAIC_ENVIRONMENT: "${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}"
+      NOVAIC_IMAGE_DIGEST: "${NOVAIC_IMAGE_DIGEST:-}"
+      NOVAIC_IMAGE_REF: "${NOVAIC_LLM_FACTORY_IMAGE:-novaic/llm-factory:local}"
+      NOVAIC_LLM_FACTORY_PORT: "${NOVAIC_LLM_FACTORY_PORT:?NOVAIC_LLM_FACTORY_PORT required}"
+      NOVAIC_LLM_FACTORY_CONTAINER_PORT: "${NOVAIC_LLM_FACTORY_CONTAINER_PORT:-19990}"
+      LLM_FACTORY_CONFIG: "${NOVAIC_LLM_FACTORY_CONFIG:-/data/config.json}"
+    volumes:
+      - ${NOVAIC_LLM_FACTORY_DATA_DIR:?NOVAIC_LLM_FACTORY_DATA_DIR required}:/data
+      - ${NOVAIC_LLM_FACTORY_SECRETS_DIR:?NOVAIC_LLM_FACTORY_SECRETS_DIR required}:/run/secrets:ro
+    networks:
+      - default
+      - postgres
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${NOVAIC_LLM_FACTORY_PORT:?NOVAIC_LLM_FACTORY_PORT required}:${NOVAIC_LLM_FACTORY_CONTAINER_PORT:-19990}"
+    command:
+      - python
+      - -m
+      - uvicorn
+      - factory.app:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "${NOVAIC_LLM_FACTORY_CONTAINER_PORT:-19990}"
+      - --log-level
+      - info
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import os, urllib.request; urllib.request.urlopen(f"http://127.0.0.1:{os.environ.get('NOVAIC_LLM_FACTORY_CONTAINER_PORT', '19990')}/health", timeout=3).read()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+networks:
+  postgres:
+    external: true
+    name: "${NOVAIC_POSTGRES_NETWORK:-novaic-postgres_default}"

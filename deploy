@@ -3,7 +3,8 @@
 # 用法: ./deploy <target> [options]
 #
 # 代码同步: 本地 rsync → 服务器
-# 进程管理: 服务器端 start.sh（不在本地 nohup）
+# 后端主路径: API 机器 Docker Compose
+# 旧 host venv/start.sh 路径仅保留为 services-legacy 回滚入口
 
 set -e
 
@@ -14,11 +15,54 @@ RELAY_PORT="22"
 RELAY_SSH="ssh -p $RELAY_PORT root@$RELAY_HOST"
 API_HOST="root@api.gradievo.com"
 API_SSH="ssh $API_HOST"
-FACTORY_HOST="root@newapi.gradievo.com"
-FACTORY_SSH="ssh $FACTORY_HOST"
 VERSION="${2:-0.3.0}"
 SERVICES_DIR="/opt/novaic/services"
+API_BACKEND_BUILD_DIR="/opt/novaic/docker-builds/api-backend"
+API_BACKEND_COMPOSE_DIR="/opt/novaic/docker/api-backend"
+API_BACKEND_ENV_FILE="/opt/novaic/docker/api-backend.env"
+API_BACKEND_IMAGE="${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}"
+HOST_INFRA_COMPOSE_DIR="/opt/novaic/docker/host-infra"
+HOST_INFRA_ENV_FILE="/opt/novaic/docker/host-infra.env"
+HOST_INFRA_BUILD_DIR="/opt/novaic/docker-builds/host-infra"
+HOST_INFRA_RUNTIME_DIR="/opt/novaic/host-infra"
+QUIC_IMAGE="${NOVAIC_QUIC_IMAGE:-novaic/quic-service:local}"
+FACTORY_DOCKER_DIR="/opt/novaic/llm-factory"
+FACTORY_APP_DIR="$FACTORY_DOCKER_DIR/app"
+FACTORY_COMPOSE_FILE="$FACTORY_DOCKER_DIR/docker-compose.yml"
+RELEASE_CONTROLLER_DOCKER_DIR="/opt/novaic/docker/release-controller"
+RELEASE_CONTROLLER_RUNTIME_DIR="/opt/novaic/release-controller"
+RELEASE_CONTROLLER_COMPOSE_FILE="$RELEASE_CONTROLLER_DOCKER_DIR/compose.yaml"
+RELEASE_CONTROLLER_ENV_FILE="$RELEASE_CONTROLLER_DOCKER_DIR/compose.env"
+RELEASE_CONTROLLER_IMAGE="${NOVAIC_RELEASE_CONTROLLER_IMAGE:-novaic/release-controller:local}"
 RSYNC_EXCLUDE="--exclude .git --exclude __pycache__ --exclude .pytest_cache --exclude .mypy_cache --exclude '*.pyc' --exclude target --exclude build --exclude dist --exclude artifacts --exclude .venv --exclude node_modules --exclude '*.db'"
+TAR_EXCLUDE_ARGS=(
+  --exclude=.git
+  --exclude=__pycache__
+  --exclude=.pytest_cache
+  --exclude=.mypy_cache
+  --exclude='*.pyc'
+  --exclude=target
+  --exclude=build
+  --exclude=dist
+  --exclude=artifacts
+  --exclude=.venv
+  --exclude=node_modules
+  --exclude='*.db'
+)
+API_BACKEND_CONTEXT_DIRS=(
+  docker
+  Entangled
+  novaic-agent-runtime
+  novaic-blob-service
+  novaic-business
+  novaic-common
+  novaic-cortex
+  novaic-device
+  novaic-gateway
+  novaic-logicalfs
+  novaic-sandbox-sdk
+  novaic-sandbox-service
+)
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -30,6 +74,192 @@ info()  { echo -e "${CYAN}▸ $1${NC}"; }
 ok()    { echo -e "${GREEN}✓ $1${NC}"; }
 warn()  { echo -e "${YELLOW}⚠ $1${NC}"; }
 fail()  { echo -e "${RED}✗ $1${NC}"; exit 1; }
+
+have_rsync() {
+  command -v rsync >/dev/null 2>&1
+}
+
+tar_no_xattrs_flag() {
+  if tar --help 2>/dev/null | grep -q -- '--no-xattrs'; then
+    echo "--no-xattrs"
+  else
+    echo ""
+  fi
+}
+
+copy_file_to_api() {
+  local src="$1"
+  local dest="$2"
+  local dest_dir
+  dest_dir="$(dirname "$dest")"
+  [ -f "$src" ] || fail "本地文件不存在: $src"
+  $API_SSH "mkdir -p '$dest_dir'" || fail "创建远端目录失败: $dest_dir"
+  if have_rsync; then
+    rsync -avz -e ssh "$src" "$API_HOST:$dest" || fail "同步文件失败: $src -> $dest"
+  else
+    ssh "$API_HOST" "cat > '$dest'" < "$src" || fail "同步文件失败: $src -> $dest"
+  fi
+}
+
+sync_dir_to_api() {
+  local src="$1"
+  local dest="$2"
+  [ -d "$src" ] || fail "本地目录不存在: $src"
+  if have_rsync; then
+    rsync -avzL --delete $RSYNC_EXCLUDE -e ssh "$src/" "$API_HOST:$dest/" \
+      || fail "同步目录失败: $src -> $dest"
+  else
+    local tar_flag
+    tar_flag="$(tar_no_xattrs_flag)"
+    $API_SSH "rm -rf '$dest' && mkdir -p '$dest'" || fail "准备远端目录失败: $dest"
+    # shellcheck disable=SC2086
+    tar $tar_flag "${TAR_EXCLUDE_ARGS[@]}" -cf - -C "$src" . \
+      | $API_SSH "tar -xf - -C '$dest'" \
+      || fail "同步目录失败: $src -> $dest"
+  fi
+}
+
+validate_namespace() {
+  local namespace="$1"
+  case "$namespace" in
+    prod|staging|preview-pr-[0-9]*) return 0 ;;
+    *) fail "非法 namespace: $namespace (允许: prod, staging, preview-pr-<id>)" ;;
+  esac
+}
+
+namespace_port_base() {
+  case "$1" in
+    prod) echo "19900" ;;
+    staging) echo "29900" ;;
+    preview-pr-*) echo "39000" ;;
+    *) fail "无法为 namespace 计算端口基准: $1" ;;
+  esac
+}
+
+namespace_redis_url() {
+  case "$1" in
+    prod) echo "redis://127.0.0.1:6379/0" ;;
+    staging) echo "redis://127.0.0.1:6379/1" ;;
+    preview-pr-*) echo "redis://127.0.0.1:6379/2" ;;
+    *) fail "无法为 namespace 计算 Redis URL: $1" ;;
+  esac
+}
+
+api_backend_env_file_for_namespace() {
+  echo "/opt/novaic/docker/api-backend.$1.env"
+}
+
+api_backend_etc_dir_for_namespace() {
+  echo "/opt/novaic/etc/$1"
+}
+
+api_backend_data_dir_for_namespace() {
+  echo "/opt/novaic/data/$1"
+}
+
+api_backend_postgres_secrets_dir_for_namespace() {
+  echo "/opt/novaic/postgres/secrets/$1"
+}
+
+factory_env_file_for_namespace() {
+  echo "$FACTORY_DOCKER_DIR/$1/compose.env"
+}
+
+factory_runtime_env_file_for_namespace() {
+  echo "$FACTORY_DOCKER_DIR/$1/runtime.env"
+}
+
+factory_data_dir_for_namespace() {
+  echo "$FACTORY_DOCKER_DIR/$1/data"
+}
+
+factory_secrets_dir_for_namespace() {
+  echo "$FACTORY_DOCKER_DIR/$1/secrets"
+}
+
+factory_port_for_namespace() {
+  case "$1" in
+    prod) echo "19990" ;;
+    staging) echo "29990" ;;
+    preview-pr-*) echo "39990" ;;
+    *) fail "无法为 namespace 计算 Factory 端口: $1" ;;
+  esac
+}
+
+factory_postgres_network_for_namespace() {
+  case "$1" in
+    prod) echo "novaic-postgres_default" ;;
+    staging) echo "novaic-staging-postgres" ;;
+    preview-pr-*) echo "novaic-preview-postgres" ;;
+    *) fail "无法为 namespace 计算 Factory Postgres network: $1" ;;
+  esac
+}
+
+normalize_image_ref() {
+  local kind="$1"
+  local ref="$2"
+  local base
+  case "$kind" in
+    api-backend) base="novaic/api-backend" ;;
+    llm-factory) base="novaic/llm-factory" ;;
+    release-controller) base="novaic/release-controller" ;;
+    *) fail "未知镜像类型: $kind" ;;
+  esac
+  if [[ "$ref" =~ ^sha256:[0-9a-fA-F]{64}$ ]]; then
+    echo "$base@$ref"
+  elif [[ "$ref" =~ ^sha-?[0-9a-fA-F]{6,40}$ || "$ref" =~ ^[0-9a-fA-F]{6,40}$ ]]; then
+    echo "$base:$ref"
+  else
+    echo "$ref"
+  fi
+}
+
+image_ref_tag() {
+  local ref="$1"
+  local last="${ref##*/}"
+  [[ "$last" == *:* ]] || return 1
+  echo "${last##*:}"
+}
+
+image_digest_from_ref() {
+  local ref="$1"
+  if [[ "$ref" =~ @sha256:([0-9a-fA-F]{64})$ ]]; then
+    echo "sha256:${BASH_REMATCH[1]}"
+  else
+    echo ""
+  fi
+}
+
+release_id_from_image_ref() {
+  local ref="$1"
+  local digest tag
+  digest="$(image_digest_from_ref "$ref")"
+  if [ -n "$digest" ]; then
+    echo "sha256-${digest:7:12}"
+    return
+  fi
+  tag="$(image_ref_tag "$ref")" || fail "镜像引用缺少 tag 或 digest: $ref"
+  echo "$tag"
+}
+
+validate_immutable_image_ref() {
+  local namespace="$1"
+  local ref="$2"
+  local tag
+  if [[ "$ref" =~ @sha256:[0-9a-fA-F]{64}$ ]]; then
+    return 0
+  fi
+  tag="$(image_ref_tag "$ref")" || fail "$namespace image 必须带 digest 或 sha tag: $ref"
+  case "$tag" in
+    latest|local|dev|main|master|prod|staging)
+      fail "$namespace image 禁止使用可变 tag: $ref"
+      ;;
+  esac
+  if [[ "$tag" =~ ^sha-?[0-9a-fA-F]{6,40}$ || "$tag" =~ ^[0-9a-fA-F]{6,40}$ ]]; then
+    return 0
+  fi
+  fail "$namespace image 只允许 digest 或 sha tag: $ref"
+}
 
 # ── 通用：同步代码到服务器（不重启） ──────────────────────────────────────────
 rsync_service() {
@@ -187,7 +417,180 @@ restart_all() {
   verify_fresh_backend_logs "$smoke_since"
 }
 
-# ── 后端服务部署（rsync + 服务器端 start.sh 管理进程） ────────────────────────
+# ── 后端服务部署（Docker Compose 主路径） ────────────────────────────────────
+
+sync_api_backend_compose() {
+  info "同步 API backend Compose package..."
+  sync_dir_to_api "$REPO_ROOT/docker/api-backend" "$API_BACKEND_COMPOSE_DIR"
+}
+
+sync_api_backend_config_snapshot() {
+  info "同步 API backend env 生成所需配置快照..."
+  copy_file_to_api "$REPO_ROOT/novaic-common/config/services.json" "$API_BACKEND_COMPOSE_DIR/services.json"
+}
+
+sync_api_backend_build_context() {
+  info "同步 API backend Docker build context..."
+  $API_SSH "rm -rf '$API_BACKEND_BUILD_DIR' && mkdir -p '$API_BACKEND_BUILD_DIR'" \
+    || fail "准备 Docker build context 失败"
+  rsync -avz -e ssh "$REPO_ROOT/.dockerignore" "$API_HOST:$API_BACKEND_BUILD_DIR/.dockerignore" \
+    || fail "同步 .dockerignore 失败"
+  for path in "${API_BACKEND_CONTEXT_DIRS[@]}"; do
+    [ -e "$REPO_ROOT/$path" ] || fail "本地路径不存在: $path"
+    rsync -avzL --delete $RSYNC_EXCLUDE -e ssh \
+      "$REPO_ROOT/$path/" \
+      "$API_HOST:$API_BACKEND_BUILD_DIR/$path/" \
+      || fail "同步 build context/$path 失败"
+  done
+}
+
+write_api_backend_env() {
+  local namespace="${1:-prod}"
+  local image_ref="${2:-$API_BACKEND_IMAGE}"
+  local env_file="${3:-$API_BACKEND_ENV_FILE}"
+  local services_json="${4:-$API_BACKEND_BUILD_DIR/novaic-common/config/services.json}"
+  validate_namespace "$namespace"
+  local release_id image_digest port_base redis_url etc_dir data_dir postgres_secrets_dir compose_project
+  release_id="$(release_id_from_image_ref "$image_ref")"
+  image_digest="$(image_digest_from_ref "$image_ref")"
+  port_base="$(namespace_port_base "$namespace")"
+  redis_url="$(namespace_redis_url "$namespace")"
+  etc_dir="$(api_backend_etc_dir_for_namespace "$namespace")"
+  data_dir="$(api_backend_data_dir_for_namespace "$namespace")"
+  postgres_secrets_dir="$(api_backend_postgres_secrets_dir_for_namespace "$namespace")"
+  compose_project="novaic-$namespace"
+  info "生成 API backend Compose env 文件 (namespace=$namespace, image=$image_ref)..."
+  $API_SSH "python3 '$API_BACKEND_COMPOSE_DIR/write_env.py' \
+    --services-json '$services_json' \
+    --runtime-switches '$etc_dir/runtime_switches.json' \
+    --secrets-json '$etc_dir/secrets.json' \
+    --output '$env_file' \
+    --image '$image_ref' \
+    --namespace '$namespace' \
+    --release-id '$release_id' \
+    --environment '$namespace' \
+    --host-id 'api-host-1' \
+    --compose-project '$compose_project' \
+    --image-digest '$image_digest' \
+    --data-dir '$data_dir' \
+    --postgres-secrets-dir '$postgres_secrets_dir' \
+    --etc-dir '$etc_dir' \
+    --redis-url '$redis_url' \
+    --registry-table 'service_registry_instances' \
+    --port-base '$port_base'" \
+    || fail "生成 API backend env 失败"
+}
+
+compose_api_backend_env() {
+  local env_file="$1"
+  shift
+  $API_SSH "cd '$API_BACKEND_COMPOSE_DIR' && docker compose \
+    --env-file '$env_file' \
+    -f compose.yaml $*"
+}
+
+compose_api_backend() {
+  compose_api_backend_env "$API_BACKEND_ENV_FILE" "$@"
+}
+
+build_api_backend_image() {
+  info "构建 API backend Docker image ($API_BACKEND_IMAGE)..."
+  $API_SSH "cd '$API_BACKEND_BUILD_DIR' && docker build \
+    -f docker/api-backend/Dockerfile \
+    -t '$API_BACKEND_IMAGE' ." \
+    || fail "API backend Docker image 构建失败"
+}
+
+validate_api_backend_compose() {
+  local env_file="${1:-$API_BACKEND_ENV_FILE}"
+  local namespace="${2:-prod}"
+  info "验证 API backend Compose config (namespace=$namespace)..."
+  compose_api_backend_env "$env_file" "config > '$API_BACKEND_COMPOSE_DIR/compose.$namespace.rendered.yaml'" \
+    || fail "docker compose config 失败"
+  compose_api_backend_env "$env_file" "config --services > '$API_BACKEND_COMPOSE_DIR/compose.$namespace.services.txt'" \
+    || fail "docker compose config --services 失败"
+}
+
+stop_legacy_host_backends() {
+  info "停止 legacy host-process 后端（start.sh rollback path）..."
+  $API_SSH 'if [ -f /opt/novaic/start.sh ]; then bash /opt/novaic/start.sh --stop || true; fi' \
+    || fail "停止 legacy host-process 后端失败"
+}
+
+stop_legacy_api_backend_compose_project() {
+  info "停止旧单环境 API backend Compose project（novaic-api-backend）..."
+  $API_SSH "set -euo pipefail
+ids=\$(docker ps -aq --filter label=com.docker.compose.project=novaic-api-backend)
+if [ -n \"\$ids\" ]; then
+  docker rm -f \$ids
+fi" || fail "停止旧 API backend Compose project 失败"
+}
+
+stop_legacy_factory_compose_project() {
+  info "停止旧单环境 LLM Factory Compose/container（novaic-llm-factory）..."
+  $API_SSH "set -euo pipefail
+ids=\$(docker ps -aq --filter label=com.docker.compose.project=novaic-llm-factory)
+name_ids=\$(docker ps -aq --filter name='^/novaic-llm-factory$')
+all_ids=\"\$ids \$name_ids\"
+if [ -n \"\$(printf '%s' \"\$all_ids\" | tr -d '[:space:]')\" ]; then
+  docker rm -f \$all_ids || true
+  for _ in \$(seq 1 30); do
+    remaining=\$(docker ps -aq --filter label=com.docker.compose.project=novaic-llm-factory)
+    remaining_names=\$(docker ps -aq --filter name='^/novaic-llm-factory$')
+    if [ -z \"\$(printf '%s %s' \"\$remaining\" \"\$remaining_names\" | tr -d '[:space:]')\" ]; then
+      exit 0
+    fi
+    sleep 1
+  done
+  echo 'legacy LLM Factory container removal did not settle' >&2
+  exit 1
+fi" || fail "停止旧 LLM Factory Compose/container 失败"
+}
+
+deploy_api_backend_compose() {
+  local namespace="prod"
+  warn "services/api-backend 是远端 build 回退路径；主 CD 路径请用 ./deploy services-image <namespace> <image-ref>"
+  info "部署 API backend Docker Compose 到 api.gradievo.com (remote build fallback, namespace=$namespace)"
+  sync_api_backend_compose
+  sync_api_backend_build_context
+  build_api_backend_image
+  write_api_backend_env "$namespace" "$API_BACKEND_IMAGE" "$API_BACKEND_ENV_FILE" "$API_BACKEND_BUILD_DIR/novaic-common/config/services.json"
+  validate_api_backend_compose "$API_BACKEND_ENV_FILE" "$namespace"
+  stop_legacy_host_backends
+  info "启动 API backend Compose topology..."
+  compose_api_backend "up -d --remove-orphans" || fail "docker compose up 失败"
+  compose_api_backend "ps" || fail "docker compose ps 失败"
+  ok "API backend Docker Compose 已部署"
+}
+
+deploy_services_image() {
+  local namespace="${1:-}"
+  local raw_image_ref="${2:-}"
+  [ -n "$namespace" ] || fail "用法: ./deploy services-image <namespace> <image-ref|sha|digest>"
+  [ -n "$raw_image_ref" ] || fail "用法: ./deploy services-image <namespace> <image-ref|sha|digest>"
+  validate_namespace "$namespace"
+  local image_ref env_file
+  image_ref="$(normalize_image_ref api-backend "$raw_image_ref")"
+  validate_immutable_image_ref "$namespace" "$image_ref"
+  env_file="$(api_backend_env_file_for_namespace "$namespace")"
+  ensure_host_infra_running
+  sync_api_backend_compose
+  sync_api_backend_config_snapshot
+  write_api_backend_env "$namespace" "$image_ref" "$env_file" "$API_BACKEND_COMPOSE_DIR/services.json"
+  validate_api_backend_compose "$env_file" "$namespace"
+  stop_legacy_host_backends
+  if [ "$namespace" = "prod" ]; then
+    stop_legacy_api_backend_compose_project
+  fi
+  info "拉取 API backend image (namespace=$namespace, image=$image_ref)..."
+  compose_api_backend_env "$env_file" "pull" || fail "API backend image pull 失败"
+  info "启动 API backend image release (namespace=$namespace)..."
+  compose_api_backend_env "$env_file" "up -d --no-build --remove-orphans" || fail "API backend image up 失败"
+  compose_api_backend_env "$env_file" "ps" || fail "API backend image ps 失败"
+  ok "API backend image release 已部署 (namespace=$namespace, image=$image_ref)"
+}
+
+# ── 后端服务回滚路径（legacy host venv + start.sh） ──────────────────────────
 
 deploy_gateway() {
   info "部署 Gateway + Business + Device + Entangled"
@@ -226,8 +629,9 @@ deploy_shared_venv_service() {
   ok "$name 已部署（全部服务已重启）"
 }
 
-deploy_services() {
-  info "部署全部后端服务到 api.gradievo.com"
+deploy_legacy_host_services() {
+  warn "services-legacy 是 host venv + /opt/novaic/start.sh 回滚路径；当前主路径是 ./deploy services"
+  info "部署全部 legacy host-process 后端服务到 api.gradievo.com"
   echo ""
 
   # novaic-common / novaic-sandbox-sdk / novaic-logicalfs
@@ -250,6 +654,209 @@ deploy_services() {
   ok "全部后端服务已部署！"
 }
 
+deploy_services() {
+  ensure_host_infra_running
+  deploy_api_backend_compose
+}
+
+# ── Host infra deployment: Dockerize everything except nginx ─────────────────
+
+sync_host_infra_compose() {
+  info "同步 Host infra Compose package..."
+  $API_SSH "mkdir -p '$HOST_INFRA_COMPOSE_DIR'" || fail "创建 Host infra Compose 目录失败"
+  rsync -avz --delete -e ssh \
+    "$REPO_ROOT/docker/host-infra/" \
+    "$API_HOST:$HOST_INFRA_COMPOSE_DIR/" \
+    || fail "同步 Host infra Compose package 失败"
+}
+
+sync_host_infra_build_context() {
+  info "同步 Host infra Docker build context..."
+  $API_SSH "rm -rf '$HOST_INFRA_BUILD_DIR' && mkdir -p '$HOST_INFRA_BUILD_DIR'" \
+    || fail "准备 Host infra build context 失败"
+  rsync -avzL --delete $RSYNC_EXCLUDE -e ssh \
+    "$REPO_ROOT/novaic-quic-service/" \
+    "$API_HOST:$HOST_INFRA_BUILD_DIR/novaic-quic-service/" \
+    || fail "同步 novaic-quic-service build context 失败"
+}
+
+write_host_infra_env() {
+  info "生成 Host infra Compose env 文件..."
+  $API_SSH "cat > '$HOST_INFRA_ENV_FILE' <<'REMOTE_ENV'
+# Generated by ./deploy host-infra; do not commit.
+NOVAIC_REDIS_IMAGE=redis:7-alpine
+NOVAIC_COTURN_IMAGE=coturn/coturn:4.6.3
+NOVAIC_QUIC_IMAGE=$QUIC_IMAGE
+NOVAIC_QUIC_GATEWAY_URL=https://api.gradievo.com
+NOVAIC_QUIC_RELAY_PORT=443
+NOVAIC_QUIC_STUN_PORT=3478
+NOVAIC_QUIC_DISABLE_STUN=1
+NOVAIC_QUIC_TLS_CERT_PATH=/etc/letsencrypt/live/relay.gradievo.com/fullchain.pem
+NOVAIC_QUIC_TLS_KEY_PATH=/etc/letsencrypt/live/relay.gradievo.com/privkey.pem
+NOVAIC_QUIC_RUST_LOG=info
+REMOTE_ENV
+chmod 600 '$HOST_INFRA_ENV_FILE'" || fail "生成 Host infra env 失败"
+}
+
+build_host_infra_quic_image() {
+  info "构建 novaic-quic-service Docker image ($QUIC_IMAGE)..."
+  $API_SSH "docker build \
+    -f '$HOST_INFRA_COMPOSE_DIR/Dockerfile.quic' \
+    -t '$QUIC_IMAGE' \
+    '$HOST_INFRA_BUILD_DIR/novaic-quic-service'" \
+    || fail "novaic-quic-service Docker image 构建失败"
+}
+
+prepare_host_infra_runtime() {
+  info "准备 Host infra runtime 数据与配置..."
+  $API_SSH "set -euo pipefail
+mkdir -p '$HOST_INFRA_RUNTIME_DIR/redis' '$HOST_INFRA_RUNTIME_DIR/coturn'
+if command -v redis-cli >/dev/null 2>&1 && systemctl is-active --quiet redis-server 2>/dev/null; then
+  redis-cli save >/dev/null 2>&1 || true
+fi
+if [ -f /var/lib/redis/dump.rdb ]; then
+  cp -p /var/lib/redis/dump.rdb '$HOST_INFRA_RUNTIME_DIR/redis/dump.rdb'
+fi
+chown -R 999:999 '$HOST_INFRA_RUNTIME_DIR/redis' 2>/dev/null || true
+if [ ! -f '$HOST_INFRA_RUNTIME_DIR/coturn/turnserver.conf' ]; then
+  test -f /etc/turnserver.conf
+  cp -p /etc/turnserver.conf '$HOST_INFRA_RUNTIME_DIR/coturn/turnserver.conf'
+fi
+chmod 600 '$HOST_INFRA_RUNTIME_DIR/coturn/turnserver.conf'" \
+    || fail "准备 Host infra runtime 失败"
+}
+
+compose_host_infra() {
+  $API_SSH "cd '$HOST_INFRA_COMPOSE_DIR' && docker compose \
+    --env-file '$HOST_INFRA_ENV_FILE' \
+    -f compose.yaml $*"
+}
+
+validate_host_infra_compose() {
+  info "验证 Host infra Compose config..."
+  compose_host_infra "config > '$HOST_INFRA_COMPOSE_DIR/compose.rendered.yaml'" \
+    || fail "Host infra docker compose config 失败"
+}
+
+stop_host_bare_infra_services() {
+  info "停止并禁用 Redis/coturn/QUIC host systemd 服务..."
+  $API_SSH "for unit in redis-server coturn novaic-quic-service; do
+    systemctl stop \"\$unit\" 2>/dev/null || true
+    systemctl disable \"\$unit\" 2>/dev/null || true
+  done" || fail "停止 host infra systemd 服务失败"
+}
+
+verify_host_infra() {
+  info "验证 Host infra Docker ownership..."
+  $API_SSH "set -euo pipefail
+cd '$HOST_INFRA_COMPOSE_DIR'
+docker compose --env-file '$HOST_INFRA_ENV_FILE' -f compose.yaml ps
+docker exec novaic-redis redis-cli -h 127.0.0.1 -p 6379 ping | grep -q PONG
+
+assert_docker_listener() {
+  proto=\"\$1\"
+  port=\"\$2\"
+  if [ \"\$proto\" = tcp ]; then
+    line=\$(ss -tlnp 2>/dev/null | grep \":\$port \" | head -1 || true)
+  else
+    line=\$(ss -ulnp 2>/dev/null | grep \":\$port \" | head -1 || true)
+  fi
+  [ -n \"\$line\" ] || { echo \"missing \$proto listener on \$port\" >&2; exit 1; }
+  pid=\$(printf \"%s\" \"\$line\" | grep -oP 'pid=\\K[0-9]+' | head -1 || true)
+  [ -n \"\$pid\" ] || { echo \"missing pid for \$proto listener on \$port\" >&2; exit 1; }
+  cgroup=\$(cat \"/proc/\$pid/cgroup\" 2>/dev/null || true)
+  printf \"%s/%s pid=%s cgroup=%s\\n\" \"\$proto\" \"\$port\" \"\$pid\" \"\$cgroup\"
+  printf \"%s\" \"\$cgroup\" | grep -Eq 'docker|containerd' || {
+    echo \"listener \$proto/\$port is not Docker-owned\" >&2
+    exit 1
+  }
+}
+
+assert_docker_listener tcp 6379
+assert_docker_listener udp 3478
+assert_docker_listener tcp 3478
+assert_docker_listener udp 443
+
+for unit in redis-server coturn novaic-quic-service; do
+  if systemctl is-active --quiet \"\$unit\" 2>/dev/null; then
+    echo \"host unit still active: \$unit\" >&2
+    exit 1
+  fi
+done
+systemctl is-active --quiet nginx
+curl -fsS http://127.0.0.1:19996/ready >/dev/null
+curl -fsS http://127.0.0.1:19991/ready >/dev/null" \
+    || fail "Host infra 验证失败"
+  ok "Host infra Docker ownership 验证通过"
+}
+
+cleanup_host_bare_infra_residue() {
+  info "清理 Redis/coturn/QUIC host 残留（nginx 保留 host）..."
+  $API_SSH "set -euo pipefail
+test -f '$HOST_INFRA_RUNTIME_DIR/coturn/turnserver.conf'
+test -d '$HOST_INFRA_RUNTIME_DIR/redis'
+backup_dir=\"/opt/novaic/backups/host-infra-cleanup-\$(date +%Y%m%d-%H%M%S)\"
+mkdir -p \"\$backup_dir\"
+chmod 700 \"\$backup_dir\"
+for path in \
+  /opt/novaic/start.sh \
+  /etc/systemd/system/novaic-quic-service.service \
+  /etc/turnserver.conf \
+  /etc/redis/redis.conf; do
+  if [ -e \"\$path\" ]; then
+    cp -a \"\$path\" \"\$backup_dir/\$(basename \"\$path\")\"
+  fi
+done
+if [ -d /opt/novaic/novaic-quic-service ]; then
+  find /opt/novaic/novaic-quic-service -maxdepth 2 -type f | head -200 > \"\$backup_dir/old-quic-files.txt\" || true
+fi
+systemctl stop redis-server coturn novaic-quic-service 2>/dev/null || true
+systemctl disable redis-server coturn novaic-quic-service 2>/dev/null || true
+if command -v apt-get >/dev/null 2>&1; then
+  DEBIAN_FRONTEND=noninteractive apt-get purge -y redis-server coturn > \"\$backup_dir/apt-purge.log\" 2>&1 || true
+fi
+rm -f /etc/systemd/system/novaic-quic-service.service
+rm -rf /opt/novaic/start.sh /opt/novaic/services /opt/novaic/novaic-quic-service /var/lib/redis /var/log/redis /etc/redis
+systemctl daemon-reload
+systemctl reset-failed redis-server coturn novaic-quic-service 2>/dev/null || true
+{
+  echo \"backup_dir=\$backup_dir\"
+  echo \"runtime_coturn=$HOST_INFRA_RUNTIME_DIR/coturn/turnserver.conf\"
+  echo \"runtime_redis=$HOST_INFRA_RUNTIME_DIR/redis\"
+} > \"\$backup_dir/summary.txt\"" \
+    || fail "清理 host infra 残留失败"
+  ok "Redis/coturn/QUIC host 残留已清理"
+}
+
+deploy_host_infra() {
+  info "部署 Host infra Docker Compose 到 api.gradievo.com（nginx 保留 host）"
+  sync_host_infra_compose
+  sync_host_infra_build_context
+  write_host_infra_env
+  build_host_infra_quic_image
+  prepare_host_infra_runtime
+  validate_host_infra_compose
+  stop_host_bare_infra_services
+  info "启动 Host infra Compose topology..."
+  compose_host_infra "up -d --remove-orphans" || fail "Host infra docker compose up 失败"
+  verify_host_infra
+  cleanup_host_bare_infra_residue
+  verify_host_infra
+  ok "Host infra Docker Compose 已部署"
+}
+
+ensure_host_infra_running() {
+  if $API_SSH "test -f '$HOST_INFRA_COMPOSE_DIR/compose.yaml' && \
+    cd '$HOST_INFRA_COMPOSE_DIR' && \
+    docker compose --env-file '$HOST_INFRA_ENV_FILE' -f compose.yaml ps --services --filter status=running | grep -qx redis && \
+    docker compose --env-file '$HOST_INFRA_ENV_FILE' -f compose.yaml ps --services --filter status=running | grep -qx coturn && \
+    docker compose --env-file '$HOST_INFRA_ENV_FILE' -f compose.yaml ps --services --filter status=running | grep -qx quic-relay" >/dev/null 2>&1; then
+    ok "Host infra Docker Compose 已运行"
+  else
+    deploy_host_infra
+  fi
+}
+
 deploy_relay() {
   info "部署 novaic-quic-service 到 relay"
   cd "$REPO_ROOT/novaic-quic-service"
@@ -260,19 +867,196 @@ deploy_relay() {
   $RELAY_SSH 'systemctl is-active novaic-quic-service' && ok "Relay 已部署" || warn "服务未运行"
 }
 
+sync_factory_docker_package() {
+  local local_dir="$1"
+  info "同步 LLM Factory Docker package..."
+  $API_SSH "mkdir -p '$FACTORY_DOCKER_DIR' '$FACTORY_APP_DIR'" || fail "创建 Factory Docker 目录失败"
+  sync_dir_to_api "$local_dir" "$FACTORY_APP_DIR"
+  copy_file_to_api "$REPO_ROOT/docker/llm-factory/Dockerfile" "$FACTORY_APP_DIR/Dockerfile"
+  copy_file_to_api "$REPO_ROOT/docker/llm-factory/.dockerignore" "$FACTORY_APP_DIR/.dockerignore"
+  copy_file_to_api "$REPO_ROOT/docker/llm-factory/compose.yaml" "$FACTORY_COMPOSE_FILE"
+}
+
+sync_factory_compose_package() {
+  info "同步 LLM Factory Compose package..."
+  copy_file_to_api "$REPO_ROOT/docker/llm-factory/compose.yaml" "$FACTORY_COMPOSE_FILE"
+}
+
+write_factory_env() {
+  local namespace="$1"
+  local image_ref="$2"
+  validate_namespace "$namespace"
+  local env_file release_id image_digest runtime_env data_dir secrets_dir port postgres_network
+  env_file="$(factory_env_file_for_namespace "$namespace")"
+  release_id="$(release_id_from_image_ref "$image_ref")"
+  image_digest="$(image_digest_from_ref "$image_ref")"
+  runtime_env="$(factory_runtime_env_file_for_namespace "$namespace")"
+  data_dir="$(factory_data_dir_for_namespace "$namespace")"
+  secrets_dir="$(factory_secrets_dir_for_namespace "$namespace")"
+  port="$(factory_port_for_namespace "$namespace")"
+  postgres_network="$(factory_postgres_network_for_namespace "$namespace")"
+  info "生成 LLM Factory Compose env (namespace=$namespace, image=$image_ref)..."
+  $API_SSH "set -euo pipefail
+    mkdir -p '$FACTORY_DOCKER_DIR/$namespace'
+    umask 077
+    cat > '$env_file' <<'FACTORY_ENV'
+COMPOSE_PROJECT_NAME=novaic-llm-factory-$namespace
+NOVAIC_NAMESPACE=$namespace
+NOVAIC_RELEASE_ID=$release_id
+NOVAIC_HOST_ID=api-host-1
+NOVAIC_ENVIRONMENT=$namespace
+NOVAIC_IMAGE_DIGEST=$image_digest
+NOVAIC_LLM_FACTORY_IMAGE=$image_ref
+NOVAIC_LLM_FACTORY_BUILD_CONTEXT=./app
+NOVAIC_LLM_FACTORY_RUNTIME_ENV=$runtime_env
+NOVAIC_LLM_FACTORY_DATA_DIR=$data_dir
+NOVAIC_LLM_FACTORY_SECRETS_DIR=$secrets_dir
+NOVAIC_LLM_FACTORY_CONFIG=/data/config.json
+NOVAIC_LLM_FACTORY_PORT=$port
+NOVAIC_LLM_FACTORY_CONTAINER_PORT=19990
+NOVAIC_POSTGRES_NETWORK=$postgres_network
+FACTORY_ENV
+    chmod 600 '$env_file'" || fail "生成 LLM Factory env 失败"
+}
+
+verify_factory_runtime_inputs() {
+  local namespace="${1:-prod}"
+  validate_namespace "$namespace"
+  local runtime_env data_dir secrets_dir
+  runtime_env="$(factory_runtime_env_file_for_namespace "$namespace")"
+  data_dir="$(factory_data_dir_for_namespace "$namespace")"
+  secrets_dir="$(factory_secrets_dir_for_namespace "$namespace")"
+  info "检查远端 LLM Factory runtime inputs（不打印 secret）..."
+  $API_SSH "test -f '$runtime_env' && \
+    test -f '$data_dir/config.json' && \
+    test -f '$secrets_dir/postgres_dsn' && \
+    test -d '$data_dir' && \
+    test -d '$secrets_dir'" \
+    || fail "远端 Factory runtime.env/data/secrets 不完整"
+}
+
+compose_factory_env() {
+  local env_file="$1"
+  shift
+  $API_SSH "cd '$FACTORY_DOCKER_DIR' && docker compose --env-file '$env_file' -f '$FACTORY_COMPOSE_FILE' $*"
+}
+
 deploy_factory() {
-  info "部署 LLM Factory 到 newapi.gradievo.com"
+  local namespace="prod"
+  local image_ref="${NOVAIC_LLM_FACTORY_IMAGE:-novaic/llm-factory:local}"
+  local factory_env_file
+  factory_env_file="$(factory_env_file_for_namespace "$namespace")"
+  warn "factory 是远端 build 回退路径；主 CD 路径请用 ./deploy factory-image <namespace> <image-ref>"
+  info "部署 LLM Factory Docker 到 api.gradievo.com (remote build fallback, namespace=$namespace)"
   local local_dir="$REPO_ROOT/novaic-llm-factory"
   [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
-  info "同步代码..."
-  rsync -avz $RSYNC_EXCLUDE -e ssh "$local_dir/" "$FACTORY_HOST:/opt/novaic/llm-factory/" || fail "rsync 失败"
   info "同步公网 Factory Logs 页面..."
   $API_SSH "mkdir -p /opt/novaic/static" || fail "创建公网静态目录失败"
   rsync -avz -e ssh "$local_dir/static/factory-logs.html" "$API_HOST:/opt/novaic/static/factory-logs.html" || fail "同步 Factory Logs 页面失败"
-  info "安装依赖 + 重启..."
-  $FACTORY_SSH 'cd /opt/novaic/llm-factory && source .venv/bin/activate && pip install -q -r requirements.txt && systemctl restart llm-factory' || fail "重启失败"
+  sync_factory_docker_package "$local_dir"
+  write_factory_env "$namespace" "$image_ref"
+  verify_factory_runtime_inputs "$namespace"
+  info "构建并启动 LLM Factory Docker container..."
+  compose_factory_env "$factory_env_file" "build llm-factory" \
+    || fail "LLM Factory Docker build 失败"
+  compose_factory_env "$factory_env_file" "up -d llm-factory" \
+    || fail "LLM Factory Docker up 失败"
   sleep 2
-  $FACTORY_SSH 'curl -sf http://127.0.0.1:19990/health' && ok "LLM Factory 已部署 (newapi.gradievo.com)" || fail "健康检查失败"
+  compose_factory_env "$factory_env_file" "ps llm-factory" \
+    || fail "LLM Factory Docker ps 失败"
+  $API_SSH 'curl -sf http://127.0.0.1:19990/health' && ok "LLM Factory Docker 已部署 (api.gradievo.com)" || fail "健康检查失败"
+}
+
+deploy_factory_image() {
+  local namespace="${1:-}"
+  local raw_image_ref="${2:-}"
+  [ -n "$namespace" ] || fail "用法: ./deploy factory-image <namespace> <image-ref|sha|digest>"
+  [ -n "$raw_image_ref" ] || fail "用法: ./deploy factory-image <namespace> <image-ref|sha|digest>"
+  validate_namespace "$namespace"
+  local image_ref env_file port
+  image_ref="$(normalize_image_ref llm-factory "$raw_image_ref")"
+  validate_immutable_image_ref "$namespace" "$image_ref"
+  env_file="$(factory_env_file_for_namespace "$namespace")"
+  port="$(factory_port_for_namespace "$namespace")"
+  ensure_host_infra_running
+  sync_factory_compose_package
+  write_factory_env "$namespace" "$image_ref"
+  verify_factory_runtime_inputs "$namespace"
+  if [ "$namespace" = "prod" ]; then
+    stop_legacy_factory_compose_project
+  fi
+  info "拉取 LLM Factory image (namespace=$namespace, image=$image_ref)..."
+  compose_factory_env "$env_file" "pull llm-factory" || fail "LLM Factory image pull 失败"
+  info "启动 LLM Factory image release (namespace=$namespace)..."
+  compose_factory_env "$env_file" "up -d --no-build llm-factory" || fail "LLM Factory image up 失败"
+  compose_factory_env "$env_file" "ps llm-factory" || fail "LLM Factory image ps 失败"
+  $API_SSH "curl -sf http://127.0.0.1:$port/health" && ok "LLM Factory image release 已部署 (namespace=$namespace, image=$image_ref)" || fail "健康检查失败"
+}
+
+# ── Release Controller 部署（Docker Compose, image-based） ────────────────────
+
+sync_release_controller_compose_package() {
+  info "同步 Release Controller Compose package..."
+  sync_dir_to_api "$REPO_ROOT/docker/release-controller" "$RELEASE_CONTROLLER_DOCKER_DIR"
+}
+
+write_release_controller_env() {
+  local image_ref="$1"
+  local port="${NOVAIC_RELEASE_CONTROLLER_PORT:-19880}"
+  info "生成 Release Controller Compose env 文件 (image=$image_ref)..."
+  $API_SSH "mkdir -p '$RELEASE_CONTROLLER_DOCKER_DIR' '$RELEASE_CONTROLLER_RUNTIME_DIR/state' '$RELEASE_CONTROLLER_RUNTIME_DIR/worktree' /opt/novaic/releases" \
+    || fail "准备 Release Controller 运行目录失败"
+  $API_SSH "cat > '$RELEASE_CONTROLLER_ENV_FILE'" <<EOF
+COMPOSE_PROJECT_NAME=novaic-release-controller
+NOVAIC_RELEASE_CONTROLLER_IMAGE=$image_ref
+NOVAIC_RELEASE_CONTROLLER_PORT=$port
+NOVAIC_RELEASE_CONTROLLER_CONFIG=$RELEASE_CONTROLLER_RUNTIME_DIR/config.json
+NOVAIC_RELEASE_CONTROLLER_CONFIG_HOST=$RELEASE_CONTROLLER_RUNTIME_DIR/config.json
+NOVAIC_RELEASE_CONTROLLER_STATE_DIR=$RELEASE_CONTROLLER_RUNTIME_DIR/state
+NOVAIC_RELEASES_DIR=/opt/novaic/releases
+NOVAIC_RELEASE_CONTROLLER_WORKTREE=$RELEASE_CONTROLLER_RUNTIME_DIR/worktree
+NOVAIC_DOCKER_SOCKET=/var/run/docker.sock
+EOF
+}
+
+verify_release_controller_runtime_inputs() {
+  info "检查 Release Controller runtime 输入..."
+  $API_SSH "[ -f '$RELEASE_CONTROLLER_RUNTIME_DIR/config.json' ]" \
+    || fail "Release Controller config 不存在: $RELEASE_CONTROLLER_RUNTIME_DIR/config.json"
+  $API_SSH "[ -S /var/run/docker.sock ]" \
+    || fail "Docker socket 不存在: /var/run/docker.sock"
+}
+
+compose_release_controller_env() {
+  local env_file="$1"
+  shift
+  $API_SSH "cd '$RELEASE_CONTROLLER_DOCKER_DIR' && docker compose --env-file '$env_file' -f '$RELEASE_CONTROLLER_COMPOSE_FILE' $*"
+}
+
+deploy_release_controller_image() {
+  local raw_image_ref="${1:-}"
+  [ -n "$raw_image_ref" ] || fail "用法: ./deploy release-controller-image <image-ref|sha|digest>"
+  local image_ref port
+  image_ref="$(normalize_image_ref release-controller "$raw_image_ref")"
+  validate_immutable_image_ref "release-controller" "$image_ref"
+  port="${NOVAIC_RELEASE_CONTROLLER_PORT:-19880}"
+  sync_release_controller_compose_package
+  write_release_controller_env "$image_ref"
+  verify_release_controller_runtime_inputs
+  info "验证 Release Controller Compose config..."
+  compose_release_controller_env "$RELEASE_CONTROLLER_ENV_FILE" "config > '$RELEASE_CONTROLLER_DOCKER_DIR/compose.rendered.yaml'" \
+    || fail "Release Controller docker compose config 失败"
+  info "拉取 Release Controller image (image=$image_ref)..."
+  compose_release_controller_env "$RELEASE_CONTROLLER_ENV_FILE" "pull release_controller" \
+    || fail "Release Controller image pull 失败"
+  info "启动 Release Controller image release..."
+  compose_release_controller_env "$RELEASE_CONTROLLER_ENV_FILE" "up -d --no-build release_controller" \
+    || fail "Release Controller image up 失败"
+  compose_release_controller_env "$RELEASE_CONTROLLER_ENV_FILE" "ps release_controller" \
+    || fail "Release Controller image ps 失败"
+  $API_SSH "curl -sf http://127.0.0.1:$port/health" \
+    && ok "Release Controller image release 已部署 (image=$image_ref)" \
+    || fail "Release Controller 健康检查失败"
 }
 
 # ── 聚合命令 ──────────────────────────────────────────────────────────────────
@@ -292,6 +1076,48 @@ deploy_all() {
 check_status() {
   info "检查 api.gradievo.com 服务状态"
   echo ""
+  info "LLM Factory Docker"
+  $API_SSH "
+    if [ -d '$FACTORY_DOCKER_DIR' ] && [ -f '$FACTORY_COMPOSE_FILE' ]; then
+      cd '$FACTORY_DOCKER_DIR'
+      docker compose --env-file '$(factory_env_file_for_namespace prod)' -f '$FACTORY_COMPOSE_FILE' ps llm-factory
+      curl -sf http://127.0.0.1:19990/health >/dev/null && echo '  LLM Factory: healthy on 127.0.0.1:19990' || echo '  LLM Factory: health check failed'
+    else
+      echo '  Factory compose package 尚未安装: $FACTORY_DOCKER_DIR'
+    fi
+  "
+  echo ""
+  info "Host infra Docker Compose"
+  $API_SSH "
+    if [ -d '$HOST_INFRA_COMPOSE_DIR' ] && [ -f '$HOST_INFRA_COMPOSE_DIR/compose.yaml' ]; then
+      cd '$HOST_INFRA_COMPOSE_DIR'
+      if [ -f '$HOST_INFRA_ENV_FILE' ]; then
+        docker compose --env-file '$HOST_INFRA_ENV_FILE' -f compose.yaml ps
+      else
+        echo '  WARN: $HOST_INFRA_ENV_FILE 不存在，使用 compose 默认值显示状态'
+        docker compose -f compose.yaml ps
+      fi
+    else
+      echo '  Host infra compose package 尚未安装: $HOST_INFRA_COMPOSE_DIR'
+    fi
+  "
+  echo ""
+  info "API backend Docker Compose"
+  $API_SSH "
+    if [ -d '$API_BACKEND_COMPOSE_DIR' ] && [ -f '$API_BACKEND_COMPOSE_DIR/compose.yaml' ]; then
+      cd '$API_BACKEND_COMPOSE_DIR'
+      if [ -f '$API_BACKEND_ENV_FILE' ]; then
+        docker compose --env-file '$API_BACKEND_ENV_FILE' -f compose.yaml ps
+      else
+        echo '  WARN: $API_BACKEND_ENV_FILE 不存在，使用 compose 默认值显示状态'
+        docker compose -f compose.yaml ps
+      fi
+    else
+      echo '  Compose package 尚未安装: $API_BACKEND_COMPOSE_DIR'
+    fi
+  "
+  echo ""
+  info "Legacy/live port audit"
   $API_SSH '
     echo "  PORT  | PID    | SERVICE"
     echo "  ------|--------|--------"
@@ -328,21 +1154,75 @@ check_status() {
         printf "  %-23s %-8s %-6s ✗\n" "$label" "$expected" "$actual"
       fi
     }
-    /opt/novaic/services/novaic-agent-runtime/.venv/bin/python \
-      /opt/novaic/services/novaic-agent-runtime/scripts/runtime_worker_roster.py \
-      process-checks |
-    while IFS="$(printf "\t")" read -r label pattern expected; do
-      check_role "$label" "$pattern" "$expected"
-    done
+    if [ -x /opt/novaic/services/novaic-agent-runtime/.venv/bin/python ] && \
+       [ -f /opt/novaic/services/novaic-agent-runtime/scripts/runtime_worker_roster.py ]; then
+      /opt/novaic/services/novaic-agent-runtime/.venv/bin/python \
+        /opt/novaic/services/novaic-agent-runtime/scripts/runtime_worker_roster.py \
+        process-checks |
+      while IFS="$(printf "\t")" read -r label pattern expected; do
+        check_role "$label" "$pattern" "$expected"
+      done
+    else
+      echo "  legacy runtime roster unavailable (expected after full cleanup)"
+    fi
   '
   echo ""
   info "检查 relay 服务状态"
   $RELAY_SSH 'systemctl is-active novaic-quic-service && echo "  Relay: ✓ running" || echo "  Relay: ✗ stopped"'
 }
 
+compose_log_service() {
+  case "$1" in
+    entangled|gateway|business|device|cortex|subscriber) echo "$1" ;;
+    runtime|queue|queue-service) echo "queue-service" ;;
+    blob|blob-service) echo "blob-service" ;;
+    sandboxd|sandbox) echo "sandboxd" ;;
+    health) echo "runtime-health" ;;
+    scheduler) echo "runtime-scheduler" ;;
+    worker) echo "task-worker-control-1" ;;
+    task-worker-control) echo "task-worker-control-1" ;;
+    task-worker-execution) echo "task-worker-execution-1" ;;
+    saga-worker) echo "saga-worker-1" ;;
+    session-outbox) echo "session-outbox-worker" ;;
+    saga-outbox) echo "saga-outbox-worker" ;;
+    *) echo "" ;;
+  esac
+}
+
 check_logs() {
   local svc="${2:-gateway}"
   info "查看 $svc 最新日志"
+  if [ "$svc" = "factory" ] || [ "$svc" = "llm-factory" ]; then
+    $API_SSH "cd '$FACTORY_DOCKER_DIR' && docker compose --env-file '$(factory_env_file_for_namespace prod)' -f '$FACTORY_COMPOSE_FILE' logs --tail 80 llm-factory"
+    return
+  fi
+  case "$svc" in
+    redis|coturn|quic|quic-relay|host-infra)
+      local infra_svc="$svc"
+      [ "$infra_svc" = "quic" ] && infra_svc="quic-relay"
+      if [ "$infra_svc" = "host-infra" ]; then
+        $API_SSH "cd '$HOST_INFRA_COMPOSE_DIR' && docker compose --env-file '$HOST_INFRA_ENV_FILE' -f compose.yaml logs --tail 80"
+      else
+        $API_SSH "cd '$HOST_INFRA_COMPOSE_DIR' && docker compose --env-file '$HOST_INFRA_ENV_FILE' -f compose.yaml logs --tail 80 '$infra_svc'"
+      fi
+      return
+      ;;
+  esac
+  local compose_svc
+  compose_svc="$(compose_log_service "$svc")"
+  if [ -n "$compose_svc" ]; then
+    if $API_SSH "test -d '$API_BACKEND_COMPOSE_DIR' && test -f '$API_BACKEND_COMPOSE_DIR/compose.yaml'"; then
+      $API_SSH "
+        cd '$API_BACKEND_COMPOSE_DIR'
+        if [ -f '$API_BACKEND_ENV_FILE' ]; then
+          docker compose --env-file '$API_BACKEND_ENV_FILE' -f compose.yaml logs --tail 80 '$compose_svc'
+        else
+          docker compose -f compose.yaml logs --tail 80 '$compose_svc'
+        fi
+      "
+      return
+    fi
+  fi
   case "$svc" in
     gateway)      $API_SSH "tail -50 /opt/novaic/data/logs/gateway-\$(date +%Y%m%d).log" ;;
     business)     $API_SSH "tail -50 /opt/novaic/data/logs/business-\$(date +%Y%m%d).log" ;;
@@ -355,7 +1235,7 @@ check_logs() {
     health)       $API_SSH "tail -50 /opt/novaic/data/logs/health.log" ;;
     scheduler)    $API_SSH "tail -50 /opt/novaic/data/logs/scheduler.log" ;;
     relay)        $RELAY_SSH "journalctl -u novaic-quic-service --no-pager -n 50" ;;
-    *)            fail "未知服务: $svc (可选: gateway, business, device, entangled, sandboxd, cortex, runtime, worker, health, scheduler, relay)" ;;
+    *)            fail "未知服务: $svc (可选: gateway, business, device, entangled, sandboxd, cortex, runtime, worker, health, scheduler, factory, redis, coturn, quic, host-infra, relay)" ;;
   esac
 }
 
@@ -373,25 +1253,31 @@ show_help() {
   echo "  desktop           构建 macOS 桌面应用"
   echo ""
   echo -e "${CYAN}后端服务 (api.gradievo.com):${NC}"
-  echo "  gateway           部署 Gateway + Business + Device + Entangled"
-  echo "  business          部署 Business Service"
-  echo "  device            部署 Device Service"
-  echo "  runtime           部署 Agent Runtime (workers)"
-  echo "  cortex            部署 Cortex (LLM 编排)"
-  echo "  blob-service      部署 Blob Service"
-  echo "  sandboxd          部署 Sandboxd Service"
-  echo "  entangled         部署 Entangled (实体同步)"
-  echo "  services          部署全部后端"
+  echo "  services-image <namespace> <image>  按 namespace 部署不可变后端镜像（CD 主路径）"
+  echo "  factory-image <namespace> <image>   按 namespace 部署不可变 Factory 镜像（CD 主路径）"
+  echo "  release-controller-image <image>    部署不可变 Release Controller 镜像（中心化 CD 控制面）"
+  echo "  services          回退：远端 build 后部署全部后端 Docker Compose"
+  echo "  api-backend       services 的别名"
+  echo "  services-legacy   回滚：host venv + /opt/novaic/start.sh"
+  echo "  gateway           legacy 单服务部署（会触发 start.sh 全量重启）"
+  echo "  business          legacy 单服务部署（会触发 start.sh 全量重启）"
+  echo "  device            legacy 单服务部署（会触发 start.sh 全量重启）"
+  echo "  runtime           legacy 单服务部署（workers）"
+  echo "  cortex            legacy 单服务部署（LLM 编排）"
+  echo "  blob-service      legacy 单服务部署"
+  echo "  sandboxd          legacy 单服务部署"
+  echo "  entangled         legacy 单服务部署（实体同步）"
   echo ""
   echo -e "${CYAN}基础设施:${NC}"
+  echo "  host-infra        部署 Redis/coturn/QUIC Docker（nginx 保留 host）"
   echo "  relay             部署 QUIC/Relay 到 relay 服务器"
-  echo "  factory           部署 LLM Factory 到 newapi.gradievo.com"
+  echo "  factory           回退：远端 build 后部署 LLM Factory Docker"
   echo ""
   echo -e "${CYAN}聚合 & 运维:${NC}"
   echo "  all [ver]         部署全部"
   echo "  status            检查所有服务状态"
   echo "  fresh-smoke [epoch] 检查关键后端日志是否在 epoch 后更新（默认最近 15 分钟）"
-  echo "  logs [svc]        查看日志 (gateway|business|device|entangled|sandboxd|cortex|runtime|worker|health|scheduler|relay)"
+  echo "  logs [svc]        查看日志 (gateway|business|device|entangled|sandboxd|cortex|runtime|worker|health|scheduler|subscriber|factory|redis|coturn|quic|host-infra|relay)"
   echo ""
 }
 
@@ -405,7 +1291,13 @@ case "${1}" in
   sandboxd)       deploy_single_service "novaic-sandbox-service" ;;
   cortex)         deploy_single_service "novaic-cortex" ;;
   entangled)      rsync_service "novaic-common"; sync_backend_infra_bootstrap; rsync_service "Entangled"; sync_start_sh; restart_all; ok "Entangled 已部署" ;;
+  services-image) deploy_services_image "$2" "$3" ;;
+  factory-image)  deploy_factory_image "$2" "$3" ;;
+  release-controller-image) deploy_release_controller_image "$2" ;;
+  api-backend)    deploy_services ;;
   services)       deploy_services ;;
+  services-legacy) deploy_legacy_host_services ;;
+  host-infra)     deploy_host_infra ;;
   relay)          deploy_relay ;;
   factory)        deploy_factory ;;
   ios)            deploy_ios ;;

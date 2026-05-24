@@ -1,0 +1,136 @@
+name: Backend Images
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  pr-verify:
+    name: PR image and compose verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system tools
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Run lint guards and tests
+        run: ./scripts/run_all_tests.sh
+
+      - name: Render API backend Compose samples
+        run: |
+          set -euo pipefail
+          if docker compose version >/dev/null 2>&1; then
+            COMPOSE="docker compose"
+          else
+            COMPOSE="docker-compose"
+          fi
+          $COMPOSE --env-file docker/api-backend/env.prod.example -f docker/api-backend/compose.yaml config >/tmp/api-prod.yaml
+          $COMPOSE --env-file docker/api-backend/env.staging.example -f docker/api-backend/compose.yaml config >/tmp/api-staging.yaml
+
+      - name: Render LLM Factory Compose samples
+        run: |
+          set -euo pipefail
+          if docker compose version >/dev/null 2>&1; then
+            COMPOSE="docker compose"
+          else
+            COMPOSE="docker-compose"
+          fi
+          $COMPOSE --env-file docker/llm-factory/env.prod.example -f docker/llm-factory/compose.yaml config >/tmp/factory-prod.yaml
+          $COMPOSE --env-file docker/llm-factory/env.staging.example -f docker/llm-factory/compose.yaml config >/tmp/factory-staging.yaml
+
+      - name: Build API backend image
+        run: docker build -f docker/api-backend/Dockerfile -t novaic/api-backend:ci-${{ github.sha }} .
+
+      - name: Build LLM Factory image
+        run: docker build -f docker/llm-factory/Dockerfile -t novaic/llm-factory:ci-${{ github.sha }} novaic-llm-factory
+
+      - name: Image import smoke
+        run: |
+          set -euo pipefail
+          docker run --rm novaic/api-backend:ci-${{ github.sha }} -c "import common.service_runtime; import common.service_registry_server; print('api image ok')"
+          docker run --rm --entrypoint python novaic/llm-factory:ci-${{ github.sha }} -c "import factory.app; print('factory image ok')"
+
+  build-and-push:
+    name: Build immutable images
+    runs-on: ubuntu-latest
+    needs: pr-verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    outputs:
+      api-image: ${{ steps.push.outputs.api_image }}
+      factory-image: ${{ steps.push.outputs.factory_image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push sha-tagged images
+        id: push
+        run: |
+          set -euo pipefail
+          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          short_sha="${GITHUB_SHA::12}"
+          api_tag="${REGISTRY}/${owner}/novaic/api-backend:sha-${short_sha}"
+          factory_tag="${REGISTRY}/${owner}/novaic/llm-factory:sha-${short_sha}"
+
+          docker build -f docker/api-backend/Dockerfile -t "$api_tag" .
+          docker build -f docker/llm-factory/Dockerfile -t "$factory_tag" novaic-llm-factory
+
+          docker push "$api_tag"
+          docker push "$factory_tag"
+
+          api_image="$(docker inspect --format='{{index .RepoDigests 0}}' "$api_tag")"
+          factory_image="$(docker inspect --format='{{index .RepoDigests 0}}' "$factory_tag")"
+          echo "api_image=$api_image" >> "$GITHUB_OUTPUT"
+          echo "factory_image=$factory_image" >> "$GITHUB_OUTPUT"
+
+  deploy-staging:
+    name: Deploy staging namespace
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure API host SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.NOVAIC_API_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H api.gradievo.com >> ~/.ssh/known_hosts
+
+      - name: Deploy staging image release
+        run: |
+          set -euo pipefail
+          ./deploy services-image staging "${{ needs.build-and-push.outputs.api-image }}"
+          ./deploy factory-image staging "${{ needs.build-and-push.outputs.factory-image }}"
+
+      - name: Smoke staging ingress
+        env:
+          STAGING_API_URL: ${{ vars.NOVAIC_STAGING_API_URL }}
+        run: |
+          set -euo pipefail
+          url="${STAGING_API_URL:-https://staging-api.gradievo.com}"
+          curl -fsS "$url/api/health"

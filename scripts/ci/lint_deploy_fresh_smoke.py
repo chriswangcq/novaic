@@ -48,13 +48,13 @@ def main() -> int:
     for needle in deploy_required:
         require(deploy, needle, "deploy", errors)
 
-    services_start = deploy.find("deploy_services() {")
-    services_end = deploy.find("\ndeploy_relay()", services_start)
+    services_start = deploy.find("deploy_legacy_host_services() {")
+    services_end = deploy.find("\ndeploy_services()", services_start)
     services_body = deploy[services_start:services_end] if services_start != -1 and services_end != -1 else ""
     require(
         services_body,
         'remove_retired_backend_package "novaic-sandbox-core"',
-        "deploy_services",
+        "deploy_legacy_host_services",
         errors,
     )
 

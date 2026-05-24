@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260523-104921",
+  "active_ledger_id": "L20260524-113035",
   "ledgers": [
     {
       "active_count": 0,
@@ -737,7 +737,95 @@
       "status": "done",
       "title": "Remove server-side SQLite code residue after Postgres cutover",
       "updated_at": "2026-05-23T04:11:45+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260523-125213",
+      "path": "L20260523-125213",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Dockerize all NovAIC server services on the API host",
+      "updated_at": "2026-05-23T09:32:04+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260523-185409",
+      "path": "L20260523-185409",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Build service catalog, secret split, and dynamic discovery path",
+      "updated_at": "2026-05-23T11:10:50+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260523-202805",
+      "path": "L20260523-202805",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Build centralized service registry service",
+      "updated_at": "2026-05-23T12:39:16+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260523-204037",
+      "path": "L20260523-204037",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Deploy centralized service registry to API host",
+      "updated_at": "2026-05-23T12:53:08+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260523-212852",
+      "path": "L20260523-212852",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Make service registry the only runtime discovery path and deploy it",
+      "updated_at": "2026-05-23T13:54:30+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260523-220055",
+      "path": "L20260523-220055",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Containerize all server processes except nginx",
+      "updated_at": "2026-05-23T14:28:10+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260523-223213",
+      "path": "L20260523-223213",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Namespace-aware immutable CI/CD backend architecture",
+      "updated_at": "2026-05-23T17:51:16+00:00"
+    },
+    {
+      "active_count": 5,
+      "blocked_count": 0,
+      "ledger_id": "L20260524-113035",
+      "path": "L20260524-113035",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "doing",
+      "title": "Centered branch-driven release controller",
+      "updated_at": "2026-05-24T04:55:04+00:00"
     }
   ],
-  "updated_at": "2026-05-23T04:11:45+00:00"
+  "updated_at": "2026-05-24T04:55:04+00:00"
 }

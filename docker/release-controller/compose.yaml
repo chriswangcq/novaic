@@ -1,0 +1,33 @@
+name: "${COMPOSE_PROJECT_NAME:-novaic-release-controller}"
+
+x-controller-image: &controller_image "${NOVAIC_RELEASE_CONTROLLER_IMAGE:?NOVAIC_RELEASE_CONTROLLER_IMAGE required}"
+
+services:
+  release_controller:
+    image: *controller_image
+    init: true
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+      NOVAIC_RELEASE_CONTROLLER_CONFIG: "${NOVAIC_RELEASE_CONTROLLER_CONFIG:-/opt/novaic/release-controller/config.json}"
+    volumes:
+      - ${NOVAIC_RELEASE_CONTROLLER_CONFIG_HOST:?NOVAIC_RELEASE_CONTROLLER_CONFIG_HOST required}:${NOVAIC_RELEASE_CONTROLLER_CONFIG:-/opt/novaic/release-controller/config.json}:ro
+      - ${NOVAIC_RELEASE_CONTROLLER_STATE_DIR:?NOVAIC_RELEASE_CONTROLLER_STATE_DIR required}:/opt/novaic/release-controller/state
+      - ${NOVAIC_RELEASES_DIR:?NOVAIC_RELEASES_DIR required}:/opt/novaic/releases
+      - ${NOVAIC_RELEASE_CONTROLLER_WORKTREE:?NOVAIC_RELEASE_CONTROLLER_WORKTREE required}:/opt/novaic/release-controller/worktree
+      - ${NOVAIC_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:${NOVAIC_RELEASE_CONTROLLER_PORT:-19880}:19880"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:19880/health >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

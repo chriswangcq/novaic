@@ -20,11 +20,12 @@
 | 文档 | 服务 | 端口 |
 |------|------|------|
 | [Agent Runtime](services/agent-runtime.md) | Agent 执行引擎 + Queue Service | :19997 |
+| [Service Registry](services/service-registry.md) | 中心化服务注册与发现 | :19991 |
 | [Cortex](services/cortex.md) | 上下文管理 | :19996 |
 | [Business](services/business.md) | 实体管理 + Action Hooks | :19998 |
 | [Gateway](services/gateway.md) | API 网关 | :19999 |
 | [Device](services/device.md) | 设备管理 | :19993 |
-| [LLM Factory](services/llm-factory.md) | 模型路由 | :9100 |
+| [LLM Factory](services/llm-factory.md) | 模型路由 | :19990 |
 | [Sandbox Service](services/sandbox-service.md) | 进程隔离执行 | :19994 |
 | [Blob Service](services/blob-service.md) | 对象存储 | :19995 |
 | [Entangled](services/entangled.md) | 实体同步 | :19900 |

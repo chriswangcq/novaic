@@ -1,0 +1,4 @@
+# Dependencies imported by backend runtime paths but not owned by one service
+# requirements file.
+PyYAML>=6.0
+requests>=2.31

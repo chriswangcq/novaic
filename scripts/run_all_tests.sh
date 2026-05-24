@@ -65,6 +65,18 @@ run_pytest() {
 run_check "root-ci-guards" "$PYTHON_BIN" -m pytest -q
 run_check "runtime-worker-supervision-lint" "$PYTHON_BIN" scripts/ci/lint_runtime_worker_supervision.py
 run_check "deploy-fresh-smoke-lint" "$PYTHON_BIN" scripts/ci/lint_deploy_fresh_smoke.py
+run_check "image-namespace-deploy-lint" "$PYTHON_BIN" scripts/ci/lint_image_namespace_deploy.py
+run_check "immutable-image-workflows-lint" "$PYTHON_BIN" scripts/ci/lint_immutable_image_workflows.py
+run_check "namespace-platform-docs-lint" "$PYTHON_BIN" scripts/ci/lint_namespace_platform_docs.py
+run_check "api-backend-compose-path-lint" "$PYTHON_BIN" scripts/ci/lint_api_backend_compose_path.py
+run_check "api-backend-namespace-compose-lint" "$PYTHON_BIN" scripts/ci/lint_api_backend_namespace_compose.py
+run_check "host-infra-compose-path-lint" "$PYTHON_BIN" scripts/ci/lint_host_infra_compose_path.py
+run_check "llm-factory-docker-path-lint" "$PYTHON_BIN" scripts/ci/lint_llm_factory_docker_path.py
+run_check "llm-factory-namespace-compose-lint" "$PYTHON_BIN" scripts/ci/lint_llm_factory_namespace_compose.py
+run_check "release-controller-ci-guard" "$PYTHON_BIN" -m pytest -q scripts/ci/test_release_controller_ci.py
+run_check "service-config-secret-split-lint" "$PYTHON_BIN" scripts/ci/lint_service_config_secret_split.py
+run_check "service-catalog-discovery-lint" "$PYTHON_BIN" scripts/ci/lint_service_catalog_discovery.py
+run_check "namespace-registry-runtime-lint" "$PYTHON_BIN" scripts/ci/lint_namespace_registry_runtime.py
 run_check "retired-runtime-vocabulary-lint" "$PYTHON_BIN" scripts/ci/lint_retired_runtime_vocabulary.py
 run_check "start-config-contract-lint" "$PYTHON_BIN" scripts/ci/check_start_config_contract.py
 run_pytest "sandbox-sdk" "novaic-sandbox-sdk" "."

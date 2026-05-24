@@ -1,0 +1,70 @@
+name: novaic-host-infra
+
+x-common-logging: &common_logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  redis:
+    image: "${NOVAIC_REDIS_IMAGE:-redis:7-alpine}"
+    container_name: novaic-redis
+    network_mode: host
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --bind
+      - "127.0.0.1"
+      - --protected-mode
+      - "yes"
+      - --port
+      - "6379"
+      - --dir
+      - /data
+      - --save
+      - "60"
+      - "1"
+      - --appendonly
+      - "no"
+    volumes:
+      - /opt/novaic/host-infra/redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h 127.0.0.1 -p 6379 ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    logging: *common_logging
+
+  coturn:
+    image: "${NOVAIC_COTURN_IMAGE:-coturn/coturn:4.6.3}"
+    container_name: novaic-coturn
+    user: "0:0"
+    network_mode: host
+    restart: unless-stopped
+    command:
+      - -c
+      - /etc/coturn/turnserver.conf
+      - --pidfile=
+    volumes:
+      - /opt/novaic/host-infra/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    logging: *common_logging
+
+  quic-relay:
+    image: "${NOVAIC_QUIC_IMAGE:-novaic/quic-service:local}"
+    container_name: novaic-quic-relay
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      GATEWAY_URL: "${NOVAIC_QUIC_GATEWAY_URL:-https://api.gradievo.com}"
+      RELAY_PORT: "${NOVAIC_QUIC_RELAY_PORT:-443}"
+      STUN_PORT: "${NOVAIC_QUIC_STUN_PORT:-3478}"
+      DISABLE_STUN: "${NOVAIC_QUIC_DISABLE_STUN:-1}"
+      RELAY_TLS_CERT_PATH: "${NOVAIC_QUIC_TLS_CERT_PATH:-/etc/letsencrypt/live/relay.gradievo.com/fullchain.pem}"
+      RELAY_TLS_KEY_PATH: "${NOVAIC_QUIC_TLS_KEY_PATH:-/etc/letsencrypt/live/relay.gradievo.com/privkey.pem}"
+      RUST_LOG: "${NOVAIC_QUIC_RUST_LOG:-info}"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    logging: *common_logging

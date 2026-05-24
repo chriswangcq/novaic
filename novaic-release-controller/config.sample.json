@@ -1,0 +1,44 @@
+{
+  "state_dir": "/opt/novaic/release-controller/state",
+  "repo": {
+    "path": "/opt/novaic/release-controller/worktree",
+    "remote": "origin"
+  },
+  "registry": {
+    "api_image": "127.0.0.1:5000/novaic/api-backend",
+    "factory_image": "127.0.0.1:5000/novaic/llm-factory"
+  },
+  "deploy": {
+    "script_path": "/opt/novaic/release-controller/worktree/deploy",
+    "verify_commands": [
+      ["./scripts/run_all_tests.sh"]
+    ],
+    "health_urls": {
+      "staging": "https://staging-api.gradievo.com/api/health",
+      "prod": "https://api.gradievo.com/api/health"
+    }
+  },
+  "branch_rules": [
+    {
+      "pattern": "main",
+      "mode": "auto_deploy",
+      "namespace": "staging"
+    },
+    {
+      "pattern": "preview/*",
+      "mode": "auto_deploy",
+      "namespace_template": "preview-{slug}"
+    },
+    {
+      "pattern": "release/*",
+      "mode": "candidate_only"
+    }
+  ],
+  "poll_interval_seconds": 60,
+  "polling_enabled": false,
+  "dry_run_default": true,
+  "server": {
+    "host": "127.0.0.1",
+    "port": 19880
+  }
+}

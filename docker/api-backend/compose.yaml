@@ -1,0 +1,861 @@
+name: "${COMPOSE_PROJECT_NAME:-novaic-api-backend}"
+
+x-backend-image: &backend_image "${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}"
+
+x-common-environment: &common_environment
+  PYTHONUNBUFFERED: "1"
+  NOVAIC_NAMESPACE: "${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}"
+  NOVAIC_RELEASE_ID: "${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}"
+  NOVAIC_HOST_ID: "${NOVAIC_HOST_ID:-api-host-1}"
+  NOVAIC_ENVIRONMENT: "${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}"
+  NOVAIC_IMAGE_DIGEST: "${NOVAIC_IMAGE_DIGEST:-}"
+  NOVAIC_IMAGE_REF: "${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}"
+  NOVAIC_DATA_DIR: "${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}"
+  NOVAIC_SERVICE_REGISTRY_URL: "${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}"
+  NOVAIC_BLOB_BACKEND: "${NOVAIC_BLOB_BACKEND:-oss}"
+  NOVAIC_OSS_ACCESS_KEY: "${NOVAIC_OSS_ACCESS_KEY:-}"
+  NOVAIC_OSS_SECRET_KEY: "${NOVAIC_OSS_SECRET_KEY:-}"
+  NOVAIC_OSS_ENDPOINT: "${NOVAIC_OSS_ENDPOINT:-https://oss-cn-hongkong.aliyuncs.com}"
+  NOVAIC_OSS_REGION: "${NOVAIC_OSS_REGION:-cn-hongkong}"
+  NOVAIC_OSS_BUCKET: "${NOVAIC_OSS_BUCKET:-}"
+  AWS_DEFAULT_REGION: "${NOVAIC_OSS_REGION:-cn-hongkong}"
+
+x-common-volumes: &common_volumes
+  - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}:${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+  - ${NOVAIC_POSTGRES_SECRETS_DIR:-/opt/novaic/postgres/secrets}:/opt/novaic/postgres/secrets:ro
+  - ${NOVAIC_ETC_DIR:-/opt/novaic/etc}:/opt/novaic/etc:ro
+
+x-common-service: &common_service
+  image: *backend_image
+  init: true
+  network_mode: host
+  restart: unless-stopped
+  environment: *common_environment
+  volumes: *common_volumes
+  stop_grace_period: 30s
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+x-http-healthcheck: &http_healthcheck
+  interval: 10s
+  timeout: 3s
+  retries: 12
+  start_period: 20s
+
+services:
+  entangled:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - entangled_service
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-entangled
+      - --advertise-url
+      - http://127.0.0.1:${NOVAIC_ENTANGLED_PORT:?NOVAIC_ENTANGLED_PORT required}
+      - --health-path
+      - /v1/health
+      - --compose-service
+      - entangled
+      - --
+      - -m
+      - entangled.app.main
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_ENTANGLED_PORT:?NOVAIC_ENTANGLED_PORT required}"
+      - --postgres-dsn-file
+      - /opt/novaic/postgres/secrets/novaic_entangled_dsn
+      - --service-token-file
+      - ${NOVAIC_ENTANGLED_SERVICE_TOKEN_FILE:?NOVAIC_ENTANGLED_SERVICE_TOKEN_FILE required}
+      - --log-level
+      - info
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_ENTANGLED_PORT:?NOVAIC_ENTANGLED_PORT required}/v1/health >/dev/null"]
+
+  queue-service:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - queue_service
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-queue-service
+      - --advertise-url
+      - http://127.0.0.1:${NOVAIC_QUEUE_PORT:?NOVAIC_QUEUE_PORT required}
+      - --health-path
+      - /ready
+      - --compose-service
+      - queue-service
+      - --
+      - /opt/novaic/services/novaic-agent-runtime/main_novaic.py
+      - queue-service
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_QUEUE_PORT:?NOVAIC_QUEUE_PORT required}"
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --postgres-dsn-file
+      - /opt/novaic/postgres/secrets/novaic_queue_dsn
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_QUEUE_PORT:?NOVAIC_QUEUE_PORT required}/ready >/dev/null"]
+
+  service-registry:
+    <<: *common_service
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - service_registry
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-service-registry
+      - --advertise-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --health-path
+      - /ready
+      - --compose-service
+      - service-registry
+      - --
+      - -m
+      - common.service_registry_server
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_REGISTRY_PORT:?NOVAIC_REGISTRY_PORT required}"
+      - --postgres-dsn-file
+      - /opt/novaic/postgres/secrets/novaic_registry_dsn
+      - --postgres-table
+      - ${NOVAIC_REGISTRY_TABLE:?NOVAIC_REGISTRY_TABLE required}
+      - --log-level
+      - info
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_REGISTRY_PORT:?NOVAIC_REGISTRY_PORT required}/ready >/dev/null"]
+
+  blob-service:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - blob_service
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-blob-service
+      - --advertise-url
+      - http://127.0.0.1:${NOVAIC_BLOB_PORT:?NOVAIC_BLOB_PORT required}
+      - --health-path
+      - /api/health
+      - --compose-service
+      - blob-service
+      - --
+      - /opt/novaic/services/novaic-blob-service/main_blob_service.py
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_BLOB_PORT:?NOVAIC_BLOB_PORT required}"
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_BLOB_PORT:?NOVAIC_BLOB_PORT required}/api/health >/dev/null"]
+
+  sandboxd:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - sandboxd
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-sandboxd
+      - --advertise-url
+      - http://127.0.0.1:${NOVAIC_SANDBOX_PORT:?NOVAIC_SANDBOX_PORT required}
+      - --health-path
+      - /health
+      - --compose-service
+      - sandboxd
+      - --
+      - /opt/novaic/services/novaic-sandbox-service/main_sandbox_service.py
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_SANDBOX_PORT:?NOVAIC_SANDBOX_PORT required}"
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_SANDBOX_PORT:?NOVAIC_SANDBOX_PORT required}/health >/dev/null"]
+
+  gateway:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+      blob-service:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - gateway
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-gateway
+      - --advertise-url
+      - http://127.0.0.1:${NOVAIC_GATEWAY_PORT:?NOVAIC_GATEWAY_PORT required}
+      - --health-path
+      - /api/health
+      - --compose-service
+      - gateway
+      - --require-service
+      - queue_service=--queue-service-url
+      - --require-service
+      - blob_service=--blob-service-url
+      - --require-service
+      - blob_service=--blob-upload-url
+      - --
+      - /opt/novaic/services/novaic-gateway/main_gateway.py
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_GATEWAY_PORT:?NOVAIC_GATEWAY_PORT required}"
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --postgres-dsn-file
+      - /opt/novaic/postgres/secrets/novaic_gateway_dsn
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_GATEWAY_PORT:?NOVAIC_GATEWAY_PORT required}/api/health >/dev/null"]
+
+  business:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      entangled:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - business
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-business
+      - --advertise-url
+      - http://127.0.0.1:${NOVAIC_BUSINESS_PORT:?NOVAIC_BUSINESS_PORT required}
+      - --health-path
+      - /health
+      - --compose-service
+      - business
+      - --require-service
+      - entangled_service=--entangled-url
+      - --require-service
+      - gateway=--gateway-url
+      - --
+      - /opt/novaic/services/novaic-business/main_business.py
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_BUSINESS_PORT:?NOVAIC_BUSINESS_PORT required}"
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_BUSINESS_PORT:?NOVAIC_BUSINESS_PORT required}/health >/dev/null"]
+
+  device:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      business:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - device
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-device
+      - --advertise-url
+      - http://127.0.0.1:${NOVAIC_DEVICE_PORT:?NOVAIC_DEVICE_PORT required}
+      - --health-path
+      - /health
+      - --compose-service
+      - device
+      - --require-service
+      - gateway=--gateway-url
+      - --require-service
+      - business=--business-url
+      - --
+      - /opt/novaic/services/novaic-device/main_device.py
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_DEVICE_PORT:?NOVAIC_DEVICE_PORT required}"
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_DEVICE_PORT:?NOVAIC_DEVICE_PORT required}/health >/dev/null"]
+
+  cortex:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      blob-service:
+        condition: service_healthy
+      sandboxd:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --service-name
+      - cortex
+      - --instance-id
+      - ${NOVAIC_HOST_ID:-api-host-1}-cortex
+      - --advertise-url
+      - http://127.0.0.1:${NOVAIC_CORTEX_PORT:?NOVAIC_CORTEX_PORT required}
+      - --health-path
+      - /ready
+      - --compose-service
+      - cortex
+      - --require-service
+      - blob_service=--blob-service-url
+      - --require-service
+      - sandboxd=--sandboxd-url
+      - --
+      - -m
+      - novaic_cortex.main_cortex
+      - --host
+      - "127.0.0.1"
+      - --port
+      - "${NOVAIC_CORTEX_PORT:?NOVAIC_CORTEX_PORT required}"
+      - --jwt-secret
+      - "${NOVAIC_JWT_SECRET:-}"
+      - --internal-key
+      - "${NOVAIC_CORTEX_INTERNAL_KEY:-cortex-internal-dev}"
+      - --cortex-api-url
+      - http://127.0.0.1:${NOVAIC_CORTEX_PORT:?NOVAIC_CORTEX_PORT required}
+      - --operational-postgres-dsn-file
+      - /opt/novaic/postgres/secrets/novaic_cortex_dsn
+      - --redis-url
+      - ${NOVAIC_REDIS_URL:?NOVAIC_REDIS_URL required}
+      - --redis-lock-ttl-seconds
+      - "300"
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_CORTEX_PORT:?NOVAIC_CORTEX_PORT required}/ready >/dev/null"]
+
+  task-worker-control-1:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      business:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+      cortex:
+        condition: service_healthy
+    command: &task_worker_control_command
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --compose-service
+      - task-worker-control
+      - --require-service
+      - business=--business-url
+      - --require-service
+      - queue_service=--queue-service-url
+      - --require-service
+      - cortex=--cortex-url
+      - --
+      - /opt/novaic/services/novaic-agent-runtime/main_novaic.py
+      - task-worker
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --pool
+      - control
+      - --num-workers
+      - "1"
+
+  task-worker-control-2:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      business:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+      cortex:
+        condition: service_healthy
+    command: *task_worker_control_command
+
+  task-worker-execution-1:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      business:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+      cortex:
+        condition: service_healthy
+    command: &task_worker_execution_command
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --compose-service
+      - task-worker-execution
+      - --require-service
+      - business=--business-url
+      - --require-service
+      - queue_service=--queue-service-url
+      - --require-service
+      - cortex=--cortex-url
+      - --
+      - /opt/novaic/services/novaic-agent-runtime/main_novaic.py
+      - task-worker
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --pool
+      - execution
+      - --num-workers
+      - "1"
+
+  task-worker-execution-2:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      business:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+      cortex:
+        condition: service_healthy
+    command: *task_worker_execution_command
+
+  saga-worker-1:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+      cortex:
+        condition: service_healthy
+    command: &saga_worker_command
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --compose-service
+      - saga-worker
+      - --require-service
+      - queue_service=--queue-service-url
+      - --require-service
+      - cortex=--cortex-url
+      - --
+      - /opt/novaic/services/novaic-agent-runtime/main_novaic.py
+      - saga-worker
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --max-concurrent
+      - "4"
+
+  saga-worker-2:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+      cortex:
+        condition: service_healthy
+    command: *saga_worker_command
+
+  session-outbox-worker:
+    <<: *common_service
+    depends_on:
+      queue-service:
+        condition: service_healthy
+    command:
+      - /opt/novaic/services/novaic-agent-runtime/main_novaic.py
+      - session-outbox-worker
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --postgres-dsn-file
+      - /opt/novaic/postgres/secrets/novaic_queue_dsn
+
+  saga-outbox-worker:
+    <<: *common_service
+    depends_on:
+      queue-service:
+        condition: service_healthy
+    command:
+      - /opt/novaic/services/novaic-agent-runtime/main_novaic.py
+      - saga-outbox-worker
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --postgres-dsn-file
+      - /opt/novaic/postgres/secrets/novaic_queue_dsn
+
+  runtime-health:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --compose-service
+      - runtime-health
+      - --require-service
+      - queue_service=--queue-service-url
+      - --
+      - /opt/novaic/services/novaic-agent-runtime/main_novaic.py
+      - health
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --metrics-host
+      - "127.0.0.1"
+      - --metrics-port
+      - "${NOVAIC_RUNTIME_HEALTH_PORT:?NOVAIC_RUNTIME_HEALTH_PORT required}"
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_RUNTIME_HEALTH_PORT:?NOVAIC_RUNTIME_HEALTH_PORT required}/metrics >/dev/null"]
+
+  runtime-scheduler:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      business:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+      cortex:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --compose-service
+      - runtime-scheduler
+      - --require-service
+      - business=--business-url
+      - --require-service
+      - queue_service=--queue-service-url
+      - --require-service
+      - cortex=--cortex-url
+      - --
+      - /opt/novaic/services/novaic-agent-runtime/main_novaic.py
+      - scheduler
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --metrics-host
+      - "127.0.0.1"
+      - --metrics-port
+      - "${NOVAIC_RUNTIME_SCHEDULER_PORT:?NOVAIC_RUNTIME_SCHEDULER_PORT required}"
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_RUNTIME_SCHEDULER_PORT:?NOVAIC_RUNTIME_SCHEDULER_PORT required}/metrics >/dev/null"]
+
+  subscriber:
+    <<: *common_service
+    depends_on:
+      service-registry:
+        condition: service_healthy
+      entangled:
+        condition: service_healthy
+      business:
+        condition: service_healthy
+      queue-service:
+        condition: service_healthy
+    command:
+      - -m
+      - common.service_runtime
+      - --service-registry-url
+      - ${NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required}
+      - --namespace
+      - ${NOVAIC_NAMESPACE:?NOVAIC_NAMESPACE required}
+      - --release-id
+      - ${NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required}
+      - --host-id
+      - ${NOVAIC_HOST_ID:-api-host-1}
+      - --compose-project
+      - ${COMPOSE_PROJECT_NAME:-novaic-api-backend}
+      - --image-digest
+      - ${NOVAIC_IMAGE_DIGEST:-}
+      - --image-ref
+      - ${NOVAIC_API_BACKEND_IMAGE:-novaic/api-backend:local}
+      - --environment
+      - ${NOVAIC_ENVIRONMENT:?NOVAIC_ENVIRONMENT required}
+      - --compose-service
+      - subscriber
+      - --require-service
+      - entangled_service=--entangled-url
+      - --require-service
+      - business=--business-url
+      - --require-service
+      - queue_service=--queue-service-url
+      - --
+      - /opt/novaic/services/novaic-business/main_subscriber.py
+      - --data-dir
+      - ${NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required}
+      - --metrics-host
+      - "127.0.0.1"
+      - --metrics-port
+      - "${NOVAIC_SUBSCRIBER_PORT:?NOVAIC_SUBSCRIBER_PORT required}"
+    healthcheck:
+      <<: *http_healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${NOVAIC_SUBSCRIBER_PORT:?NOVAIC_SUBSCRIBER_PORT required}/metrics >/dev/null"]

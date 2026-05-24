@@ -22,7 +22,7 @@
                                               ▼                 ▼                  ▼
                                          ┌─────────┐    ┌────────────┐     ┌────────────┐
                                          │ Cortex  │    │ LLM Factory│     │  Device /  │
-                                         │ :19996  │    │   :9100    │     │  Sandbox   │
+                                         │ :19996  │    │   :19990   │     │  Sandbox   │
                                          └─────────┘    └────────────┘     └────────────┘
 ```
 
@@ -106,7 +106,7 @@ Agent Runtime → Sandbox Service → 沙箱容器（隔离执行环境）
 
 ### LLM Factory 调用
 
-Agent Runtime 向 LLM Factory :9100 发起推理请求：
+Agent Runtime 向 LLM Factory :19990 发起推理请求：
 - 携带完整 prompt（系统提示 + 上下文 + 用户消息 + 工具定义）
 - LLM Factory 管理多模型路由、API key 池、速率控制
 - 返回结构化响应：文本回复或 tool_use 调用

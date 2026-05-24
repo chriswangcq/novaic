@@ -1,0 +1,48 @@
+name: Backend Promote Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_image:
+        description: "API backend immutable image ref that passed staging"
+        required: true
+        type: string
+      factory_image:
+        description: "LLM Factory immutable image ref that passed staging"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  promote-prod:
+    name: Promote same images to prod
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure API host SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.NOVAIC_API_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H api.gradievo.com >> ~/.ssh/known_hosts
+
+      - name: Promote API backend and Factory images
+        run: |
+          set -euo pipefail
+          ./deploy services-image prod "${{ inputs.api_image }}"
+          ./deploy factory-image prod "${{ inputs.factory_image }}"
+
+      - name: Smoke prod ingress
+        env:
+          PROD_API_URL: ${{ vars.NOVAIC_PROD_API_URL }}
+        run: |
+          set -euo pipefail
+          url="${PROD_API_URL:-https://api.gradievo.com}"
+          curl -fsS "$url/api/health"

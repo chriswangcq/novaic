@@ -1,12 +1,19 @@
 # Local secrets (never commit)
 aliyunkey.txt
+novaic-common/config/secrets.local.json
 
 # Build artifacts
 dist/
+dashboards/*.html
 .pytest_cache/
 __pycache__/
 *.py[cod]
+*.egg-info/
+build/
 examples/tauri-ios-hello/node_modules/
 rustdesk-ref/
 thirdparty/
 novaic-command-center/
+
+# Claude Code
+.claude/

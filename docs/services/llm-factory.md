@@ -2,7 +2,7 @@
 
 ## 概述与职责
 
-LLM Factory 是 Novaic 平台的大模型调用服务，运行在端口 `:9100`，基于 Python / FastAPI 构建。它是一个独立部署的服务，为平台提供统一的 LLM 调用入口，屏蔽不同模型提供商的 API 差异。
+LLM Factory 是 Novaic 平台的大模型调用服务，当前在 API host 上以 Docker 容器运行，监听 `127.0.0.1:19990`，基于 Python / FastAPI 构建。它是一个独立部署的服务，为平台提供统一的 LLM 调用入口，屏蔽不同模型提供商的 API 差异。
 
 核心职责包括：
 

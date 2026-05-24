@@ -1,0 +1,18 @@
+# Runtime coturn config shape. Do not put secrets in this committed example.
+# ./deploy host-infra copies the live /etc/turnserver.conf to:
+# /opt/novaic/host-infra/coturn/turnserver.conf
+
+listening-port=3478
+tls-listening-port=5349
+realm=gradievo.com
+use-auth-secret
+static-auth-secret=REPLACE_ON_HOST
+cert=/etc/letsencrypt/live/relay.gradievo.com/fullchain.pem
+pkey=/etc/letsencrypt/live/relay.gradievo.com/privkey.pem
+external-ip=PUBLIC_IP/PRIVATE_IP
+min-port=53000
+max-port=65535
+no-cli
+fingerprint
+alt-listening-port=3479
+alt-tls-listening-port=5350

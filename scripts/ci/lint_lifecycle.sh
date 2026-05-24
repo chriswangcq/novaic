@@ -5,8 +5,8 @@
 # Why
 # ---
 # Environment notifications own Agent-loop delivery and lifecycle. Any new
-# writer to chat_messages.lifecycle is therefore either a historical migration
-# or a bug that reintroduces the retired message-lifecycle branch.
+# writer to chat_messages.lifecycle is therefore a bug that reintroduces the
+# retired message-lifecycle branch.
 #
 # How
 # ---

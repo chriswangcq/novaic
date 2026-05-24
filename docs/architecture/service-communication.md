@@ -45,7 +45,7 @@
                  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
                  │  Cortex  │  │  Device  │  │   LLM    │  │ Sandbox  │
                  │  :19996  │  │  :19993  │  │ Factory  │  │ Service  │
-                 └──────────┘  └──────────┘  │  :9100   │  └──────────┘
+                 └──────────┘  └──────────┘  │ :19990   │  └──────────┘
                                              └──────────┘
 ```
 
@@ -62,7 +62,7 @@
 | Business | Entangled :19900 | HTTP | 实体写入（触发同步） |
 | Agent Runtime | Cortex :19996 | HTTP | 上下文读写（ContextEvent） |
 | Agent Runtime | Device :19993 | HTTP | 工具执行（shell、截图、输入） |
-| Agent Runtime | LLM Factory :9100 | HTTP | LLM 推理调用 |
+| Agent Runtime | LLM Factory :19990 | HTTP | LLM 推理调用 |
 | Agent Runtime | Sandbox Service | HTTP | 沙箱内代码/命令执行 |
 
 ### HTTP 客户端实现
@@ -110,35 +110,69 @@ Queue Service spawn worker 进程；Device Service 通过 WS 发送 typed comman
 
 ### 端口分配表
 
-| 端口 | 服务 | 说明 |
-|------|------|------|
-| 19999 | Gateway | API 网关，外部流量入口 |
-| 19998 | Business | 核心业务逻辑 |
-| 19997 | Queue Service | 任务队列与 Worker 调度 |
-| 19996 | Cortex | 上下文管理 |
-| 19995 | Blob Service | 大对象存储 |
-| 19993 | Device Service | 设备管理 |
-| 19900 | Entangled | 实时同步 |
-| 9100 | LLM Factory | LLM 推理网关 |
+服务名不随环境改名；`prod` 和 `staging` 都叫 `gateway`、`business`、`queue_service`。环境隔离来自 registry namespace、Compose project、数据目录、Postgres/Redis/OSS 前缀和 host 端口。
 
-### 服务发现：services.json
+| prod 端口 | staging 端口 | 服务 | 说明 |
+|-----------|--------------|------|------|
+| 19999 | 29999 | Gateway | API 网关，外部流量入口 |
+| 19998 | 29998 | Business | 核心业务逻辑 |
+| 19997 | 29997 | Queue Service | 任务队列与 Worker 调度 |
+| 19991 | 29991 | Service Registry | 中心化服务注册与发现 |
+| 19996 | 29996 | Cortex | 上下文管理 |
+| 19995 | 29995 | Blob Service | 大对象存储 |
+| 19993 | 29993 | Device Service | 设备管理 |
+| 19900 | 29900 | Entangled | 实时同步 |
+| 19990 | 29990 | LLM Factory | LLM 推理网关 |
+
+### 服务发现：registry-only runtime discovery
 
 ```json
 {
-  "gateway":       { "host": "localhost", "port": 19999 },
-  "business":      { "host": "localhost", "port": 19998 },
-  "queue_service": { "host": "localhost", "port": 19997 },
-  "cortex":        { "host": "localhost", "port": 19996 },
-  "blob_service":  { "host": "localhost", "port": 19995 },
-  "device":        { "host": "localhost", "port": 19993 },
-  "entangled":     { "host": "localhost", "port": 19900 },
-  "llm_factory":   { "host": "localhost", "port": 9100  }
+  "gateway": {
+    "url": "http://127.0.0.1:19999",
+    "port": 19999,
+    "health_path": "/api/health",
+    "compose_service": "gateway",
+    "dependencies": ["queue_service", "blob_service"]
+  },
+  "service_registry": {
+    "url": "http://127.0.0.1:19991",
+    "port": 19991,
+    "health_path": "/ready",
+    "compose_service": "service-registry",
+    "dependencies": []
+  },
+  "llm_factory": {
+    "url": "http://127.0.0.1:19990",
+    "port": 19990,
+    "health_path": "/health",
+    "compose_service": "llm-factory",
+    "dependencies": []
+  }
 }
 ```
 
-- 由 `ServiceConfig`（novaic-common）加载解析，启动时严格校验
-- 所有服务引用目标地址均通过 `ServiceConfig` 获取，不硬编码端口
-- 云端部署时 host 替换为内部 DNS 名称，端口保持不变
+- `services.json` 是服务 manifest/bootstrap 元数据，负责服务身份、预期端口、健康检查、Compose 名称、owner 和依赖关系；它不是运行时 fallback。
+- `ServiceCatalog`（novaic-common）加载并验证这份 manifest，供配置校验、文档和 bootstrap 使用。
+- `service-registry` 是运行在 API host Docker 中的中心化 HTTP 服务，prod 默认 `127.0.0.1:19991`，staging 默认 `127.0.0.1:29991`，Postgres 表为 `service_registry_instances`。
+- Registry 主键是 `(namespace, service_name, instance_id)`；调用方发现依赖时必须带同一个 namespace，例如 staging `business` 只 discover `namespace=staging, service=queue_service`。
+- `common.service_runtime` 负责进程启动前从 service-registry 解析同 namespace 依赖 URL，并在服务健康后注册自身、定时 heartbeat、退出时 deregister。
+- `ServiceRegistry` / `RegistryOnlyResolver` 是运行时实例层；调用方只接受 fresh healthy registry 实例，registry 不可用或无实例时显式失败，不使用静态 URL 回退。
+- 运行时密钥来自 `/opt/novaic/etc/<namespace>/secrets.json` 或本地 `secrets.local.json`，不写入 committed `services.json`。
+
+### Nginx ingress 边界
+
+Nginx 只做外部 ingress，不参与服务发现，也不决定内部依赖路由。
+
+```nginx
+server_name api.gradievo.com;
+proxy_pass http://127.0.0.1:19999;
+
+server_name staging-api.gradievo.com;
+proxy_pass http://127.0.0.1:29999;
+```
+
+内部服务发现仍由 namespace registry 决定：prod 服务无法 discover staging 实例，staging 服务也无法 discover prod 实例。
 
 ### 连接拓扑总结
 

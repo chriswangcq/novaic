@@ -31,7 +31,9 @@ forbid_hits() {
 require_hit "runtime-notification-prompt" \
   rg -q '\[Environment notification\]' novaic-agent-runtime/task_queue/handlers/context_handlers.py
 require_hit "runtime-im-read-before-reply" \
-  rg -q '_unobserved_current_input_ids' novaic-agent-runtime/task_queue/handlers/environment_tool_handlers.py
+  rg -q 'agentctl im read --notification-id' novaic-agent-runtime/task_queue/handlers/context_handlers.py
+require_hit "runtime-input-notification-ssot" \
+  rg -q 'input_message_ids' novaic-agent-runtime/task_queue/handlers/context_handlers.py
 require_hit "runtime-scope-end-processed" \
   rg -q 'transition_environment_notifications' novaic-agent-runtime/task_queue/handlers/cortex_handlers.py
 

@@ -96,14 +96,27 @@
 | `/api/files/*` | CRUD | 文件操作 |
 | `/api/health` | GET | 健康检查 |
 
-## LLM Factory (:9100)
+## LLM Factory (:19990)
 
 | 路径 | 方法 | 说明 |
 |------|------|------|
-| `/api/chat/completions` | POST | LLM 推理（Provider 路由） |
-| `/api/models` | GET | 可用模型列表 |
-| `/api/api-keys/*` | CRUD | API Key 管理（RSA-2048 加密） |
-| `/api/health` | GET | 健康检查 |
+| `/v1/chat/completions` | POST | LLM 推理（Provider 路由） |
+| `/v1/config/models` | GET/POST | 模型配置 |
+| `/v1/config/api-keys/*` | CRUD | API Key 管理（RSA-2048 加密） |
+| `/health` | GET | 健康检查 |
+
+## Service Registry (:19991)
+
+| 路径 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查 |
+| `/ready` | GET | 就绪检查 |
+| `/v1/registry/namespaces/{namespace}/instances` | POST | 注册或更新同 namespace 服务实例 |
+| `/v1/registry/namespaces/{namespace}/instances/{service_name}/{instance_id}/heartbeat` | POST | 同 namespace 实例心跳与状态更新 |
+| `/v1/registry/namespaces/{namespace}/instances/{service_name}/{instance_id}` | DELETE | 注销同 namespace 实例 |
+| `/v1/registry/namespaces/{namespace}/services/{service_name}/instances` | GET | 列出同 namespace 实例，可按 fresh/discoverable 过滤 |
+| `/v1/registry/namespaces/{namespace}/services/{service_name}/discover` | GET | 返回同 namespace 最新 fresh healthy 实例 |
+| `/v1/registry/namespaces/{namespace}/services/{service_name}/prune-stale` | POST | 清理同 namespace 过期实例 |
 
 ## Entangled (:19900)
 

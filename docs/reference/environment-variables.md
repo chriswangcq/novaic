@@ -7,6 +7,7 @@
 | `NOVAIC_ENV` | 运行环境（development/production） | development |
 | `NOVAIC_DATA_DIR` | 数据目录 | `/opt/novaic/data` |
 | `NOVAIC_LOG_LEVEL` | 日志级别 | INFO |
+| `NOVAIC_SECRETS_PATH` | 测试/本地显式密钥 overlay 路径；生产默认 `/opt/novaic/etc/secrets.json` | 未设置 |
 
 ## Gateway
 
@@ -74,7 +75,7 @@
 | 变量 | 说明 |
 |------|------|
 | `LLM_FACTORY_HOST` | 监听地址 |
-| `LLM_FACTORY_PORT` | 监听端口（默认 9100） |
+| `LLM_FACTORY_PORT` | 监听端口（API host Docker 默认 19990） |
 | `RSA_PRIVATE_KEY` | API Key 解密私钥（RSA-2048） |
 
 ## VmControl

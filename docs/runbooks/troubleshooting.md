@@ -43,7 +43,7 @@
 
 ### LLM 调用失败
 
-1. 检查 LLM Factory :9100 状态
+1. 检查 LLM Factory :19990 状态
 2. 确认 API Key 已配置且有效
 3. 检查 Provider 响应错误（429 限流、401 认证、500 服务端错误）
 4. LLM Factory 有指数退避重试，等待后重试

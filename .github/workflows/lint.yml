@@ -29,14 +29,16 @@ jobs:
       run: ./scripts/ci/lint_subagent_status.sh
     - name: Run scope-phase lint (PR-29)
       run: ./scripts/ci/lint_scope_phase.sh
-    - name: Run legacy-message-columns lint (PR-30)
-      run: ./scripts/ci/lint_legacy_message_columns.sh
+    - name: Run retired-message-columns lint
+      run: ./scripts/ci/lint_retired_message_columns.sh
     - name: Run chat_messages.read UI-only lint (P6-12 / R10)
       run: ./scripts/ci/lint_chat_messages_read.sh
     - name: Run wake-continuity contract lint (PR-45.2 / R9)
       run: ./scripts/ci/lint_wake_continuity_contract.sh
     - name: Run Cortex boundary lint (PR-76)
       run: ./scripts/ci/lint_cortex_boundary.sh
+    - name: Run Blob workspace boundary lint
+      run: python3 scripts/ci/lint_blob_workspace_boundary.py
     - name: Run retired-service residue lint (PR-140)
       run: ./scripts/ci/lint_retired_service_residue.sh
     - name: Run frontend phantom-tool lint (PR-142)
@@ -53,6 +55,30 @@ jobs:
       run: python3 scripts/ci/lint_docs_status_consistency.py
     - name: Run deploy fresh-smoke lint
       run: python3 scripts/ci/lint_deploy_fresh_smoke.py
+    - name: Run image namespace deploy lint
+      run: python3 scripts/ci/lint_image_namespace_deploy.py
+    - name: Run immutable image workflow lint
+      run: python3 scripts/ci/lint_immutable_image_workflows.py
+    - name: Run namespace platform docs lint
+      run: python3 scripts/ci/lint_namespace_platform_docs.py
+    - name: Run API backend Compose path lint
+      run: python3 scripts/ci/lint_api_backend_compose_path.py
+    - name: Run API backend namespace Compose lint
+      run: python3 scripts/ci/lint_api_backend_namespace_compose.py
+    - name: Run host-infra Compose path lint
+      run: python3 scripts/ci/lint_host_infra_compose_path.py
+    - name: Run LLM Factory Docker path lint
+      run: python3 scripts/ci/lint_llm_factory_docker_path.py
+    - name: Run LLM Factory namespace Compose lint
+      run: python3 scripts/ci/lint_llm_factory_namespace_compose.py
+    - name: Run release-controller CI guard
+      run: python3 -m pytest -q scripts/ci/test_release_controller_ci.py
+    - name: Run service config secret-split lint
+      run: python3 scripts/ci/lint_service_config_secret_split.py
+    - name: Run service catalog/discovery lint
+      run: python3 scripts/ci/lint_service_catalog_discovery.py
+    - name: Run namespace registry/runtime lint
+      run: python3 scripts/ci/lint_namespace_registry_runtime.py
     - name: Run runtime worker supervision lint
       run: python3 scripts/ci/lint_runtime_worker_supervision.py
     - name: Run retired runtime vocabulary lint

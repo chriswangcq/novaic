@@ -22,7 +22,7 @@
 set -e
 
 # Match a chat_messages row literal (rough heuristic: the dict has both
-# ``"agent_id"`` and one of the banned legacy keys close by) and the
+# ``"agent_id"`` and one of the banned retired keys close by) and the
 # four schema declarations.
 # Narrow patterns: ``processed`` / ``claimed_by`` / ``claimed_at`` are
 # *only* chat_messages columns (no name collisions with other entities),
@@ -43,7 +43,7 @@ PATTERNS=(
 ALLOWLIST=(
     'tests/'
     'docs/'
-    'scripts/ci/lint_legacy_message_columns.sh'
+    'scripts/ci/lint_retired_message_columns.sh'
 )
 
 violations=0
@@ -70,7 +70,7 @@ if [[ $violations -gt 0 ]]; then
     echo "are banned. Use ``lifecycle`` (via Entangled's"
     echo "POST /v1/messages/{id}/transition) for dispatch state and"
     echo "``read`` for user-facing unread receipts. See"
-    echo "docs/roadmap/tickets/PR-30-drop-legacy-message-fields.md."
+    echo "the retired-message-fields roadmap note."
     exit 1
 fi
-echo "legacy_message_columns lint OK"
+echo "retired_message_columns lint OK"
