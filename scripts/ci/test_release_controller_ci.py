@@ -137,6 +137,7 @@ def test_deploy_release_controller_image_guard() -> None:
         "require_release_controller_invocation",
         "start_api_backend_release()",
         "wait_api_backend_compose_service_healthy()",
+        "wait_api_backend_release_healthy()",
         "reset_api_backend_compose_project()",
         "label=com.docker.compose.project=",
     ]:
