@@ -1,0 +1,1555 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-24T11:31:46+00:00",
+      "criteria_map": [
+        "Release Controller config accepts explicit quality-gate list with stable names and argv commands: satisfied by `QualityGate` and config tests.",
+        "Malformed quality gates and empty commands are rejected: satisfied by parametrized malformed-gate and duplicate-name tests.",
+        "Branch release plans include named `quality-*` steps after git/submodule steps and before image builds: satisfied by planner change and ordering assertions.",
+        "Promotion and rollback command plans contain only deploy/smoke steps and no quality/build steps: satisfied by promotion/rollback planner tests.",
+        "Nonzero quality gate exits stop subsequent build/deploy steps: satisfied by `test_runner_stops_after_failing_quality_gate`.",
+        "Existing planner tests and release-controller CI guard tests continue to pass: satisfied by the recorded verification commands."
+      ],
+      "evidence": [
+        "R000 reports `QualityGate` model, top-level `ControllerConfig.quality_gates`, and validation for malformed or duplicate gates.",
+        "R000 reports planner insertion of `quality-<name>` steps after checkout/submodule update and before `build-api-backend` / `build-llm-factory`.",
+        "R000 reports tests proving prod promotion and rollback plans do not include `quality-*` or build steps.",
+        "R000 reports runner test proving a failing quality gate stops later build/deploy steps.",
+        "Verification passed: 46 release-controller tests, 8 release-controller CI guard tests, 13 root pytest tests, and py_compile for changed controller modules."
+      ],
+      "execution_map": [
+        "T001 executed as a bounded code-level implementation attempt.",
+        "R000 recorded changed files, validation behavior, ordering behavior, and test evidence.",
+        "Runtime config, docs, and API-host rollout were intentionally left to sibling problems P002 and P003."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "No remote runtime enforcement exists until P003 upgrades the API-host controller and config.",
+        "The default gate list and canonical CI/CD documentation are not yet done; they belong to P002."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: a gate fails but the controller still builds or deploys. The runner quality-gate test constructs `quality-controller-tests`, `build-api-backend`, and `deploy-api-staging`; the failed gate returns exit code 5 and only that step is recorded.",
+        "Plausible failure mode: prod promotion becomes a rebuild/test path instead of a promotion of immutable refs. The promotion/rollback tests assert no `quality-*` or `build-*` steps are present."
+      ],
+      "summary": "P001 is successful at the code-model layer. The Release Controller now has typed quality gates, branch release plans expose those gates as ordered `quality-*` steps before image build/deploy, prod promotion/rollback remain immutable pointer operations, and focused tests prove parsing, ordering, and failure blocking."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-24T11:34:20+00:00",
+      "criteria_map": [
+        "Sample config has top-level `quality_gates` with stable names and executable argv commands: satisfied by `release-controller-ci` and `release-path-lints` sample entries and config model tests.",
+        "Sample config keeps deploy `verify_commands` as lightweight preflight distinct from quality gates: satisfied by sample config and guard assertions.",
+        "Docs explain local unit tests as fast feedback and Release Controller quality gates as authoritative staging admission: satisfied by deploy runbook and architecture docs updates.",
+        "Docs explain staging smoke/integration and prod promotion using already accepted immutable release: satisfied by the CI/CD flow section and runbook flow bullet.",
+        "Repository guard tests fail if docs/sample config stop mentioning quality gates: satisfied by new assertions in `scripts/ci/test_release_controller_ci.py` and `scripts/ci/lint_immutable_image_workflows.py`.",
+        "Release-controller tests and CI guard tests pass: satisfied by R001 verification."
+      ],
+      "evidence": [
+        "R001 reports `quality_gates` in `novaic-release-controller/config.sample.json` with `release-controller-ci` and `release-path-lints`.",
+        "R001 reports `deploy.verify_commands` remains lightweight preflight rather than a second CI system.",
+        "R001 reports updated architecture and runbook docs describing local fast feedback, Release Controller authoritative staging admission, staging smoke/integration, and prod promotion from immutable accepted images.",
+        "R001 reports repository guards in `scripts/ci/test_release_controller_ci.py` and `scripts/ci/lint_immutable_image_workflows.py` pin the sample/docs contract.",
+        "Verification passed: release-controller tests, release-controller CI guard tests, immutable workflow lint, namespace docs lint, and root pytest."
+      ],
+      "execution_map": [
+        "T002 executed as a bounded config/docs/guard update.",
+        "R001 recorded changed config, docs, guard tests, and validation commands.",
+        "Remote runtime config remains explicitly scoped to P003."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "API-host runtime config is not yet updated; P003 must roll out the new controller image and config.",
+        "Full app integration suites are still future quality gates after their historical failures are resolved."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: someone later removes quality gates from sample config or docs while leaving code support. The new repository guard test reads `config.sample.json` and docs and fails if the quality gate names or staging-admission text disappear.",
+        "Plausible failure mode: `deploy.verify_commands` quietly grows into a hidden second CI system. The docs and guard now distinguish quality gates from lightweight preflight."
+      ],
+      "summary": "P002 is successful. The repository now carries a default Release Controller quality-gate configuration and documentation that describes the intended CI/CD flow without conflating local unit tests, controller CI admission, preflight, staging smoke, and prod promotion."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P004/checks/C002.md",
+      "created_at": "2026-05-24T11:37:16+00:00",
+      "criteria_map": [
+        "Remote polling disabled and status confirms no autonomous release will be triggered by the push: satisfied by status before and after push.",
+        "Local validation relevant to the quality-gate change passes: satisfied by all R002 verification commands.",
+        "Git staging contains only intended files and no unrelated dirty files: satisfied by the recorded `git diff --cached --name-status` scope.",
+        "Commit created on `main` and pushed to `origin/main`: satisfied by commit `aaf2c823e24e970498479acda9c95ad56f03835a` and push evidence.",
+        "Commit id and staged file scope recorded: satisfied by R002 artifacts."
+      ],
+      "evidence": [
+        "R002 reports remote polling disabled and stopped before the push: `enabled=false`, `running=false`, `last_error=null`.",
+        "R002 reports local validation passed: release-controller tests, release-controller CI guards, immutable workflow lint, namespace docs lint, root pytest, deploy syntax, and `write_env.py` compile.",
+        "R002 reports staged scope contained only the 10 intended quality-gate files.",
+        "R002 reports pushed commit `aaf2c823e24e970498479acda9c95ad56f03835a` on `main`.",
+        "R002 reports remote polling remained disabled after the push."
+      ],
+      "execution_map": [
+        "T004 executed the safe publish operation after the code/config/docs children were complete.",
+        "R002 records the pause, validation, staging, commit, push, and remaining rollout gap.",
+        "P005 remains responsible for upgrading the API-host controller and re-enabling polling."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P004",
+      "residual_risk": [
+        "The running controller still needs to be upgraded to enforce gates; P005 owns that.",
+        "Ledger files are uncommitted operational state; that is intentional to avoid a ledger-only release loop."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: old controller polls new `main` before being upgraded. R002 shows polling was disabled and stopped before push and stayed disabled after push.",
+        "Plausible failure mode: unrelated dirty files are accidentally published. R002 records the exact staged file scope; unrelated archive/app/start/ledger work remained unstaged."
+      ],
+      "summary": "P004 is successful. The quality-gate code was validated, committed, and pushed while API-host polling was disabled, and the staged commit scope avoided unrelated dirty workspace changes."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P005/children/P006/checks/C003.md",
+      "created_at": "2026-05-24T11:39:13+00:00",
+      "criteria_map": [
+        "Release Controller Docker image installs minimal test tooling required by default gates: satisfied by pytest install in Dockerfile.",
+        "Dockerfile invariant tests cover that tooling remains available: satisfied by updated CI guard test.",
+        "Sample quality gates remain executable inside controller worktree: satisfied for current pytest-based gate because the controller image now has pytest; full proof of remote execution remains in P005.",
+        "Local tests pass after the image change: satisfied by R003 verification."
+      ],
+      "evidence": [
+        "R003 reports `docker/release-controller/Dockerfile` installs pytest.",
+        "R003 reports `scripts/ci/test_release_controller_ci.py` asserts the Dockerfile keeps pytest installation.",
+        "R003 reports pushed commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "R003 verification passed release-controller tests, release-controller CI guards, immutable workflow lint, root pytest, deploy shell syntax, and diff check.",
+        "Remote polling remained disabled while this fix was pushed."
+      ],
+      "execution_map": [
+        "T006 executed a narrow Dockerfile/test guard repair spawned from T005.",
+        "R003 recorded implementation, tests, push, and polling pause evidence.",
+        "P005 can now resume building/deploying the upgraded controller image from commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P006",
+      "residual_risk": [
+        "Future gates may need more tooling; this check only guarantees the current default pytest-based gates."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: the controller starts a quality-gate run and immediately fails with `No module named pytest`. Installing pytest in the image and pinning that install in a guard closes this default-gate runtime gap."
+      ],
+      "summary": "P006 is successful. The Release Controller runtime image now includes pytest, and a repository guard pins that requirement so the default quality gates can execute inside the controller container."
+    },
+    "C004": {
+      "blocking_gaps": [
+        "API-host Release Controller image has not been built/deployed from latest commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "Remote runtime config does not yet have verified `quality_gates` entries.",
+        "No staging run has proven `quality-release-controller-ci` and `quality-release-path-lints` execute before build/deploy.",
+        "Polling is still paused and must be re-enabled only after verification."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/checks/C004.md",
+      "created_at": "2026-05-24T11:39:38+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P007",
+      "id": "C004",
+      "problem_id": "P005",
+      "residual_risk": [],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "P005 is not successful yet. The execution correctly found and repaired a blocking runtime dependency through P006, but the actual API-host controller upgrade, remote config update, staging run, gate execution verification, polling re-enable, and manual guard verification have not yet happened."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/children/P008/checks/C005.md",
+      "created_at": "2026-05-24T11:44:44+00:00",
+      "criteria_map": [
+        "Dockerfile installs pytest and httpx: satisfied by Dockerfile change.",
+        "CI guard test asserts both dependencies remain: satisfied by updated `scripts/ci/test_release_controller_ci.py`.",
+        "Local tests pass: satisfied by R005 verification.",
+        "Commit pushed while polling disabled: satisfied by R005 and prior remote pause state.",
+        "Quality gate command succeeds manually inside upgraded controller container: satisfied by remote container 9 passed result."
+      ],
+      "evidence": [
+        "R005 reports Dockerfile installs `pytest httpx`.",
+        "R005 reports CI guard asserts `python -m pip install pytest httpx` remains in the Dockerfile.",
+        "R005 reports commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8` pushed to `main`.",
+        "R005 reports image digest `sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248` built and deployed.",
+        "R005 reports `python3 -m pytest -q scripts/ci/test_release_controller_ci.py` passed inside the running controller container."
+      ],
+      "execution_map": [
+        "T008 repaired the second discovered runtime dependency gap.",
+        "R005 recorded local tests, commit/push, image build/deploy, and remote manual gate execution.",
+        "P007 can now retry the real staging rollout."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P008",
+      "residual_risk": [
+        "Future test additions may require more dependencies; this closes the current default gate set."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: `release-controller-ci` fails during collection because FastAPI `TestClient` cannot import httpx. R005 proves the same gate command now passes inside the running container."
+      ],
+      "summary": "P008 is successful. The controller image now includes both pytest and httpx, the CI guard pins both dependencies, and the default pytest-based controller gate succeeds inside the running API-host controller container."
+    },
+    "C006": {
+      "blocking_gaps": [
+        "No successful staging run exists yet for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Final run ordering/results have not yet shown both quality gates passing before build/deploy in a successful release.",
+        "Staging health, prod pointer stability, polling re-enable, and manual deploy guard checks remain incomplete."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/checks/C006.md",
+      "created_at": "2026-05-24T11:45:12+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P009",
+      "id": "C006",
+      "problem_id": "P007",
+      "residual_risk": [],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "P007 is not successful yet. It upgraded the controller and proved the quality gate position, then fixed the gate runtime dependency through P008, but it has not retried a successful real staging poll on the latest commit or restored polling."
+    },
+    "C007": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/children/P009/checks/C007.md",
+      "created_at": "2026-05-24T11:48:47+00:00",
+      "criteria_map": [
+        "`/v1/polls/once` creates successful staging run for latest commit: satisfied by run `20260524-114545-main-491bd7e6ad55`.",
+        "Quality gates present before build/deploy and successful: satisfied by plan order plus run success and runner short-circuit semantics.",
+        "Staging health passes: satisfied by staging API and Factory health checks.",
+        "Prod pointer remains unchanged: satisfied by current prod pointer evidence.",
+        "Polling re-enabled and clean: satisfied by `polling.enabled=true`, `last_error=null`, skipped unchanged main.",
+        "Direct manual backend/factory deploy commands reject: satisfied by guard outputs in R007."
+      ],
+      "evidence": [
+        "R007 reports successful run `20260524-114545-main-491bd7e6ad55` for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "R007 reports run status `succeeded` and `failure=null`.",
+        "R007 reports plan order with `quality-release-controller-ci` and `quality-release-path-lints` before preflight, build, deploy, and smoke.",
+        "R007 reports staging API and Factory health passed after deployment.",
+        "R007 reports prod pointer remained on commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "R007 reports polling re-enabled with `last_error=null` and unchanged main head skipped.",
+        "R007 reports direct manual `services-image` and `factory-image` rejection remained intact."
+      ],
+      "execution_map": [
+        "T009 executed the final remote verification after P008 repaired the missing `httpx` dependency.",
+        "R007 recorded run id, image refs, plan order, health checks, prod/staging pointer state, polling state, and manual guard checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C007",
+      "problem_id": "P009",
+      "residual_risk": [
+        "The controller persists command plans and final run status/failure, not full per-step result logs. Gate success is inferred from run success and runner stop-on-failure semantics. A future improvement could persist `PlanExecutionResult` per run for richer audit.",
+        "Prod promotion of `491bd7e6...` was intentionally not performed."
+      ],
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: gates are only configured but not actually before build/deploy. R007 shows their indexes are before preflight, build, deploy, and smoke.",
+        "Plausible failure mode: restoring polling causes duplicate release of the same head. R007 shows branch head recorded as `491bd7e6...` and autonomous polling skipped unchanged main.",
+        "Plausible failure mode: staging release accidentally promotes prod. R007 shows prod pointer stayed on `e4fb5740...`."
+      ],
+      "summary": "P009 is successful. The final quality-gated staging release ran through Release Controller polling, passed the configured quality gates before build/deploy, updated staging, preserved prod, restored polling, and kept direct manual backend/factory deploy paths closed."
+    },
+    "C008": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/checks/C008.md",
+      "created_at": "2026-05-24T11:49:01+00:00",
+      "criteria_map": [
+        "Running API-host controller image built from latest quality-gate commit: satisfied by R006/R007 image deployment evidence for digest `sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248` from commit `491bd7e6...`.",
+        "Remote config contains default quality gates: satisfied by R006 config evidence and successful P009 gate execution.",
+        "`/v1/polls/once` creates successful staging run: satisfied by R007.",
+        "Run plan and execution prove quality gates before build/deploy: satisfied by R007 plan order and final succeeded status; runner short-circuits on first nonzero exit.",
+        "Staging health passes and prod remains unchanged: satisfied by R007 health and pointer evidence.",
+        "Polling re-enabled cleanly: satisfied by R007 polling status.",
+        "Manual backend/factory deploy guards still fail: satisfied by R007 guard outputs."
+      ],
+      "evidence": [
+        "R006 records the first real poll attempt and the discovered gate dependency gap.",
+        "R006 records P008 fixing and deploying a controller image with pytest/httpx support.",
+        "R007 records successful final staging run `20260524-114545-main-491bd7e6ad55` for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "R007 records quality gate steps before build/deploy and final run status `succeeded` with `failure=null`.",
+        "R007 records staging health, prod pointer stability, polling re-enable, unchanged main skip, and manual guard rejection."
+      ],
+      "execution_map": [
+        "T007 made the remote rollout attempt and spawned P008 for missing `httpx` runtime dependency.",
+        "P008 closed the dependency gap with a new image and manual gate pass.",
+        "P009 completed the successful remote staging release and operational restoration."
+      ],
+      "followup_problem_id": null,
+      "id": "C008",
+      "problem_id": "P007",
+      "residual_risk": [
+        "Per-step stdout/stderr are not persisted in run records; final gate success is inferred from plan order and run success. Persisting `PlanExecutionResult` would improve auditability.",
+        "Prod was not promoted by design."
+      ],
+      "result_ids": [
+        "R006",
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: quality gates fail due to missing runtime dependencies. The rollout caught pytest/httpx gaps before final success and added CI guards for those dependencies.",
+        "Plausible failure mode: final polling duplicates release after re-enable. R007 shows branch head recorded and unchanged main skipped.",
+        "Plausible failure mode: prod is accidentally updated by branch release. R007 shows prod pointer stayed on `e4fb5740...`."
+      ],
+      "summary": "P007 is successful after follow-up P009. The rollout initially exposed and repaired missing gate runtime dependencies, then the final retry completed a successful quality-gated staging release and restored clean autonomous polling."
+    },
+    "C009": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P005/checks/C009.md",
+      "created_at": "2026-05-24T11:49:19+00:00",
+      "criteria_map": [
+        "New controller image deployed from latest commit: satisfied by final running digest `sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248` built from `491bd7e6...`.",
+        "Remote config contains quality gates: satisfied by config inspection and successful gate run.",
+        "Staging run succeeds with quality gates before build/deploy: satisfied by R007 run plan and succeeded status.",
+        "Quality gate execution successful: satisfied by R007 final run success plus runner stop-on-failure semantics; manual container gate also passed in R005.",
+        "Staging health clean: satisfied by R007 health checks.",
+        "Prod pointer unchanged: satisfied by R007 current release evidence.",
+        "Polling re-enabled and clean: satisfied by R007 `last_error=null` and unchanged main skip.",
+        "Manual backend/factory deploy guards still fail: satisfied by R007 guard outputs."
+      ],
+      "evidence": [
+        "R004 records the initial P005 attempt and the discovered need for controller image test tooling.",
+        "R006 records remote rollout progress, runtime config quality gates, first failed gate run, and dependency repairs.",
+        "R007 records final successful staging poll run `20260524-114545-main-491bd7e6ad55`.",
+        "P006/P008 checks accepted pytest/httpx dependency repairs in the controller image.",
+        "P007/P009 checks accepted final remote rollout, staging health, prod pointer stability, polling re-enable, and manual guard rejection."
+      ],
+      "execution_map": [
+        "T005 discovered missing runtime gate tooling and spawned P006.",
+        "P007/P008/P009 completed the remote upgrade and final verification path.",
+        "R004/R006/R007 together cover the full remote rollout history and final state."
+      ],
+      "followup_problem_id": null,
+      "id": "C009",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Run records do not yet persist per-step stdout/stderr execution logs. That is an audit-quality improvement, not a blocker for P005.",
+        "Prod promotion of the latest staging release is intentionally out of scope."
+      ],
+      "result_ids": [
+        "R004",
+        "R006",
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: a gate appears in config but cannot run in the controller image. P006 and P008 fixed actual pytest/httpx failures and verified the gate manually inside the container before final staging success.",
+        "Plausible failure mode: old branch head causes duplicate deploy after polling resumes. R007 shows branch head updated and skipped as unchanged.",
+        "Plausible failure mode: prod changes during staging admission. R007 shows prod stayed on `e4fb5740...`."
+      ],
+      "summary": "P005 is successful after spawned and follow-up work. The API-host Release Controller now runs the quality-gate-capable image/config, a real staging branch release passed quality gates before build/deploy, staging is healthy, prod stayed unchanged, polling is clean, and manual release bypass paths remain closed."
+    },
+    "C010": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C010.md",
+      "created_at": "2026-05-24T11:49:50+00:00",
+      "criteria_map": [
+        "API-host polling paused before pushing: satisfied by P004.",
+        "Code and submodule pointers committed/pushed intentionally: satisfied by P004/P006/P008 commits; no submodule changes were introduced for this work.",
+        "API-host Release Controller image rebuilt/pushed/deployed from the quality-gate commit: satisfied by final image from `491bd7e6...`.",
+        "Remote config includes intended quality gates: satisfied by R008.",
+        "Staging run shows quality gates before build/deploy and succeeds: satisfied by R008.",
+        "Release Controller status clean, polling re-enabled, staging healthy, prod unchanged: satisfied by R008."
+      ],
+      "evidence": [
+        "R008 aggregates P004 safe publish and P005 remote upgrade checks.",
+        "R008 records final controller image digest `sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "R008 records remote config with `release-controller-ci` and `release-path-lints` quality gates.",
+        "R008 records successful final staging run `20260524-114545-main-491bd7e6ad55`.",
+        "R008 records health checks, prod pointer stability, polling clean state, and direct manual guard failures."
+      ],
+      "execution_map": [
+        "T003 split rollout into P004 safe publish and P005 remote upgrade.",
+        "P005 spawned P006/P008 for discovered runtime gate dependencies and closed them before final P009 success.",
+        "R008 summarizes the final platform state."
+      ],
+      "followup_problem_id": null,
+      "id": "C010",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Per-step result persistence is incomplete; command plans and final run status are available, full stdout/stderr is not.",
+        "Prod remains on the previous release because promotion was intentionally out of scope."
+      ],
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Old-controller race was avoided by pausing polling before push.",
+        "Runtime dependency gaps were found by real gate execution, not hidden; pytest/httpx were added and guarded.",
+        "Re-enabled polling skipped unchanged main, proving branch head state was recorded by the real poll run."
+      ],
+      "summary": "P003 is successful. The quality-gate-capable Release Controller is deployed on the API host, runtime config includes quality gates, a real staging run passed through those gates before build/deploy, staging is healthy, prod was not accidentally changed, and polling/manual guard state is correct."
+    },
+    "C011": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C011.md",
+      "created_at": "2026-05-24T11:50:24+00:00",
+      "criteria_map": [
+        "Release Controller has a clear CI quality-gate model distinct from deploy smoke/manual scripts: satisfied by `quality_gates` model, docs, and plan step names.",
+        "Branch release plans run deterministic gates before image build/staging deploy: satisfied by planner tests and final remote run order.",
+        "Gate failures block image build/deploy and are recorded as failed runs: satisfied by runner tests and the real failed `quality-release-controller-ci` run before dependency repair.",
+        "Default/sample config includes meaningful repo-level gates executable in controller worktree: satisfied by sample config and final remote gate execution after image dependency fixes.",
+        "Tests cover planning, ordering, failure behavior: satisfied by release-controller and CI guard tests.",
+        "Documentation explains development flow: satisfied by architecture and runbook updates.",
+        "Manual backend/factory deployment rejection remains intact: satisfied by local guard checks after rollout."
+      ],
+      "evidence": [
+        "R009 aggregates successful child checks for implementation, config/docs, and remote rollout.",
+        "P001 implemented typed `quality_gates`, plan ordering, validation, and failure short-circuit tests.",
+        "P002 added default gates and documented the local-test/controller-gate/staging/prod-promotion flow, with guard tests.",
+        "P003 deployed the upgraded controller and proved a real staging run passed quality gates before build/deploy.",
+        "Final run `20260524-114545-main-491bd7e6ad55` succeeded for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Polling is re-enabled and clean, staging is healthy, prod remains unchanged, and manual deploy bypasses still fail."
+      ],
+      "execution_map": [
+        "T000 split into P001 code model, P002 config/docs, and P003 remote rollout.",
+        "P003 discovered and closed runtime dependency gaps with P006 and P008, then P009 completed the final release proof.",
+        "R009 records the final state and residual risks."
+      ],
+      "followup_problem_id": null,
+      "id": "C011",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Run records should persist full per-step execution results for stronger auditability; currently they persist plans and final status/failure.",
+        "Full app integration suites are still future gates after they are made deterministic.",
+        "Prod promotion of latest staging remains explicit and was not performed."
+      ],
+      "result_ids": [
+        "R009"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Real gate failure was observed when the image lacked `httpx`; the release stopped before build/deploy, proving the gate blocks release mutation.",
+        "After repair, a real poll succeeded and branch head was recorded, then autonomous polling skipped unchanged main.",
+        "Prod pointer stayed on the previous release, proving branch polling did not promote prod."
+      ],
+      "summary": "P000 is successful. Release Controller now has an explicit CI quality-gate model, default gate configuration and documentation, tests/guards against drift, and a live API-host deployment that enforced gates before staging build/deploy in a successful branch-poll release."
+    }
+  },
+  "counters": {
+    "check": 12,
+    "event": 124,
+    "problem": 10,
+    "result": 10,
+    "ticket": 10
+  },
+  "created_at": "2026-05-24T11:28:10+00:00",
+  "ledger_id": "L20260524-192810",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C011"
+      ],
+      "created_at": "2026-05-24T11:28:10+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "NovAIC now has Release Controller-owned backend and LLM Factory deployment, but the quality gate inside that controller is still too thin: local developer unit tests are advisory, while Release Controller preflight only runs lightweight checks before building and deploying staging. The next correct step is to make CI quality enforcement an explicit Release Controller capability, so a pushed commit cannot become a staging release unless controller-run tests/guards pass, and prod promotion remains tied to a release that passed staging.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R009"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "Release Controller has a clear CI quality-gate model distinct from deploy smoke and direct manual scripts.",
+        "Branch release plans run deterministic controller-owned quality gates before image build and before staging deployment.",
+        "Gate failures block image build/deploy and are recorded as failed Release Controller runs.",
+        "The default/sample configuration includes meaningful repo-level gates that can run in the controller worktree without relying on developer-local state.",
+        "Tests cover quality-gate planning, execution ordering, and failure behavior.",
+        "Documentation explains the development flow: local unit tests for fast feedback, Release Controller CI gate for authoritative staging admission, staging integration/smoke, and prod promotion from the passed release.",
+        "Existing manual backend/factory deployment rejection remains intact."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Add Release Controller CI quality gate",
+      "updated_at": "2026-05-24T11:50:24+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-24T11:29:06+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The controller currently has a generic `deploy.verify_commands` list that is not clearly modeled as CI. A clean solution needs typed quality gates with stable names, validated commands, and branch-release plan steps that run after source checkout/submodule update and before any image build or staging deploy. This child handles the code-level model, planner ordering, runner failure semantics, and unit tests.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Release Controller config accepts an explicit quality-gate list with stable gate names and argv commands.",
+        "Malformed quality gates and empty commands are rejected by config validation.",
+        "Branch release plans include named `quality-*` steps after git/submodule steps and before `build-api-backend` / `build-llm-factory`.",
+        "Promotion and rollback plans do not include branch CI gates or image build steps.",
+        "Nonzero quality gate exits stop subsequent build/deploy steps and surface the failed step in the release result.",
+        "Tests cover parsing, ordering, dry-run/real runner behavior, and existing manual deploy guard behavior remains intact."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Implement first-class Release Controller quality gates",
+      "updated_at": "2026-05-24T11:31:46+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-24T11:29:06+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Even after the code supports quality gates, the project needs a clear default contract: local unit tests are fast feedback, Release Controller gates are authoritative staging admission, staging smoke/integration happens after deploy, and prod promotion uses the already accepted immutable release. This child updates sample config, docs, and repository guards so the intended flow is explicit and hard to regress.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`novaic-release-controller/config.sample.json` includes meaningful default quality gates that run in the controller worktree.",
+        "Docs describe the canonical development and CI/CD flow from local tests through staging admission and prod promotion.",
+        "Docs distinguish quality gates, image build/import checks, staging smoke/integration checks, and prod smoke.",
+        "Repository guard tests/lints verify that quality gates are documented and sample config remains aligned with the controller model.",
+        "Manual backend/factory deploy paths remain documented as rejected internal executor paths."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Configure and document the CI/CD quality gate flow",
+      "updated_at": "2026-05-24T11:34:20+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C010"
+      ],
+      "created_at": "2026-05-24T11:29:07+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The new quality-gate capability only solves the operational problem after the API-host Release Controller is upgraded and its runtime config contains the gate list. The rollout must avoid the same old-controller/new-code race: pause polling, publish the code, deploy the upgraded controller, enable gates in remote config, run a controlled staging trigger or observe polling, then confirm failures would block before build/deploy.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P004",
+        "P005"
+      ],
+      "success_criteria": [
+        "API-host polling is paused before pushing a controller change that requires the new gate model.",
+        "Code and submodule pointers for the quality-gate change are committed and pushed intentionally.",
+        "API-host Release Controller image is rebuilt/pushed/deployed from the quality-gate commit.",
+        "Remote `/opt/novaic/release-controller/config.json` includes the intended quality gates.",
+        "A staging run through Release Controller shows quality gate steps before image build/deploy and succeeds.",
+        "Release Controller status is clean, polling is re-enabled, staging remains healthy, and prod pointer is not accidentally changed unless explicitly promoted."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Roll out Release Controller quality gates on API host",
+      "updated_at": "2026-05-24T11:49:50+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P003/children/P004/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-24T11:34:48+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "created_from_ticket_mode": "split",
+      "description": "The quality-gate implementation must be committed and pushed without accidentally including unrelated dirty workspace changes. Polling must be paused first so the old API-host controller cannot process the new commit before it is upgraded.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P003/children/P004",
+      "parent_id": "P003",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "API-host Release Controller polling is paused before pushing the quality-gate commit.",
+        "Local release-controller/deploy guard tests pass before commit.",
+        "Only intended source/config/docs/test files and the active ledger are staged, with unrelated pre-existing dirty files left untouched.",
+        "The parent commit is pushed to `origin/main` and its commit id is recorded.",
+        "If any submodule changed intentionally, its commit/push is recorded; otherwise no submodule churn is introduced."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Publish quality-gate controller code safely",
+      "updated_at": "2026-05-24T11:37:16+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P003/children/P005/README.md",
+      "check_ids": [
+        "C004",
+        "C009"
+      ],
+      "created_at": "2026-05-24T11:34:48+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "created_from_ticket_mode": "split",
+      "description": "After the quality-gate commit is pushed, the running API-host controller must be upgraded to an image built from that commit and the remote runtime config must include `quality_gates`. A staging run must prove the gates execute before build/deploy and block semantics remain controller-owned.",
+      "followup_ids": [
+        "P007"
+      ],
+      "id": "P005",
+      "package_path": "problems/P000/children/P003/children/P005",
+      "parent_id": "P003",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P006",
+        "P007"
+      ],
+      "success_criteria": [
+        "A new Release Controller image is built/pushed/deployed from the quality-gate commit.",
+        "Remote `/opt/novaic/release-controller/config.json` contains the intended `quality_gates` and preserves existing registry, branch, health, and polling settings.",
+        "A staging run through Release Controller succeeds with command plan order: git/submodule, `quality-*`, preflight, build, push, deploy, smoke.",
+        "Staging public health is clean after the run.",
+        "Prod current pointer remains unchanged unless deliberately promoted.",
+        "Polling is re-enabled and Release Controller status has `last_error=null`.",
+        "Manual direct backend/factory deploy commands still fail locally before remote side effects."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Upgrade API-host controller and verify quality gates execute",
+      "updated_at": "2026-05-24T11:49:19+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P003/children/P005/children/P006/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-24T11:37:54+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T005",
+      "created_from_ticket_mode": "spawn",
+      "description": "The default `quality_gates` include pytest-based controller CI checks, but the Release Controller Docker image currently installs only the release-controller package and runtime tooling. Without pytest in the image, the API-host controller cannot execute the default gate list and staging admission would fail for an infrastructure reason rather than a code quality reason.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P003/children/P005/children/P006",
+      "parent_id": "P005",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Release Controller Docker image installs the minimal test tooling required by default `quality_gates`.",
+        "Dockerfile invariant tests cover that the test tooling remains available.",
+        "Sample quality gates remain executable inside the controller worktree.",
+        "Local tests for release-controller and release-controller CI guards pass after the image change."
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "Make Release Controller image capable of running quality gates",
+      "updated_at": "2026-05-24T11:39:13+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/README.md",
+      "check_ids": [
+        "C006",
+        "C008"
+      ],
+      "created_at": "2026-05-24T11:39:38+00:00",
+      "created_from_check_id": "C004",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The Release Controller image/runtime dependency gap has been fixed in commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`, but the API-host controller has not yet been upgraded and no staging run has proven quality gates execute before image build/deploy.",
+      "followup_ids": [
+        "P009"
+      ],
+      "id": "P007",
+      "package_path": "problems/P000/children/P003/children/P005/children/P007",
+      "parent_id": "P005",
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P008",
+        "P009"
+      ],
+      "success_criteria": [
+        "API-host Release Controller image is built/pushed/deployed from commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "Remote config includes `quality_gates` with `release-controller-ci` and `release-path-lints` while preserving existing release settings.",
+        "A staging Release Controller run succeeds for commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "The staging run command plan and execution results show `quality-release-controller-ci` and `quality-release-path-lints` before build/deploy, both successful.",
+        "Staging health is clean, prod current pointer remains unchanged, polling is re-enabled with `last_error=null`, and direct manual backend/factory deploy guards still fail."
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "Complete API-host quality-gate rollout",
+      "updated_at": "2026-05-24T11:49:01+00:00"
+    },
+    "P008": {
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/children/P008/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-24T11:42:25+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T007",
+      "created_from_ticket_mode": "spawn",
+      "description": "The first real remote quality gate failed because `novaic-release-controller/tests/test_service.py` imports FastAPI/Starlette `TestClient`, which requires `httpx`. The Release Controller image now has pytest but still lacks httpx, so the default `release-controller-ci` gate cannot run the controller test suite inside the controller container.",
+      "followup_ids": [],
+      "id": "P008",
+      "package_path": "problems/P000/children/P003/children/P005/children/P007/children/P008",
+      "parent_id": "P007",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Release Controller Docker image installs `httpx` alongside pytest for the default controller CI gate.",
+        "Dockerfile invariant tests cover the `httpx` dependency.",
+        "The default gate command succeeds inside the running controller container before retrying the staging rollout.",
+        "The fix is committed and pushed while polling remains disabled."
+      ],
+      "ticket_ids": [
+        "T008"
+      ],
+      "title": "Add httpx test dependency to Release Controller image",
+      "updated_at": "2026-05-24T11:44:44+00:00"
+    },
+    "P009": {
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/children/P009/README.md",
+      "check_ids": [
+        "C007"
+      ],
+      "created_at": "2026-05-24T11:45:12+00:00",
+      "created_from_check_id": "C006",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The controller image and runtime dependencies are now fixed, but the real quality-gated staging rollout must be retried for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8` and verified end to end.",
+      "followup_ids": [],
+      "id": "P009",
+      "package_path": "problems/P000/children/P003/children/P005/children/P007/children/P009",
+      "parent_id": "P007",
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`/v1/polls/once` creates a successful staging run for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "The run command plan and execution evidence show `quality-release-controller-ci` and `quality-release-path-lints` before build/deploy, both successful.",
+        "Staging public health passes after the run.",
+        "Prod current pointer remains on commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` unless explicitly promoted.",
+        "Polling is re-enabled with `last_error=null` and main head recorded/skipped as unchanged.",
+        "Direct manual `services-image` and `factory-image` calls still fail locally before remote side effects."
+      ],
+      "ticket_ids": [
+        "T009"
+      ],
+      "title": "Retry final quality-gated staging release",
+      "updated_at": "2026-05-24T11:48:47+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-release-controller/release_controller/models.py`",
+        "`novaic-release-controller/release_controller/planner.py`",
+        "`novaic-release-controller/release_controller/__init__.py`",
+        "`novaic-release-controller/tests/test_config_models.py`",
+        "`novaic-release-controller/tests/test_planner_runner.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-24T11:31:32+00:00",
+      "done": [
+        "Added `QualityGate` model with stable lowercase slug names and argv validation.",
+        "Added top-level `ControllerConfig.quality_gates` parsing and serialization, defaulting to an empty tuple for backward-compatible existing remote config.",
+        "Added duplicate gate-name rejection and malformed gate tests.",
+        "Updated planner to insert `quality-<name>` command steps in branch release plans before `build-api-backend` and `build-llm-factory`.",
+        "Added tests proving prod promotion and rollback plans do not include quality or build steps.",
+        "Added runner test proving a nonzero `quality-*` step stops later build/deploy steps.",
+        "Exported `QualityGate` from the release-controller package."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Sample/runtime config still needs actual gate entries; that is owned by P002/P003.",
+        "Documentation still needs to explain local tests versus controller CI gates; that is owned by P002.",
+        "The API-host Release Controller has not yet been upgraded to this code; that is owned by P003."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Implemented the code-level Release Controller quality gate model. Controller config now has typed `quality_gates`; branch release plans render them as named `quality-*` steps after checkout/submodule update and before image builds; promotion and rollback remain immutable image pointer deploy flows; runner failure behavior already blocks subsequent steps and is now covered specifically for failing quality gates.",
+      "ticket_id": "T001",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 46 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 8 passed.",
+        "`python3 -m pytest -q` -> 13 passed.",
+        "`python3 -m py_compile novaic-release-controller/release_controller/models.py novaic-release-controller/release_controller/planner.py novaic-release-controller/release_controller/runner.py` -> passed."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-release-controller/config.sample.json`",
+        "`docs/architecture/release-controller.md`",
+        "`docs/runbooks/deploy.md`",
+        "`scripts/ci/test_release_controller_ci.py`",
+        "`scripts/ci/lint_immutable_image_workflows.py`",
+        "`novaic-release-controller/tests/test_config_models.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-24T11:34:08+00:00",
+      "done": [
+        "Added top-level `quality_gates` to `novaic-release-controller/config.sample.json`.",
+        "Default gates are `release-controller-ci` and `release-path-lints`, both executable in the controller worktree.",
+        "Kept `deploy.verify_commands` as lightweight preflight: `bash -n deploy` and `py_compile docker/api-backend/write_env.py`.",
+        "Updated Release Controller architecture docs with the canonical CI/CD flow and quality gate semantics.",
+        "Updated deploy runbook with the developer flow: local focused unit tests, Release Controller authoritative staging admission, staging smoke/integration, prod promotion from accepted immutable images.",
+        "Added guard assertions in `scripts/ci/test_release_controller_ci.py` and `scripts/ci/lint_immutable_image_workflows.py` to prevent sample/docs drift."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "The API-host runtime config still needs to be updated with the gate list; that is owned by P003.",
+        "Full application integration tests are not yet default gates because the current full matrix still has historical red suites. They should be promoted into named gates after being made deterministic in the controller/builder environment."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Configured the default Release Controller quality gate contract and documented the canonical CI/CD flow. Sample config now declares named quality gates, preflight remains lightweight, docs distinguish local tests, controller CI gates, staging smoke/integration, and prod promotion, and repository guard tests now pin the contract.",
+      "ticket_id": "T002",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 46 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 9 passed.",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py` -> passed.",
+        "`python3 scripts/ci/lint_namespace_platform_docs.py` -> passed.",
+        "`python3 -m pytest -q` -> 14 passed."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Commit: `aaf2c823e24e970498479acda9c95ad56f03835a`.",
+        "Staged/pushed files: `docs/architecture/release-controller.md`, `docs/runbooks/deploy.md`, `novaic-release-controller/config.sample.json`, `novaic-release-controller/release_controller/__init__.py`, `novaic-release-controller/release_controller/models.py`, `novaic-release-controller/release_controller/planner.py`, `novaic-release-controller/tests/test_config_models.py`, `novaic-release-controller/tests/test_planner_runner.py`, `scripts/ci/lint_immutable_image_workflows.py`, `scripts/ci/test_release_controller_ci.py`.",
+        "Remote paused image before upgrade: `127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P004/results/R002.md",
+      "created_at": "2026-05-24T11:37:04+00:00",
+      "done": [
+        "Read remote controller state and current image before publishing.",
+        "Set `/opt/novaic/release-controller/config.json` `polling_enabled=false` and restarted the Release Controller container so the process reread config.",
+        "Confirmed remote polling status: `enabled=false`, `running=false`, `last_error=null`.",
+        "Ran local validation before commit.",
+        "Staged only the 10 intended files for this quality-gate change.",
+        "Created and pushed parent commit `aaf2c823e24e970498479acda9c95ad56f03835a` on `main`.",
+        "Confirmed `main...origin/main` is aligned after push.",
+        "Confirmed unrelated pre-existing dirty files remain unstaged."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "The API-host controller has not yet been upgraded to the new commit; P005 owns the image build/deploy and runtime config update.",
+        "Active ledger files remain uncommitted operational state to avoid introducing a second ledger-only release commit."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Paused API-host Release Controller polling, validated the quality-gate changes locally, staged only intended source/config/docs/test files, committed the quality-gate change to `main`, and pushed it to `origin/main` while polling remained disabled.",
+      "ticket_id": "T004",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 46 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 9 passed.",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py` -> passed.",
+        "`python3 scripts/ci/lint_namespace_platform_docs.py` -> passed.",
+        "`python3 -m pytest -q` -> 14 passed.",
+        "`bash -n deploy` -> passed.",
+        "`python3 -m py_compile docker/api-backend/write_env.py` -> passed.",
+        "`git diff --cached --name-status` before commit contained only the intended Release Controller quality-gate files.",
+        "Remote `/v1/status` after push still showed polling disabled."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "Commit: `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "Files: `docker/release-controller/Dockerfile`, `scripts/ci/test_release_controller_ci.py`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P006/results/R003.md",
+      "created_at": "2026-05-24T11:39:03+00:00",
+      "done": [
+        "Added `python -m pip install pytest` to `docker/release-controller/Dockerfile`.",
+        "Added Dockerfile invariant check in `scripts/ci/test_release_controller_ci.py` for pytest installation.",
+        "Validated locally and pushed commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261` to `main`.",
+        "Confirmed API-host polling remained disabled during this follow-up push."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "The API-host controller still needs to be built and deployed from the latest commit; P005 resumes after this spawned subproblem closes.",
+        "Future gates may need additional dependencies, but the current default gate set is covered."
+      ],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Fixed the runtime dependency gap discovered during API-host rollout preparation. The Release Controller Docker image now installs pytest, and the repository guard asserts that pytest remains installed so the default pytest-based `quality_gates` can execute inside the controller container.",
+      "ticket_id": "T006",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 46 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 9 passed.",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py` -> passed.",
+        "`python3 -m pytest -q` -> 14 passed.",
+        "`bash -n deploy` -> passed.",
+        "`git diff --check -- docker/release-controller/Dockerfile scripts/ci/test_release_controller_ci.py` -> passed.",
+        "Remote `/v1/status` showed polling disabled before and after the push."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "Spawned child result/check: `R003` / `C003`.",
+        "Latest commit to deploy: `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/results/R004.md",
+      "created_at": "2026-05-24T11:39:27+00:00",
+      "done": [
+        "Started P005 rollout with API-host polling already paused.",
+        "Inspected `docker/release-controller/Dockerfile` and found pytest was not installed in the controller image.",
+        "Spawned and solved P006 to add pytest to the controller image and guard it in CI.",
+        "P006 pushed commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261` to `main`.",
+        "Confirmed remote polling remained disabled during the dependency fix."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "API-host Release Controller has not yet been rebuilt/deployed from commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "Remote runtime config has not yet been updated with `quality_gates`.",
+        "No staging run has yet proven `quality-*` steps execute before build/deploy."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "The first P005 execution attempt discovered a blocking runtime dependency before remote upgrade: the default quality gates require pytest, but the Release Controller image did not install it. Spawned P006 fixed and pushed that image capability gap in commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`. The actual API-host controller image upgrade and staging gate execution verification still need to run against that latest commit.",
+      "ticket_id": "T005",
+      "verification": [
+        "P006 success check `C003` accepted the Dockerfile and CI guard repair.",
+        "P006 validation passed release-controller tests, release-controller CI guard tests, immutable workflow lint, root pytest, and deploy syntax."
+      ]
+    },
+    "R005": {
+      "artifacts": [
+        "Commit: `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Controller image digest: `127.0.0.1:5000/novaic/release-controller@sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "Previous failed quality-gate run: `20260524-114151-main-6a74b2ac08b1`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/children/P008/results/R005.md",
+      "created_at": "2026-05-24T11:44:34+00:00",
+      "done": [
+        "Changed `docker/release-controller/Dockerfile` to install `pytest httpx`.",
+        "Updated `scripts/ci/test_release_controller_ci.py` to assert the Dockerfile keeps both dependencies.",
+        "Committed and pushed `491bd7e6ad55a70d96f41d0fbfea872be72e92e8` to `main`.",
+        "Built and pushed Release Controller image `127.0.0.1:5000/novaic/release-controller@sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "Deployed that image on the API host.",
+        "Verified inside the running controller container: `python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 9 passed."
+      ],
+      "id": "R005",
+      "known_gaps": [
+        "P007 still needs to retry the real `/v1/polls/once` staging rollout using the newly deployed image."
+      ],
+      "problem_id": "P008",
+      "root_id": "P000",
+      "summary": "Added the missing `httpx` dependency to the Release Controller image, guarded it in CI, committed and pushed the fix, rebuilt and deployed a new controller image, and verified the default `release-controller-ci` gate succeeds inside the running controller container.",
+      "ticket_id": "T008",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 46 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 9 passed locally.",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py` -> passed.",
+        "`python3 -m pytest -q` -> 14 passed.",
+        "`bash -n deploy` -> passed.",
+        "`git diff --check -- docker/release-controller/Dockerfile scripts/ci/test_release_controller_ci.py` -> passed.",
+        "Remote container gate command -> 9 passed."
+      ]
+    },
+    "R006": {
+      "artifacts": [
+        "Failed gate run: `20260524-114151-main-6a74b2ac08b1`.",
+        "Current controller image digest: `127.0.0.1:5000/novaic/release-controller@sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "Latest commit for final rollout: `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/results/R006.md",
+      "created_at": "2026-05-24T11:45:02+00:00",
+      "done": [
+        "Built/deployed controller image `sha256:e18c465d09f6fed6d51b8071812bc8ac765a7882567c502213fe895c08ceced9` from commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "Updated remote config with `release-controller-ci` and `release-path-lints` quality gates while keeping polling disabled.",
+        "Ran `/v1/polls/once`; run `20260524-114151-main-6a74b2ac08b1` failed at `quality-release-controller-ci`, and its plan proved quality gates occur before build/deploy.",
+        "Diagnosed missing `httpx` in the controller image.",
+        "Spawned/closed P008, which built and deployed controller image `sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248` from commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Verified `python3 -m pytest -q scripts/ci/test_release_controller_ci.py` passes inside the running controller container."
+      ],
+      "id": "R006",
+      "known_gaps": [
+        "A final real `/v1/polls/once` has not yet been retried against commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Staging health, prod pointer stability, polling re-enable, and manual deploy guard checks still need final verification."
+      ],
+      "problem_id": "P007",
+      "root_id": "P000",
+      "summary": "The P007 rollout attempt deployed the new controller image with quality-gate config and ran a real poll, proving the gate is placed before build/deploy. The run failed on the first quality gate because `httpx` was missing. Spawned P008 fixed that runtime dependency, pushed commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`, built/deployed image digest `sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`, and manually verified the default gate succeeds inside the controller container.",
+      "ticket_id": "T007",
+      "verification": [
+        "Failed run `20260524-114151-main-6a74b2ac08b1` had plan prefix: git fetch, checkout, submodule sync/update, `quality-release-controller-ci`, `quality-release-path-lints`, preflight, build.",
+        "P008 success check `C005` accepted the dependency fix and remote manual gate pass."
+      ]
+    },
+    "R007": {
+      "artifacts": [
+        "Final staging run: `20260524-114545-main-491bd7e6ad55`.",
+        "Running controller image: `127.0.0.1:5000/novaic/release-controller@sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "Staging release commit: `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Prod release commit retained: `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/children/P009/results/R007.md",
+      "created_at": "2026-05-24T11:48:34+00:00",
+      "done": [
+        "Ran real `/v1/polls/once` with autonomous polling disabled.",
+        "Successful run: `20260524-114545-main-491bd7e6ad55`.",
+        "Run commit: `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Run plan order: `git-fetch`, `git-checkout`, `git-submodule-sync`, `git-submodule-update`, `quality-release-controller-ci`, `quality-release-path-lints`, `verify-1`, `verify-2`, `build-api-backend`, `build-llm-factory`, `push-api-backend`, `push-llm-factory`, `deploy-api-staging`, `deploy-factory-staging`, `smoke-staging`.",
+        "Staging current pointer updated to API `127.0.0.1:5000/novaic/api-backend:sha-491bd7e6ad55` and Factory `127.0.0.1:5000/novaic/llm-factory:sha-491bd7e6ad55`.",
+        "Prod current pointer remained on commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Re-enabled polling and verified it skipped unchanged `main` with `last_error=null`.",
+        "Verified direct manual `services-image` and `factory-image` commands still reject without controller identity."
+      ],
+      "id": "R007",
+      "known_gaps": [
+        "Release Controller run records persist the command plan and final failure/status, but not full per-step stdout/stderr results. Gate success is inferred from ordered plan plus runner short-circuit semantics and final succeeded status.",
+        "Prod was intentionally not promoted in this ticket."
+      ],
+      "problem_id": "P009",
+      "root_id": "P000",
+      "summary": "Retried the final quality-gated staging rollout with the fixed controller image. `/v1/polls/once` succeeded for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`, quality gates ran before build/deploy, staging updated and stayed healthy, prod pointer remained unchanged, polling was re-enabled and skipped unchanged `main`, and direct manual backend/factory deploy paths still failed.",
+      "ticket_id": "T009",
+      "verification": [
+        "`/v1/runs/20260524-114545-main-491bd7e6ad55` -> `status=succeeded`, `failure=null`.",
+        "Gate step indexes: `quality-release-controller-ci=4`, `quality-release-path-lints=5`, `verify-1=6`, `build-api-backend=8`, `deploy-api-staging=12`, `smoke-staging=14`.",
+        "Because the runner stops at the first nonzero exit and the run succeeded, both quality gates necessarily exited 0 before build/deploy.",
+        "`https://staging-api.gradievo.com/api/health` -> healthy.",
+        "`https://api.gradievo.com/health` -> healthy.",
+        "`http://127.0.0.1:29990/health` -> staging Factory ok.",
+        "`http://127.0.0.1:19990/health` -> prod Factory ok.",
+        "`/v1/status` after re-enable -> `polling.enabled=true`, `polling.running=true`, `last_error=null`, last outcome skipped unchanged `main`.",
+        "Manual guard output rejected `services-image` and `factory-image` with Release Controller-only messages."
+      ]
+    },
+    "R008": {
+      "artifacts": [
+        "Latest source commit: `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Controller image digest: `127.0.0.1:5000/novaic/release-controller@sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "Final staging API image: `127.0.0.1:5000/novaic/api-backend:sha-491bd7e6ad55`.",
+        "Final staging Factory image: `127.0.0.1:5000/novaic/llm-factory:sha-491bd7e6ad55`.",
+        "Final staging run: `20260524-114545-main-491bd7e6ad55`."
+      ],
+      "body_path": "problems/P000/children/P003/results/R008.md",
+      "created_at": "2026-05-24T11:49:37+00:00",
+      "done": [
+        "P004 safely paused polling and published quality-gate code commit `aaf2c823e24e970498479acda9c95ad56f03835a`.",
+        "P006 added pytest to the Release Controller image and pushed `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "P008 added httpx to the Release Controller image and pushed `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Built and deployed Release Controller image `127.0.0.1:5000/novaic/release-controller@sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "Remote runtime config now contains `quality_gates` with `release-controller-ci` and `release-path-lints`.",
+        "Final staging run `20260524-114545-main-491bd7e6ad55` succeeded for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Quality gate steps are ordered before preflight, build, push, deploy, and smoke.",
+        "Polling was re-enabled and skipped unchanged `main` with `last_error=null`."
+      ],
+      "id": "R008",
+      "known_gaps": [
+        "Release Controller run records persist command plans and final status, but not full per-step stdout/stderr execution logs. This limits audit depth and should be improved separately.",
+        "Latest staging release `491bd7e6...` has not been promoted to prod; prod promotion remains explicit by design."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Completed the API-host Release Controller quality-gate rollout. Polling was paused before publishing, quality-gate code and image dependency fixes were committed/pushed, the controller image and runtime config were upgraded, a real quality-gated staging release succeeded, staging is healthy, prod stayed unchanged, polling was restored, and manual backend/factory bypass paths remain closed.",
+      "ticket_id": "T003",
+      "verification": [
+        "P004 success check `C002` accepted safe publish/pause/push evidence.",
+        "P005 success check `C009` accepted the complete remote upgrade and quality-gated staging evidence.",
+        "Final run `20260524-114545-main-491bd7e6ad55` -> `status=succeeded`, `failure=null`.",
+        "Staging API health -> healthy.",
+        "Staging Factory health -> ok.",
+        "Prod API health -> healthy.",
+        "Prod Factory health -> ok.",
+        "Prod current pointer remained on `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Direct manual `services-image` and `factory-image` calls still fail without controller identity."
+      ]
+    },
+    "R009": {
+      "artifacts": [
+        "Latest source commit: `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Final staging API image: `127.0.0.1:5000/novaic/api-backend:sha-491bd7e6ad55`.",
+        "Final staging Factory image: `127.0.0.1:5000/novaic/llm-factory:sha-491bd7e6ad55`.",
+        "Final controller image: `127.0.0.1:5000/novaic/release-controller@sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "Ledger: `.complex-problems/L20260524-192810`."
+      ],
+      "body_path": "problems/P000/results/R009.md",
+      "created_at": "2026-05-24T11:50:08+00:00",
+      "done": [
+        "P001 implemented typed `quality_gates`, planner `quality-*` steps before image build, config validation, promotion/rollback separation, and runner failure coverage.",
+        "P002 added default quality gates to sample config, documented the canonical local-test -> controller-gate -> staging -> prod-promotion flow, and added repository guards against drift.",
+        "P003 rolled the change out to the API host, including controller image test tooling repairs for pytest/httpx, runtime config update, final real staging run, polling restoration, and manual guard verification.",
+        "P004/P006/P008 produced source commits: `aaf2c823e24e970498479acda9c95ad56f03835a`, `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`, and `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Final API-host controller image digest: `127.0.0.1:5000/novaic/release-controller@sha256:e5c4ae2dff8ea583d7aa9d8e81a871d84e8832a43f26eb3e532dfbf4169c8248`.",
+        "Final staging run: `20260524-114545-main-491bd7e6ad55`, commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`."
+      ],
+      "id": "R009",
+      "known_gaps": [
+        "Release Controller persists command plans and final run status/failure, but not full per-step stdout/stderr execution results. This should become a future auditability improvement.",
+        "Full app integration suites are not yet default quality gates because historical full-matrix failures remain. They should be promoted into named gates once deterministic.",
+        "Prod was intentionally not promoted to `491bd7e6...`; production remains on the previous promoted release.",
+        "Ledger files remain uncommitted operational state to avoid a ledger-only release loop."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the next CI/CD hardening step: Release Controller now has first-class quality gates, default gate configuration and docs, and an API-host deployment that enforces gates before staging build/deploy. The final staging release succeeded through `/v1/polls/once`, prod stayed unchanged, polling is restored, and direct manual backend/factory deploy paths remain closed.",
+      "ticket_id": "T000",
+      "verification": [
+        "P001 success check `C000` accepted model/planner/runner tests.",
+        "P002 success check `C001` accepted config/docs/guard updates.",
+        "P003 success check `C010` accepted remote rollout and final staging evidence.",
+        "Local validation passed: release-controller tests, release-controller CI guard tests, immutable workflow lint, namespace docs lint, root pytest, deploy shell syntax, and `write_env.py` compile.",
+        "Remote final run status: `succeeded`, `failure=null`.",
+        "Final run order placed `quality-release-controller-ci` and `quality-release-path-lints` before preflight, build, deploy, and smoke.",
+        "Staging API and Factory health passed after deployment.",
+        "Prod API and Factory health passed and prod pointer remained on `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Polling re-enabled with `last_error=null` and unchanged `main` skip.",
+        "Direct manual `services-image` and `factory-image` calls still fail without controller identity."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Release Controller config has an explicit quality-gate list with stable gate names and argv commands.",
+        "Branch release command plans contain named `quality-*` steps after checkout/submodule update and before image builds.",
+        "Promotion and rollback plans do not rebuild or rerun branch CI gates; they deploy/promote already accepted immutable image refs and smoke the target namespace.",
+        "Runner failure behavior blocks subsequent build/deploy steps when a quality gate exits nonzero.",
+        "Config validation rejects malformed quality gate definitions and empty commands.",
+        "Sample config includes meaningful default quality gates that are executable in the controller worktree.",
+        "Unit tests cover config parsing, step ordering, dry-run/real failure behavior, and retention of manual deploy guards.",
+        "Docs describe the authoritative CI/CD flow and make clear that local tests are fast feedback, not the final admission authority."
+      ],
+      "assumptions": [
+        "This ticket should introduce the clean quality-gate abstraction now, while the initial default gate set can stay focused on deterministic checks that are currently green in the controller worktree.",
+        "Full application integration tests should be added as future named gates once their suites are made green and executable in the controller/builder environment.",
+        "Release Controller self-upgrade remains a separate control-plane bootstrap concern."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Release Controller CI quality gates touch config schema, planner ordering, runner failure semantics, docs, tests, and possibly remote rollout; split keeps design/implementation and verification/deployment closure explicit.",
+      "created_at": "2026-05-24T11:28:33+00:00",
+      "id": "T000",
+      "problem_definition": "The release pipeline now owns backend and LLM Factory deployment, but it still treats CI-like verification as a small generic `deploy.verify_commands` preflight list. That makes the desired flow ambiguous: developers may run unit tests locally, but the authoritative staging-admission gate is not modeled as a first-class Release Controller phase with clear ordering, naming, documentation, and failure semantics.",
+      "problem_id": "P000",
+      "proposed_solution": "Add an explicit Release Controller CI quality-gate capability. Introduce typed config for quality gates, have branch release plans execute those gates after checkout/submodule update and before image build, keep deploy smoke as a separate post-deploy stage, and ensure a failed gate stops build/deploy while recording a failed release run. Preserve existing backend/factory manual deploy rejection. Update sample config, docs, and tests so the official flow is local unit tests for fast feedback, controller CI gate for staging admission, staging smoke/integration checks, and prod promotion from the passed immutable release.",
+      "result_ids": [
+        "R009"
+      ],
+      "risks": [
+        "Adding a heavy full-repo test gate immediately can block all releases because the current monorepo full matrix still has historical red suites.",
+        "If gates are modeled as generic verify commands only, the architecture remains ambiguous and future agents may treat smoke/preflight/CI as interchangeable.",
+        "If prod promotion reruns branch gates or rebuilds images, it breaks the immutable promote model."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make Release Controller enforce CI gates",
+      "updated_at": "2026-05-24T11:50:08+00:00",
+      "verification_plan": "Run release-controller unit tests, release-controller CI guard tests, deploy syntax checks, relevant CI lint scripts, and focused manual negative checks for direct `services-image` / `factory-image` invocation. Inspect generated command plans in tests to prove gate ordering and prod promotion behavior."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "`ControllerConfig` exposes typed `quality_gates` and serializes them back to mappings.",
+        "`QualityGate.from_mapping` rejects missing/empty names and empty argv arrays.",
+        "Branch release plans include all quality gates with stable `quality-*` step names before build steps.",
+        "Promotion and rollback command plans contain only deploy/smoke steps and no quality/build steps.",
+        "Runner tests show a failing quality gate stops subsequent steps.",
+        "Existing planner tests for controller deploy env and manual deploy guard tests continue to pass."
+      ],
+      "assumptions": [
+        "Existing `deploy.verify_commands` should remain as release preflight for now so older config keeps working, but new CI semantics live under top-level quality gates.",
+        "Initial gates will be deterministic repo checks; heavier app integration gates belong in the next child and future follow-ups."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "This child is a bounded controller code change with clear files, tests, and failure semantics; remote rollout and broader docs are separate split children.",
+      "created_at": "2026-05-24T11:29:18+00:00",
+      "id": "T001",
+      "problem_definition": "Release Controller needs first-class CI gate semantics instead of relying on an overloaded `deploy.verify_commands` list. The branch plan should make quality gates visible, ordered, and failure-blocking before image build/deploy, while promotion and rollback stay image-pointer operations.",
+      "problem_id": "P001",
+      "proposed_solution": "Add a `QualityGate` model and `quality_gates` field to controller config, parse and validate named gates from config, preserve backward compatibility by allowing existing `deploy.verify_commands` to continue as preflight steps, and update branch planning so gates become `quality-<name>` command steps after source checkout/submodule update and before image build. Extend tests to verify model parsing, malformed config rejection, branch step ordering, no gates in promotion/rollback, and runner short-circuit behavior when a quality step fails.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "If existing config parsing becomes strict without a default, remote controller config may break on upgrade.",
+        "If gate names are not normalized, command plans may become unstable or invalid.",
+        "If verify commands and quality gates both exist, ordering must stay clear rather than becoming another ambiguous list."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add typed quality gate model and branch-plan execution",
+      "updated_at": "2026-05-24T11:31:32+00:00",
+      "verification_plan": "Run `PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q`, `python3 -m pytest -q scripts/ci/test_release_controller_ci.py`, `python3 -m pytest -q`, and a manual direct deploy guard check if touched behavior warrants it."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Sample config has top-level `quality_gates` with stable names and executable argv commands.",
+        "Sample config keeps deploy `verify_commands` as lightweight preflight distinct from quality gates.",
+        "Docs explain local unit tests as fast feedback and Release Controller quality gates as authoritative staging admission.",
+        "Docs explain staging smoke/integration and prod promotion using the already accepted immutable release.",
+        "Repository guard tests fail if docs/sample config stop mentioning quality gates.",
+        "Release-controller tests and CI guard tests pass."
+      ],
+      "assumptions": [
+        "Initial default gates should be deterministic checks that are green today: release-controller tests and release-controller CI guard tests.",
+        "Full application integration suites should become future quality gates only after the suites are made green in the controller/builder environment."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "This child is a bounded config/docs/guard update with clear files and local tests; remote rollout is isolated in P003.",
+      "created_at": "2026-05-24T11:31:56+00:00",
+      "id": "T002",
+      "problem_definition": "The code can now express quality gates, but the repository still needs a default controller config and docs that make the intended CI/CD flow unambiguous. Without this, future changes can leave the gate list empty or treat local tests, release preflight, staging smoke, and prod promotion as interchangeable.",
+      "problem_id": "P002",
+      "proposed_solution": "Add meaningful deterministic quality gates to `novaic-release-controller/config.sample.json`, keep lightweight `deploy.verify_commands` as deploy preflight, update Release Controller architecture and deploy runbook docs to describe the canonical flow, and extend repository guard tests to require the sample config and docs to mention quality gates and the local-test/staging/prod responsibilities.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Choosing too-heavy default gates can block every release because historical full matrix failures still exist.",
+        "Choosing too-light gates can make the new capability cosmetic.",
+        "Docs can drift unless CI guard tests pin the important contract text."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Wire default CI gates and document the canonical flow",
+      "updated_at": "2026-05-24T11:34:08+00:00",
+      "verification_plan": "Run release-controller unit tests, `scripts/ci/test_release_controller_ci.py`, relevant docs/lint scripts, `python3 -m pytest -q`, and inspect sample config parsing through `load_config`."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Polling is paused before the quality-gate commit reaches `main`.",
+        "Intended files are committed and pushed, without staging unrelated dirty workspace changes.",
+        "A Release Controller image built from the quality-gate commit is deployed on the API host.",
+        "Remote runtime config contains `quality_gates` with `release-controller-ci` and `release-path-lints`.",
+        "A staging run through Release Controller succeeds and its command plan shows quality gates before image build/deploy.",
+        "Release Controller status has `last_error=null`, polling is re-enabled, staging health is clean, and prod current pointer remains on the prior promoted release unless a deliberate promotion is made.",
+        "Manual backend/factory deploy guards still fail direct invocation."
+      ],
+      "assumptions": [
+        "The controller image can still be self-upgraded through the explicit `release-controller-image` bootstrap path.",
+        "Prod should not be promoted as part of this child unless staging verification shows a code release that the user wants promoted; the acceptance target is CI gate enforcement on staging admission."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "split",
+      "classification_reason": "Remote rollout has distinct publish/readiness and API-host upgrade/verification phases; splitting avoids mixing commit hygiene with remote control-plane mutation.",
+      "created_at": "2026-05-24T11:34:34+00:00",
+      "id": "T003",
+      "problem_definition": "The code and docs now define Release Controller quality gates, but the running API-host controller still uses the previous image and remote config. Until the controller image and `/opt/novaic/release-controller/config.json` are upgraded, branch releases will not enforce the new gates.",
+      "problem_id": "P003",
+      "proposed_solution": "Use the same safe control-plane rollout pattern as the previous controller-only migration: pause polling, commit and push the quality-gate code intentionally, build/push a new Release Controller image from that commit, update remote config with the quality gate list, deploy the new controller image, trigger or observe a staging release, verify the command plan contains `quality-*` steps before build/deploy, verify staging health, ensure prod pointer remains unchanged unless promoted explicitly, and resume polling.",
+      "result_ids": [
+        "R008"
+      ],
+      "risks": [
+        "If polling is not paused before push, the old controller could process the new commit without the new gate support.",
+        "The default quality gates may fail in the remote controller container if dependencies or PYTHONPATH assumptions are wrong.",
+        "Remote config edits must preserve existing branch rules, registry paths, health URLs, and polling settings."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Upgrade API-host Release Controller with quality gates",
+      "updated_at": "2026-05-24T11:49:37+00:00",
+      "verification_plan": "Use local tests before commit, git status/diff to stage only intended files, remote `/v1/status`, remote config inspection, Docker image digest, Release Controller trigger response/run details, public staging health, prod pointer comparison, and manual direct deploy guard checks."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Remote polling is disabled and status confirms no new autonomous release will be triggered by the push.",
+        "Local validation relevant to the quality-gate change passes.",
+        "Git staging contains only intended files for this work and no unrelated dirty files.",
+        "Commit is created on `main` and pushed to `origin/main`.",
+        "Commit id and staged file scope are recorded."
+      ],
+      "assumptions": [
+        "It is acceptable to use `deploy release-controller-image` for control-plane self-upgrade/pause operations.",
+        "Parent repo is already on `main` and submodules have no intended changes for this quality-gate work."
+      ],
+      "body_path": "problems/P000/children/P003/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "This is a bounded publish/readiness operation with clear validation, staging scope, and commit/push evidence; remote controller upgrade is handled by sibling P005.",
+      "created_at": "2026-05-24T11:35:15+00:00",
+      "id": "T004",
+      "problem_definition": "The quality-gate code must reach `main`, but the running API-host controller image does not yet understand the new gate model. Polling must be paused before the push, then only intentional files should be committed and pushed.",
+      "problem_id": "P004",
+      "proposed_solution": "Pause API-host polling by editing the runtime config and redeploying the current Release Controller image, run local validation, stage the intended Release Controller source/config/docs/test changes plus the active problem ledger index if appropriate, commit to `main`, push to `origin/main`, and record commit/push evidence. Avoid staging unrelated pre-existing dirty docs/archive/app/start changes.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Remote polling pause can be incomplete if the config changes but the controller is not restarted.",
+        "Staging unrelated dirty files could accidentally publish archived docs or user edits.",
+        "If local validation is incomplete, the pushed commit can fail remote quality gates later."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Pause polling and publish quality-gate commit",
+      "updated_at": "2026-05-24T11:37:04+00:00",
+      "verification_plan": "Use remote `/v1/status`, local test commands, `git diff --cached --name-status`, `git status --short`, `git commit`, `git push`, and `git rev-parse HEAD`."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "New controller image deployed on API host is built from commit `aaf2c823e24e970498479acda9c95ad56f03835a`.",
+        "Remote config contains `release-controller-ci` and `release-path-lints` quality gates.",
+        "Staging Release Controller run succeeds and includes `quality-release-controller-ci` and `quality-release-path-lints` before build/deploy.",
+        "Quality gate execution results are present and successful in the run output.",
+        "Staging public health is healthy after deployment.",
+        "Prod current pointer remains on commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` unless explicitly promoted.",
+        "Polling is re-enabled with `last_error=null`.",
+        "Direct manual `services-image` and `factory-image` calls still fail locally before remote side effects."
+      ],
+      "assumptions": [
+        "The API host can build and push the Release Controller image from the pushed commit.",
+        "Staging deployment of the new commit is expected; prod promotion is intentionally not part of this ticket."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "The remaining rollout has a single ordered operational path with explicit remote checks; if a gate/runtime dependency blocks execution, a spawned child can capture that repair.",
+      "created_at": "2026-05-24T11:37:29+00:00",
+      "id": "T005",
+      "problem_definition": "The quality-gate commit is on `main`, but the API-host Release Controller still runs the previous image and config. The runtime must be upgraded and a staging release must prove that quality gates execute in the intended order before build/deploy.",
+      "problem_id": "P005",
+      "proposed_solution": "Build a new Release Controller image from commit `aaf2c823e24e970498479acda9c95ad56f03835a`, push it to the internal registry as an immutable sha tag/digest, update `/opt/novaic/release-controller/config.json` with the default quality gates while preserving existing settings, deploy the new controller image, trigger a staging release for the commit, inspect the run command plan and execution results for quality gate ordering, verify staging health, confirm prod pointer did not change, re-enable polling, and verify manual deploy guards still reject direct calls.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Remote quality gates may fail because the controller image or worktree lacks pytest or repo dependencies.",
+        "If remote config JSON is edited incorrectly, branch rules or smoke URLs could be damaged.",
+        "Re-enabling polling before verifying the staged run could make debugging harder."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Deploy quality-gate controller and verify staging gate execution",
+      "updated_at": "2026-05-24T11:39:27+00:00",
+      "verification_plan": "Use Docker image inspect, remote config JSON inspection, Release Controller `/v1/triggers`, `/v1/runs/{run_id}`, `/v1/status`, public health curls, prod pointer comparison, and direct guarded deploy commands."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "Dockerfile installs pytest or an equivalent package set sufficient for `python3 -m pytest`.",
+        "CI guard test asserts the Dockerfile keeps pytest available.",
+        "Local tests pass after the Dockerfile/test update.",
+        "The fix is committed and pushed without unrelated dirty files."
+      ],
+      "assumptions": [
+        "A slightly larger controller image is acceptable because the controller is the CI/CD authority and must run its own gates."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P006/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "This is a narrow Dockerfile and guard-test fix with clear local verification and commit scope.",
+      "created_at": "2026-05-24T11:38:05+00:00",
+      "id": "T006",
+      "problem_definition": "The Release Controller image is now expected to run default pytest-based quality gates, but the image does not install pytest. The controller must carry the minimal tooling needed for its configured gate contract.",
+      "problem_id": "P006",
+      "proposed_solution": "Update `docker/release-controller/Dockerfile` to install pytest alongside the release-controller package, add a Dockerfile invariant guard requiring pytest installation, run local release-controller tests and CI guard tests, commit and push this small fix while polling remains paused.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Installing test tooling into the controller runtime image makes it slightly larger.",
+        "If future gates require additional dependencies, this fix only covers the current default gate set."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add test tooling to Release Controller image",
+      "updated_at": "2026-05-24T11:39:03+00:00",
+      "verification_plan": "Run release-controller tests, `scripts/ci/test_release_controller_ci.py`, immutable workflow lint, root pytest, `bash -n deploy`, and inspect staged files before commit."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "Running API-host controller image is the new digest built from commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "Remote config contains the two default quality gates.",
+        "`/v1/polls/once` creates a successful staging run for commit `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`.",
+        "Run command plan and execution results show both quality gates before build and deploy, with exit code 0.",
+        "Staging health passes and prod pointer remains on the previous prod commit.",
+        "Polling is re-enabled with `last_error=null` and unchanged main head skip.",
+        "Direct manual backend/factory deploy commands still fail."
+      ],
+      "assumptions": [
+        "Only `main` exists as a remote branch, so `/v1/polls/once` will not unexpectedly process preview or release branches."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/tickets/T007.md",
+      "classification": "one_go",
+      "classification_reason": "This follow-up has one concrete remote rollout path with explicit status, run, ordering, health, and guard checks.",
+      "created_at": "2026-05-24T11:40:20+00:00",
+      "id": "T007",
+      "problem_definition": "The latest `main` commit contains the quality-gate model and controller image test tooling, but the API-host Release Controller still needs to run that code and execute the gates in a real staging admission flow.",
+      "problem_id": "P007",
+      "proposed_solution": "Build and push an immutable Release Controller image from `6a74b2ac08b199a4c2c0db54c3fc31708bd59261`, update API-host runtime config with the default quality gates while keeping polling paused, deploy the new image, execute `/v1/polls/once` so the branch polling path records the new main head and deploys staging, inspect the run plan/results for successful `quality-*` steps before build/deploy, verify staging health and prod pointer stability, then re-enable polling and verify status is clean.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [
+        "The quality gates may fail remotely if the controller image still lacks a tool.",
+        "The staging run may take several minutes because it builds API and Factory images.",
+        "Re-enabling polling before branch head is recorded could duplicate the staging deployment."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Finish remote quality-gate rollout through polling path",
+      "updated_at": "2026-05-24T11:45:02+00:00",
+      "verification_plan": "Inspect remote worktree, build/push image, deploy image, read remote config, call `/v1/polls/once`, fetch run details, parse command order/results, curl staging/prod health/status, and run local direct deploy guard commands."
+    },
+    "T008": {
+      "acceptance_criteria": [
+        "Dockerfile installs `pytest` and `httpx` for controller CI gate execution.",
+        "CI guard test asserts both dependencies remain in the Dockerfile.",
+        "Local tests pass.",
+        "Commit is pushed to `main` while API-host polling remains disabled.",
+        "The quality gate command succeeds manually inside the upgraded controller container."
+      ],
+      "assumptions": [
+        "Installing `httpx` is the minimal correct fix because the default gate intentionally runs the controller test suite."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/children/P008/tickets/T008.md",
+      "classification": "one_go",
+      "classification_reason": "This is a narrow runtime dependency repair with one Dockerfile line, one guard assertion, and direct local/remote verification.",
+      "created_at": "2026-05-24T11:42:32+00:00",
+      "id": "T008",
+      "problem_definition": "The remote `release-controller-ci` quality gate fails because FastAPI/Starlette `TestClient` requires `httpx`, and the Release Controller image does not install it.",
+      "problem_id": "P008",
+      "proposed_solution": "Install `httpx` in the Release Controller Docker image together with pytest, update the Dockerfile invariant guard, run local tests, commit and push the fix, rebuild/redeploy the controller image, and verify the default quality gate command succeeds inside the container before retrying staging rollout.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "More test-only dependencies increase controller image size.",
+        "Future tests may introduce additional dependencies if the gate remains whole-suite based."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Install httpx for controller CI gate",
+      "updated_at": "2026-05-24T11:44:34+00:00",
+      "verification_plan": "Run local release-controller tests, CI guard tests, immutable workflow lint, root pytest, remote container manual quality gate command, and remote status polling disabled check."
+    },
+    "T009": {
+      "acceptance_criteria": [
+        "A real `/v1/polls/once` outcome for `main` succeeds for commit `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`.",
+        "Quality gates are present before build/deploy in the run plan and both have successful execution evidence.",
+        "Staging health endpoint passes.",
+        "Prod current release pointer remains on `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Polling is re-enabled and reports `last_error=null`.",
+        "Direct manual backend/factory deploy commands still reject without controller identity."
+      ],
+      "assumptions": [
+        "Prod should not be promoted in this ticket."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/children/P007/children/P009/tickets/T009.md",
+      "classification": "one_go",
+      "classification_reason": "This is the final bounded verification run with explicit poll, run-detail, health, pointer, polling, and manual guard checks.",
+      "created_at": "2026-05-24T11:45:22+00:00",
+      "id": "T009",
+      "problem_definition": "The controller image now includes the dependencies required by the default quality gates. The final proof is a successful real branch-poll staging release for the latest main commit with quality gates executed before build/deploy.",
+      "problem_id": "P009",
+      "proposed_solution": "Call `/v1/polls/once` while autonomous polling remains disabled, fetch the resulting run, verify plan and execution ordering, verify staging health and prod pointer stability, re-enable polling in runtime config and restart controller, confirm status is clean and main head is skipped as unchanged, then run direct manual deploy guard checks.",
+      "result_ids": [
+        "R007"
+      ],
+      "risks": [
+        "The poll run may take several minutes because it builds and deploys API/Factory images.",
+        "If poll records the branch head but deploy health fails, rollback/pointer state must be inspected before re-enabling polling."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Run final quality-gated staging poll",
+      "updated_at": "2026-05-24T11:48:34+00:00",
+      "verification_plan": "Use `/v1/polls/once`, `/v1/runs/{run_id}`, `/v1/status`, public health curls, remote config edit/restart, and local direct deploy guard commands."
+    }
+  },
+  "updated_at": "2026-05-24T11:50:34+00:00"
+}

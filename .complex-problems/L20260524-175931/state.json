@@ -1,0 +1,176 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-24T10:12:24+00:00",
+      "criteria_map": [
+        "Prod current pointer with immutable refs: satisfied by prod current state using API digest `sha256:249feec8...` and Factory digest `sha256:e6b03e...`.",
+        "Prod previous pointer for immediate rollback: satisfied by prod previous state pointing at the prior `4e52e7ea` digest pair.",
+        "Current prod promoted from staging-verified `85e79d92`: satisfied by staging run `20260524-100806-main-85e79d9237f1` and prod promotion `20260524-101001-promote-prod-staging-85e79d9237f1`.",
+        "Containers match pointer refs: satisfied by Docker inspect `Config.Image` matching current pointer digests.",
+        "Health checks pass: satisfied by local/public health outputs.",
+        "Dry-run rollback succeeds and does not mutate current: satisfied by rollback dry-run evidence.",
+        "Ledger finalization: validation/render/status still needs to run after this check is recorded."
+      ],
+      "evidence": [
+        "Release-controller `current_releases` includes prod current commit `85e79d9237f14e95020f7271810dca1de095b407` with immutable API and Factory digest refs.",
+        "Release-controller `previous_releases` includes prod previous commit `4e52e7ea8e2f0722be550ce36a19ea8d8cae8a21` with immutable API and Factory digest refs.",
+        "Final prod promotion run `20260524-101001-promote-prod-staging-85e79d9237f1` succeeded.",
+        "Prod rollback dry-run run `20260524-101138-rollback-prod-4e52e7ea8e2f` succeeded, all command steps were skipped, and current pointer was unchanged.",
+        "Docker inspect shows `novaic-prod-gateway-1` and `novaic-llm-factory-prod-llm-factory-1` run the same digest refs as the prod current pointer.",
+        "Health checks passed for controller, local prod API, local prod Factory, public prod `/health`, and public staging API.",
+        "Repo tests passed after the smoke endpoint fix."
+      ],
+      "execution_map": [
+        "Result R000 performed the runtime inspection, config correction, baseline promotion, staging promotion, final source config commit, final staging release, final prod promotion, rollback dry-run, and health verification.",
+        "No blocking child problem was required."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "The public `/api/health` endpoint still returns 401, so external unauthenticated health checks must use `/health` or authenticated API checks. This is documented in the runbook and runtime config."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The main failure mode was a false rollback system where prod has only a current pointer. That was avoided by first creating a baseline prod pointer from the existing prod digest pair, then promoting staging. The second promote moved the prior current into `prod` previous, and rollback dry-run proved controller can resolve and plan against it."
+      ],
+      "summary": "The prod enrollment is successful. Prod is now tracked by release-controller with immutable digest current and previous pointers; the current prod deployment is the latest main commit, and rollback can target the previous prod release through controller state."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-24T09:59:31+00:00",
+  "ledger_id": "L20260524-175931",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-24T09:59:31+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "Prod is containerized and healthy, but release-controller state only tracks staging. Prod must become a first-class immutable release namespace: promotion should deploy immutable refs, current/previous pointers should exist, and rollback should be planned from release-controller state rather than from mutable Docker tags.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Prod has a release-controller `current_releases` pointer with namespace `prod` and immutable API/Factory image refs.",
+        "Prod has a `previous_releases` pointer so `/v1/rollbacks/prod` has a real target immediately.",
+        "The current prod deployment is promoted from the staging-verified commit `4e52e7ea8e2f0722be550ce36a19ea8d8cae8a21` using immutable refs.",
+        "Prod API and Factory containers run image refs that match the release-controller prod current pointer.",
+        "Prod health checks pass locally and public prod ingress behavior is understood.",
+        "A dry-run rollback for prod succeeds and points to the previous immutable prod pointer without mutating current prod.",
+        "Ledger validation/rendering/status pass."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Enroll prod into release-controller immutable promote and rollback pointers",
+      "updated_at": "2026-05-24T10:12:24+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Source commit for smoke config: `85e79d9237f14e95020f7271810dca1de095b407`.",
+        "Active ledger: `.complex-problems/L20260524-175931`."
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-24T10:12:07+00:00",
+      "done": [
+        "Inspected existing prod runtime images and found immutable baseline digests for the old prod deployment.",
+        "Updated API-host release-controller runtime config so prod smoke uses `https://api.gradievo.com/health`; `/api/health` is auth-protected and returns 401 publicly.",
+        "Restarted release-controller so it loaded the updated smoke URL.",
+        "Promoted the existing prod image digest pair as a bootstrap baseline pointer:",
+        "API: `127.0.0.1:5000/novaic/api-backend@sha256:ca38eb372d9cfe8023b87c19244ee004a1aef92d75e1e8eee9e98e16a44a2098`",
+        "Factory: `127.0.0.1:5000/novaic/llm-factory@sha256:186c86ee8af2335682b2e05c3c498579c6b495bff7ca5c7fdb622563753f12f6`",
+        "Promoted staging commit `4e52e7ea8e2f0722be550ce36a19ea8d8cae8a21` to prod, creating a prod previous pointer.",
+        "Fixed `novaic-release-controller/config.sample.json` and `docs/runbooks/deploy.md`, committed `85e79d9237f1 Fix prod release controller smoke endpoint`, waited for staging to publish it, then promoted that staging digest pair to prod.",
+        "Verified prod rollback dry-run succeeds and targets the previous prod pointer without mutating current prod."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Public `https://api.gradievo.com/api/health` returns 401 by design under current auth behavior; release-controller prod smoke uses `https://api.gradievo.com/health`, and local app health is verified separately at `127.0.0.1:19999/api/health`.",
+        "The local ledger for this runtime operation remains uncommitted to avoid advancing main again after prod was promoted to the latest source commit."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Enrolled prod into the release-controller promote/rollback state model. Prod now has a controller-managed current pointer with immutable digest refs and a previous pointer for immediate rollback. The current prod release is promoted from staging-verified main commit `85e79d9237f14e95020f7271810dca1de095b407`.",
+      "ticket_id": "T000",
+      "verification": [
+        "Baseline prod promotion succeeded: `20260524-100353-promote-prod-bootstrap-existing-prod-b3b9d018`.",
+        "First staging promotion succeeded: `20260524-100421-promote-prod-staging-4e52e7ea8e2f`.",
+        "Final staging release to `85e79d9237f1` succeeded: `20260524-100806-main-85e79d9237f1`.",
+        "Final prod promotion succeeded: `20260524-101001-promote-prod-staging-85e79d9237f1`.",
+        "Prod current pointer now uses immutable digests:",
+        "API: `127.0.0.1:5000/novaic/api-backend@sha256:249feec8fe168f5e9844d35fb00ebab6c6d05df51f1a9b3808f48a0e0e338632`",
+        "Factory: `127.0.0.1:5000/novaic/llm-factory@sha256:e6b03e1acab78ef4d354eb78192e7890ff0099f084e5a55618f0cc5c5f96a8c9`",
+        "Prod previous pointer now targets the previous `4e52e7ea` digest pair.",
+        "Prod rollback dry-run `20260524-101138-rollback-prod-4e52e7ea8e2f` succeeded, all steps were skipped, and current pointer remained unchanged.",
+        "Running prod gateway and prod factory containers have `Config.Image` exactly matching prod current digest refs.",
+        "Health checks passed: release-controller local health, prod local API health, prod local Factory health, prod public `/health`, and staging public health.",
+        "Tests passed after the config/doc fix: release-controller tests 38/38, release-controller CI guard 6/6, full pytest 11/11, and `bash -n deploy`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Prod current pointer exists after controller-managed promotion.",
+        "Prod previous pointer exists and points at the bootstrap prod baseline.",
+        "Prod current images are immutable refs for `sha-4e52e7ea8e2f`.",
+        "Prod containers run the current pointer image refs.",
+        "`/v1/rollbacks/prod` with `dry_run=true` succeeds, skips execution, and leaves current pointer unchanged.",
+        "Health checks pass for controller, prod API, prod Factory, and prod ingress behavior is documented."
+      ],
+      "assumptions": [
+        "The staging `4e52e7ea` release is acceptable to promote to prod.",
+        "User wants the correct controller-managed path rather than preserving the mutable prod tag runtime."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "This is a bounded runtime enrollment: inspect prod, perform controller promotion steps, verify pointers and health, and record any blocker if prod cannot be bootstrapped immutably.",
+      "created_at": "2026-05-24T09:59:43+00:00",
+      "id": "T000",
+      "problem_definition": "Prod currently runs Dockerized services, but release-controller state has no prod current or previous pointer. Without those pointers, prod deployment is outside the clean promote/rollback control plane.",
+      "problem_id": "P000",
+      "proposed_solution": "First inspect current prod images and state. If current prod images can be represented as immutable digests, bootstrap a prod baseline pointer by promoting the currently running prod image digests. Then promote the staging-verified `4e52e7ea` API and Factory sha-tag images to prod through `/v1/promotions/prod`. Verify prod current and previous pointers, container image refs, health endpoints, and dry-run rollback behavior.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "If current prod was deployed from mutable tag without a repo digest, bootstrap baseline may need a temporary immutable tag or direct state seed.",
+        "First prod deploy under controller may restart prod services; health gates must pass before closure.",
+        "Public `api.gradievo.com/api/health` may require authentication and return 401 while local health is healthy."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Promote prod into immutable controller state",
+      "updated_at": "2026-05-24T10:12:07+00:00",
+      "verification_plan": "- Query release-controller `/v1/status` before and after promotions.\n- Inspect Docker image digests/tags and running prod containers on the API host.\n- Call `/v1/promotions/prod` for baseline and current promotion with immutable refs.\n- Call `/v1/rollbacks/prod` with `dry_run=true`.\n- Curl local prod API/factory and public prod API endpoints.\n- Validate/render/status the ledger."
+    }
+  },
+  "updated_at": "2026-05-24T10:12:36+00:00"
+}

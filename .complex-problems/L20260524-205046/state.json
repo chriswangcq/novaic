@@ -1,0 +1,745 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-24T12:56:31+00:00",
+      "criteria_map": [
+        "Serializable execution model: satisfied by `PlanExecutionResult` in `models.py` and model round-trip test.",
+        "Runner import compatibility: satisfied by importing the model symbol through `runner.py` and passing existing tests that still import it from `release_controller.runner`.",
+        "Old/new run JSON compatibility: satisfied by optional `ReleaseRun.execution_result` parse behavior and state tests.",
+        "Finalized run persistence: satisfied by `execute_planned_release()` storing `execution_result=execution` and service/poller tests.",
+        "Run-returning endpoint exposure: satisfied because `ReleaseRun.to_mapping()` includes the persisted field and service tests fetch run/list/status after trigger.",
+        "Dry-run and failed partial result persistence: satisfied by explicit service and poller tests."
+      ],
+      "evidence": [
+        "`PlanExecutionResult.from_mapping()` and `to_mapping()` are covered by `test_plan_execution_result_round_trips_command_results`.",
+        "`ReleaseRun.execution_result` persists through `ReleaseStateStore` reload in `test_run_execution_result_survives_store_reload`.",
+        "Legacy run records without `execution_result` still load in `test_old_run_without_execution_result_still_loads`.",
+        "Trigger dry-runs expose persisted `execution_result` through `/v1/runs/{run_id}`, `/v1/runs`, and `/v1/status` in `test_trigger_dry_run_persists_run_without_release_pointer`.",
+        "Successful non-dry-run trigger and failed trigger both persist execution results in service tests.",
+        "Poller-created dry-run, success, and failed partial runs persist execution results in poller tests.",
+        "Release-controller tests passed: 51 passed.",
+        "Release-controller CI guard passed: 9 passed.",
+        "Immutable workflow lint and Python compile checks passed."
+      ],
+      "execution_map": [
+        "Code updated in release-controller model, runner, executor, package export, and tests.",
+        "Verification commands were run after implementation and passed for release-controller scope.",
+        "Full repository matrix was also attempted; unrelated agent-runtime and cortex failures were observed and recorded as outside this problem."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Persisting stdout/stderr can grow run JSON size or retain sensitive command output. This is non-blocking for this change because the controller already exposes the same payload in immediate responses; output redaction/truncation can be a later hardening task."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A failing runner returns only one failed quality gate result; tests confirm the final failed run keeps exactly that partial result and does not create a release pointer or advance branch head. This covers the most important auditability failure mode: a stopped release still has durable step evidence."
+      ],
+      "summary": "P001 is successful. The implementation makes `PlanExecutionResult` a durable model, stores it on completed `ReleaseRun` records, preserves old run readability, and verifies API/state/poller behavior locally."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P003/checks/C001.md",
+      "created_at": "2026-05-24T12:59:14+00:00",
+      "criteria_map": [
+        "Capture remote status and release pointers: satisfied.",
+        "Disable and verify polling before push: satisfied.",
+        "Commit only intended files: satisfied by staged file list and commit output.",
+        "Push persistence commit and record hash: satisfied with commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2`.",
+        "Remote healthy and paused after push: satisfied."
+      ],
+      "evidence": [
+        "Remote pre-push status captured: main branch head `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`, staging current release `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`, prod current release `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Remote config changed to `polling_enabled=false`, container restarted, and `/v1/status` reported polling `enabled=false`, `running=false`, `last_error=null`.",
+        "`git diff --cached --name-only` before commit listed only the eight intended release-controller files.",
+        "Commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2` was created and pushed to `origin/main`.",
+        "Remote `/v1/status` after push still had branch head `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`, unchanged prod/staging current releases, and polling disabled."
+      ],
+      "execution_map": [
+        "Used SSH/curl to inspect remote health/status.",
+        "Edited remote config to disable polling and restarted the controller container.",
+        "Used explicit `git add` paths and committed/pushed only intended files."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Polling is intentionally still disabled until P004 deploys and verifies the upgraded controller image, then restores polling."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The critical race condition was old-controller auto-processing of the new main commit. Post-push remote branch head remained the old commit while `origin/main` advanced, proving the old controller did not process the new commit."
+      ],
+      "summary": "P003 is successful. Remote polling was paused before the persistence commit was pushed, the commit contains only intended release-controller files, and remote status remained healthy and paused after push."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P004/checks/C002.md",
+      "created_at": "2026-05-24T13:04:08+00:00",
+      "criteria_map": [
+        "Build from persistence commit: satisfied.",
+        "Push and deploy immutable digest: satisfied.",
+        "Persisted remote run record with non-empty `execution_result.results`: satisfied by both dry-run and real poll records.",
+        "Restore polling with `last_error=null`: satisfied.",
+        "Record prod/staging pointers and intentional staging movement: satisfied."
+      ],
+      "evidence": [
+        "Remote worktree checked out `745e20cbaefdd12139c344e8838d9e3e0e782ba2` before image build.",
+        "Image digest deployed: `127.0.0.1:5000/novaic/release-controller@sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607`.",
+        "`compose.env` and `docker inspect` both report that exact digest for the running controller.",
+        "Dry-run verification run `20260524-130108-main-745e20cbaefd` persisted 15 `execution_result.results`, all skipped, visible from `/v1/runs/{run_id}`.",
+        "Controlled poll run `20260524-130127-main-745e20cbaefd` succeeded and persisted 15 execution results, ending with `smoke-staging` and no failure.",
+        "Final status has polling `enabled=true`, `running=true`, `last_error=null`, last outcome skipped unchanged head.",
+        "Final pointers: staging moved intentionally to `745e20cbaefdd12139c344e8838d9e3e0e782ba2`; prod remained `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`."
+      ],
+      "execution_map": [
+        "Built image on API host from the checked-out commit.",
+        "Deployed via existing `release-controller-image` path.",
+        "Verified durable state through separate `/v1/runs/{run_id}` fetches, not only immediate trigger response.",
+        "Ran a controlled controller poll to advance staging under the upgraded controller."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P004",
+      "residual_risk": [
+        "No blocking risk for this ticket. Prod promotion remains a separate intentional release decision."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The remote dry-run proved skipped execution results persist without changing releases. The real poll then exercised the full non-dry-run path through quality gates, builds, pushes, deploys, and smoke, proving persisted execution results survive the important production-like path."
+      ],
+      "summary": "P004 is successful. The API-host controller is running the new immutable image built from the persistence commit, remote dry-run and real staging poll records both expose persisted `execution_result.results`, and polling is restored healthy."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C003.md",
+      "created_at": "2026-05-24T13:04:38+00:00",
+      "criteria_map": [
+        "Pause polling before publishing: satisfied by P003.",
+        "Build/push/deploy new controller image from persistence commit: satisfied by P004.",
+        "Remote verification run with persisted `execution_result.results`: satisfied by both dry-run and real poll records.",
+        "Restore polling with `last_error=null`: satisfied.",
+        "Release pointers remain intended: satisfied; staging intentionally moved under controller, prod unchanged."
+      ],
+      "evidence": [
+        "P003 succeeded: polling was paused before push and commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2` was pushed without unrelated files.",
+        "P004 succeeded: controller image digest `sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607` was deployed.",
+        "Remote dry-run persisted run `20260524-130108-main-745e20cbaefd` has non-empty `execution_result.results` from `/v1/runs/{run_id}`.",
+        "Remote real poll persisted run `20260524-130127-main-745e20cbaefd` has non-empty real execution results through `smoke-staging`.",
+        "Final polling status is enabled/running with `last_error=null`.",
+        "Final prod pointer remains `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`; staging intentionally moved to `745e20cbaefdd12139c344e8838d9e3e0e782ba2`."
+      ],
+      "execution_map": [
+        "Split parent T002 closed through P003 and P004 child checks.",
+        "Parent result R003 accurately summarizes child evidence and final state."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P002",
+      "residual_risk": [
+        "No blocking deployment risk remains. Future hardening can add output redaction/truncation for persisted command stdout/stderr."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The deployment was verified in two modes: dry-run state persistence without release mutation and full real staging poll with quality/build/deploy/smoke execution. That combination covers both skipped-result and real-result persistence paths on the API host."
+      ],
+      "summary": "P002 is successful. The API-host Release Controller now runs the persistence commit as an immutable digest, remote run records expose persisted execution results, polling is restored healthy, and release pointers are in the intended state."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-24T13:05:16+00:00",
+      "criteria_map": [
+        "`ReleaseRun` persists serialized `PlanExecutionResult`: satisfied by model/executor change and remote run records.",
+        "Old run records without it still read: satisfied by state test.",
+        "`/v1/runs/{run_id}`, `/v1/runs`, `/v1/status` include persisted execution result for new runs: satisfied by service tests and remote `/v1/runs` fetches.",
+        "Failed runs persist partial execution: satisfied by service and poller failed-run tests.",
+        "Dry-run runs persist skipped results: satisfied by service tests and remote dry-run run `20260524-130108-main-745e20cbaefd`.",
+        "Tests cover serialization/state/service/poller/failure/dry-run: satisfied by P001 verification.",
+        "Deployed to API-host and verified: satisfied by P002/P004 with immutable digest deployment and remote verification."
+      ],
+      "evidence": [
+        "P001 succeeded with code and tests covering model serialization, state round-trip, service endpoints, poller persistence, dry-run skipped results, and failed partial result persistence.",
+        "P002 succeeded with remote deployment and verification on API host.",
+        "Local release-controller tests passed: 51 passed.",
+        "Release-controller CI guard passed: 9 passed.",
+        "Remote dry-run run `20260524-130108-main-745e20cbaefd` has persisted `execution_result.results` count 15 from `/v1/runs/{run_id}`.",
+        "Remote real staging poll run `20260524-130127-main-745e20cbaefd` has persisted `execution_result.results` count 15, last step `smoke-staging`, failure null.",
+        "Final API-host status: polling enabled/running, `last_error=null`; branch head and staging release at `745e20cbaefdd12139c344e8838d9e3e0e782ba2`; prod unchanged at `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`."
+      ],
+      "execution_map": [
+        "Root split ticket T000 produced P001 implementation and P002 deployment children.",
+        "P001 and P002 both have successful checks.",
+        "Root result R004 summarizes the closed child work and final remote state."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "The only remaining non-blocking concern is persisted stdout/stderr size or secrecy. This change stores the same payload the controller already returns immediately; redaction/truncation is future hardening, not a blocker for the requested persistence."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The work was verified with both local failed partial execution tests and remote full non-dry-run staging poll. The remote poll exercised the real CI/CD path through quality gates, image builds, pushes, staging deploy, and smoke test, then persisted all step results in the run record."
+      ],
+      "summary": "The root problem is successful. `PlanExecutionResult` is now persisted in `ReleaseRun` records, backward compatibility for old runs is preserved, APIs expose the persisted field for new runs, dry-run and failed/partial paths are tested, and the API-host controller is deployed and verified remotely."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-24T12:50:46+00:00",
+  "ledger_id": "L20260524-205046",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-24T12:50:46+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "Release Controller currently returns `PlanExecutionResult` in the immediate trigger/promotion/rollback HTTP response, but the persisted `ReleaseRun` record only stores the command plan and final status/failure. After the request completes, `/v1/runs/{run_id}` and `/v1/status` cannot show per-step exit codes, skipped flags, stdout, or stderr. This weakens CI/CD auditability, especially for quality-gate runs.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002"
+      ],
+      "success_criteria": [
+        "`ReleaseRun` persists a serialized `PlanExecutionResult` for completed runs.",
+        "Stored run JSON round-trips existing and new run records without breaking old records that lack execution results.",
+        "`/v1/runs/{run_id}`, `/v1/runs`, and `/v1/status` include the persisted execution result for new runs.",
+        "Failed runs persist the partial execution result up to the failed step.",
+        "Dry-run runs persist skipped execution results.",
+        "Tests cover serialization, state round-trip, service response, poller persistence, and failure persistence.",
+        "The change is deployed to the API-host Release Controller and verified with a dry-run or safe run."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Persist Release Controller PlanExecutionResult in run records",
+      "updated_at": "2026-05-24T13:05:16+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-24T12:51:20+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Release Controller must store `PlanExecutionResult` in the final `ReleaseRun` record while keeping old run records readable. This child handles the local code/model/state/API/test implementation.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`PlanExecutionResult` is serializable/deserializable without circular imports.",
+        "`ReleaseRun` stores optional `execution_result` and round-trips old/new JSON records.",
+        "`execute_planned_release()` persists execution results on success, failure, and dry-run.",
+        "Tests cover model serialization, state persistence, service/run endpoint visibility, poller persisted runs, and failure partial results.",
+        "Local validation passes."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Implement persisted execution result model",
+      "updated_at": "2026-05-24T12:56:31+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-24T12:51:20+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "After local implementation is pushed, the API-host Release Controller must run the new code and prove historical run inspection exposes persisted execution results.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "API-host polling is paused before publishing the new controller persistence commit.",
+        "New Release Controller image is built/pushed/deployed from the persistence commit.",
+        "A remote verification run creates a persisted run record with `execution_result.results` visible from `/v1/runs/{run_id}` after the response.",
+        "Polling is restored with `last_error=null`.",
+        "Staging/prod pointers remain in the intended state unless explicitly changed."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Deploy execution-result persistence to API-host controller",
+      "updated_at": "2026-05-24T13:04:38+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P002/children/P003/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-24T12:57:15+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T002",
+      "created_from_ticket_mode": "split",
+      "description": "Before the API-host controller can run the persistence change, the local source must be committed and pushed without unrelated workspace residue, and remote polling must be paused so the old controller does not auto-process the new main commit.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P002/children/P003",
+      "parent_id": "P002",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "API-host controller status is captured before changes, including current prod/staging pointers and polling state.",
+        "Remote polling is disabled and verified before the new commit is pushed.",
+        "Only intended release-controller persistence files are staged and committed locally.",
+        "The persistence commit is pushed to `origin/main` and its hash is recorded.",
+        "Remote controller still reports healthy status with polling disabled after the push."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Publish persistence commit with remote polling paused",
+      "updated_at": "2026-05-24T12:59:14+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P002/children/P004/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-24T12:57:15+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T002",
+      "created_from_ticket_mode": "split",
+      "description": "The API-host controller must be upgraded to an immutable image built from the persistence commit, and a remote verification run must prove `/v1/runs/{run_id}` exposes persisted `execution_result.results` after the request completes.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P002/children/P004",
+      "parent_id": "P002",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "A new `novaic/release-controller` image is built and pushed on the API host from the persistence commit.",
+        "The controller is deployed by immutable digest through the existing release-controller image path.",
+        "A safe remote verification run creates or observes a persisted run with non-empty `execution_result.results` from `/v1/runs/{run_id}`.",
+        "Polling is restored and `/v1/status` reports `polling.last_error=null`.",
+        "Prod/staging release pointers are checked after deployment and any intentional staging movement is recorded."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Deploy persisted-result controller image and verify remote run record",
+      "updated_at": "2026-05-24T13:04:08+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-release-controller/release_controller/models.py`",
+        "`novaic-release-controller/release_controller/runner.py`",
+        "`novaic-release-controller/release_controller/executor.py`",
+        "`novaic-release-controller/release_controller/__init__.py`",
+        "`novaic-release-controller/tests/test_config_models.py`",
+        "`novaic-release-controller/tests/test_state.py`",
+        "`novaic-release-controller/tests/test_service.py`",
+        "`novaic-release-controller/tests/test_poller.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-24T12:56:11+00:00",
+      "done": [
+        "Moved `PlanExecutionResult` into the model layer with `from_mapping()` and `to_mapping()` while keeping `release_controller.runner.PlanExecutionResult` imports compatible.",
+        "Added `ReleaseRun.execution_result` with backward-compatible read behavior for old run JSON that lacks the field.",
+        "Updated `execute_planned_release()` to persist success, dry-run, and failed execution results when writing the final run record.",
+        "Extended release-controller tests for model round-trip, state round-trip, API persisted run/list/status output, poller persistence, dry-run skipped results, and failed partial execution persistence."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "API-host deployment and remote verification are intentionally left for the separate deployment ticket P002.",
+        "Full repository test matrix is not green because agent-runtime and cortex have existing failures outside the changed release-controller files."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Implemented `PlanExecutionResult` as a serializable release-controller model and added optional `execution_result` persistence to `ReleaseRun`. Finalized runs now store the command execution result written by `execute_planned_release`, so run fetch/list/status responses expose durable per-step execution details for new runs.",
+      "ticket_id": "T001",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 51 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 9 passed.",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py` -> OK.",
+        "`python3 -m py_compile novaic-release-controller/release_controller/*.py` -> passed.",
+        "`PYTHONDONTWRITEBYTECODE=1 scripts/run_all_tests.sh` -> release-controller-related guards passed; full matrix failed in pre-existing agent-runtime and cortex suites unrelated to this release-controller change."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "Commit: `745e20cbaefdd12139c344e8838d9e3e0e782ba2`",
+        "Remote controller container: `novaic-release-controller-release_controller-1`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P003/results/R001.md",
+      "created_at": "2026-05-24T12:59:02+00:00",
+      "done": [
+        "Captured remote controller status before push: branch head was `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`; staging current release matched that commit; prod current release was `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`; polling was initially enabled and healthy.",
+        "Set `/opt/novaic/release-controller/config.json` `polling_enabled=false` and restarted `novaic-release-controller-release_controller-1`.",
+        "Verified `/health` healthy and `/v1/status` reported polling `enabled=false`, `running=false`, `last_error=null`.",
+        "Staged only eight intended release-controller source/test files.",
+        "Created commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2` (`Persist release controller execution results`).",
+        "Pushed `main` to `origin/main`.",
+        "Verified after push that remote branch head remained `491bd7e6ad55a70d96f41d0fbfea872be72e92e8`, polling remained disabled, and prod/staging pointers were unchanged."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "The API-host controller still runs the old image until P004 deploys a new immutable controller image from commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2`."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Paused API-host Release Controller polling, committed only the intended release-controller persistence files, pushed the persistence commit to `origin/main`, and verified the remote controller stayed healthy with polling disabled.",
+      "ticket_id": "T003",
+      "verification": [
+        "`git diff --check` on intended files passed before commit.",
+        "`git diff --cached --name-only` showed only release-controller persistence source/test files before commit.",
+        "`git push origin main` succeeded: `491bd7e6..745e20cb main -> main`.",
+        "Remote `/v1/status` after push reported polling disabled and healthy, with unchanged current release pointers."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Controller digest: `127.0.0.1:5000/novaic/release-controller@sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607`",
+        "Dry-run verification run: `20260524-130108-main-745e20cbaefd`",
+        "Real staging poll run: `20260524-130127-main-745e20cbaefd`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P004/results/R002.md",
+      "created_at": "2026-05-24T13:03:54+00:00",
+      "done": [
+        "Remote worktree fetched `origin/main` and checked out commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2`.",
+        "Built and pushed `127.0.0.1:5000/novaic/release-controller:sha-745e20cbaefd`.",
+        "Produced digest `127.0.0.1:5000/novaic/release-controller@sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607`.",
+        "Deployed that digest with `./deploy release-controller-image ...`.",
+        "Verified controller `/health` healthy and container running from the same digest.",
+        "Ran safe remote dry-run trigger for commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2`: run `20260524-130108-main-745e20cbaefd` persisted 15 skipped `execution_result.results` entries fetched from `/v1/runs/{run_id}`.",
+        "Ran controlled upgraded-controller `/v1/polls/once` without dry-run: run `20260524-130127-main-745e20cbaefd` succeeded, persisted 15 execution result entries, and ended at `smoke-staging`.",
+        "Restored remote `polling_enabled=true`, restarted controller, and verified `/v1/status` reports polling `enabled=true`, `running=true`, `last_error=null`, last outcome skipped unchanged branch head."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "None for this deployment ticket. Prod was intentionally not promoted; staging moved to the new commit through the controller poll."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Built and pushed a Release Controller image from commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2`, deployed it to the API host by immutable digest, verified persisted execution results through remote `/v1/runs/{run_id}`, advanced staging through a controlled controller poll, and restored autonomous polling.",
+      "ticket_id": "T004",
+      "verification": [
+        "Remote image build and push completed successfully.",
+        "Local deploy path reported `Release Controller image release 已部署` for the immutable digest.",
+        "`compose.env` and `docker inspect` both show the deployed controller image as `127.0.0.1:5000/novaic/release-controller@sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607`.",
+        "`/v1/runs/20260524-130108-main-745e20cbaefd` returned persisted `execution_result.results` count 15, first step `git-fetch`, all skipped true.",
+        "`/v1/runs/20260524-130127-main-745e20cbaefd` returned persisted `execution_result.results` count 15, last step `smoke-staging`, failure null.",
+        "Final `/v1/status` branch head is `745e20cbaefdd12139c344e8838d9e3e0e782ba2`, staging current release is `745e20cbaefdd12139c344e8838d9e3e0e782ba2`, prod current release remains `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "Source commit: `745e20cbaefdd12139c344e8838d9e3e0e782ba2`",
+        "Controller digest: `127.0.0.1:5000/novaic/release-controller@sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607`",
+        "Dry-run persisted run: `20260524-130108-main-745e20cbaefd`",
+        "Real poll persisted run: `20260524-130127-main-745e20cbaefd`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R003.md",
+      "created_at": "2026-05-24T13:04:27+00:00",
+      "done": [
+        "P003 paused remote polling, committed and pushed `745e20cbaefdd12139c344e8838d9e3e0e782ba2`, and verified the old controller did not process the new branch head.",
+        "P004 built, pushed, and deployed `127.0.0.1:5000/novaic/release-controller@sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607`.",
+        "Remote dry-run verification run `20260524-130108-main-745e20cbaefd` persisted `execution_result.results` visible from `/v1/runs/{run_id}`.",
+        "Remote real poll run `20260524-130127-main-745e20cbaefd` succeeded and persisted real execution results through `smoke-staging`.",
+        "Polling was restored and reports healthy with `last_error=null`."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "None for P002. Prod was intentionally not promoted."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Closed both deployment child gates: the persistence commit was safely pushed while polling was paused, then the API-host Release Controller was upgraded to an immutable image from that commit and verified with persisted remote run records.",
+      "ticket_id": "T002",
+      "verification": [
+        "Child checks C001 and C002 both succeeded.",
+        "Final controller image digest matches compose env and running container image.",
+        "Final `/v1/status` shows branch head `745e20cbaefdd12139c344e8838d9e3e0e782ba2`, staging current release on the same commit, prod current release still `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`, and polling healthy."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "Source commit: `745e20cbaefdd12139c344e8838d9e3e0e782ba2`",
+        "Controller digest: `127.0.0.1:5000/novaic/release-controller@sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607`",
+        "Staging release run: `20260524-130127-main-745e20cbaefd`"
+      ],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-24T13:04:54+00:00",
+      "done": [
+        "P001 implemented the model/state/executor/service/test changes locally.",
+        "`PlanExecutionResult` is now serializable in the model layer with backward-compatible runner imports.",
+        "`ReleaseRun` now has optional `execution_result`, preserving old run JSON without the field.",
+        "`execute_planned_release()` writes `execution_result` to the final persisted run.",
+        "Tests cover serialization, state reload, API run/list/status visibility, dry-run skipped results, failed partial results, and poller-created runs.",
+        "P002 deployed the change to API-host Release Controller as an immutable digest.",
+        "Remote dry-run and real poll run records both prove persisted `execution_result.results` can be fetched after completion."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "Full monorepo test matrix is still not globally green because of unrelated agent-runtime/cortex failures observed before and outside this release-controller persistence change.",
+        "Persisted stdout/stderr are not yet redacted or truncated; this follows the existing immediate API payload behavior and can be hardened later."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented and deployed durable `PlanExecutionResult` persistence for Release Controller run records. New completed runs now store `execution_result` in `ReleaseRun`, API run/list/status responses expose it from persisted state, and the API-host controller has been upgraded and verified remotely.",
+      "ticket_id": "T000",
+      "verification": [
+        "Local release-controller tests: 51 passed.",
+        "Local release-controller CI guard: 9 passed.",
+        "Immutable workflow lint: OK.",
+        "Python compile checks for release-controller modules: passed.",
+        "Full repo `scripts/run_all_tests.sh` was attempted; release-controller-related checks passed, while unrelated existing agent-runtime/cortex failures remain outside this task.",
+        "Remote controller digest: `127.0.0.1:5000/novaic/release-controller@sha256:5dd816c9f2b7eb93a4ba4f6d71c333e3bee2096db5fb692ee5b50716068eb607`.",
+        "Remote persisted dry-run record: `20260524-130108-main-745e20cbaefd` with 15 skipped execution results.",
+        "Remote persisted real poll record: `20260524-130127-main-745e20cbaefd` with 15 real execution results ending at `smoke-staging`.",
+        "Final remote polling is enabled/running with `last_error=null`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`ReleaseRun.to_mapping()` includes `execution_result` when present.",
+        "`ReleaseRun.from_mapping()` accepts old records without `execution_result` and new records with it.",
+        "`execute_planned_release()` writes final runs with execution results for success, failure, and dry-run.",
+        "API endpoints that return runs expose `execution_result` from persisted state.",
+        "Tests cover success, failure, dry-run, and backward-compatible old records.",
+        "API-host Release Controller is upgraded and a verification run proves persisted execution results are visible after the immediate response."
+      ],
+      "assumptions": [
+        "Persisting the current captured stdout/stderr fields is acceptable for now because the controller already returns them in immediate API responses.",
+        "A future hardening task can add output size limits or secret redaction if needed."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "This touches persisted schema, execution flow, API/state tests, and remote deployment verification; split keeps code implementation and rollout/audit verification separate.",
+      "created_at": "2026-05-24T12:50:59+00:00",
+      "id": "T000",
+      "problem_definition": "Release Controller has enough execution data in memory but does not store it in run records. This makes historical run inspection and CI gate auditing weaker than the live response.",
+      "problem_id": "P000",
+      "proposed_solution": "Move or expose `PlanExecutionResult` as a serializable model alongside `CommandResult`, add `execution_result` to `ReleaseRun`, update `execute_planned_release` to store it when finalizing a run, and extend tests for model round-trip, state persistence, service endpoints, poller runs, failed runs, and dry-run results. Then commit/push the change, upgrade the API-host controller image, and verify a dry-run or safe run persists execution results in `/v1/runs/{run_id}`.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Persisted stdout/stderr can make run JSON files larger or expose sensitive output if future commands print secrets.",
+        "Moving `PlanExecutionResult` between modules can break imports if not re-exported carefully.",
+        "Old run records must remain readable."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add persisted execution results to ReleaseRun",
+      "updated_at": "2026-05-24T13:04:54+00:00",
+      "verification_plan": "Run release-controller tests, release-controller CI guard tests, root pytest, deploy syntax checks, local model/state/service/poller tests, remote controller upgrade, and remote `/v1/runs/{run_id}` inspection for `execution_result`."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "`PlanExecutionResult` has explicit `to_mapping()` and `from_mapping()` behavior using `CommandResult` for nested command records.",
+        "Existing imports from `release_controller.runner import PlanExecutionResult` remain valid.",
+        "`ReleaseRun` accepts old JSON without `execution_result` and new JSON with it.",
+        "`execute_planned_release()` persists the execution result for success, dry-run, and failure.",
+        "Run-returning endpoints expose `execution_result` because it is part of persisted `ReleaseRun` mappings.",
+        "Tests cover model serialization, state round-trip, service persisted fetch/list, poller persistence, failed partial result persistence, and dry-run skipped result persistence."
+      ],
+      "assumptions": [
+        "Persisting the same execution payload already returned by the immediate API is acceptable for this step.",
+        "Deployment verification is handled by the separate deployment ticket under the root problem."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Persisting execution_result is a narrow model/state/executor change with clear existing tests and immediate verification.",
+      "created_at": "2026-05-24T12:53:03+00:00",
+      "id": "T001",
+      "problem_definition": "`PlanExecutionResult` is currently an in-memory runner result and is returned by immediate controller responses, but completed `ReleaseRun` records do not store it. Historical run APIs therefore lose command-level stdout, stderr, exit codes, skipped flags, and partial failure context.",
+      "problem_id": "P001",
+      "proposed_solution": "Promote `PlanExecutionResult` into the serializable model layer beside `CommandResult`, preserving the existing runner import surface. Add optional `execution_result` to `ReleaseRun`, parse it when present, omit it for old records, and write it during finalization in `execute_planned_release`. Extend unit tests so serialization, state persistence, service endpoints, poller-triggered runs, dry-runs, and failed partial execution all prove the persisted field works.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Captured stdout/stderr can grow run JSON size; this ticket only preserves existing controller output behavior and does not add redaction or truncation.",
+        "Moving the model can break imports if `runner.py` and `__init__.py` are not kept compatible.",
+        "Old records must not fail deserialization when the new field is absent."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Implement persisted execution result model",
+      "updated_at": "2026-05-24T12:56:11+00:00",
+      "verification_plan": "Run the release-controller test suite, targeted model/state/service/poller tests, release-controller CI guard tests, root tests if practical, and syntax checks for touched Python modules."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Remote polling is disabled before the new persistence commit can be auto-processed.",
+        "The source commit contains only intended release-controller persistence files, not unrelated dirty workspace residue.",
+        "The deployed controller image is built from the persistence commit and addressed by immutable digest.",
+        "Remote verification creates or observes a run whose persisted `/v1/runs/{run_id}` response includes `execution_result.results`.",
+        "Remote polling is re-enabled and reports healthy status.",
+        "Current prod/staging release pointers are checked before and after deployment."
+      ],
+      "assumptions": [
+        "SSH access to the API host and the local registry are available as in prior deployment work.",
+        "The existing `deploy release-controller-image <digest>` path is the intended deployment mechanism for controller image updates."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "split",
+      "classification_reason": "Remote deployment has independent commit, image deployment, and verification gates that should close separately.",
+      "created_at": "2026-05-24T12:56:50+00:00",
+      "id": "T002",
+      "problem_definition": "The release-controller persistence change is only local until it is committed, pushed, built into an immutable controller image, deployed to the API host, and verified against the remote controller state API.",
+      "problem_id": "P002",
+      "proposed_solution": "Pause remote Release Controller polling, commit and push only the release-controller persistence code, build and push a new `novaic/release-controller` image on the API host from that commit, deploy that image by digest through the existing controller-image deploy path, run a safe remote verification trigger, inspect `/v1/runs/{run_id}` for persisted `execution_result.results`, then restore polling and verify status has `last_error=null` and release pointers remain intended.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "If polling is not paused, the old controller may process the new commit before the new image is deployed.",
+        "A real poll can update staging to the new commit; this is acceptable only if it is explicit and verified.",
+        "Remote config edits must preserve existing branch rules, quality gates, and release pointers."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Deploy execution-result persistence to API-host controller",
+      "updated_at": "2026-05-24T13:04:27+00:00",
+      "verification_plan": "Use local tests/guards from P001 as source confidence, then run remote controller health/status checks, image digest inspection, deployment status checks, and a safe dry-run or poll run whose persisted run record is fetched after completion."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Remote `/v1/status` before the change is saved or summarized with current branch head and current release pointers.",
+        "Remote config has polling disabled and `/v1/status` confirms polling is disabled before pushing.",
+        "The local commit contains only release-controller persistence source/test files, not unrelated dirty files or problem-ledger artifacts.",
+        "The commit is pushed to `origin/main` and the commit hash is recorded.",
+        "Remote controller remains healthy and polling disabled after the push."
+      ],
+      "assumptions": [
+        "Remote controller config is at `/opt/novaic/release-controller/config.json` and container restart uses the existing Docker deployment on API host."
+      ],
+      "body_path": "problems/P000/children/P002/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "The task is a bounded publish gate: pause remote polling, commit intended files, push, and verify paused health.",
+      "created_at": "2026-05-24T12:57:28+00:00",
+      "id": "T003",
+      "problem_definition": "The persistence implementation must reach `origin/main`, but the currently deployed controller still lacks run-record execution persistence. If polling remains enabled, it may process the new branch head before the upgraded controller image is deployed.",
+      "problem_id": "P003",
+      "proposed_solution": "Capture remote controller status and release pointers, disable `polling_enabled` in the remote controller config, restart/verify the controller is healthy with polling disabled, stage only the intended release-controller persistence files, commit them, push to `origin/main`, and re-check remote status remains healthy and paused.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Remote config editing can accidentally drop quality gates or branch rules if rewritten incorrectly.",
+        "Existing unrelated dirty files in the local workspace must not be staged.",
+        "If polling cannot be paused, pushing must stop until the controller is safe."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Pause polling and publish the persistence commit",
+      "updated_at": "2026-05-24T12:59:02+00:00",
+      "verification_plan": "Use `curl`/SSH to inspect remote status/config, `git status` and `git diff --cached` to confirm the staged set, then `git commit`, `git push origin main`, and remote `/health` plus `/v1/status` checks after push."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Remote worktree is checked out at `745e20cbaefdd12139c344e8838d9e3e0e782ba2` for image build.",
+        "A new controller image digest is pushed to `127.0.0.1:5000/novaic/release-controller`.",
+        "`deploy release-controller-image <digest>` succeeds and remote `/health` is healthy.",
+        "A remote run fetched from `/v1/runs/{run_id}` includes persisted non-empty `execution_result.results`.",
+        "Polling is restored with `/v1/status` reporting `last_error=null`.",
+        "Prod and staging pointers are recorded after the deployment; any staging movement to the new commit is intentional and visible."
+      ],
+      "assumptions": [
+        "Commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2` is available from `origin/main` on the API host.",
+        "The existing deploy script supports `release-controller-image` with an immutable digest."
+      ],
+      "body_path": "problems/P000/children/P002/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Deployment and remote verification are one bounded controller-image rollout with explicit health and run-record checks.",
+      "created_at": "2026-05-24T12:59:29+00:00",
+      "id": "T004",
+      "problem_definition": "The persistence commit is pushed and remote polling is paused, but the API-host controller still runs the old image. The host must run a new controller image built from the persistence commit, and remote run inspection must prove persisted execution results are available after the response.",
+      "problem_id": "P004",
+      "proposed_solution": "Build the release-controller Docker image on the API host from commit `745e20cbaefdd12139c344e8838d9e3e0e782ba2`, push it to the local registry, deploy it by digest with `deploy release-controller-image`, then execute a safe remote verification run. Prefer a dry-run trigger first to prove persisted `execution_result.results`; then restore polling and run or observe a controlled poll if needed so branch heads advance under the upgraded controller. Finish by checking health, polling `last_error`, and prod/staging pointers.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Building on the API host can take time and may fail if the worktree or Docker cache is inconsistent.",
+        "A real poll will deploy staging to the new commit; if this happens, it must be verified and recorded.",
+        "Restoring polling before verification would reintroduce ambiguity about which controller processed the commit."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Deploy persisted-result controller image and verify remote record",
+      "updated_at": "2026-05-24T13:03:54+00:00",
+      "verification_plan": "Run remote git checkout/build/push/image-inspect, local deploy command, remote controller health/status checks, remote dry-run or poll trigger, explicit persisted run fetch, and final status pointer/polling inspection."
+    }
+  },
+  "updated_at": "2026-05-24T13:05:28+00:00"
+}

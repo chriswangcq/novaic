@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260524-152814",
+  "active_ledger_id": "L20260524-205046",
   "ledgers": [
     {
       "active_count": 0,
@@ -847,7 +847,51 @@
       "status": "done",
       "title": "Remove release-controller transitional dry-run paths and stale work-package residue",
       "updated_at": "2026-05-24T07:41:16+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260524-175931",
+      "path": "L20260524-175931",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Enroll prod into release-controller immutable promote and rollback pointers",
+      "updated_at": "2026-05-24T10:12:36+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260524-183500",
+      "path": "L20260524-183500",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Eliminate manual backend deploy paths behind Release Controller",
+      "updated_at": "2026-05-24T11:09:39+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260524-192810",
+      "path": "L20260524-192810",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Add Release Controller CI quality gate",
+      "updated_at": "2026-05-24T11:50:34+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260524-205046",
+      "path": "L20260524-205046",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Persist Release Controller PlanExecutionResult in run records",
+      "updated_at": "2026-05-24T13:05:28+00:00"
     }
   ],
-  "updated_at": "2026-05-24T07:41:16+00:00"
+  "updated_at": "2026-05-24T13:05:28+00:00"
 }

@@ -1,0 +1,785 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-24T10:43:19+00:00",
+      "criteria_map": [
+        "Planner adds controller identity env vars: satisfied by code changes in `planner.py` and release-controller tests.",
+        "Runner merges existing environment: satisfied by `runner.py` change and `test_runner_merges_step_env_with_process_environment`.",
+        "Direct image deploys fail without controller metadata: satisfied by deploy guard and `test_backend_image_deploys_reject_manual_invocation`.",
+        "Obsolete backend remote-build/legacy paths fail: satisfied by disabled `deploy` targets and `test_obsolete_backend_deploy_targets_are_disabled`.",
+        "Tests cover intended behavior: satisfied by release-controller tests and CI guard tests reported in R000."
+      ],
+      "evidence": [
+        "R000 reports planner env injection for branch releases, prod promotion, and rollback.",
+        "R000 reports runner env merge behavior and a focused unit test proving inherited env survives step env.",
+        "R000 reports direct manual `services-image` and `factory-image` invocation rejection before remote side effects.",
+        "R000 reports old backend/factory manual targets disabled and GitHub backend release workflows removed.",
+        "Verification commands in R000 passed: release-controller unit tests, release-controller CI guard tests, root pytest, shell syntax, and relevant CI lints."
+      ],
+      "execution_map": [
+        "T001 executed as one bounded implementation attempt.",
+        "R000 recorded the changed files, deleted stale GitHub backend workflows, and listed verification evidence.",
+        "No runtime-spawned child was needed because the implementation did not encounter a blocking subprogram."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Remote rollout order remains a real operational risk, but it is explicitly scoped to P002. Full matrix verification can still be rerun during rollout; the focused tests already cover P001's code-level acceptance criteria."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The most plausible failure mode is a user or stale workflow directly invoking `./deploy services-image staging <image>`. R000 includes a manual command proving it now fails locally with a Release Controller-only message before SSH/remote side effects. The removed GitHub backend workflows close the other stale direct invocation route."
+      ],
+      "summary": "P001 is solved at the code/guard layer. The implementation now provides a Release Controller invocation contract, preserves runner environment, rejects direct manual backend/factory image deploys, disables obsolete backend/factory manual targets, and has focused tests/lints for those rules. Rollout is deliberately outside this child and remains open under P002."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P003/checks/C001.md",
+      "created_at": "2026-05-24T10:49:59+00:00",
+      "criteria_map": [
+        "Local release-controller/deploy matrix passes: satisfied by the preflight commands in R001.",
+        "API-host polling paused before push: satisfied by remote status evidence in R001.",
+        "Only intentional files staged and committed: satisfied by the staged file list and commit scope in R001.",
+        "Commit pushed to `origin/main`: satisfied by pushed parent commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`."
+      ],
+      "evidence": [
+        "R001 cites remote `/v1/status` with polling disabled before the push.",
+        "R001 cites successful release-controller unit tests, release-controller CI guard tests, shell syntax, and `write_env.py` compile checks.",
+        "R001 cites scoped staging of intended parent files and pushed parent commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "R001 cites pushed submodule commits for the four modified submodules.",
+        "R001 explicitly records the remaining full-matrix `agent-runtime`/`cortex` failures as out-of-path residual risk."
+      ],
+      "execution_map": [
+        "T003 executed validation, remote polling pause, submodule commits/pushes, parent staging, parent commit, and parent push.",
+        "R001 records the resulting commit ids and the remaining non-blocking test debt."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P003",
+      "residual_risk": [
+        "The full `./scripts/run_all_tests.sh` remains red in `agent-runtime` and `cortex`; this is not hidden and should be handled as separate architecture/test cleanup. It does not block the Release Controller rollout because the API-host controller config only runs `bash -n deploy` and `python3 -m py_compile docker/api-backend/write_env.py` as release preflight."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The risky ordering failure was old controller image polling a guarded `deploy`. R001 shows polling was disabled before the parent commit was pushed, so the old image cannot automatically consume the guarded executor before P004 upgrades it."
+      ],
+      "summary": "P003 is complete for the Release Controller migration path: the controller/deploy preflight is green, polling was paused before push, only intended files were committed, and parent plus submodule commits were pushed to `main`. The full monorepo matrix remains a separate historical test debt and is not part of the controller runtime preflight configured on the API host."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P004/checks/C002.md",
+      "created_at": "2026-05-24T11:07:58+00:00",
+      "criteria_map": [
+        "API host Release Controller image rebuilt/pushed/deployed from the controller-only commit: satisfied by digest `sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7`, built from and deployed after commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Staging deployed through Release Controller and healthy: satisfied by successful runs `20260524-105639-main-e4fb5740cc84` and `20260524-110123-main-e4fb5740cc84`, plus staging public health success.",
+        "Prod remains in immutable promote/rollback pointer state, promoted to the current release if needed, and healthy: satisfied by prod promotion run `20260524-105947-promote-prod-staging-e4fb5740cc84`, current prod pointer on the same commit/images, prod health success, and rollback dry-run success.",
+        "Manual backend/factory deploy commands fail locally before remote side effects: satisfied by direct guard failures for `services-image` and `factory-image` without Release Controller identity.",
+        "Release Controller health/status are clean and polling is enabled: satisfied by `/health` healthy, `polling.enabled=true`, `last_error=null`, and skip outcome for unchanged branch head. `polling.running=true` is treated as the active autonomous polling loop thread, not an in-progress stuck release."
+      ],
+      "evidence": [
+        "Release Controller image `127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7` was built from commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` and deployed; running container image id matched `sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7`.",
+        "Staging Release Controller run `20260524-105639-main-e4fb5740cc84` succeeded, and the later autonomous polling run `20260524-110123-main-e4fb5740cc84` also succeeded for the same branch commit.",
+        "Prod promotion run `20260524-105947-promote-prod-staging-e4fb5740cc84` succeeded and current prod pointer is commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` with API image `127.0.0.1:5000/novaic/api-backend:sha-e4fb5740cc84` and Factory image `127.0.0.1:5000/novaic/llm-factory:sha-e4fb5740cc84`.",
+        "Release Controller plans for staging and prod guarded deploy steps contained `NOVAIC_DEPLOY_CALLER=release-controller`, run id, namespace, and commit metadata.",
+        "Direct local `./deploy services-image ...` and `./deploy factory-image ...` rejected manual use with controller-only guard messages.",
+        "Health checks passed for Release Controller `/health`, `https://staging-api.gradievo.com/api/health`, `https://api.gradievo.com/health`, API-host local prod API `http://127.0.0.1:19999/api/health`, prod Factory `http://127.0.0.1:19990/health`, and staging Factory `http://127.0.0.1:29990/health`.",
+        "Release Controller polling was resumed with `polling.enabled=true`, `last_error=null`, and unchanged branch-head skip outcomes.",
+        "Prod rollback dry-run succeeded and did not change the current prod pointer."
+      ],
+      "execution_map": [
+        "R002 completed the remote control-plane upgrade, then exercised the controller-only path through staging branch release, prod promotion, and rollback dry-run.",
+        "R002 verified both external ingress health and local Factory/API health after release pointer changes.",
+        "R002 verified the negative path by calling guarded deploy commands directly and observing local rejection before any remote side effect."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Release Controller self-upgrade still uses the bootstrap `release-controller-image` path. This is non-blocking for P004 because P004 is about backend/factory release mutation, and those paths are controller-owned; self-upgrade remains an explicit control-plane bridge.",
+        "Full monorepo `scripts/run_all_tests.sh` still has historical red suites in `agent-runtime` and `cortex`; release-controller tests, deploy guards, and release-path CI checks passed. This is non-blocking for P004 but should remain visible as broader repo debt.",
+        "Two rollback dry-run records exist from verification, but the prod pointer remained on the current promoted release."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: someone runs the old deploy command directly from a shell and mutates staging/prod outside Release Controller. The direct `services-image` and `factory-image` tests now fail without controller identity, proving that backend and Factory deploy mutation is closed to manual callers.",
+        "Plausible failure mode: staging and prod point at the same service names but drift through old deployment state. The current pointers for both namespaces now reference commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` and the same immutable sha-tagged API/Factory image pair, with health verified after promotion.",
+        "Plausible failure mode: prod rollback machinery breaks after controller-only changes. Rollback dry-run produced the expected prod deploy plan without changing the pointer."
+      ],
+      "summary": "P004 is successful. The API host is now running a Release Controller image built from the controller-only commit, staging and prod were deployed via Release Controller runs, manual backend/factory deploy entrypoints reject direct use before remote mutation, and health/status verification shows clean release state with polling enabled."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C003.md",
+      "created_at": "2026-05-24T11:08:42+00:00",
+      "criteria_map": [
+        "Release Controller runtime upgraded before guarded deployments are exercised: satisfied by P003 polling pause before push and P004 image upgrade before staging/prod trigger/promotion verification.",
+        "Staging release and prod promotion/rollback flow verified through Release Controller APIs or polling: satisfied by staging manual trigger, staging poll run, prod promotion run, and rollback dry-run recorded in R003.",
+        "Docs describe Release Controller as the only backend/factory release interface and `deploy` as internal executor: satisfied by P003/R003 documentation cleanup and CI guards that removed GitHub Actions backend deploy path expectations.",
+        "Manual backend deploy paths audited after deployment and fail locally before remote side effects: satisfied by P004 direct guard failures for `services-image` and `factory-image`."
+      ],
+      "evidence": [
+        "R003 summarizes successful child checks `C001` and `C002`.",
+        "P003 paused API-host polling before the guarded commit was pushed, then pushed parent commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` and required submodule commits.",
+        "P003 validation passed release-controller unit tests, release-controller CI guard tests, deploy shell syntax, `write_env.py` compile, and release-path lints.",
+        "P004 upgraded the running API-host Release Controller to digest `sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7` built from the pushed commit.",
+        "P004 exercised staging through Release Controller runs `20260524-105639-main-e4fb5740cc84` and `20260524-110123-main-e4fb5740cc84`.",
+        "P004 promoted prod through Release Controller run `20260524-105947-promote-prod-staging-e4fb5740cc84`, with prod and staging pointers on the same sha-tagged API/Factory image pair.",
+        "P004 verified public/local health, rollback dry-run, `polling.enabled=true`, and `last_error=null`.",
+        "P004 verified direct manual `services-image` and `factory-image` commands fail locally with Release Controller-only guard messages."
+      ],
+      "execution_map": [
+        "T002 was split into P003 for local validation/publish readiness and P004 for remote upgrade/deployment verification.",
+        "P003 closed the publish and documentation side of the rollout; P004 closed the remote runtime and negative-path verification side.",
+        "R003 correctly aggregates the closed child results and identifies non-blocking residuals."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P002",
+      "residual_risk": [
+        "`release-controller-image` remains as the control-plane self-upgrade bootstrap. It is outside the backend/factory release interface and is not a blocker for P002.",
+        "Full monorepo tests still fail in historical `agent-runtime` and `cortex` suites; the release-controller/deploy rollout path and guards are green.",
+        "Operational ledger files remain uncommitted so the controller does not immediately deploy a new commit just for ledger evidence."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Race condition stress test: old controller polling a newly guarded `deploy` would have failed staging. P003 paused polling before push, and P004 only resumed after deploying a controller image that passes deploy identity.",
+        "Bypass stress test: direct shell invocation of backend/factory image deployment would have bypassed Release Controller. P004 proved those invocations fail locally without controller identity.",
+        "Promotion/rollback stress test: prod stayed in the immutable pointer model after promotion, and rollback dry-run generated a valid rollback plan without mutating the current pointer."
+      ],
+      "summary": "P002 is successful. The rollout order avoided the old-controller/new-guard race, backend and Factory releases now execute through Release Controller, docs and CI guards no longer present direct deploy/GitHub Actions as backend release paths, and manual executor calls are rejected without controller identity."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-24T11:09:31+00:00",
+      "criteria_map": [
+        "Release Controller deploy plans pass explicit invocation identity: satisfied by planner changes and release-controller tests recorded in R000.",
+        "Runner preserves host environment while adding step-specific controller identity env vars: satisfied by runner change and focused test recorded in R000.",
+        "Direct backend/factory image deploy paths fail before touching remote hosts: satisfied by deploy guard tests and post-rollout manual command failures in R000/R003.",
+        "Remote-build and legacy backend deployment paths removed or hard-fail as obsolete manual paths: satisfied by disabled `deploy` targets for `services`, `api-backend`, `services-legacy`, single backend services, `factory`, and `all`.",
+        "Tests/guards cover controller env injection, env merging, and manual-path rejection: satisfied by release-controller tests, `scripts/ci/test_release_controller_ci.py`, shell syntax, and release-path lints.",
+        "Documentation describes Release Controller API/polling/promotion/rollback as the only backend/factory deployment interface, with `deploy` internal only: satisfied by docs/guard cleanup recorded in R000/R003 and deleted backend GitHub release workflows.",
+        "Change safely rolled out so staging and prod continue to work through Release Controller: satisfied by remote controller image upgrade, successful staging/prod Release Controller runs, public/local health checks, polling enabled, and rollback dry-run."
+      ],
+      "evidence": [
+        "R004 aggregates successful child checks `C000` and `C003`.",
+        "P001/R000 implemented Release Controller planner env injection for branch release, prod promotion, and rollback deploy steps.",
+        "P001/R000 implemented runner env merge so step env augments rather than replaces process env.",
+        "P001/R000 added deploy guards for `services-image` and `factory-image`, disabled obsolete backend/factory manual targets, removed backend GitHub Actions workflows, and updated docs/CI guards.",
+        "P002/R003 safely rolled out the guard: paused polling before push, upgraded the remote Release Controller from commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`, deployed staging through controller runs, promoted prod through controller, verified rollback dry-run, verified health, and resumed polling.",
+        "Manual direct `./deploy services-image ...` and `./deploy factory-image ...` invocations fail locally with controller-only guard messages before remote side effects.",
+        "Current prod and staging pointers are on commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` and sha-tagged API/Factory images."
+      ],
+      "execution_map": [
+        "T000 split the work into P001 for code/guard changes and P002 for rollout/docs/remote verification.",
+        "P001 closed the local implementation and focused validation layer.",
+        "P002 closed the remote rollout layer through P003 publish readiness and P004 API-host controller upgrade/deployment verification.",
+        "R004 is a complete aggregation of the closed child outcomes and residual risks."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "`deploy release-controller-image` remains as a control-plane self-upgrade bootstrap bridge. This is outside the backend/factory namespace release surface in P000, but it is the next architecture hardening target if the goal expands to Release Controller managing its own upgrades.",
+        "Full monorepo `./scripts/run_all_tests.sh` remains red in historical `agent-runtime` and `cortex` suites; the release-controller/deploy tests and guards relevant to this change are green.",
+        "Ledger-only operational files remain uncommitted so this evidence update does not trigger an additional branch release."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Manual bypass stress test: direct operator invocation of `./deploy services-image` or `./deploy factory-image` fails locally without `NOVAIC_DEPLOY_CALLER=release-controller`, proving backend/factory release mutation cannot be done through the old shell path.",
+        "Stale automation stress test: backend GitHub Actions release workflows were removed and guarded so they cannot silently keep a second backend release system alive.",
+        "Rollout race stress test: polling was paused before pushing guarded code and resumed only after the remote controller image was upgraded, preventing old planner/new guard incompatibility.",
+        "Prod safety stress test: prod promotion uses the same staged image pair and rollback dry-run still produces a rollback plan without mutating the current pointer."
+      ],
+      "summary": "P000 is successful within its stated backend/Factory release scope. Release Controller is now the only backend/factory release interface; direct executor paths fail without controller identity; obsolete backend remote-build and legacy targets are disabled; tests, docs, guards, staging, prod promotion, health, polling, and rollback dry-run all support the new shape."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-24T10:35:00+00:00",
+  "ledger_id": "L20260524-183500",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-24T10:35:00+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "NovAIC backend and LLM Factory deployments currently still have direct operator-facing paths in `deploy` (`services-image`, `factory-image`, remote-build fallbacks, and legacy single-service deploys). The desired platform shape is that Release Controller is the only release interface for backend/factory namespaces, while `deploy` remains only an internal executor invoked by Release Controller with explicit run identity. Direct manual deployment paths should fail fast and documentation/tests should stop presenting them as valid release workflows.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002"
+      ],
+      "success_criteria": [
+        "Release Controller deploy plans pass an explicit controller invocation identity into backend and Factory deploy steps.",
+        "The command runner preserves the host environment while adding step-specific controller identity env vars.",
+        "Direct manual execution of backend/factory image deploy paths fails before touching remote hosts.",
+        "Remote-build and legacy backend deployment paths are removed from the normal operator surface or hard-fail as obsolete manual paths.",
+        "Tests/guards cover controller env injection, env merging, and manual-path rejection.",
+        "Documentation describes Release Controller API/polling/promotion/rollback as the only backend/factory deployment interface, with `deploy` documented as internal executor only.",
+        "The change is safely rolled out so staging and prod releases continue to work through Release Controller, not manual scripts."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Eliminate manual backend deploy paths behind Release Controller",
+      "updated_at": "2026-05-24T11:09:31+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-24T10:35:35+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Release Controller plans and the `deploy` executor do not yet share a hard invocation contract. Direct manual backend and Factory deployment targets are still visible and callable, while the controller does not identify its deploy calls with a run id and namespace. This child exists to make the code and tests enforce controller-only release mutation.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Planner adds controller identity env vars to backend and Factory deploy steps.",
+        "Runner merges step env with the existing environment.",
+        "`deploy` fails fast for direct backend/factory image deployment without controller env metadata.",
+        "Obsolete backend remote-build/legacy deployment targets fail as disabled manual paths.",
+        "Unit/CI tests cover env injection, env merging, and manual path rejection."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Enforce Release Controller-only backend deploy entrypoints in code",
+      "updated_at": "2026-05-24T10:43:19+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-24T10:35:35+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The code change can temporarily break staging polling if the guarded `deploy` script reaches the API host before the running controller image knows how to pass controller env vars. Documentation also still presents manual deployment commands as acceptable release paths. This child exists to migrate in the right order and verify the final platform shape.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "Release Controller runtime is upgraded to code that passes deploy identity before guarded deployments are exercised.",
+        "Staging release and prod promotion/rollback flow are verified through Release Controller APIs or polling.",
+        "Docs describe Release Controller as the only backend/factory release interface and `deploy` as internal executor.",
+        "Manual backend deploy paths are audited after deployment and fail locally before remote side effects."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Roll out controller-only deployment and clean release documentation",
+      "updated_at": "2026-05-24T11:08:42+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P002/children/P003/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-24T10:43:49+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T002",
+      "created_from_ticket_mode": "split",
+      "description": "The repository has controller-only release changes that must be validated and published carefully. The code must be committed without unrelated dirty files, and the local test matrix should pass before pushing a commit that remote Release Controller will consume.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P002/children/P003",
+      "parent_id": "P002",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Full relevant local test matrix passes, including release-controller tests and repository guard/lint matrix.",
+        "Git diff is reviewed so unrelated dirty files are not staged.",
+        "Controller-only changes are committed and pushed to `main`.",
+        "Remote polling is paused before push or otherwise prevented from running the guarded deploy with the old controller image."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Validate and publish controller-only release commit",
+      "updated_at": "2026-05-24T10:49:59+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P002/children/P004/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-24T10:43:49+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T002",
+      "created_from_ticket_mode": "split",
+      "description": "After the controller-only commit is pushed, the API host must run a Release Controller image built from that commit before staging/prod deployment paths are exercised. The final state must prove that backend/factory releases go through the controller, manual deploy paths fail, and polling is enabled.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P002/children/P004",
+      "parent_id": "P002",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "API host Release Controller image is rebuilt/pushed/deployed from the controller-only commit.",
+        "Staging is deployed through Release Controller and healthy.",
+        "Prod remains in immutable promote/rollback pointer state, promoted to the current release if needed, and healthy.",
+        "Manual backend/factory deploy commands fail locally before remote side effects.",
+        "Release Controller health/status are clean and polling is enabled."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Upgrade remote Release Controller and verify controller-only deployment",
+      "updated_at": "2026-05-24T11:07:58+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`deploy`",
+        "`novaic-release-controller/release_controller/planner.py`",
+        "`novaic-release-controller/release_controller/runner.py`",
+        "`novaic-release-controller/tests/test_planner_runner.py`",
+        "`scripts/ci/test_release_controller_ci.py`",
+        "`scripts/ci/lint_image_namespace_deploy.py`",
+        "`scripts/ci/lint_api_backend_compose_path.py`",
+        "`scripts/ci/lint_llm_factory_docker_path.py`",
+        "`scripts/ci/lint_immutable_image_workflows.py`",
+        "`scripts/ci/lint_namespace_platform_docs.py`",
+        "`.github/workflows/backend-images.yml` removed",
+        "`.github/workflows/backend-promote-prod.yml` removed",
+        "`docs/runbooks/deploy.md`",
+        "`docs/architecture/release-controller.md`",
+        "`docs/reference/ports-and-config.md`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-24T10:43:03+00:00",
+      "done": [
+        "Planner now attaches `NOVAIC_DEPLOY_CALLER=release-controller`, run id, namespace, and commit env metadata to backend and Factory deploy steps for branch releases, prod promotion, and rollback.",
+        "Runner now merges step env with the inherited process environment instead of replacing it.",
+        "`deploy` now rejects direct manual `services-image` / `factory-image` calls without controller identity before remote side effects.",
+        "`deploy` disables old backend manual paths: `services`, `api-backend`, `services-legacy`, legacy single-service targets, `factory`, and `all`.",
+        "Removed old GitHub backend release workflows and converted the immutable workflow lint into a guard that prevents those workflows from returning.",
+        "Updated CI guard scripts and docs to describe Release Controller as the backend/factory release interface."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "The guarded code is not yet rolled out to the API host; rollout must avoid old controller image executing the newly guarded `deploy` script without env metadata.",
+        "Full `./scripts/run_all_tests.sh` matrix has not yet been run after all guard/doc changes.",
+        "Prod/staging health through the upgraded controller still needs remote verification."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Implemented the backend/factory Release Controller invocation contract in code and removed the reachable manual backend deployment paths from `deploy`. The code now treats `deploy services-image` and `deploy factory-image` as guarded internal executor steps, and obsolete backend/factory manual targets fail immediately.",
+      "ticket_id": "T001",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 39 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 8 passed.",
+        "`python3 -m pytest -q` -> 13 passed.",
+        "`bash -n deploy` -> passed.",
+        "`python3 scripts/ci/lint_image_namespace_deploy.py` -> passed.",
+        "`python3 scripts/ci/lint_api_backend_compose_path.py` -> passed.",
+        "`python3 scripts/ci/lint_llm_factory_docker_path.py` -> passed.",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py` -> passed.",
+        "`python3 scripts/ci/lint_namespace_platform_docs.py` -> passed.",
+        "Manual `./deploy services-image staging 127.0.0.1:5000/novaic/api-backend:sha-abcdef1` fails locally with the Release Controller-only guard."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "Parent commit: `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`",
+        "Submodule commits: `novaic-agent-runtime@5a7af23`, `novaic-business@81a6dd8`, `novaic-common@0f72346`, `novaic-cortex@298df7b`",
+        "Remote Release Controller polling paused on API host."
+      ],
+      "body_path": "problems/P000/children/P002/children/P003/results/R001.md",
+      "created_at": "2026-05-24T10:49:46+00:00",
+      "done": [
+        "Paused API-host Release Controller polling before pushing; `/v1/status` reported `polling.enabled=false` and no running poll.",
+        "Ran controller/deploy preflight successfully: release-controller unit tests, release-controller CI guard tests, `bash -n deploy`, and `python3 -m py_compile docker/api-backend/write_env.py` all passed.",
+        "Ran relevant lints after cleanup: image namespace deploy, immutable workflow guard, namespace docs, API backend path, LLM Factory path, runtime supervision, and fresh-smoke guards passed.",
+        "Ran `./scripts/run_all_tests.sh`; it improved after stale contract cleanup but still failed in existing `agent-runtime` and `cortex` suites unrelated to Release Controller deploy execution.",
+        "Committed and pushed submodule test-contract updates:",
+        "`novaic-agent-runtime` -> `5a7af23`",
+        "`novaic-business` -> `81a6dd8`",
+        "`novaic-common` -> `0f72346`",
+        "`novaic-cortex` -> `298df7b`",
+        "Staged only intended parent files/submodule pointers and pushed parent `main` commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "Full monorepo `./scripts/run_all_tests.sh` is still not green because of pre-existing `agent-runtime` and `cortex` tests that are outside the release-controller/deploy path. The remote Release Controller config does not run this full matrix; it runs `bash -n deploy` and `py_compile write_env.py`.",
+        "Polling is intentionally paused and must be resumed after P004 upgrades the running controller image."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Validated the release-controller/deploy preflight path, paused remote polling, committed and pushed the controller-only release changes to `main`, and pushed the required submodule test-contract commits.",
+      "ticket_id": "T003",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 39 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 8 passed.",
+        "`bash -n deploy` -> passed.",
+        "`python3 -m py_compile docker/api-backend/write_env.py` -> passed.",
+        "`git diff --check` on intended parent/submodule changes -> passed.",
+        "`./scripts/run_all_tests.sh` -> 25 groups passed; remaining failures are `agent-runtime` and `cortex` historical suites, not Release Controller preflight.",
+        "Remote `/v1/status` after pause showed polling disabled before push."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Release Controller image digest: `127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7`.",
+        "Staging run: `20260524-105639-main-e4fb5740cc84` and polling run `20260524-110123-main-e4fb5740cc84`.",
+        "Prod promotion run: `20260524-105947-promote-prod-staging-e4fb5740cc84`."
+      ],
+      "body_path": "problems/P000/children/P002/children/P004/results/R002.md",
+      "created_at": "2026-05-24T11:06:03+00:00",
+      "done": [
+        "Built and pushed Release Controller image `127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7` from parent commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Deployed that image with `./deploy release-controller-image ...`; container image id became `sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7`.",
+        "Triggered staging via Release Controller manual trigger; run `20260524-105639-main-e4fb5740cc84` succeeded.",
+        "Polling later ran the same branch release; run `20260524-110123-main-e4fb5740cc84` succeeded and current staging pointer points to it.",
+        "Promoted the same API/Factory image pair to prod via `/v1/promotions/prod`; run `20260524-105947-promote-prod-staging-e4fb5740cc84` succeeded.",
+        "Verified Release Controller command plans for staging and prod carried `NOVAIC_DEPLOY_CALLER=release-controller`, run id, namespace, and commit env metadata on guarded deploy steps.",
+        "Resumed polling; final status shows `polling.enabled=true`, `last_error=null`, and unchanged branch head skips.",
+        "Verified direct manual `./deploy services-image ...` and `./deploy factory-image ...` fail locally with Release Controller-only guard messages.",
+        "Verified rollback dry-run succeeds without changing current prod pointer."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Release Controller self-upgrade still uses the bootstrap `release-controller-image` path; backend and Factory deployment mutation is fully controller-owned.",
+        "`polling.running=true` represents the autonomous polling loop thread being active; last outcome is skip for unchanged branch head and `last_error=null`.",
+        "Two prod rollback dry-run records were created during verification, but current prod pointer remained on `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Upgraded the API-host Release Controller to an image built from commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`, deployed staging and prod through Release Controller, verified manual backend/factory deploy commands are rejected, verified health, resumed polling, and confirmed current release pointers.",
+      "ticket_id": "T004",
+      "verification": [
+        "Release Controller `/health` -> healthy.",
+        "`https://staging-api.gradievo.com/api/health` -> healthy.",
+        "`https://api.gradievo.com/health` -> healthy.",
+        "`http://127.0.0.1:19999/api/health` on API host -> healthy.",
+        "`http://127.0.0.1:19990/health` -> Factory prod ok.",
+        "`http://127.0.0.1:29990/health` -> Factory staging ok.",
+        "Current release pointers after rollout:",
+        "prod: commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`, API `127.0.0.1:5000/novaic/api-backend:sha-e4fb5740cc84`, Factory `127.0.0.1:5000/novaic/llm-factory:sha-e4fb5740cc84`.",
+        "staging: commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`, same sha-tagged image pair.",
+        "Manual guard output:",
+        "`services-image 已关闭人工发布路径：请通过 Release Controller 触发 branch release / promotion / rollback`.",
+        "`factory-image 已关闭人工发布路径：请通过 Release Controller 触发 branch release / promotion / rollback`."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "Parent commit: `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Submodule commits: `novaic-agent-runtime@5a7af23`, `novaic-business@81a6dd8`, `novaic-common@0f72346`, `novaic-cortex@298df7b`.",
+        "Release Controller image digest: `127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7`.",
+        "Staging runs: `20260524-105639-main-e4fb5740cc84`, `20260524-110123-main-e4fb5740cc84`.",
+        "Prod promotion run: `20260524-105947-promote-prod-staging-e4fb5740cc84`.",
+        "Child checks: `C001`, `C002`."
+      ],
+      "body_path": "problems/P000/children/P002/results/R003.md",
+      "created_at": "2026-05-24T11:08:26+00:00",
+      "done": [
+        "P003 validated release-controller/deploy preflight, paused polling, pushed required submodule commits, and pushed parent commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` to `main`.",
+        "P003 removed GitHub Actions backend deploy workflows and updated docs/guards so direct deploy scripts are described as internal Release Controller executors rather than operator-facing release paths.",
+        "P004 built, pushed, and deployed Release Controller image `127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7` from the controller-only commit.",
+        "P004 deployed staging through Release Controller runs `20260524-105639-main-e4fb5740cc84` and `20260524-110123-main-e4fb5740cc84`.",
+        "P004 promoted prod through Release Controller run `20260524-105947-promote-prod-staging-e4fb5740cc84` and verified current immutable release pointers.",
+        "P004 verified manual `services-image` and `factory-image` calls fail locally without Release Controller identity.",
+        "P004 resumed polling and verified `last_error=null` with healthy public/local endpoints."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "Release Controller self-upgrade still uses `release-controller-image` as a control-plane bootstrap path; backend/factory deployment mutation is controller-owned.",
+        "Full monorepo `./scripts/run_all_tests.sh` remains red in historical `agent-runtime` and `cortex` suites. This is recorded as broader repo debt and did not block the Release Controller rollout path.",
+        "Ledger files remain uncommitted operational evidence to avoid triggering another branch release loop from documentation-only state changes."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "The split rollout ticket is complete: the controller-only backend/factory release changes were validated and pushed, API-host polling was paused before the risky transition, the remote Release Controller was upgraded from the pushed commit, staging and prod were exercised through Release Controller, manual backend/factory deploy paths were proven closed, and the docs now describe Release Controller as the only backend/factory release interface.",
+      "ticket_id": "T002",
+      "verification": [
+        "P003 success check `C001` accepted local release-controller/deploy preflight, scoped commit/push, and paused polling evidence.",
+        "P004 success check `C002` accepted remote controller upgrade, staging/prod Release Controller runs, manual guard failures, health checks, polling status, and rollback dry-run evidence.",
+        "Release Controller tests passed: `PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> 39 passed.",
+        "Release Controller CI guard tests passed: `python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 8 passed.",
+        "Deploy preflight passed: `bash -n deploy`, `python3 -m py_compile docker/api-backend/write_env.py`, and release-path lint guards."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "Parent source commit pushed: `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "Submodule commits pushed: `novaic-agent-runtime@5a7af23`, `novaic-business@81a6dd8`, `novaic-common@0f72346`, `novaic-cortex@298df7b`.",
+        "Changed code/docs: `deploy`, `novaic-release-controller/release_controller/planner.py`, `novaic-release-controller/release_controller/runner.py`, release-controller tests, CI guards, and release-controller/deploy documentation.",
+        "Deleted stale backend release workflows: `.github/workflows/backend-images.yml`, `.github/workflows/backend-promote-prod.yml`.",
+        "Root child results/checks: `R000`/`C000`, `R003`/`C003`."
+      ],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-24T11:09:05+00:00",
+      "done": [
+        "P001 implemented the code guard layer: planner env injection, runner env merge, guarded `services-image`/`factory-image`, disabled obsolete backend/factory targets, removed backend GitHub Actions release workflows, and updated tests/docs.",
+        "P001 verified focused code/guard behavior with release-controller tests, release-controller CI tests, root pytest, shell syntax, lints, and manual guard failure.",
+        "P002 completed the safe rollout: polling was paused before push, code was committed and pushed, the API-host Release Controller was upgraded from the new commit, staging and prod were deployed/promoted through Release Controller, manual guards were verified after deployment, rollback dry-run passed, health checks passed, and polling was resumed.",
+        "Current staging and prod pointers use parent commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df` and sha-tagged API/Factory images."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "Release Controller self-upgrade still uses the explicit `release-controller-image` bootstrap bridge. This is outside backend/factory release mutation and remains intentionally separate.",
+        "Full monorepo `./scripts/run_all_tests.sh` still fails in historical `agent-runtime` and `cortex` suites; focused release-controller/deploy tests and release-path guards are green.",
+        "Operational ledger files are intentionally not part of the pushed release commit to avoid another release loop from ledger-only changes."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The root problem is complete. Backend and LLM Factory releases are now controller-only: Release Controller injects explicit deploy identity, the runner preserves process env while adding step env, manual/backend Factory executor calls fail without controller metadata, old backend remote-build and legacy operator paths are disabled, docs/guards no longer present manual release workflows, and the controller-only release has been rolled through staging and prod.",
+      "ticket_id": "T000",
+      "verification": [
+        "P001 success check `C000` accepted the code-level guard implementation and focused tests.",
+        "P002 success check `C003` accepted rollout order, remote controller upgrade, staging/prod Release Controller runs, documentation/guard cleanup, direct manual rejection, health, polling, and rollback dry-run evidence.",
+        "Release Controller runtime image on the API host: `127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7`.",
+        "Staging runs: `20260524-105639-main-e4fb5740cc84` and `20260524-110123-main-e4fb5740cc84`, both successful.",
+        "Prod promotion run: `20260524-105947-promote-prod-staging-e4fb5740cc84`, successful.",
+        "Public/local health checks for Release Controller, staging API, prod API, prod Factory, and staging Factory passed.",
+        "Direct `./deploy services-image ...` and `./deploy factory-image ...` fail before remote mutation without Release Controller identity."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Release Controller deploy steps include `NOVAIC_DEPLOY_CALLER=release-controller`, run id, namespace, and commit metadata.",
+        "Runner execution merges the existing environment with step env instead of replacing it.",
+        "`./deploy services-image ...` and `./deploy factory-image ...` fail fast without Release Controller env metadata.",
+        "Obsolete backend remote-build and legacy targets (`services`, `api-backend`, `services-legacy`, single backend services, and `factory`) fail as disabled manual release paths.",
+        "Tests cover planner env injection, runner env merge, and direct manual path rejection.",
+        "Docs present Release Controller as the sole backend/factory release interface and describe `deploy` as internal executor.",
+        "Deployment rollout does not leave staging/prod blocked by the new guard."
+      ],
+      "assumptions": [
+        "Scope is server backend and LLM Factory release mutation; frontend, iOS, desktop, relay, and host-infra deployment surfaces are not being converted in this ticket.",
+        "`deploy` remains physically present because Release Controller needs an executor boundary for Docker Compose operations on the API host."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Controller-only deployment touches planner, runner, deploy guards, docs/tests, and a migration rollout where ordering matters; split keeps implementation and deployment verification explicit.",
+      "created_at": "2026-05-24T10:35:16+00:00",
+      "id": "T000",
+      "problem_definition": "Backend and LLM Factory releases still have manual `deploy` entrypoints that operators can run directly. Release Controller should be the only release interface for namespace deployments, promotions, and rollbacks; `deploy` should be reduced to an internal executor that refuses direct release mutation unless called by Release Controller with explicit run metadata.",
+      "problem_id": "P000",
+      "proposed_solution": "Implement an explicit controller invocation contract. Release Controller planner will attach controller identity, run id, namespace, and commit env vars to backend/factory deploy steps. The runner will merge those step vars with the process environment. The `deploy` script will reject direct manual calls to backend/factory image deploys and obsolete backend remote-build/legacy deploy paths, while keeping non-backend operational targets outside the scope unchanged. CI tests and docs will be updated to enforce that backend/factory deployment happens through Release Controller APIs or polling only.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "If the remote `deploy` guard lands before the running controller image sends the new env vars, auto staging deployment can fail.",
+        "Release Controller self-upgrade still needs a bootstrap path unless/until a separate controller self-upgrade API exists.",
+        "Some old docs/CI guards may still call manual deploy strings and must be corrected or intentionally scoped."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make backend releases controller-only",
+      "updated_at": "2026-05-24T11:09:05+00:00",
+      "verification_plan": "Run release-controller unit tests, root pytest suite, deploy guard tests, shell syntax check for `deploy`, and remote Release Controller/staging/prod health checks after rollout."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Deploy steps generated by branch releases, prod promotions, and rollbacks carry controller env metadata.",
+        "Runner subprocesses retain inherited environment variables while adding step env.",
+        "`./deploy services-image staging <sha image>` and `./deploy factory-image staging <sha image>` fail before remote calls unless controller env vars are present.",
+        "Backend remote-build/legacy targets are no longer executable as release paths.",
+        "Test suite proves the intended behavior."
+      ],
+      "assumptions": [
+        "`release-controller-image` remains a controlled bootstrap/self-upgrade executor until the controller has a separate self-upgrade API; it must still reject mutable image refs."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "The implementation scope is a bounded code/test change across planner, runner, deploy guards, and focused tests; verification can be done immediately before rollout.",
+      "created_at": "2026-05-24T10:35:43+00:00",
+      "id": "T001",
+      "problem_definition": "The Release Controller planner currently calls `./deploy services-image` and `./deploy factory-image` without explicit identity, and the runner replaces the environment when step env is present. The `deploy` script still exposes manual backend/factory release paths and legacy backend fallbacks.",
+      "problem_id": "P001",
+      "proposed_solution": "Pass release-controller identity env vars from planner to image deploy steps, merge those vars with the inherited environment in the runner, and add deploy-script guards that require controller identity for backend/factory image deployment. Disable obsolete backend remote-build and legacy release targets from the normal CLI by failing fast with a clear Release Controller-only message. Add focused tests for planner env, runner env merge, and deploy manual rejection.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Guarding too broadly could disable non-backend operational targets.",
+        "Controller image/runtime must be rolled out before guarded deploy is used remotely."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add controller invocation contract and deploy guards",
+      "updated_at": "2026-05-24T10:43:03+00:00",
+      "verification_plan": "Run release-controller unit tests, deploy guard CI tests, root pytest suite, and `bash -n deploy`."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Full local test matrix relevant to release-controller/deploy guards passes.",
+        "API host Release Controller is upgraded to an image built from the controller-only commit.",
+        "Staging deployment runs through Release Controller with the guarded deploy executor.",
+        "Prod remains enrolled in current/previous immutable pointer promote/rollback state after the new commit.",
+        "Direct manual backend/factory deploy commands fail locally before remote side effects.",
+        "Polling is left enabled and controller/status/health are clean.",
+        "Documentation no longer presents GitHub Actions or direct deploy scripts as backend/factory release paths."
+      ],
+      "assumptions": [
+        "`release-controller-image` remains allowed as a bootstrap/self-upgrade path for the control plane itself.",
+        "Backend/factory deployment mutation must go through Release Controller; non-backend targets such as frontend, iOS, desktop, relay, and host-infra are outside this ticket."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "split",
+      "classification_reason": "Remote rollout has separate local validation/commit preparation and API-host migration steps; splitting prevents hiding the polling pause/controller upgrade ordering risk.",
+      "created_at": "2026-05-24T10:43:33+00:00",
+      "id": "T002",
+      "problem_definition": "The repository now requires Release Controller identity for backend/factory deploy executor calls. The API host still runs the previous controller image until upgraded. If the guarded `deploy` script reaches the controller worktree while the old controller is still active, staging deployment can fail because the old planner does not pass the required env vars.",
+      "problem_id": "P002",
+      "proposed_solution": "Run a controlled migration: pause polling, commit/push the controller-only changes, build and deploy a new Release Controller image, trigger or observe staging through the upgraded controller, promote prod to the same resulting release if needed, verify manual deploy paths fail, and resume polling. Finish by validating the ledger and documenting final state.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Pausing polling and not resuming would silently stop branch-driven staging deploys.",
+        "Pushing before controller upgrade may create a failed staging run, though it should not corrupt release pointers.",
+        "Controller self-upgrade still uses `release-controller-image` as a bootstrap path because it cannot replace itself through an already-stopped request yet."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Roll out guarded deploy through Release Controller",
+      "updated_at": "2026-05-24T11:08:26+00:00",
+      "verification_plan": "Run `./scripts/run_all_tests.sh`; pause remote polling before push; build/push/deploy release-controller image; call Release Controller status/trigger/promote/rollback endpoints as needed; verify public/local health and manual guard failure."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`./scripts/run_all_tests.sh` passes.",
+        "API-host polling is paused before push.",
+        "Only intentional files are staged and committed.",
+        "Commit is pushed to `origin/main`."
+      ],
+      "assumptions": [
+        "It is acceptable that the newest operational ledger remains uncommitted until rollout is fully verified, to avoid creating a second release loop after the code commit."
+      ],
+      "body_path": "problems/P000/children/P002/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Validation, polling pause, scoped commit, and push are a bounded sequence with immediate command evidence and no need for child decomposition.",
+      "created_at": "2026-05-24T10:43:57+00:00",
+      "id": "T003",
+      "problem_definition": "Controller-only release changes must be validated and published without accidentally staging unrelated dirty files. Because the currently running remote controller may not yet pass deploy identity, remote polling should be paused before pushing the guarded `deploy` script to `main`.",
+      "problem_id": "P003",
+      "proposed_solution": "Run the canonical test matrix, inspect git status/diff, pause API-host Release Controller polling, stage only relevant controller-only files, commit, push `main`, and capture the resulting commit SHA for remote rollout.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "The worktree contains unrelated dirty files and older uncommitted ledger files; staging must be path-specific.",
+        "If polling is paused and not resumed later, staging automation stops until P004 completes."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Validate, pause polling, commit and push",
+      "updated_at": "2026-05-24T10:49:46+00:00",
+      "verification_plan": "Use local test output, `git diff --cached --name-only`, `git status --short`, `git rev-parse HEAD`, and remote Release Controller status/polling state."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Running Release Controller image digest corresponds to an image built from commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`.",
+        "A staging run through Release Controller succeeds using guarded `services-image` and `factory-image` executor steps.",
+        "Prod current pointer is promoted to the new commit/images and prod health is clean.",
+        "Manual backend/factory deploy commands fail without controller identity.",
+        "`/v1/status` shows polling enabled, not running, and no last error after migration."
+      ],
+      "assumptions": [
+        "The API host has access to GitHub and the local registry at `127.0.0.1:5000`.",
+        "`release-controller-image` remains allowed as the control-plane self-upgrade bridge."
+      ],
+      "body_path": "problems/P000/children/P002/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "The remote rollout is a linear controlled migration: build new controller image, deploy it, trigger staging, promote prod, verify health, and resume polling.",
+      "created_at": "2026-05-24T10:50:11+00:00",
+      "id": "T004",
+      "problem_definition": "The API host currently has polling paused and may still be running a Release Controller image that predates the deploy invocation guard. It must be upgraded to an image built from parent commit `e4fb5740cc8481617bcd3d9f2928d7f4ebf586df`, then the guarded deploy path must be exercised through the controller.",
+      "problem_id": "P004",
+      "proposed_solution": "Build and push an immutable release-controller image from the new commit on the API host, deploy it with `release-controller-image`, trigger staging through `/v1/triggers`, verify staging health and manual guard failure, promote the same release to prod if staging succeeds, verify prod health/pointers, then resume polling.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Building the controller image on the API host is still a bootstrap/self-upgrade path; backend/factory deployments remain controlled by Release Controller.",
+        "Staging trigger can fail if submodule pointers or remote worktree fetch are wrong."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Upgrade controller and run guarded staging/prod verification",
+      "updated_at": "2026-05-24T11:06:03+00:00",
+      "verification_plan": "Use Docker image digest/build logs, `./deploy release-controller-image`, Release Controller `/v1/triggers`, `/v1/promotions/prod`, `/v1/status`, public/local health curls, direct manual guard commands, and optional rollback dry-run."
+    }
+  },
+  "updated_at": "2026-05-24T11:09:39+00:00"
+}

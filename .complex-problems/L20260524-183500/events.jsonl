@@ -1,0 +1,60 @@
+{"at": "2026-05-24T10:35:00+00:00", "id": "E000", "payload": {"ledger_id": "L20260524-183500", "root_id": "P000", "title": "Eliminate manual backend deploy paths behind Release Controller"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-24T10:35:16+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Make backend releases controller-only"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T10:35:16+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:35:21+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:35:21+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Controller-only deployment touches planner, runner, deploy guards, docs/tests, and a migration rollout where ordering matters; split keeps implementation and deployment verification explicit.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T10:35:35+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:35:35+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "source": "split", "title": "Enforce Release Controller-only backend deploy entrypoints in code"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-24T10:35:35+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "source": "split", "title": "Roll out controller-only deployment and clean release documentation"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-24T10:35:43+00:00", "id": "E008", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Add controller invocation contract and deploy guards"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T10:35:43+00:00", "id": "E009", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:35:47+00:00", "id": "E010", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:35:47+00:00", "id": "E011", "payload": {"classification": "one_go", "reason": "The implementation scope is a bounded code/test change across planner, runner, deploy guards, and focused tests; verification can be done immediately before rollout.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T10:35:58+00:00", "id": "E012", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T10:35:58+00:00", "id": "E013", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:43:03+00:00", "id": "E014", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:43:03+00:00", "id": "E015", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T10:43:19+00:00", "id": "E016", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T10:43:19+00:00", "id": "E017", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T10:43:19+00:00", "id": "E018", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T10:43:33+00:00", "id": "E019", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "Roll out guarded deploy through Release Controller"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T10:43:33+00:00", "id": "E020", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:43:40+00:00", "id": "E021", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:43:40+00:00", "id": "E022", "payload": {"classification": "split", "reason": "Remote rollout has separate local validation/commit preparation and API-host migration steps; splitting prevents hiding the polling pause/controller upgrade ordering risk.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T10:43:49+00:00", "id": "E023", "payload": {"from": "classified", "id": "T002", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:43:49+00:00", "id": "E024", "payload": {"parent_id": "P002", "problem_id": "P003", "source": "split", "title": "Validate and publish controller-only release commit"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-24T10:43:49+00:00", "id": "E025", "payload": {"parent_id": "P002", "problem_id": "P004", "source": "split", "title": "Upgrade remote Release Controller and verify controller-only deployment"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-24T10:43:57+00:00", "id": "E026", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "Validate, pause polling, commit and push"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T10:43:57+00:00", "id": "E027", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:44:01+00:00", "id": "E028", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:44:01+00:00", "id": "E029", "payload": {"classification": "one_go", "reason": "Validation, polling pause, scoped commit, and push are a bounded sequence with immediate command evidence and no need for child decomposition.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T10:44:06+00:00", "id": "E030", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T10:44:06+00:00", "id": "E031", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:49:46+00:00", "id": "E032", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:49:46+00:00", "id": "E033", "payload": {"result_id": "R001", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T10:49:59+00:00", "id": "E034", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T10:49:59+00:00", "id": "E035", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T10:49:59+00:00", "id": "E036", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T10:50:11+00:00", "id": "E037", "payload": {"problem_id": "P004", "ticket_id": "T004", "title": "Upgrade controller and run guarded staging/prod verification"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T10:50:11+00:00", "id": "E038", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:50:16+00:00", "id": "E039", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T10:50:16+00:00", "id": "E040", "payload": {"classification": "one_go", "reason": "The remote rollout is a linear controlled migration: build new controller image, deploy it, trigger staging, promote prod, verify health, and resume polling.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T10:50:20+00:00", "id": "E041", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T10:50:20+00:00", "id": "E042", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T11:06:03+00:00", "id": "E043", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T11:06:03+00:00", "id": "E044", "payload": {"result_id": "R002", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T11:07:58+00:00", "id": "E045", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T11:07:58+00:00", "id": "E046", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T11:07:58+00:00", "id": "E047", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T11:08:26+00:00", "id": "E048", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T11:08:26+00:00", "id": "E049", "payload": {"from": "splitting", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T11:08:26+00:00", "id": "E050", "payload": {"result_id": "R003", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T11:08:42+00:00", "id": "E051", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T11:08:42+00:00", "id": "E052", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T11:08:42+00:00", "id": "E053", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T11:09:05+00:00", "id": "E054", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T11:09:05+00:00", "id": "E055", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T11:09:05+00:00", "id": "E056", "payload": {"result_id": "R004", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T11:09:31+00:00", "id": "E057", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T11:09:31+00:00", "id": "E058", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T11:09:31+00:00", "id": "E059", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
