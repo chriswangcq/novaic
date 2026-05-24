@@ -16,6 +16,7 @@ def test_load_sample_config() -> None:
     assert config.branch_rules[0].namespace == "staging"
     assert "novaic-common" in config.repo.submodules
     assert config.polling_enabled is False
+    assert config.dry_run_default is False
     assert config.server.port == 19880
 
 
@@ -44,6 +45,12 @@ def test_rejects_non_boolean_polling_enabled() -> None:
 
     with pytest.raises(ValueError, match="polling_enabled"):
         ControllerConfig.from_mapping(data)
+
+
+def test_missing_dry_run_default_is_non_conservative() -> None:
+    config = ControllerConfig.from_mapping(_base_config())
+
+    assert config.dry_run_default is False
 
 
 def test_invalid_json_config_raises_config_error(tmp_path: Path) -> None:

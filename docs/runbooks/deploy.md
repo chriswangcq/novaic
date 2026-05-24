@@ -42,17 +42,17 @@
   - 本机 API：`http://127.0.0.1:19880`。
   - 健康检查：`curl -fsS http://127.0.0.1:19880/health`。
   - 状态检查：`curl -fsS http://127.0.0.1:19880/v1/status`。
-  - 手动 dry-run trigger：`POST /v1/triggers`，例如 branch `main` + commit + `dry_run=true`。
+  - 手动 trigger：`POST /v1/triggers`；省略 `dry_run` 时按运行配置默认执行，当前默认是真实 staging 发布。需要只观察时显式传 `dry_run=true`。
   - branch polling dry-run：`POST /v1/polls/once`，请求体 `{"dry_run": true}`。
-  - autonomous polling：`polling_enabled=true` 时服务启动后每 `poll_interval_seconds` 自动 poll；当前线上为 `enabled=true`、`dry_run_default=true`。
+  - autonomous polling：`polling_enabled=true` 时服务启动后每 `poll_interval_seconds` 自动 poll；当前线上为 `enabled=true`、`dry_run_default=false`。
   - executor check：`docker exec novaic-release-controller-release_controller-1 docker --version`、`docker exec novaic-release-controller-release_controller-1 docker compose version`、`docker exec novaic-release-controller-release_controller-1 ssh -o BatchMode=yes root@api.gradievo.com true` 必须成功。
   - inspect：`curl -fsS http://127.0.0.1:19880/v1/status`，看 `polling.enabled`、`polling.running`、`polling.iteration_count`、`polling.last_error`、`recent_runs`。
   - pause：把 `/opt/novaic/release-controller/config.json` 里的 `polling_enabled` 改成 `false`，再执行 `./deploy release-controller-image <当前digest>`。
-  - enable：把 `polling_enabled` 改成 `true`；保持 `dry_run_default=true` 可只观察/计划，不执行 build/deploy。
+  - enable：把 `polling_enabled` 改成 `true`；正常运行保持 `dry_run_default=false`，如需临时观察/计划，调用 trigger/poll 时显式传 `dry_run=true`。
   - verify command rule：`deploy.verify_commands` 必须能在 release-controller 容器内执行；不要放依赖本机 venv 的整仓测试。完整测试放 builder/CI，controller 负责 release preflight + image build/import smoke + deploy。
   - prod promotion：`POST /v1/promotions/prod`，只接收 digest 或 `sha-<hex>` tag。
   - rollback：`POST /v1/rollbacks/<namespace>`，使用 previous pointer。
-  - 当前限制：`dry_run_default=true`；真实 non-dry-run branch release 是显式运行策略变更，不通过 prod branch 触发。
+  - prod guard：`dry_run_default=false` 只影响非 prod branch release 的默认执行；prod 仍不通过 branch 触发，只能走 promotion/rollback API。
   - worktree repair：在 API host 执行 `cd /opt/novaic/release-controller/worktree && git pull --ff-only origin main && git submodule update --init --recursive -- Entangled novaic-agent-runtime novaic-blob-service novaic-business novaic-common novaic-cortex novaic-device novaic-gateway novaic-logicalfs novaic-sandbox-service novaic-llm-factory`。
 - **GitHub Actions fallback**：旧 workflow 可继续做验证和镜像构建参考，但长期不作为发布编排中心。
 - **`deploy host-infra`**：同步 `docker/host-infra` Compose 包，构建 `novaic/quic-service:local`，迁移 Redis RDB 和 coturn 运行时配置，停止并禁用宿主机 `redis-server` / `coturn` / `novaic-quic-service`，启动 Docker Compose，验证 Redis/coturn/QUIC 端口归属 Docker 后清理 host 残留，包括旧 `/opt/novaic/start.sh`、`/opt/novaic/services` 和 API-host QUIC 目录。nginx 保留 host 管理。

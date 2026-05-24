@@ -194,7 +194,7 @@ class ControllerConfig:
     branch_rules: tuple[BranchRule, ...]
     poll_interval_seconds: int = 60
     polling_enabled: bool = False
-    dry_run_default: bool = True
+    dry_run_default: bool = False
     server: ServerConfig = field(default_factory=ServerConfig)
 
     @classmethod
@@ -207,7 +207,7 @@ class ControllerConfig:
         polling_enabled = data.get("polling_enabled", False)
         if not isinstance(polling_enabled, bool):
             raise ValueError("polling_enabled must be a boolean")
-        dry_run_default = data.get("dry_run_default", True)
+        dry_run_default = data.get("dry_run_default", False)
         if not isinstance(dry_run_default, bool):
             raise ValueError("dry_run_default must be a boolean")
         return cls(

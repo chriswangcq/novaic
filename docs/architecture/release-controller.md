@@ -48,8 +48,8 @@ bind: 127.0.0.1:19880 -> 19880/tcp
 config: /opt/novaic/release-controller/config.json
 state: /opt/novaic/release-controller/state
 compose: /opt/novaic/docker/release-controller
-worktree: /opt/novaic/release-controller/worktree @ 78411ddc0bbf
-polling: enabled, dry_run_default=true, interval=60s
+worktree: /opt/novaic/release-controller/worktree
+polling: enabled, dry_run_default=false, interval=60s
 executor: Docker CLI + Docker Compose plugin + SSH/rsync inside the controller container, host Docker socket mounted, `/root/.ssh` mounted read-only
 ```
 
@@ -63,7 +63,7 @@ curl -fsS -X POST http://127.0.0.1:19880/v1/polls/once \
   -d '{"dry_run": true}'
 ```
 
-The controller has no public Nginx route. Operators should SSH to the API host or use a controlled internal path to call it. Current runtime config keeps `dry_run_default=true`; real non-dry-run branch releases require a managed git worktree at `/opt/novaic/release-controller/worktree` before they should be enabled.
+The controller has no public Nginx route. Operators should SSH to the API host or use a controlled internal path to call it. Normal branch releases are non-dry-run by default; use an explicit `{"dry_run": true}` body only when intentionally asking for observation/planning.
 
 Worktree bootstrap on the API host:
 
@@ -83,7 +83,7 @@ Autonomous polling is owned by the release-controller process. Enable or pause i
 ```json
 {
   "polling_enabled": true,
-  "dry_run_default": true
+  "dry_run_default": false
 }
 ```
 
@@ -272,11 +272,11 @@ Bootstrap note: the first deployed image was built on the API host because the l
 
 ## Migration Plan
 
-1. Implement controller with dry-run and local state.
+1. Implement controller with explicit dry-run support and local state.
 2. Add Docker package and deploy command.
 3. Deploy controller to API host.
-4. Verify branch observation and dry-run planning.
-5. Enable `main -> staging` polling.
+4. Verify branch observation, dry-run override, and real staging execution.
+5. Enable `main -> staging` polling with `dry_run_default=false`.
 6. Use manual promote for prod.
-7. Populate and manage the controller worktree for non-dry-run branch releases.
+7. Populate and manage the controller worktree with an explicit release submodule allowlist.
 8. Mark GitHub Actions as secondary verification/fallback path.
