@@ -67,16 +67,16 @@ Business should store product semantics plus a BlobRef, not storage-private URLs
 App should resolve BlobRef through authorized Gateway/Blob access paths and must
 not construct object storage URLs directly.
 
-## No Fallback Rule
+## BlobRef Reader Rule
 
 New hot paths must write `blob://...` references. Historical locator shapes are
-detection-only migration inputs; they are not valid runtime APIs and must not be
+detection-only retired inputs; they are not valid runtime APIs and must not be
 reintroduced as readers or facades.
 
-## Transitional Cortex Object Store Adapter
+## Cortex Object Store Bridge
 
-The legacy/transitional Cortex object-store adapter can persist logical file
-bytes through Blob Service object APIs:
+The Cortex object-store bridge can persist logical file bytes through Blob
+Service object APIs:
 
 ```text
 tenant_id = {user_id}

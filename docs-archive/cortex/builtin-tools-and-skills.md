@@ -1,6 +1,6 @@
 # 内置工具 Schema 与技能安装
 
-> 源码：`novaic-common/common/tools/llm_builtin.py`（LLM-facing builtin schema 权威来源）、`novaic_cortex/api.py`（`/v1/internal/tools` 转发 common schema）、`runtime.py`（技能安装相关 legacy config 读取）。
+> 源码：`novaic-common/common/tools/llm_builtin.py`（LLM-facing builtin schema 权威来源）、`novaic_cortex/api.py`（`/v1/internal/tools` 转发 common schema）、`runtime.py`（技能安装相关配置读取）。
 
 ## 1. 内置 Schema：Common Canonical Tool Schemas
 
@@ -27,7 +27,7 @@
 
 严格 LIFO：仅能关栈顶，不匹配报错（不做级联关闭）。详见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。
 
-当前唯一 summary 写入通路是：LLM 关闭当前栈顶 scope 时调用 `skill_end(report=...)`，`report` 原样成为该 scope 的 `summary.md`。Cortex 不从 `im_reply`、wake 结束、用户画像或其他运行时信号推断 summary。
+当前唯一 summary 写入通路是：LLM 关闭当前栈顶 scope 时调用 `skill_end(report=...)`，`report` 原样成为该 scope 的 `summary.md`。Cortex 不从用户可见 reply action、wake 结束、用户画像或其他运行时信号推断 summary。
 
 **并发安全**：`POST /v1/context/skill_begin` 与 `POST /v1/context/skill_end` 在 Cortex API 层以 `(user_id, agent_id, root_scope_id)` 为 key 通过 scope lock manager 串行化，避免同一个 round 里并发 tool_calls 把 stack 状态搞乱。生产 backend 是 Redis lock manager；测试可安装 in-memory manager。锁 key 会在 root scope 归档（`/v1/scope/end` with `is_root=true`）后 best-effort 释放。
 

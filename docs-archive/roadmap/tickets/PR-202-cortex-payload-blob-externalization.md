@@ -1,5 +1,11 @@
 # PR-202 — Cortex Payload Blob Externalization
 
+> Closed ticket. The "Current-State Analysis" section below records the
+> pre-implementation baseline for this ticket. Current runtime behavior is:
+> Cortex owns payload manifests and work-trace meaning; large raw payload bytes
+> may be externalized to Blob Service behind explicit `blob://cortex-payload/...`
+> refs.
+
 | Field | Value |
 | --- | --- |
 | Status | `[done]` |

@@ -34,7 +34,9 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 - `/v1/blobs/{namespace}/{blob_id}/info`：读取 Blob 元数据。
 - `/v1/blobs/uploads/*`：multipart upload session，part 使用 raw bytes，
   complete 后才生成稳定 Blob metadata。
-- `/v1/objects/*`：Cortex object-tree 的 `put/get/list/move/delete` 原语。
+- `/v1/objects/*`：内部 object-store 原语，当前只应作为
+  LogicalFS `BlobObjectStore` 这类下层适配器的持久化接口；它不是
+  Cortex/shell live `/ro` / `/rw` 文件语义 API。
 - S3-compatible 后端当前使用 whole-object `put_object`。App 下载通过
   Gateway Nginx `/blob/` edge 直达 Blob Service，不经过 Gateway app 代理。
 
@@ -44,7 +46,7 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 - PUT/POST upload presign
 - server-side audio transcode/compression
 
-已删除的旧路径也不要作为兼容分支恢复：
+已删除的旧路径不要恢复为替代分支：
 
 - JSON/base64 上传 API
 - Gateway `/api/blobs/from-base64`

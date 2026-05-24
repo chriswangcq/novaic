@@ -33,7 +33,7 @@
 
 - 不改变 `skill_begin` / `skill_end` 的 LIFO 语义。
 - 不引入 LLM 可调用的 `finalize` / `rest` 工具。
-- 不让 Runtime 从 `im_reply`、聊天内容或 summary 文本推断 scope 状态。
+- 不让 Runtime 从用户可见 reply action、聊天内容或 summary 文本推断 scope 状态。
 - 不让 Business 或 Entangled 参与 Cortex scope 控制栈判定。
 
 ## 4. 核心不变量

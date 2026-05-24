@@ -55,7 +55,7 @@ POST /v1/context/prepare_for_llm
 2. 调 `bridge.prepare_for_llm(agent_root_scope_id)`。
 3. 加载 builtin tools，并转成 OpenAI `tools[]`。
 4. 根据 `stack` 追加瞬态 `[Active scope stack ...]` system message。
-5. 如上一轮 assistant 没有 tool_calls，追加 `NO_TOOL_WARNING`，提醒 LLM 需要用 `im_reply` / `skill_end` 这类真实工具推进。
+5. 如上一轮 assistant 没有 tool_calls，追加 `NO_TOOL_WARNING`，提醒 LLM 需要用 shell 中的 `agentctl im reply` 或 `skill_end` 这类真实动作推进。
 
 这两类瞬态 system message 不写入 `context.jsonl`，每次 LLM 调用前重新生成。
 

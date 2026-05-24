@@ -82,7 +82,7 @@ These are intentional boundaries, not hidden fallback paths:
 ## What This Is Not
 
 - It is not a permanent dual path with old bespoke worker loops.
-- It is not a compatibility layer for no-generation attach or legacy lifecycle
+- It is not a dual-path bridge for no-generation attach or retired lifecycle
   branches.
 - It is not a declaration that all business behavior is data-only.
 - It is not a place for worker handlers to create worker runtimes, connect

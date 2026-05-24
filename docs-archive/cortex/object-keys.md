@@ -40,10 +40,14 @@ LogicalFS authority 负责把逻辑路径映射到 object key：
 ```text
 /ro/active/... -> agents/{agent_id}/ro/active/...
 /ro/scopes/... -> agents/{agent_id}/ro/scopes/...
-/rw/scratch/... -> agents/{agent_id}/rw/scratch/...
+/rw/subagents/{subagent_id}/scratch/... -> agents/{agent_id}/rw/subagents/{subagent_id}/scratch/...
 ```
 
 Blob Service 决定物理后端是本地磁盘、OSS 还是 S3。这个映射是持久化细节，不是 live `/ro` / `/rw` 权威边界。
+
+`/rw/...` 仍然可以作为 LogicalFS 的一般文件路径映射到底层 object key，
+但 Cortex/shell 的默认 scratch 契约是 subagent-aware 的
+`/rw/subagents/{subagent_id}/scratch/...`，不是历史 root `/rw/scratch/...`。
 
 ## 4. 与 `list_recursive`、归档的关系
 

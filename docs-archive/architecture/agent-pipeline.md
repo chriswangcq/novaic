@@ -49,17 +49,21 @@ ReactActions:
 ```
 LLM tool_call
   → TOOL_EXECUTE → tool_handlers.handle_tool_execute
-  → im_reply / im_send / subagent_spawn → Business Environment/Subagent APIs
-  → shell / skill_* / payload_* → CortexBridge → Cortex
-  → display / audio_qa → Runtime native executor + File/Factory services
+  → shell → Cortex sandbox command surface
+     → agentctl im reply/send/read/history/search/context → Business Environment APIs
+     → agentctl subagent spawn / media audio-qa → Business/SubAgent/Runtime APIs
+     → cortex payload read/search/summarize/qa → Cortex APIs
+     → devicectl hd ... → Business → Device
+  → skill_begin / skill_end → Cortex scope lifecycle
+  → display / sleep → Runtime native executor
   → JSON content → Cortex step timeline
 ```
 
 | 类别 | 示例 | 路由 |
 |------|------|------|
-| 通信 | im_reply, im_send, subagent_spawn | Business `internal/` / Environment IM |
-| Cortex | shell, skill_begin, skill_end, payload_read/search/summarize/qa | CortexBridge |
-| Runtime native | display, audio_qa, sleep | Runtime executor |
+| 通信 | shell `agentctl im ...`, `agentctl subagent ...` | Business `internal/` / Environment IM |
+| Cortex | shell `cortex payload ...`, skill_begin, skill_end | CortexBridge |
+| Runtime native | display, sleep; shell `agentctl media audio-qa ...` | Runtime executor |
 
 ## 12.5 LLM Factory
 

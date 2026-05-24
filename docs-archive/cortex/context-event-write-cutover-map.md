@@ -1,5 +1,9 @@
 # Cortex ContextEvent Write Cutover Map
 
+> Status: historical cutover checklist. Current authoritative design lives in
+> `docs/cortex/context-event-source.md`; this file is retained as implementation
+> archaeology for the write-cutover phase.
+
 This map is the Phase 3 checklist for moving Cortex writes from legacy files to the append-only ContextEvent stream. The target state is one authoritative event log per root scope:
 
 ```text

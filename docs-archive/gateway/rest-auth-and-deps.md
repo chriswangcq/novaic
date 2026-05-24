@@ -3,10 +3,12 @@
 > 路径参考：`novaic-gateway/gateway/api/auth.py` 和 `gateway/infra/deps.py`
 
 ## 1. 路由模块化组织
-Gateway 的对外 REST 端点以极其清爽的 FastApi router 结构包裹。除了一些与 WebSockets 有强制结合的内容，所有 CRUD 被按概念分割：
+Gateway 的对外 REST 端点以极其清爽的 FastAPI router 结构包裹，但当前不再承载产品实体 CRUD 或设备/VM 编排。保留在 Gateway 的 HTTP 面主要是边缘能力：
 - `/auth/login` 等认证分发
 - `/api/turn/credentials` 对 WebRTC P2P 的票据供应
-- 其他像 `/devices` 设备关联、`/vm` 虚拟机开辟均由内部组装进行分流。
+- Blob edge 与 App WS/signaling 相关入口
+
+产品实体写入走 App → Entangled action/sync → Business action hook；设备和 VM 行为由 Business 编排到 Device Service 执行。
 
 ## 2. 身份流转逻辑：Token VS. 边界网关
 由于需要承接来自桌面应用程序以及公开网页版两种完全不同且有可能极不安全的访问，身份认定被设定为**严格的双轨防御验证**：

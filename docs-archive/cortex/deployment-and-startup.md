@@ -8,6 +8,7 @@
 python -m novaic_cortex.main_cortex \
   --blob-service-url http://127.0.0.1:19995 \
   --sandboxd-url http://127.0.0.1:19994 \
+  --cortex-api-url http://127.0.0.1:19996 \
   --operational-sqlite-path /path/to/cortex/operational.sqlite3 \
   --redis-url redis://127.0.0.1:6379/0
 ```
@@ -16,6 +17,7 @@ python -m novaic_cortex.main_cortex \
 
 - `--blob-service-url`：Blob Service base URL。
 - `--sandboxd-url`：Sandbox Service base URL，shell 执行必须经过 sandboxd。
+- `--cortex-api-url`：注入到 shell capability 的 Cortex base URL；必须显式传入，不能从默认 localhost 或临时文件兜底。
 - `--operational-sqlite-path`：Cortex operational state / projection SQLite 路径，由启动配置显式传入。
 - `--redis-url`：scope lock 后端。
 - `--internal-key`：内部 API 鉴权 key。

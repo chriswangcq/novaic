@@ -277,13 +277,13 @@ Tickets:
 
 Acceptance:
 
-- Retired standalone worker entrypoints are deleted, not left as compatibility
-  paths.
+- Retired standalone worker entrypoints are deleted, not left as dual-path
+  bridges.
 - `main_novaic.py` is the only Agent Runtime process entrypoint for task,
   saga, health, scheduler, and durable outbox workers.
 - Active start scripts and packaging hints no longer point at unsupported worker
   modes or obsolete worker CLI flags.
-- Static guards fail if the old launch helpers, gateway compatibility plumbing,
+- Static guards fail if the old launch helpers, gateway dual-path plumbing,
   or retired entrypoints return.
 
 Closure:

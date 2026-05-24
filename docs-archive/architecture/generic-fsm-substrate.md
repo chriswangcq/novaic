@@ -78,7 +78,7 @@ flowchart TD
 3. **PR-260 Session harness cutover**: make dispatch/finalize/recovery use the
    generic store as the active path.
 4. **PR-261 Residue deletion**: delete session-only ledger/outbox shells, stale
-   compatibility helpers, and historical dual-path names after cutover tests pass.
+   dual-path helpers, and historical dual-path names after cutover tests pass.
 
 ## Non-Goals
 

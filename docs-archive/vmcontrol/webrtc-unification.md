@@ -20,7 +20,7 @@ the App UI.
 
 Keyboard, pointer, clipboard, and control events travel through the WebRTC data
 channel or the typed CloudBridge path owned by VmControl/Device Service. The App
-does not maintain per-device legacy display protocols.
+does not maintain per-device retired display protocols.
 
 ## Ownership
 
@@ -28,4 +28,3 @@ does not maintain per-device legacy display protocols.
 - Device Service owns device routing and CloudBridge command brokering.
 - Gateway owns App-facing signaling and TURN credentials.
 - App renders the current device stream and sends user input intents.
-

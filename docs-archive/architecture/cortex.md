@@ -7,7 +7,7 @@ Cortex 是独立 HTTP 服务（默认 **19996**），主职责只有两类：
 1. 维护 **LIFO scope 树**。
 2. 从 scope 树按 DFS 拼装 **LLM context**。
 
-它还提供 Workspace、Sandbox 与能力 JWT。当前主路径**没有独立 Recall 模块、wake summary、自动总结、业务代理或从 `im_reply` / 聊天文本推断记忆**。
+它还提供 Workspace、Sandbox 与能力 JWT。当前主路径**没有独立 Recall 模块、wake summary、自动总结、业务代理或从用户可见 reply action / 聊天文本推断记忆**。
 
 ## 存储模型
 
@@ -59,12 +59,12 @@ Agent Runtime 在 `session_init` 时确保一个长期存在的 `agent_root` sco
 
 | 组件 | 文件 | 职责 |
 |------|------|------|
-| `Workspace` | `workspace.py` | `/ro`/`/rw` ACL、scope 创建/结束/归档、step/context CRUD |
+| `Workspace` | `workspace.py` | Cortex 侧 scope/workspace 语义、`/ro`/`/rw` ACL、scope 创建/结束/归档、step/context CRUD |
 | `WorkspaceRegistry` | `registry.py` | 按 `(user_id, agent_id)` 缓存 `Workspace`，并装配位于 LogicalFS 边界下方的 store adapter |
 | `ContextEngine` | `context_stack/engine.py` | LLM messages 拼装入口 |
 | `StepTreeBuilder` | `context_stack/step_tree.py` | 从 `_index.jsonl` 建树、折叠已关闭 scope |
 | `budget_compact` | `context_stack/budget.py` | token 预算压缩 |
-| `Sandbox` | `sandbox.py` | 物化 workspace → shell → 回写 `/rw` |
+| `Sandbox` | `sandbox.py` | Cortex 侧 shell 编排适配层：请求 LogicalFS 提供文件视图、交给 Sandboxd 执行、再接收 LogicalFS/RW 更新结果 |
 | `CortexBridge` | `novaic-agent-runtime/.../cortex_bridge.py` | Runtime 侧 HTTP 客户端 |
 
 ## Agent Runtime 集成

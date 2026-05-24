@@ -28,8 +28,8 @@ operator action explicitly dispatches a wake.
   `common.wake.DispatchAssembler`.
 - Business and Runtime must not hand-build Queue dispatch payloads.
 - Message-triggered dispatch idempotency is derived from the message id.
-- `subagent_id` is explicit for subagent-targeted messages; main-agent fallback
-  is assembler-owned.
+- `subagent_id` is explicit for subagent-targeted messages; the main-agent
+  default route is assembler-owned.
 - Health/recovery workers are recovery and observability mechanisms, not the
   normal message-delivery path.
 

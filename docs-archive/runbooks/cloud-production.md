@@ -80,7 +80,7 @@
 ./deploy frontend 0.3.0
 ```
 
-客户端通过 Gateway `/api/config/frontend` 获取 OTA URL；Gateway 的生产值来自 `services.json`，不再走 legacy env file。
+客户端通过 Gateway `/api/config/frontend` 获取 OTA URL；Gateway 的生产值来自 `services.json`，不再读取退役 env file。
 
 **OTA 三处同步**（新增 CDN 域名须同时改）：
 

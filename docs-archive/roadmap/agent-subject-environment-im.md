@@ -17,7 +17,7 @@ Agent 是主体；用户消息、subagent 消息和系统事件都是 Environmen
 
 ```text
 你收到一条来自 user:xxx 的消息。
-请调用 im_read 查看内容。
+请通过 shell 调用 `agentctl im read` 查看内容。
 ```
 
 而不是把完整消息正文直接塞进 LLM prompt。
@@ -46,11 +46,11 @@ Environment 不拥有：
 ## 当前主方案中的关键规则
 
 - Notification 不是 Observation。
-- `im_read` 结果作为 Observation percept 写入 Cortex。
+- `agentctl im read` 结果作为 Observation percept 写入 Cortex。
 - 用户消息、subagent 消息、system event 统一 sender/channel/thread/message_id 模型。
 - subagent report 应退役为普通 IM message。
 - processed lifecycle 由 Runtime wake finalize / scope close 成功后处理。
-- 历史翻阅走 `im_history`、`im_search`、`im_context`，不恢复旧 `chat_history` 自动 prompt memory。
+- 历史翻阅走 `agentctl im history/search/context`，不恢复旧 `chat_history` 自动 prompt memory。
 
 ## 施工入口
 

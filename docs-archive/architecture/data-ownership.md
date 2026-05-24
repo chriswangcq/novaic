@@ -25,7 +25,7 @@
 | 用户消息 / Agent / SubAgent **业务行** | **Entangled** | 经 Business → Entangled |
 | Gateway `gateway.db` | **运维表 only** | v63 见 `schema.py` |
 | Task / Saga | Queue Service | `tasks`, `sagas` |
-| Workspace / 上下文 | **Cortex + LogicalFS file authority**（HTTP 默认 19996） | scope、steps、payload manifest/status 等语义归 Cortex；实时 `/ro`/`/rw` 文件语义走 LogicalFS/Cortex file authority；Blob 只承担下层字节/对象持久化 |
+| Workspace / 上下文 | **Cortex semantics + LogicalFS live file authority**（服务端点由启动配置显式注入） | scope、steps、payload manifest/status、workspace 归属等语义归 Cortex；实时 `/ro`/`/rw` 文件操作与视图契约归 LogicalFS；Blob 只承担下层字节/对象持久化；Sandboxd 只执行进程；shell capability 不允许隐式 localhost fallback |
 
 ## 相关
 

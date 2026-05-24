@@ -114,7 +114,7 @@ Gateway 完成微服务拆分（2026-04-14）：
 已完成：
 
 - 生产启动链路只保留 **`SchedulerWorkerSync`** 负责 `due_wake -> scheduled_wake dispatch`
-- `WatchdogSync` 降级为 **deprecated compatibility wrapper**，不再是生产职责所有者
+- `WatchdogSync` 降级为 **retired guard wrapper**，不再是生产职责所有者
 - `scheduler` 入口补齐 `QUEUE_SERVICE_URL` 初始化，消除原先的配置漂移
 - `scheduled_wake` dispatch 增加稳定 `idempotency_key`（基于 `agent_id + subagent_id + wake_at`）
 - Queue Service `SessionCoordinator.dispatch()` 支持按 `idempotency_key` 识别并返回 `deduped`
@@ -214,7 +214,7 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 - `novaic-common/common/strict_config.py` 不再手写一份易漂移的 `leaf_keys` 清单
 - 改为直接从 `novaic-common/common/config.py` 的 AST 中抽取 `ServiceConfig` 实际使用的 `_CFG.get(...)` / `_url(...)` 路径，作为严格校验的必填项来源
-- `try/except` 包裹的可选配置（如 legacy `tools_server` alias）不会被误判为必填
+- `try/except` 包裹的可选配置（如 retired `tools_server` alias）不会被误判为必填
 - 新增 `novaic-common/tests/test_strict_config.py`，覆盖 `runtime.max_messages_per_page`、`services.turn.port` 等此前会漏校验的路径
 
 结果：

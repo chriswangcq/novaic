@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 # NovAIC Backend Start Script (Linux/Cloud)
 #
+# Legacy rollback only:
+#   API-host backend deployment now uses Docker Compose through `./deploy services`.
+#   Keep this script temporarily for `./deploy services-legacy` rollback until
+#   the Docker cutover has been verified and old host-process residue is removed.
+#   Owner/removal gate: P006 cleanup owns final archival/removal once Compose
+#   verification and rollback documentation are complete.
+#
 # Configuration:
-#   services.json = code-shipped defaults + secrets
+#   services.json = code-shipped defaults and static service catalog
+#   secrets overlay = secrets.local.json or /opt/novaic/etc/secrets.json
 #   runtime_switches overlay = /opt/novaic/etc/runtime_switches.json
 #   CLI args = process-local bind/path overrides (visible in ps aux)
 #   Zero exports — all config passed as CLI args or read through strict_config.
@@ -160,7 +168,7 @@ done
 
 echo "Starting NovAIC backends..."
 
-# ── Secrets (read from services.json, pass as CLI args) ──────────────────────
+# ── Secrets (read through strict_config overlay, pass as CLI args) ───────────
 #
 # TD-5/PR-101: use the exact same strict_config loader as Python services.
 # Do not reimplement runtime_switches overlay semantics in shell: the loader

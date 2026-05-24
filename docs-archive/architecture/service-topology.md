@@ -26,7 +26,7 @@
 | **Business** | `19998` | 产品 action hooks、Environment、Subscriber 输入、Device 编排、内部产品 API |
 | **Device** | `19993` | Device registry、CloudBridge typed WS、hardware/VM/WebRTC API |
 | **Queue Service** | `19997` | Task/Saga/session 调度，拥有 `queue.db` |
-| **Cortex** | `19996` | Agent scope/context/work trace/payload manifest/sandbox |
+| **Cortex** | `19996` | Agent scope/context/work trace、payload manifest、shell/sandbox orchestration |
 | **Sandboxd** | `19994` | 通用进程执行与稳定路径挂载；不拥有工作区文件语义 |
 | **LogicalFS** | library/service boundary | Cortex/shell 实时 RO/RW 文件视图权威层 |
 | **Blob Service** | `19995` | 便宜文件服务器：原始字节、大对象、BlobRef |
@@ -111,7 +111,7 @@
    → Cortex append observation/reasoning/action
 
 6. Reply/finalize
-   → im_reply writes user-visible message through Business/Environment projection
+   → shell executes `agentctl im reply` to write the user-visible message through Business/Environment projection
    → skill_end(report=...) closes wake scope summary.md in Cortex
    → Agent Monitor reads Entangled activity projection
 ```

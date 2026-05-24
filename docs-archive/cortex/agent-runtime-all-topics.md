@@ -44,7 +44,7 @@
 2. **`save_results`**（parallel）：把工具结果写回时间线。
 3. **`check_skill_stack`** → **`CORTEX_CHECK_STACK`**：返回 `{stack_depth, stack_known}`。
 4. **`decide_finalize`**（decision step，`_decide_finalize_or_continue`）按如下优先级判断：  
-   1. `round_num >= ServiceConfig.MAX_ROUNDS_BEFORE_FORCE_REST`（默认 **40**，来自 `services.json runtime.max_rounds_before_force_rest`）→ 强制 `trigger_finalize`，避免 LLM 无限调用 `im_reply` 不 `skill_end` 导致死循环。  
+   1. `round_num >= ServiceConfig.MAX_ROUNDS_BEFORE_FORCE_REST`（默认 **40**，来自 `services.json runtime.max_rounds_before_force_rest`）→ 强制 `trigger_finalize`，避免 LLM 无限执行 reply action 但不 `skill_end` 导致死循环。  
    2. `stack_known == False`（Cortex 查栈异常）→ fail-safe 视为「非空」，继续 **`trigger_next_think`**。  
    3. `stack_depth == 0` → **`trigger_finalize`**（`SAGA_TRIGGER` → `wake_finalize` saga）。  
    4. 否则 → **`trigger_next_think`**（`SAGA_TRIGGER` → `react_think` saga 下一轮）。

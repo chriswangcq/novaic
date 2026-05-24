@@ -81,7 +81,7 @@ Agent Monitor records are public projections of the agent work trace.
 | Type | User-facing meaning | Typical source |
 | --- | --- | --- |
 | Notification | The environment notified the agent that something is available | Environment notification |
-| Observation | The agent looked at something | `im_read`, `chat_history`, `display`, `payload_read`, shell output preview |
+| Observation | The agent looked at something | `agentctl im read`, `display`, `cortex payload read`, shell output preview |
 | Reasoning | The model's thinking text | LLM provider `reasoning_content` |
 | Action | The agent did something | Tool call / runtime action |
 | Summary | The agent saved this turn's context | `skill_end(report=...)` |

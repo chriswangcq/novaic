@@ -2,9 +2,10 @@
 
 ## Decision
 
-LogicalFS is the semantic authority for Cortex/shell realtime `RO` / `RW`
-views. Blob Service is the cheap file server for durable bytes and does not
-need realtime semantics.
+LogicalFS is the file-operation and view authority for Cortex/shell realtime
+`RO` / `RW` views. Cortex remains the semantic owner of agent, wake, scope,
+step, payload, and workspace meaning. Blob Service is the cheap file server for
+durable bytes and does not need realtime semantics.
 
 Blob Service owns durable bytes, object storage primitives, multipart upload,
 and blob references. Display and artifacts still use Blob for byte storage and
@@ -36,12 +37,12 @@ Blob object APIs, Cortex-local file authority wrappers, or sandbox scratch state
 
 ```text
 Cortex / Runtime shell pipeline
-  scope/workspace semantics and shell execution
+  scope/workspace semantics and shell orchestration
         |
         | live RO/RW file intents
         v
 LogicalFS
-  realtime RO/RW namespace authority
+  realtime RO/RW file-operation and namespace authority
   RO/RW layout, subagent RW layout, snapshots, patches, stable shell paths
         |
         | store/load RO/RW bytes
@@ -92,7 +93,7 @@ Owns:
 - file read/write/list/delete/move semantics above Blob
 - snapshot and patch semantics for shell execution
 - live update propagation for RO/RW state when needed
-- mapping between semantic owners and durable Blob object keys
+- mapping from explicit Cortex owner metadata to durable Blob object keys
 
 Does not own:
 
@@ -199,6 +200,6 @@ Uses LogicalFS for:
 - Display path is split cleanly:
   - base attachments: direct Blob
   - ordinary artifact/display bytes: direct Blob
-  - RO/RW file semantics: LogicalFS only
+  - RO/RW file operations and views: LogicalFS only
   - RO/RW file display/download: export/copy to Blob, then display/download
 - New tests prove Cortex/shell live RO/RW paths cannot bypass LogicalFS.

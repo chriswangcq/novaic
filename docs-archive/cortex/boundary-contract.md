@@ -5,7 +5,7 @@ Cortex has two core jobs:
 1. Maintain the LIFO scope tree.
 2. Assemble LLM context from that tree.
 
-Everything else must either live in the owning service/package or be treated as an explicit legacy proxy surface with a narrow reason.
+Everything else must either live in the owning service/package or be treated as an explicit retired proxy surface with a narrow reason.
 
 ## Retired From Cortex
 
@@ -16,7 +16,7 @@ The following concepts must not re-enter active Cortex source:
 - business memory/notebook/search proxying
 - business task system ownership
 - `wake summary`
-- deriving durable memory from `im_reply` or raw chat text
+- deriving durable memory from user-visible reply actions or raw chat text
 - multiple parallel summary producers
 
 The only durable LLM-authored summary path is:

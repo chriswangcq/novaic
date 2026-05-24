@@ -48,7 +48,7 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 | POST | `/v1/meta/read` | + `scope_id` | `meta` |
 | POST | `/v1/meta/update` | + `scope_id`, `updates` (dict) | `meta` |
 | POST | `/v1/meta/advance_round` | + `scope_id` | `meta`, `round_num`（P2-1：服务端原子 +1） |
-| POST | `/v1/meta/counter_inc` | + `scope_id`, `name`, `delta?`（默认 1） | `value`, `name`, `counters`（用于工具级独立限频；当前用户回复工具为 `im_reply`） |
+| POST | `/v1/meta/counter_inc` | + `scope_id`, `name`, `delta?`（默认 1） | `value`, `name`, `counters`（用于动作级独立限频，例如用户可见 reply action 的 cap） |
 
 ---
 

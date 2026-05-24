@@ -1,6 +1,6 @@
 # 本地后端联调（Runbook）
 
-桌面 **`novaic-app`** 内嵌 VmControl；**Python 后端**（Gateway、Cortex、Agent Runtime、Blob Service 等）通常需**单独启动**。端口约定见 **`novaic-common/config/services.json`** 与 [`../architecture/overview.md`](../architecture/overview.md)。
+桌面 **`novaic-app`** 内嵌 VmControl；本地联调时可以按需启动一组 Python 后端。端口约定见 **`novaic-common/config/services.json`** 与 [`../architecture/overview.md`](../architecture/overview.md)。
 
 ## 方式 A：`novaic-app` 配套 `start-backends.sh`
 
@@ -8,12 +8,12 @@
 
 ```bash
 cd novaic-app/scripts
-./start-backends.sh              # 启动后端
-./start-backends.sh --stop       # 停止
-./start-backends.sh --status     # 状态
+./start-backends.sh              # 启动本地核心子集
+./start-backends.sh --stop       # 停止本地核心子集
+./start-backends.sh --status     # 查看本地核心子集状态
 ```
 
-脚本内端口与 **Tauri 常量**对齐（Gateway 19999、Queue 19997、Business 19998（中枢编排）、Device 19993（设备服务）、Blob 19995 等）。完整逻辑见该文件注释。
+该脚本当前只启动本地桌面核心子集：Gateway 19999、Queue Service 19997、Blob Service 19995，以及 Agent Runtime workers。它**不会**启动 Entangled、Business、Device、Cortex 或 Sandboxd；如果要测试依赖这些服务的 agent/runtime 流程，需要先用其他方式启动这些服务，否则 workers 会在日志里出现连接错误。完整逻辑以 `novaic-app/scripts/start-backends.sh` 文件注释为准。
 
 ## 方式 B：只跑客户端 UI
 

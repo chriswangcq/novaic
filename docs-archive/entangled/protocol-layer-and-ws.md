@@ -18,6 +18,6 @@
 
 ## 3. WS Handler 与 协商准则 (`ws_handler.py`)
 WebSocket 连接时不仅仅只是发数据，它包含完整的**协商**阶段：
-- **`SYNC_CONTRACT_VERSION`**：一个标志整数，用于网关向客户端（Tauri）声明“我能支持的 Entangled 同步行为基线”。当客户端判定过低时，强制 fallback 或记录日志 `metric=sync_frame_missing_id_field_v2`。
+- **`SYNC_CONTRACT_VERSION`**：一个标志整数，用于网关向客户端（Tauri）声明“我能支持的 Entangled 同步行为基线”。当客户端判定过低时，停止使用该同步路径或记录日志 `metric=sync_frame_missing_id_field_v2`。
 - **Capabilities (能力暴露)**：协议层会在服务端主动下发可信数据类型，告知 Rust Client 这台服务器能否支持如 `listStream` 或带事务条件的 `upsert`，避免端侧发瞎包。
 - Duck-Typing 解析：服务端 `ws_handler` 有一个极妙的反射：如果它测出传入的 Store 上下文有 `exists_before()` 等方法，那么这层协议就能毫无侵入地打通“从某偏移量追赶聊天流水”的复杂历史回放。
