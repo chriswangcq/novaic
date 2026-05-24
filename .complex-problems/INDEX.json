@@ -816,16 +816,16 @@
       "updated_at": "2026-05-23T17:51:16+00:00"
     },
     {
-      "active_count": 5,
+      "active_count": 0,
       "blocked_count": 0,
       "ledger_id": "L20260524-113035",
       "path": "L20260524-113035",
       "root_id": "P000",
       "schema_version": 6,
-      "status": "doing",
+      "status": "done",
       "title": "Centered branch-driven release controller",
-      "updated_at": "2026-05-24T04:55:04+00:00"
+      "updated_at": "2026-05-24T05:50:24+00:00"
     }
   ],
-  "updated_at": "2026-05-24T04:55:04+00:00"
+  "updated_at": "2026-05-24T05:50:24+00:00"
 }

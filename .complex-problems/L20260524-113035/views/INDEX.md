@@ -3,11 +3,11 @@
 Ledger: L20260524-113035
 Schema: v6
 Root: P000 - Centered branch-driven release controller
-Status: doing
-Updated: 2026-05-24T04:55:04+00:00
+Status: done
+Updated: 2026-05-24T05:50:24+00:00
 
 ## Problem Tree
-- [followup] P000: Centered branch-driven release controller
+- [done] P000: Centered branch-driven release controller
   - [done] P001: Release-controller discovery and architecture design
   - [done] P002: Implement release-controller core service
     - [done] P007: Release-controller config and model foundation
@@ -26,22 +26,20 @@ Updated: 2026-05-24T04:55:04+00:00
     - [done] P016: Update release-controller CI/CD docs
     - [done] P017: Inspect and clean stale local branches
   - [done] P018: Wire deployed release-controller branch polling
-  - [followup] P019: Enable autonomous branch polling and managed staging release path
+  - [done] P019: Enable autonomous branch polling and managed staging release path
     - [done] P020: Add autonomous release-controller polling loop
-    - [doing] P021: Bootstrap API-host worktree and redeploy controller
-      - [doing] P023: Publish platform release source to main
-    - [todo] P022: Document and verify autonomous release operation
+    - [done] P021: Bootstrap API-host worktree and redeploy controller
+      - [done] P023: Publish platform release source to main
+    - [done] P022: Document and verify autonomous release operation
+  - [done] P024: Make release-controller execute real staging releases
+    - [done] P025: Deploy SSH-capable release-controller digest and rerun staging release
 
 ## Active
-- [ ] P000: Centered branch-driven release controller (followup)
-- [ ] P019: Enable autonomous branch polling and managed staging release path (followup)
-- [ ] P021: Bootstrap API-host worktree and redeploy controller (doing)
-- [ ] P022: Document and verify autonomous release operation (todo)
-- [ ] P023: Publish platform release source to main (doing)
 
 ## Blocked
 
 ## Done
+- [x] P000: Centered branch-driven release controller
 - [x] P001: Release-controller discovery and architecture design
 - [x] P002: Implement release-controller core service
 - [x] P003: Containerize and integrate release-controller deployment
@@ -60,7 +58,13 @@ Updated: 2026-05-24T04:55:04+00:00
 - [x] P016: Update release-controller CI/CD docs
 - [x] P017: Inspect and clean stale local branches
 - [x] P018: Wire deployed release-controller branch polling
+- [x] P019: Enable autonomous branch polling and managed staging release path
 - [x] P020: Add autonomous release-controller polling loop
+- [x] P021: Bootstrap API-host worktree and redeploy controller
+- [x] P022: Document and verify autonomous release operation
+- [x] P023: Publish platform release source to main
+- [x] P024: Make release-controller execute real staging releases
+- [x] P025: Deploy SSH-capable release-controller digest and rerun staging release
 
 ## Tickets
 - [done] T000: Build branch-driven release controller -> P000 (split)
@@ -82,19 +86,22 @@ Updated: 2026-05-24T04:55:04+00:00
 - [done] T016: Update release-controller CI/CD docs -> P016 (one_go)
 - [done] T017: Inspect and clean stale local branches -> P017 (one_go)
 - [done] T018: Wire deployed release-controller branch polling -> P018 (one_go)
-- [splitting] T019: Autonomous branch polling and managed staging path -> P019 (split)
+- [done] T019: Autonomous branch polling and managed staging path -> P019 (split)
 - [done] T020: Autonomous polling loop implementation -> P020 (one_go)
-- [executing] T021: Managed worktree and API-host redeploy -> P021 (one_go)
-- [executing] T022: Publish release platform source -> P023 (one_go)
+- [done] T021: Managed worktree and API-host redeploy -> P021 (one_go)
+- [done] T022: Publish release platform source -> P023 (one_go)
+- [done] T023: Autonomous release operation docs and final verification -> P022 (one_go)
+- [done] T024: Release-controller execution-capable image -> P024 (one_go)
+- [done] T025: Deploy fixed release-controller digest and verify staging release -> P025 (one_go)
 
 ## Latest Checks
-- [success] C012: P003 P003 is successful. The release-controller now has Docker image packaging, Compose runtime integration, and an image-based deploy command path. Actual host rollout remains correctly assigned to P005.
-- [success] C013: P004 P004 is successful. The release-controller has repository-level guards that run through root pytest and protect the core tests, Dockerfile, Compose runtime, and deploy entrypoint invariants without requiring Docker daemon access.
-- [success] C014: P005 P005 is successful. The release-controller is running on the API host as a Docker Compose service, bound only to loopback, using the immutable digest image ref, and verified through health/status and dry-run trigger checks.
-- [success] C015: P016 P016 is successful. Documentation now reflects the deployed release-controller path, the operator commands, loopback-only exposure, GitHub Actions fallback role, and the remaining managed-worktree limitation.
-- [success] C016: P017 P017 is successful. Local stale branches were cleaned while preserving unmerged branch tips under archive refs, and the current branch remains `main`.
-- [success] C017: P006 P006 is successful. The docs now describe the deployed self-hosted release-controller path and local stale branches have been cleaned safely with archive refs for unmerged tips.
-- [not_success] C018: P000 The release-controller work is substantially complete but not fully successful against the centered branch-driven goal. The deployed service can run manual dry-run triggers and the codebase includes a poller module, but the deployed HTTP service does not yet expose or run branch polling, and the API host worktree is not yet a managed checkout for real non-dry-run branch releases.
-- [success] C019: P018 P018 is successful. The deployed release-controller now exposes a branch polling control-plane path, the API host can call it successfully in dry-run mode, and the worktree requirement is documented with an explicit bootstrap command.
-- [not_success] C020: P000 The release-controller is deployed and can poll branch heads through its control-plane API, but the root problem is not fully successful yet. The remaining gap is autonomy: the service should own periodic branch polling and the API host should have the managed worktree needed for non-dry-run staging releases.
 - [success] C021: P020 P020 is successful. The service now has an explicit, test-covered autonomous polling loop that is disabled by default and visible through `/v1/status`.
+- [success] C022: P023 P023 is successful. The platform release source is now committed and pushed on `main`, and the API-host worktree has fast-forwarded to the published commit with the required Docker/deploy release paths.
+- [success] C023: P021 P021 is successful. The API-host worktree is now a release-capable git checkout, the updated release-controller image is deployed by digest, and autonomous polling is running in dry-run mode.
+- [success] C024: P022 P022 is successful. The docs now match the deployed autonomous polling state and include concrete enable, pause, inspect, dry-run, and worktree repair operations.
+- [success] C025: P019 P019 is successful. The release-controller now owns autonomous branch polling, the API host has a managed release worktree, and the deployed service is observing `main` in dry-run mode without GitHub Actions.
+- [not_success] C026: P000 The controller now owns autonomous branch polling and observes `main -> staging` without GitHub Actions, but the root CI/CD goal is not fully successful yet. A hard execution check showed the release-controller container does not currently expose a usable `docker` or `docker compose` CLI, so non-dry-run build/publish/deploy execution is not proven.
+- [not_success] C027: P024 Docker/Compose execution path works, but the fixed SSH-capable digest is not deployed and verified yet.
+- [success] C028: P025 SSH-capable controller was deployed and a full non-dry-run main-to-staging release succeeded through smoke.
+- [success] C029: P024 Release-controller now executes real staging releases end to end.
+- [success] C030: P000 Centered branch-driven release-controller is implemented, deployed, and proven by a successful non-dry-run staging release.

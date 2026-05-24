@@ -1,6 +1,6 @@
 # P000: Centered branch-driven release controller
 
-Status: followup
+Status: done
 Parent: none
 Root: P000
 Source Ticket: none (none)
@@ -33,12 +33,13 @@ The controller must be clear, explicit, and maintainable: branch-to-namespace ru
 - P006: Migrate CI/CD docs and clean stale branches
 - P018: Wire deployed release-controller branch polling
 - P019: Enable autonomous branch polling and managed staging release path
+- P024: Make release-controller execute real staging releases
 
 ## Results
 - R017
 
 ## Latest Check
-C020
+C030
 
 ## Bodies
 - Problem: problems/P000/README.md
@@ -46,7 +47,10 @@ C020
 - Result R017: problems/P000/results/R017.md
 - Check C018: problems/P000/checks/C018.md
 - Check C020: problems/P000/checks/C020.md
+- Check C026: problems/P000/checks/C026.md
+- Check C030: problems/P000/checks/C030.md
 
 ## Follow-ups
 - P018: Wire deployed release-controller branch polling
 - P019: Enable autonomous branch polling and managed staging release path
+- P024: Make release-controller execute real staging releases

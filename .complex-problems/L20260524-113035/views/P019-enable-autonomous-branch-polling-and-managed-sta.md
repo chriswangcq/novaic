@@ -1,6 +1,6 @@
 # P019: Enable autonomous branch polling and managed staging release path
 
-Status: followup
+Status: done
 Parent: P000
 Root: P000
 Source Ticket: none (none)
@@ -26,14 +26,16 @@ The deployed release-controller can poll branch heads through `/v1/polls/once`, 
 - P022: Document and verify autonomous release operation
 
 ## Results
-- none
+- R023
 
 ## Latest Check
-none
+C025
 
 ## Bodies
 - Problem: problems/P000/children/P019/README.md
 - Ticket T019: problems/P000/children/P019/tickets/T019.md
+- Result R023: problems/P000/children/P019/results/R023.md
+- Check C025: problems/P000/children/P019/checks/C025.md
 
 ## Follow-ups
 - none

@@ -911,14 +911,348 @@
         "The test loop runs immediately and with a one-second interval, proving the first poll does not require waiting for the first interval."
       ],
       "summary": "P020 is successful. The service now has an explicit, test-covered autonomous polling loop that is disabled by default and visible through `/v1/status`."
+    },
+    "C022": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P019/children/P021/children/P023/checks/C022.md",
+      "created_at": "2026-05-24T04:57:25+00:00",
+      "criteria_map": [
+        "Current release-controller and Docker/deploy platform source committed on `main`: satisfied by `78411ddc`.",
+        "Commit pushed to `origin/main`: satisfied.",
+        "API-host worktree can fast-forward to that commit: satisfied by `git pull --ff-only`.",
+        "API-host worktree contains required Dockerfiles and deploy commands: satisfied.",
+        "Existing unrelated dirty submodule working trees not reverted: satisfied; no submodule resets were run locally."
+      ],
+      "evidence": [
+        "Commit `78411ddc feat: add centered release controller platform` exists on local `main`.",
+        "`git push origin main` updated `origin/main` to `78411ddc`.",
+        "API-host worktree reports `78411ddc0bbf`.",
+        "API-host worktree contains the required Dockerfiles and deploy commands.",
+        "Local tests and guards passed before commit."
+      ],
+      "execution_map": [
+        "Cleaned generated artifacts.",
+        "Staged intended platform source paths.",
+        "Committed and pushed.",
+        "Fast-forwarded API-host worktree.",
+        "Verified release paths."
+      ],
+      "followup_problem_id": null,
+      "id": "C022",
+      "problem_id": "P023",
+      "residual_risk": [
+        "The local development worktree still has unrelated dirty/untracked files, but they are outside this publish path."
+      ],
+      "result_ids": [
+        "R020"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The API-host worktree is now sourced from git rather than an rsync overlay, so release commands can run from a real branch checkout."
+      ],
+      "summary": "P023 is successful. The platform release source is now committed and pushed on `main`, and the API-host worktree has fast-forwarded to the published commit with the required Docker/deploy release paths."
+    },
+    "C023": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P019/children/P021/checks/C023.md",
+      "created_at": "2026-05-24T04:58:45+00:00",
+      "criteria_map": [
+        "API-host worktree is a git checkout: satisfied.",
+        "Submodules needed by backend and Factory build contexts initialized: satisfied for release-relevant submodules.",
+        "Release-controller image rebuilt, pushed, and deployed by immutable digest: satisfied.",
+        "Deployed controller remains loopback-only and healthy: satisfied.",
+        "Deployed controller can observe branch heads using configured repo/worktree: satisfied.",
+        "Existing service health checks still pass: satisfied."
+      ],
+      "evidence": [
+        "The API-host worktree fast-forwarded to `78411ddc0bbf`, the pushed platform source commit.",
+        "Required Dockerfiles and image-based deploy commands exist in the worktree.",
+        "Release-relevant submodules were initialized.",
+        "The deployed release-controller is healthy and loopback-only.",
+        "`/v1/status` reports autonomous polling enabled/running with no last error.",
+        "The polling loop recorded a `poll` run for `main -> staging` at commit `78411ddc0bbf`.",
+        "Existing prod/staging API and Factory health checks still return 200."
+      ],
+      "execution_map": [
+        "Bootstrapped worktree.",
+        "Built/pushed/deployed release-controller image.",
+        "Enabled dry-run autonomous polling.",
+        "Published platform source to `origin/main`.",
+        "Fast-forwarded worktree to the pushed commit.",
+        "Verified status, paths, polling, and service health."
+      ],
+      "followup_problem_id": null,
+      "id": "C023",
+      "problem_id": "P021",
+      "residual_risk": [
+        "Non-dry-run staging automation is intentionally not enabled; `dry_run_default=true` keeps the controller observational until that policy is flipped."
+      ],
+      "result_ids": [
+        "R021"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The first full submodule clone attempt exposed private HTTPS submodule problems; the final path uses SSH auth and initializes only release-relevant submodules.",
+        "The controller saw many remote branches and skipped unmatched branches, preserving explicit branch-rule safety."
+      ],
+      "summary": "P021 is successful. The API-host worktree is now a release-capable git checkout, the updated release-controller image is deployed by digest, and autonomous polling is running in dry-run mode."
+    },
+    "C024": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P019/children/P022/checks/C024.md",
+      "created_at": "2026-05-24T05:02:06+00:00",
+      "criteria_map": [
+        "Architecture docs describe service-owned polling: satisfied.",
+        "Runbook documents enable/pause/inspect/dry-run/worktree repair: satisfied.",
+        "Docs keep GitHub Actions as fallback: satisfied.",
+        "Docs keep prod promotion separate from branch polling: satisfied.",
+        "Verification evidence recorded: satisfied."
+      ],
+      "evidence": [
+        "Architecture docs show current digest, worktree commit, polling enabled state, and prod promotion boundary.",
+        "Runbook documents autonomous polling inspection, enable, pause, and worktree repair commands.",
+        "Local tests and API-host status checks passed after the doc update."
+      ],
+      "execution_map": [
+        "Patched docs.",
+        "Ran local verification.",
+        "Queried API-host release-controller status."
+      ],
+      "followup_problem_id": null,
+      "id": "C024",
+      "problem_id": "P022",
+      "residual_risk": [
+        "Non-dry-run staging remains a conscious runtime policy switch."
+      ],
+      "result_ids": [
+        "R022"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The docs no longer tell operators to run an all-submodule clone that can fail on unrelated private/large submodules; they target the release-relevant submodules."
+      ],
+      "summary": "P022 is successful. The docs now match the deployed autonomous polling state and include concrete enable, pause, inspect, dry-run, and worktree repair operations."
+    },
+    "C025": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P019/checks/C025.md",
+      "created_at": "2026-05-24T05:03:03+00:00",
+      "criteria_map": [
+        "Internal polling loop periodically invokes `BranchPoller`: satisfied.",
+        "Loop is configurable and test-covered: satisfied.",
+        "API-host worktree is a verified git checkout with submodules: satisfied.",
+        "Deployed controller can observe branch heads from configured repo path: satisfied.",
+        "Branch automation can only target non-prod namespaces: satisfied by branch-rule/prod guard and dry-run `main -> staging` evidence.",
+        "Operational docs show enable, pause, inspect, and verify: satisfied."
+      ],
+      "evidence": [
+        "P020 delivered the background polling loop and tests.",
+        "P021 delivered API-host worktree, digest deploy, platform source publish, and live autonomous polling evidence.",
+        "P022 delivered updated operational docs and final verification.",
+        "API-host status shows polling enabled/running with no last error."
+      ],
+      "execution_map": [
+        "Implemented and tested loop.",
+        "Deployed new controller image.",
+        "Enabled polling in runtime config.",
+        "Published source to main and fast-forwarded worktree.",
+        "Updated docs and verified host status."
+      ],
+      "followup_problem_id": null,
+      "id": "C025",
+      "problem_id": "P019",
+      "residual_risk": [
+        "Non-dry-run staging is not active; this is a deliberate policy switch rather than a missing mechanism."
+      ],
+      "result_ids": [
+        "R023"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The controller observed many remote branches and skipped unmatched ones, proving it is not deriving environments from branch names implicitly.",
+        "Prod remains outside branch polling and requires explicit promotion."
+      ],
+      "summary": "P019 is successful. The release-controller now owns autonomous branch polling, the API host has a managed release worktree, and the deployed service is observing `main` in dry-run mode without GitHub Actions."
+    },
+    "C026": {
+      "blocking_gaps": [
+        "release-controller container cannot execute non-dry-run Docker/Compose release commands"
+      ],
+      "body_path": "problems/P000/checks/C026.md",
+      "created_at": "2026-05-24T05:05:13+00:00",
+      "criteria_map": [
+        "Documented design and implementation: satisfied.",
+        "Branch polling and deterministic branch-to-namespace mapping: satisfied.",
+        "Verification/build/publish/deploy command support: partially satisfied; plans exist, but the runtime image lacks Docker CLI/Compose.",
+        "Containerized and deployed on API host: satisfied.",
+        "Staging triggered from branch change without GitHub Actions: dry-run satisfied, non-dry-run not proven.",
+        "Prod promotion immutable refs: satisfied in planner/guards.",
+        "GitHub Actions fallback docs: satisfied.",
+        "Branch/deploy residue cleanup: satisfied locally.",
+        "Runtime deployment evidence: partially satisfied; running controller is healthy, release execution runtime dependency is missing."
+      ],
+      "evidence": [
+        "R017 proves the core release-controller platform, deploy path, CI guard, deployment, docs migration, and stale branch cleanup.",
+        "R018 proves the deployed poll-once API path.",
+        "R023 proves autonomous dry-run polling, API-host worktree, source publish, and docs.",
+        "API-host release-controller container check:",
+        "`docker exec novaic-release-controller-release_controller-1 docker --version` failed with `executable file not found in $PATH`.",
+        "`docker exec novaic-release-controller-release_controller-1 docker compose version` failed with `executable file not found in $PATH`.",
+        "The host has Docker and Compose, but the controller process executes plans inside its container."
+      ],
+      "execution_map": [
+        "Reviewed R017/R018/R023.",
+        "Performed a strict runtime execution dependency check inside the deployed controller container.",
+        "Identified one follow-up needed to close real release execution."
+      ],
+      "followup_problem_id": "P024",
+      "id": "C026",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Until the follow-up closes, the controller is a safe autonomous dry-run orchestrator, not a fully proven non-dry-run CD executor."
+      ],
+      "result_ids": [
+        "R017",
+        "R018",
+        "R023"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [
+        "Dry-run success alone would hide that non-dry-run commands cannot currently invoke Docker from the controller container."
+      ],
+      "summary": "The controller now owns autonomous branch polling and observes `main -> staging` without GitHub Actions, but the root CI/CD goal is not fully successful yet. A hard execution check showed the release-controller container does not currently expose a usable `docker` or `docker compose` CLI, so non-dry-run build/publish/deploy execution is not proven."
+    },
+    "C027": {
+      "blocking_gaps": [
+        "Deploy the SSH-capable release-controller digest and rerun a non-dry-run staging release."
+      ],
+      "body_path": "problems/P000/children/P024/checks/C027.md",
+      "created_at": "2026-05-24T05:22:09+00:00",
+      "criteria_map": [],
+      "evidence": [
+        "The release-controller image was upgraded enough to run Docker CLI and Docker Compose.",
+        "The deployed digest exercised the real non-dry-run path through verify, build, and push steps.",
+        "The run reached `deploy-api-staging`, proving the controller is no longer merely planning.",
+        "The real deploy step failed with a precise blocker: `ssh: command not found`.",
+        "A newer image digest that includes `openssh-client` and `rsync` was built and pushed, but it has not yet been deployed and re-exercised."
+      ],
+      "execution_map": [],
+      "followup_problem_id": "P025",
+      "id": "C027",
+      "problem_id": "P024",
+      "residual_risk": [],
+      "result_ids": [
+        "R024"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "Docker/Compose execution path works, but the fixed SSH-capable digest is not deployed and verified yet."
+    },
+    "C028": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/children/P025/checks/C028.md",
+      "created_at": "2026-05-24T05:49:12+00:00",
+      "criteria_map": [
+        "All P025 criteria met: fixed immutable digest deployed; container Docker/Compose/SSH/rsync/socket checks passed; non-dry-run main-to-staging release succeeded; staging health checked; prod branch trigger absent."
+      ],
+      "evidence": [
+        "Run 20260524-054536-main-2305e20cc49b succeeded with git/submodule/verify/build/push/deploy/smoke all exit 0; staging API and Factory health checks are 200; prod has no branch auto-deploy rule."
+      ],
+      "execution_map": [
+        "Executed via release-controller POST /v1/triggers with dry_run=false for main commit 2305e20cc49b0fc4cf63adde26810bdf78a100af; observed final run status succeeded and post-run health checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C028",
+      "problem_id": "P025",
+      "residual_risk": [
+        "`dry_run_default` remains `true`, so automatic polling is still observe/record by default. That is a policy setting, not a correctness blocker for this ticket because manual non-dry-run release execution was proven end to end."
+      ],
+      "result_ids": [
+        "R025"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Repeated through prior real blockers: missing ssh, stale submodule pointer, over-broad submodule update, early Factory health gate, and staging TLS mismatch; final run passed after each was corrected."
+      ],
+      "summary": "SSH-capable controller was deployed and a full non-dry-run main-to-staging release succeeded through smoke."
+    },
+    "C029": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P024/checks/C029.md",
+      "created_at": "2026-05-24T05:49:37+00:00",
+      "criteria_map": [
+        "All P024 criteria are satisfied by R024+R025: Docker/Compose/socket work, immutable controller digest deployed, non-dry-run staging release succeeded, prod remains promotion-only, docs updated."
+      ],
+      "evidence": [
+        "R024 proved Docker/Compose execution and identified SSH as the precise blocker; R025 deployed the fixed controller and run 20260524-054536-main-2305e20cc49b succeeded through build, push, deploy-api, deploy-factory, and smoke."
+      ],
+      "execution_map": [
+        "Manual POST /v1/triggers dry_run=false for main commit 2305e20cc49b0fc4cf63adde26810bdf78a100af produced status=succeeded; staging health checks returned 200."
+      ],
+      "followup_problem_id": null,
+      "id": "C029",
+      "problem_id": "P024",
+      "residual_risk": [
+        "Automatic polling still uses `dry_run_default=true`. This is deliberate operating policy after proving manual non-dry-run execution; flipping it to false is a separate production-risk decision, not a P024 correctness gap."
+      ],
+      "result_ids": [
+        "R024",
+        "R025"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The path was tested through multiple real failures and corrections: missing ssh, stale submodule source, over-broad submodule update, premature Factory health check, and wrong staging TLS certificate."
+      ],
+      "summary": "Release-controller now executes real staging releases end to end."
+    },
+    "C030": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C030.md",
+      "created_at": "2026-05-24T05:50:17+00:00",
+      "criteria_map": [
+        "Root criteria satisfied: self-hosted controller replaces GitHub Actions dependency, namespace staging release path works, prod remains promotion-only, immutable images are built/pushed/deployed, staging ingress TLS is valid."
+      ],
+      "evidence": [
+        "Controller polling is enabled/running; image digest sha256:444087... is deployed; run 20260524-054536-main-2305e20cc49b succeeded through git, submodule update, verify, build, push, deploy-api, deploy-factory, and smoke; staging API/Factory/HTTPS health checks return 200."
+      ],
+      "execution_map": [
+        "Implemented code, pushed submodules and main, deployed controller digest, configured API host runtime, executed manual non-dry-run main-to-staging trigger, verified final service health."
+      ],
+      "followup_problem_id": null,
+      "id": "C030",
+      "problem_id": "P000",
+      "residual_risk": [
+        "dry_run_default remains true for autonomous polling, so fully automatic branch deployment is a policy toggle still left conservative; manual non-dry-run execution is proven."
+      ],
+      "result_ids": [
+        "R017",
+        "R018",
+        "R023",
+        "R024",
+        "R025"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Resolved failures discovered only through real execution: missing ssh, stale submodule pointer, all-submodule update against unrelated private modules, Factory health race, and staging TLS SAN mismatch."
+      ],
+      "summary": "Centered branch-driven release-controller is implemented, deployed, and proven by a successful non-dry-run staging release."
     }
   },
   "counters": {
-    "check": 22,
-    "event": 264,
-    "problem": 24,
-    "result": 20,
-    "ticket": 23
+    "check": 31,
+    "event": 321,
+    "problem": 26,
+    "result": 26,
+    "ticket": 26
   },
   "created_at": "2026-05-24T03:30:35+00:00",
   "ledger_id": "L20260524-113035",
@@ -927,7 +1261,9 @@
       "body_path": "problems/P000/README.md",
       "check_ids": [
         "C018",
-        "C020"
+        "C020",
+        "C026",
+        "C030"
       ],
       "created_at": "2026-05-24T03:30:35+00:00",
       "created_from_check_id": null,
@@ -936,7 +1272,8 @@
       "description": "NovAIC should not depend on GitHub Actions as the long-term CI/CD control plane. Build a centered release-controller that can observe branches, run verification, build immutable images, publish to an internal registry, deploy namespace releases through the existing image-based deploy path, record rollback pointers, expose operational status, and replace manual bootstrap/GitHub Actions dependency as the primary release path.\n\nThe controller must be clear, explicit, and maintainable: branch-to-namespace rules should be configuration, release state should be durable, deploys should use immutable image refs, and prod promotion should be intentional rather than accidental. It must fit the current API-host Docker platform where prod/staging already coexist by namespace.",
       "followup_ids": [
         "P018",
-        "P019"
+        "P019",
+        "P024"
       ],
       "id": "P000",
       "package_path": "problems/P000",
@@ -945,7 +1282,7 @@
         "R017"
       ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P001",
         "P002",
@@ -954,7 +1291,8 @@
         "P005",
         "P006",
         "P018",
-        "P019"
+        "P019",
+        "P024"
       ],
       "success_criteria": [
         "Repository contains a documented release-controller design and implementation.",
@@ -970,7 +1308,7 @@
         "T000"
       ],
       "title": "Centered branch-driven release controller",
-      "updated_at": "2026-05-24T04:34:59+00:00"
+      "updated_at": "2026-05-24T05:50:17+00:00"
     },
     "P001": {
       "body_path": "problems/P000/children/P001/README.md",
@@ -1594,7 +1932,9 @@
     },
     "P019": {
       "body_path": "problems/P000/children/P019/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C025"
+      ],
       "created_at": "2026-05-24T04:34:59+00:00",
       "created_from_check_id": "C020",
       "created_from_ticket_id": null,
@@ -1604,9 +1944,11 @@
       "id": "P019",
       "package_path": "problems/P000/children/P019",
       "parent_id": "P000",
-      "result_ids": [],
+      "result_ids": [
+        "R023"
+      ],
       "root_id": "P000",
-      "status": "followup",
+      "status": "done",
       "subproblem_ids": [
         "P020",
         "P021",
@@ -1624,7 +1966,7 @@
         "T019"
       ],
       "title": "Enable autonomous branch polling and managed staging release path",
-      "updated_at": "2026-05-24T04:34:59+00:00"
+      "updated_at": "2026-05-24T05:03:03+00:00"
     },
     "P020": {
       "body_path": "problems/P000/children/P019/children/P020/README.md",
@@ -1662,7 +2004,9 @@
     },
     "P021": {
       "body_path": "problems/P000/children/P019/children/P021/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C023"
+      ],
       "created_at": "2026-05-24T04:36:20+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T019",
@@ -1672,9 +2016,11 @@
       "id": "P021",
       "package_path": "problems/P000/children/P019/children/P021",
       "parent_id": "P019",
-      "result_ids": [],
+      "result_ids": [
+        "R021"
+      ],
       "root_id": "P000",
-      "status": "doing",
+      "status": "done",
       "subproblem_ids": [
         "P023"
       ],
@@ -1690,11 +2036,13 @@
         "T021"
       ],
       "title": "Bootstrap API-host worktree and redeploy controller",
-      "updated_at": "2026-05-24T04:41:28+00:00"
+      "updated_at": "2026-05-24T04:58:45+00:00"
     },
     "P022": {
       "body_path": "problems/P000/children/P019/children/P022/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C024"
+      ],
       "created_at": "2026-05-24T04:36:27+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T019",
@@ -1704,9 +2052,11 @@
       "id": "P022",
       "package_path": "problems/P000/children/P019/children/P022",
       "parent_id": "P019",
-      "result_ids": [],
+      "result_ids": [
+        "R022"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Architecture docs describe the service-owned polling loop and its safety model.",
@@ -1714,13 +2064,17 @@
         "Docs keep GitHub Actions as fallback/secondary, not the release orchestrator.",
         "Verification evidence is recorded for tests, guards, API-host health, loopback-only exposure, and branch polling behavior."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T023"
+      ],
       "title": "Document and verify autonomous release operation",
-      "updated_at": "2026-05-24T04:36:27+00:00"
+      "updated_at": "2026-05-24T05:02:06+00:00"
     },
     "P023": {
       "body_path": "problems/P000/children/P019/children/P021/children/P023/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C022"
+      ],
       "created_at": "2026-05-24T04:53:58+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T021",
@@ -1730,9 +2084,11 @@
       "id": "P023",
       "package_path": "problems/P000/children/P019/children/P021/children/P023",
       "parent_id": "P021",
-      "result_ids": [],
+      "result_ids": [
+        "R020"
+      ],
       "root_id": "P000",
-      "status": "doing",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Current release-controller and Docker/deploy platform source is committed on `main`.",
@@ -1745,7 +2101,84 @@
         "T022"
       ],
       "title": "Publish platform release source to main",
-      "updated_at": "2026-05-24T04:54:58+00:00"
+      "updated_at": "2026-05-24T04:57:25+00:00"
+    },
+    "P024": {
+      "body_path": "problems/P000/children/P024/README.md",
+      "check_ids": [
+        "C027",
+        "C029"
+      ],
+      "created_at": "2026-05-24T05:05:13+00:00",
+      "created_from_check_id": "C026",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The deployed release-controller can poll and plan branch releases, but its container lacks a usable Docker CLI and Docker Compose plugin. Make the release-controller image capable of running its build/publish/deploy command plan, redeploy it, and prove a non-dry-run staging release path.",
+      "followup_ids": [
+        "P025"
+      ],
+      "id": "P024",
+      "package_path": "problems/P000/children/P024",
+      "parent_id": "P000",
+      "result_ids": [
+        "R024"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P025"
+      ],
+      "success_criteria": [
+        "Release-controller image contains working `docker` and `docker compose` commands.",
+        "API-host controller container can access the host Docker socket.",
+        "Updated image is built, pushed, and deployed by immutable digest.",
+        "Non-dry-run `main -> staging` trigger can run verification/build/publish/deploy or produces a precise blocker after invoking the real command path.",
+        "Prod remains promotion-only and cannot be branch-triggered.",
+        "Docs mention the Docker CLI/Compose runtime dependency."
+      ],
+      "ticket_ids": [
+        "T024"
+      ],
+      "title": "Make release-controller execute real staging releases",
+      "updated_at": "2026-05-24T05:49:37+00:00"
+    },
+    "P025": {
+      "body_path": "problems/P000/children/P024/children/P025/README.md",
+      "check_ids": [
+        "C028"
+      ],
+      "created_at": "2026-05-24T05:22:09+00:00",
+      "created_from_check_id": "C027",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "`P024` proved that the release-controller can run the real Docker/Compose build and push path, but the deployed controller image failed at `deploy-api-staging` because `ssh` was missing. Source and image changes now include `openssh-client`, `rsync`, and a read-only SSH directory mount. The fixed digest must be deployed and exercised.",
+      "followup_ids": [],
+      "id": "P025",
+      "package_path": "problems/P000/children/P024/children/P025",
+      "parent_id": "P024",
+      "result_ids": [
+        "R025"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "The API host runs release-controller image digest `127.0.0.1:5000/novaic/release-controller@sha256:8bd2205a8a2b4cc21c7101f4d70ac06f410e36f5ea9837375c7ab5ff7cf7b0aa` or a newer immutable digest containing the same SSH/runtime fix.",
+        "Inside the running controller container:",
+        "`docker --version` works.",
+        "`docker compose version` works.",
+        "`ssh` exists and can run in batch mode against the deploy target.",
+        "`rsync` exists.",
+        "The host Docker socket is accessible.",
+        "A non-dry-run `main -> staging` trigger reruns the real release path.",
+        "Staging API and LLM Factory health checks pass after the run, or the next exact runtime blocker is recorded with command output.",
+        "Prod remains promotion-only."
+      ],
+      "ticket_ids": [
+        "T025"
+      ],
+      "title": "Deploy SSH-capable release-controller digest and rerun staging release",
+      "updated_at": "2026-05-24T05:49:12+00:00"
     }
   },
   "results": {
@@ -2380,6 +2813,222 @@
         "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py`",
         "Passed: `6 passed`."
       ]
+    },
+    "R020": {
+      "artifacts": [
+        "Commit: `78411ddc0bbf`",
+        "API-host worktree: `/opt/novaic/release-controller/worktree`"
+      ],
+      "body_path": "problems/P000/children/P019/children/P021/children/P023/results/R020.md",
+      "created_at": "2026-05-24T04:57:02+00:00",
+      "done": [
+        "Cleaned generated Python artifacts before staging.",
+        "Explicitly staged release-controller, Docker/deploy, CI guard/workflow, docs, and active ledger artifacts.",
+        "Committed local `main`:",
+        "`78411ddc feat: add centered release controller platform`",
+        "Pushed the commit to `origin/main`.",
+        "Fast-forwarded `/opt/novaic/release-controller/worktree` on the API host to `78411ddc`.",
+        "Re-initialized the selected release-relevant submodules after the fast-forward."
+      ],
+      "id": "R020",
+      "known_gaps": [
+        "Local working tree still contains unrelated pre-existing dirty/untracked items outside the staged platform source; they were not reverted."
+      ],
+      "problem_id": "P023",
+      "root_id": "P000",
+      "summary": "Published the release platform source to `origin/main` and fast-forwarded the API-host managed worktree to the published commit.",
+      "ticket_id": "T022",
+      "verification": [
+        "Local pre-commit checks:",
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> `35 passed`.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> `6 passed`.",
+        "`python3 -m pytest -q` -> `11 passed`.",
+        "`bash -n deploy` -> passed.",
+        "Push:",
+        "`git push origin main` updated `main` from `b3b9d018` to `78411ddc`.",
+        "API-host worktree:",
+        "`git pull --ff-only origin main` fast-forwarded to `78411ddc0bbf`.",
+        "`git status --short --branch` returned `## main...origin/main`.",
+        "`docker/api-backend/Dockerfile` exists.",
+        "`docker/llm-factory/Dockerfile` exists.",
+        "`docker/release-controller/Dockerfile` exists.",
+        "`deploy` contains `services-image`, `factory-image`, and `release-controller-image`."
+      ]
+    },
+    "R021": {
+      "artifacts": [
+        "Release-controller digest: `sha256:9ebe598d9dd8dca0810bc292adc825b6717a3e0041a96d60ea9e95a2e99866e1`",
+        "Platform source commit: `78411ddc0bbf`",
+        "API-host worktree: `/opt/novaic/release-controller/worktree`"
+      ],
+      "body_path": "problems/P000/children/P019/children/P021/results/R021.md",
+      "created_at": "2026-05-24T04:58:20+00:00",
+      "done": [
+        "Replaced the empty API-host worktree with a git checkout of `git@github.com:chriswangcq/novaic.git`.",
+        "Initialized the release-relevant submodules:",
+        "`Entangled`",
+        "`novaic-agent-runtime`",
+        "`novaic-blob-service`",
+        "`novaic-business`",
+        "`novaic-common`",
+        "`novaic-cortex`",
+        "`novaic-device`",
+        "`novaic-gateway`",
+        "`novaic-logicalfs`",
+        "`novaic-sandbox-service`",
+        "`novaic-llm-factory`",
+        "Built and pushed release-controller image tag `sha-802133d6a120`.",
+        "Deployed immutable image digest `sha256:9ebe598d9dd8dca0810bc292adc825b6717a3e0041a96d60ea9e95a2e99866e1`.",
+        "Enabled `polling_enabled=true` in API-host runtime config while keeping `dry_run_default=true`.",
+        "Spawned and closed P023 to publish the current release platform source to `origin/main`.",
+        "Fast-forwarded the API-host worktree to commit `78411ddc0bbf`."
+      ],
+      "id": "R021",
+      "known_gaps": [
+        "Autonomous polling is enabled in dry-run mode. Flipping to non-dry-run staging is now technically prepared but remains an explicit runtime policy change."
+      ],
+      "problem_id": "P021",
+      "root_id": "P000",
+      "summary": "Bootstrapped the API-host managed worktree, redeployed the updated release-controller image, enabled autonomous dry-run polling, and verified the controller observed the pushed `main` commit from its own loop.",
+      "ticket_id": "T021",
+      "verification": [
+        "Local checks before deployment/publish:",
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q` -> `35 passed`.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> `6 passed`.",
+        "`python3 -m pytest -q` -> `11 passed`.",
+        "`bash -n deploy` -> passed.",
+        "Release-controller deployment:",
+        "Container image: `127.0.0.1:5000/novaic/release-controller@sha256:9ebe598d9dd8dca0810bc292adc825b6717a3e0041a96d60ea9e95a2e99866e1`.",
+        "Container health: `healthy`.",
+        "Bind: `127.0.0.1:19880`.",
+        "Nginx refs to `release-controller` or `19880`: `0`.",
+        "API-host worktree:",
+        "`git rev-parse --short=12 HEAD` -> `78411ddc0bbf`.",
+        "`git status --short --branch` -> `## main...origin/main`.",
+        "`docker/api-backend/Dockerfile`, `docker/llm-factory/Dockerfile`, and `docker/release-controller/Dockerfile` exist.",
+        "`deploy` contains `services-image`, `factory-image`, and `release-controller-image`.",
+        "Autonomous polling:",
+        "`/v1/status` reports `polling.enabled=true`, `polling.running=true`, `iteration_count=6`, and `last_error=null`.",
+        "`branch_heads.main` is `78411ddc0bbf7097c2f89d2a4a1b6e8b017f6379`.",
+        "Recent run `20260524-045632-main-78411ddc0bbf` is a `poll` trigger for namespace `staging`, status `succeeded`, `dry_run=true`.",
+        "Existing service health after redeploy:",
+        "`http://127.0.0.1:19999/api/health=200`",
+        "`http://127.0.0.1:29999/api/health=200`",
+        "`http://127.0.0.1:19990/health=200`",
+        "`http://127.0.0.1:29990/health=200`"
+      ]
+    },
+    "R022": {
+      "artifacts": [
+        "`docs/architecture/release-controller.md`",
+        "`docs/runbooks/deploy.md`"
+      ],
+      "body_path": "problems/P000/children/P019/children/P022/results/R022.md",
+      "created_at": "2026-05-24T05:01:31+00:00",
+      "done": [
+        "Updated architecture docs with current deployed digest, worktree commit, polling status, and safety model.",
+        "Replaced the stale full `--recurse-submodules` bootstrap with the release-relevant SSH/submodule bootstrap path.",
+        "Added enable, pause, inspect, dry-run, and worktree repair procedures to the deploy runbook.",
+        "Kept prod promotion explicitly separate from branch polling.",
+        "Re-ran local and API-host verification."
+      ],
+      "id": "R022",
+      "known_gaps": [
+        "No code gap remains for autonomous dry-run polling. Non-dry-run staging is a deliberate runtime policy switch, not a hidden fallback path."
+      ],
+      "problem_id": "P022",
+      "root_id": "P000",
+      "summary": "Updated the release-controller docs and runbook for autonomous polling operations, then verified the current local and API-host state.",
+      "ticket_id": "T023",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q`",
+        "Passed: `35 passed`.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py`",
+        "Passed: `6 passed`.",
+        "`python3 -m pytest -q`",
+        "Passed: `11 passed`.",
+        "`bash -n deploy`",
+        "Passed.",
+        "API-host status:",
+        "`polling.enabled=true`.",
+        "`polling.running=true`.",
+        "`polling.interval_seconds=60`.",
+        "`polling.iteration_count=8`.",
+        "`polling.last_error=null`.",
+        "`branch_heads.main=78411ddc0bbf7097c2f89d2a4a1b6e8b017f6379`."
+      ]
+    },
+    "R023": {
+      "artifacts": [
+        "`novaic-release-controller/`",
+        "`docker/release-controller/`",
+        "`docs/architecture/release-controller.md`",
+        "`docs/runbooks/deploy.md`",
+        "API-host worktree `/opt/novaic/release-controller/worktree`",
+        "Commit `78411ddc0bbf`"
+      ],
+      "body_path": "problems/P000/children/P019/results/R023.md",
+      "created_at": "2026-05-24T05:02:36+00:00",
+      "done": [
+        "P020 closed: autonomous polling loop implementation and tests.",
+        "P021 closed: API-host worktree bootstrap, release-controller image redeploy, autonomous polling enablement, and platform source publish.",
+        "P022 closed: autonomous release operation docs and final verification."
+      ],
+      "id": "R023",
+      "known_gaps": [
+        "Non-dry-run staging automation remains intentionally disabled by `dry_run_default=true`; the platform is prepared, but flipping that switch is an explicit operational policy decision."
+      ],
+      "problem_id": "P019",
+      "root_id": "P000",
+      "summary": "Closed the autonomy gap for the release-controller: it now has a configurable background polling loop, an API-host managed worktree, deployed autonomous dry-run polling, and current operational docs.",
+      "ticket_id": "T019",
+      "verification": [
+        "Release-controller tests passed: `35 passed`.",
+        "Release-controller CI guard passed: `6 passed`.",
+        "Root pytest passed: `11 passed`.",
+        "`bash -n deploy` passed.",
+        "API-host release-controller:",
+        "image digest `sha256:9ebe598d9dd8dca0810bc292adc825b6717a3e0041a96d60ea9e95a2e99866e1`",
+        "health `healthy`",
+        "loopback bind `127.0.0.1:19880`",
+        "Nginx refs `0`",
+        "API-host autonomous polling:",
+        "`polling_enabled=true`",
+        "`dry_run_default=true`",
+        "`polling.running=true`",
+        "`polling.last_error=null`",
+        "`branch_heads.main=78411ddc0bbf7097c2f89d2a4a1b6e8b017f6379`",
+        "recent `poll` run planned `main -> staging` in dry-run mode.",
+        "API-host worktree:",
+        "commit `78411ddc0bbf`",
+        "contains current Docker/deploy release paths."
+      ]
+    },
+    "R024": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P024/results/R024.md",
+      "created_at": "2026-05-24T05:21:26+00:00",
+      "done": [],
+      "id": "R024",
+      "known_gaps": [],
+      "problem_id": "P024",
+      "root_id": "P000",
+      "summary": "Implemented the release-controller executor runtime path so the container can run real image build/push/deploy commands instead of only planning branch releases.",
+      "ticket_id": "T024",
+      "verification": []
+    },
+    "R025": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P024/children/P025/results/R025.md",
+      "created_at": "2026-05-24T05:48:38+00:00",
+      "done": [],
+      "id": "R025",
+      "known_gaps": [],
+      "problem_id": "P025",
+      "root_id": "P000",
+      "summary": "Deployed the SSH-capable release-controller, fixed the release worktree submodule update path, restored staging from the bad image caused by stale submodule pointers, fixed the Factory health gate, issued the missing staging TLS certificate, and proved a full non-dry-run `main -> staging` release through the controller.",
+      "ticket_id": "T025",
+      "verification": []
     }
   },
   "root_id": "P000",
@@ -3052,15 +3701,17 @@
       "problem_definition": "The release-controller is deployed and can run branch polling through `/v1/polls/once`, but the root CI/CD goal requires the controller itself to own the branch observation loop and the API host to have a release-ready worktree for non-dry-run staging releases.",
       "problem_id": "P019",
       "proposed_solution": "Split the follow-up into bounded work:\n\n- Add a service-owned polling loop that periodically invokes `BranchPoller` using `poll_interval_seconds`.\n- Make the loop explicit in config and safe by default, with tests proving startup/shutdown behavior and non-prod branch safety.\n- Bootstrap and verify `/opt/novaic/release-controller/worktree` on the API host as a real git checkout with submodules.\n- Redeploy the release-controller image and verify the running control plane can observe branch heads from the managed worktree.\n- Update docs with enable/pause/inspect procedures for autonomous polling.",
-      "result_ids": [],
+      "result_ids": [
+        "R023"
+      ],
       "risks": [
         "A real non-dry-run staging deploy may be slow or fail if the worktree/submodules/build context are incomplete.",
         "The polling loop must not accidentally trigger prod; keep prod promotion separate from branch rules."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Autonomous branch polling and managed staging path",
-      "updated_at": "2026-05-24T04:36:06+00:00",
+      "updated_at": "2026-05-24T05:02:36+00:00",
       "verification_plan": "- Add focused unit tests around polling loop lifecycle and config parsing.\n- Run release-controller tests, release-controller CI guard, root pytest, and `bash -n deploy`.\n- Bootstrap or repair the API-host worktree.\n- Build/push/deploy a new release-controller image digest.\n- Verify health/status/polling evidence on `127.0.0.1:19880`."
     },
     "T020": {
@@ -3117,15 +3768,17 @@
       "problem_definition": "The API-host release-controller runtime has an empty worktree directory. Release commands need a real git checkout with submodules, and the newly added polling loop needs to be deployed in a fresh image digest.",
       "problem_id": "P021",
       "proposed_solution": "- Replace the empty runtime worktree with a clean clone of `https://github.com/chriswangcq/novaic.git`.\n- Initialize submodules so backend and Factory build contexts are available.\n- Keep runtime config safe while enabling autonomous polling explicitly.\n- Build a new release-controller image on the API host bootstrap path, push it to the local registry, and deploy by immutable digest.\n- Verify loopback-only exposure, health, status polling fields, branch head observation, and existing service health.",
-      "result_ids": [],
+      "result_ids": [
+        "R021"
+      ],
       "risks": [
         "Cloning submodules can be slow or fail if remote access changes.",
         "Enabling autonomous polling with `dry_run_default=true` should not mutate staging; non-dry-run enablement remains a separate runtime decision after the checkout is proven."
       ],
       "root_id": "P000",
-      "status": "executing",
+      "status": "done",
       "title": "Managed worktree and API-host redeploy",
-      "updated_at": "2026-05-24T04:41:32+00:00",
+      "updated_at": "2026-05-24T04:58:20+00:00",
       "verification_plan": "- Inspect and bootstrap the worktree on the API host.\n- Run local tests before deployment.\n- Build/push/deploy the updated image.\n- Verify API-host release-controller health/status/polling and current service health."
     },
     "T022": {
@@ -3147,16 +3800,109 @@
       "problem_definition": "The API-host release-controller worktree is a clean checkout of `origin/main`, but `origin/main` does not yet include the local release platform source required by the controller's command plan.",
       "problem_id": "P023",
       "proposed_solution": "Commit and push the platform release source needed for the controller path:\n\n- release-controller package and tests\n- Docker Compose/image packages\n- image-based deploy commands\n- CI guards/workflows and release docs\n- active ledger evidence for this release-controller work\n\nAvoid reverting unrelated dirty submodule work. Do not commit generated Python caches or local build artifacts.",
-      "result_ids": [],
+      "result_ids": [
+        "R020"
+      ],
       "risks": [
         "The local worktree contains older unrelated dirty changes; staging must be explicit."
       ],
       "root_id": "P000",
-      "status": "executing",
+      "status": "done",
       "title": "Publish release platform source",
-      "updated_at": "2026-05-24T04:55:04+00:00",
+      "updated_at": "2026-05-24T04:57:02+00:00",
       "verification_plan": "- Clean generated Python artifacts.\n- Stage the intended platform source paths explicitly.\n- Review staged names.\n- Commit and push to `origin/main`.\n- Fast-forward API-host worktree and check required files/commands."
+    },
+    "T023": {
+      "acceptance_criteria": [
+        "Docs describe service-owned polling.",
+        "Docs show enable/pause/inspect procedures.",
+        "Docs keep GitHub Actions as fallback.",
+        "Docs keep prod promotion separate from branch polling.",
+        "Final verification evidence is recorded."
+      ],
+      "assumptions": [
+        "Current deployed state remains digest `sha256:9ebe598d...` and worktree commit `78411ddc0bbf`."
+      ],
+      "body_path": "problems/P000/children/P019/children/P022/tickets/T023.md",
+      "classification": "one_go",
+      "classification_reason": "bounded documentation and verification update",
+      "created_at": "2026-05-24T04:59:06+00:00",
+      "id": "T023",
+      "problem_definition": "Autonomous polling is now implemented and deployed, but the runbooks must clearly explain how to inspect, enable, pause, dry-run, and keep prod promotion separate.",
+      "problem_id": "P022",
+      "proposed_solution": "Update release-controller architecture and deployment runbook docs with the current deployed state:\n\n- autonomous polling status and safety model\n- enable/pause commands\n- inspection commands\n- dry-run behavior and non-dry-run gate\n- worktree repair/update commands\n\nThen run final local and API-host verification and record the evidence.",
+      "result_ids": [
+        "R022"
+      ],
+      "risks": [
+        "Docs can drift from deployed state quickly; use concrete commands and current digest/commit."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Autonomous release operation docs and final verification",
+      "updated_at": "2026-05-24T05:01:31+00:00",
+      "verification_plan": "- Patch docs.\n- Run release-controller tests, release-controller CI guard, root pytest, and `bash -n deploy`.\n- Check API-host health/status/polling/worktree one more time."
+    },
+    "T024": {
+      "acceptance_criteria": [
+        "`docker` works inside the release-controller container.",
+        "`docker compose` works inside the release-controller container.",
+        "The updated image is deployed by immutable digest.",
+        "Non-dry-run staging release path is exercised.",
+        "Prod remains promotion-only."
+      ],
+      "assumptions": [
+        "API host Docker socket remains mounted at `/var/run/docker.sock`."
+      ],
+      "body_path": "problems/P000/children/P024/tickets/T024.md",
+      "classification": "one_go",
+      "classification_reason": "single image/runtime fix with direct container and staging-trigger verification",
+      "created_at": "2026-05-24T05:05:49+00:00",
+      "id": "T024",
+      "problem_definition": "The release-controller container can plan releases but cannot execute non-dry-run plans because `docker` and `docker compose` are not available inside the container.",
+      "problem_id": "P024",
+      "proposed_solution": "- Update `docker/release-controller/Dockerfile` to install a working Docker CLI and Docker Compose plugin.\n- Keep the host Docker socket mounted through the existing Compose package.\n- Add a CI guard that asserts the Dockerfile includes the CLI/Compose runtime dependency.\n- Rebuild, push, and deploy the updated controller image by digest.\n- Verify `docker --version` and `docker compose version` inside the running container.\n- Run a non-dry-run `main -> staging` trigger; if the real command path fails after Docker invocation, record the precise blocker.",
+      "result_ids": [
+        "R024"
+      ],
+      "risks": [
+        "Full staging release can be slow or fail in service tests/builds; failure is acceptable only if it proves the controller reached the real command path and records a precise blocker."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Release-controller execution-capable image",
+      "updated_at": "2026-05-24T05:21:26+00:00",
+      "verification_plan": "- Run release-controller tests and CI guard.\n- Build/push/deploy updated image.\n- Verify Docker/Compose inside the container.\n- Trigger `main` with `dry_run=false` and inspect the run result."
+    },
+    "T025": {
+      "acceptance_criteria": [
+        "The API host is running the fixed release-controller digest or a newer immutable digest with the same executor dependencies.",
+        "The running container passes Docker, Compose, SSH, rsync, and Docker socket checks.",
+        "A non-dry-run `main -> staging` release either succeeds through deploy/smoke or records the next precise runtime blocker after the SSH step.",
+        "Staging health is checked after the run.",
+        "Production is not branch-triggered."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/children/P024/children/P025/tickets/T025.md",
+      "classification": "one_go",
+      "classification_reason": "single already-built digest deployment with direct container capability checks and one staging release trigger",
+      "created_at": "2026-05-24T05:22:28+00:00",
+      "id": "T025",
+      "problem_definition": "The release-controller source and image now include Docker CLI, Docker Compose, SSH, rsync, Docker socket access, and a read-only SSH directory mount, but the latest fixed digest has not yet been deployed and verified. The prior non-dry-run run reached the real deploy step and failed because `ssh` was not present.",
+      "problem_id": "P025",
+      "proposed_solution": "- Deploy immutable digest `127.0.0.1:5000/novaic/release-controller@sha256:8bd2205a8a2b4cc21c7101f4d70ac06f410e36f5ea9837375c7ab5ff7cf7b0aa` to the API host using `./deploy release-controller-image`.\n- Force a restart/recreate if Compose does not replace the running container.\n- Verify inside the running controller container:\n  - Docker CLI.\n  - Docker Compose plugin.\n  - SSH client.\n  - rsync.\n  - Docker socket access.\n- Trigger a non-dry-run `main -> staging` release.\n- Verify staging API and staging LLM Factory health after the run.\n- Keep production branch-trigger disabled; production remains promotion-only.",
+      "result_ids": [
+        "R025"
+      ],
+      "risks": [
+        "Staging service deployment may expose a later missing secret, runtime dependency, or health issue. That is acceptable only if the failing command and output are captured precisely."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Deploy fixed release-controller digest and verify staging release",
+      "updated_at": "2026-05-24T05:48:38+00:00",
+      "verification_plan": "- `./deploy release-controller-image <digest>`\n- API-host container capability checks with `docker exec`.\n- `POST /v1/triggers` with `dry_run=false` for `main` and the current commit.\n- API-host local health checks:\n  - `http://127.0.0.1:29999/api/health`\n  - `http://127.0.0.1:29990/health`\n- Release-controller `/v1/status` confirms polling remains enabled and prod is not part of branch triggers."
     }
   },
-  "updated_at": "2026-05-24T04:55:04+00:00"
+  "updated_at": "2026-05-24T05:50:24+00:00"
 }

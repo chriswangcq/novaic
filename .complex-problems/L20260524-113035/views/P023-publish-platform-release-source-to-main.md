@@ -1,6 +1,6 @@
 # P023: Publish platform release source to main
 
-Status: doing
+Status: done
 Parent: P021
 Root: P000
 Source Ticket: T021 (spawn)
@@ -23,14 +23,16 @@ The API-host release-controller worktree is now a git checkout, but `origin/main
 - none
 
 ## Results
-- none
+- R020
 
 ## Latest Check
-none
+C022
 
 ## Bodies
 - Problem: problems/P000/children/P019/children/P021/children/P023/README.md
 - Ticket T022: problems/P000/children/P019/children/P021/children/P023/tickets/T022.md
+- Result R020: problems/P000/children/P019/children/P021/children/P023/results/R020.md
+- Check C022: problems/P000/children/P019/children/P021/children/P023/checks/C022.md
 
 ## Follow-ups
 - none

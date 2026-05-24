@@ -262,3 +262,60 @@
 {"at": "2026-05-24T04:54:45+00:00", "id": "E261", "payload": {"classification": "one_go", "reason": "explicit git publish task with direct remote verification", "ticket_id": "T022"}, "root_id": "P000", "type": "ticket_classified"}
 {"at": "2026-05-24T04:54:58+00:00", "id": "E262", "payload": {"from": "todo", "id": "P023", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
 {"at": "2026-05-24T04:55:04+00:00", "id": "E263", "payload": {"from": "classified", "id": "T022", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T04:57:02+00:00", "id": "E264", "payload": {"from": "executing", "id": "T022", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T04:57:02+00:00", "id": "E265", "payload": {"result_id": "R020", "ticket_id": "T022"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T04:57:25+00:00", "id": "E266", "payload": {"from": "doing", "id": "P023", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T04:57:25+00:00", "id": "E267", "payload": {"from": "checking", "id": "P023", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T04:57:25+00:00", "id": "E268", "payload": {"check_id": "C022", "followup_id": null, "problem_id": "P023", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T04:58:20+00:00", "id": "E269", "payload": {"from": "executing", "id": "T021", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T04:58:20+00:00", "id": "E270", "payload": {"result_id": "R021", "ticket_id": "T021"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T04:58:45+00:00", "id": "E271", "payload": {"from": "doing", "id": "P021", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T04:58:45+00:00", "id": "E272", "payload": {"from": "checking", "id": "P021", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T04:58:45+00:00", "id": "E273", "payload": {"check_id": "C023", "followup_id": null, "problem_id": "P021", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T04:59:06+00:00", "id": "E274", "payload": {"problem_id": "P022", "ticket_id": "T023", "title": "Autonomous release operation docs and final verification"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T04:59:06+00:00", "id": "E275", "payload": {"from": "created", "id": "T023", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T04:59:20+00:00", "id": "E276", "payload": {"from": "defined", "id": "T023", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T04:59:20+00:00", "id": "E277", "payload": {"classification": "one_go", "reason": "bounded documentation and verification update", "ticket_id": "T023"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T04:59:32+00:00", "id": "E278", "payload": {"from": "todo", "id": "P022", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T04:59:37+00:00", "id": "E279", "payload": {"from": "classified", "id": "T023", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:01:31+00:00", "id": "E280", "payload": {"from": "executing", "id": "T023", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:01:31+00:00", "id": "E281", "payload": {"result_id": "R022", "ticket_id": "T023"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T05:02:06+00:00", "id": "E282", "payload": {"from": "doing", "id": "P022", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:02:06+00:00", "id": "E283", "payload": {"from": "checking", "id": "P022", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:02:06+00:00", "id": "E284", "payload": {"check_id": "C024", "followup_id": null, "problem_id": "P022", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T05:02:36+00:00", "id": "E285", "payload": {"from": "splitting", "id": "T019", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:02:36+00:00", "id": "E286", "payload": {"result_id": "R023", "ticket_id": "T019"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T05:03:03+00:00", "id": "E287", "payload": {"from": "followup", "id": "P019", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:03:03+00:00", "id": "E288", "payload": {"from": "checking", "id": "P019", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:03:03+00:00", "id": "E289", "payload": {"check_id": "C025", "followup_id": null, "problem_id": "P019", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T05:05:13+00:00", "id": "E290", "payload": {"from": "followup", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:05:13+00:00", "id": "E291", "payload": {"from": "checking", "id": "P000", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:05:13+00:00", "id": "E292", "payload": {"check_id": "C026", "followup_id": "P024", "problem_id": "P000", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T05:05:49+00:00", "id": "E293", "payload": {"problem_id": "P024", "ticket_id": "T024", "title": "Release-controller execution-capable image"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T05:05:49+00:00", "id": "E294", "payload": {"from": "created", "id": "T024", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:06:02+00:00", "id": "E295", "payload": {"from": "defined", "id": "T024", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:06:02+00:00", "id": "E296", "payload": {"classification": "one_go", "reason": "single image/runtime fix with direct container and staging-trigger verification", "ticket_id": "T024"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T05:06:42+00:00", "id": "E297", "payload": {"from": "followup", "id": "P024", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:06:42+00:00", "id": "E298", "payload": {"from": "classified", "id": "T024", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:21:26+00:00", "id": "E299", "payload": {"from": "executing", "id": "T024", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:21:26+00:00", "id": "E300", "payload": {"result_id": "R024", "ticket_id": "T024"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T05:22:09+00:00", "id": "E301", "payload": {"from": "doing", "id": "P024", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:22:09+00:00", "id": "E302", "payload": {"from": "checking", "id": "P024", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:22:09+00:00", "id": "E303", "payload": {"check_id": "C027", "followup_id": "P025", "problem_id": "P024", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T05:22:28+00:00", "id": "E304", "payload": {"problem_id": "P025", "ticket_id": "T025", "title": "Deploy fixed release-controller digest and verify staging release"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-24T05:22:28+00:00", "id": "E305", "payload": {"from": "created", "id": "T025", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:22:33+00:00", "id": "E306", "payload": {"from": "defined", "id": "T025", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:22:33+00:00", "id": "E307", "payload": {"classification": "one_go", "reason": "single already-built digest deployment with direct container capability checks and one staging release trigger", "ticket_id": "T025"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-24T05:22:41+00:00", "id": "E308", "payload": {"from": "followup", "id": "P025", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:22:41+00:00", "id": "E309", "payload": {"from": "classified", "id": "T025", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:48:38+00:00", "id": "E310", "payload": {"from": "executing", "id": "T025", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-24T05:48:38+00:00", "id": "E311", "payload": {"result_id": "R025", "ticket_id": "T025"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-24T05:49:12+00:00", "id": "E312", "payload": {"from": "doing", "id": "P025", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:49:12+00:00", "id": "E313", "payload": {"from": "checking", "id": "P025", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:49:12+00:00", "id": "E314", "payload": {"check_id": "C028", "followup_id": null, "problem_id": "P025", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T05:49:37+00:00", "id": "E315", "payload": {"from": "followup", "id": "P024", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:49:37+00:00", "id": "E316", "payload": {"from": "checking", "id": "P024", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:49:37+00:00", "id": "E317", "payload": {"check_id": "C029", "followup_id": null, "problem_id": "P024", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-24T05:50:17+00:00", "id": "E318", "payload": {"from": "followup", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:50:17+00:00", "id": "E319", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-24T05:50:17+00:00", "id": "E320", "payload": {"check_id": "C030", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

@@ -1,6 +1,6 @@
 # P021: Bootstrap API-host worktree and redeploy controller
 
-Status: doing
+Status: done
 Parent: P019
 Root: P000
 Source Ticket: T019 (split)
@@ -24,14 +24,16 @@ The API host has the release-controller deployed, but real release commands need
 - P023: Publish platform release source to main
 
 ## Results
-- none
+- R021
 
 ## Latest Check
-none
+C023
 
 ## Bodies
 - Problem: problems/P000/children/P019/children/P021/README.md
 - Ticket T021: problems/P000/children/P019/children/P021/tickets/T021.md
+- Result R021: problems/P000/children/P019/children/P021/results/R021.md
+- Check C023: problems/P000/children/P019/children/P021/checks/C023.md
 
 ## Follow-ups
 - none
