@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260524-113035",
+  "active_ledger_id": "L20260524-150426",
   "ledgers": [
     {
       "active_count": 0,
@@ -825,7 +825,18 @@
       "status": "done",
       "title": "Centered branch-driven release controller",
       "updated_at": "2026-05-24T05:50:24+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260524-150426",
+      "path": "L20260524-150426",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Make release-controller non-conservative by default",
+      "updated_at": "2026-05-24T07:19:14+00:00"
     }
   ],
-  "updated_at": "2026-05-24T05:50:24+00:00"
+  "updated_at": "2026-05-24T07:19:14+00:00"
 }

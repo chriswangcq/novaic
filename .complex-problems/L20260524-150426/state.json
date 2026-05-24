@@ -1,0 +1,439 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-24T07:07:54+00:00",
+      "criteria_map": [
+        "All P001 criteria met: sample config false, tests updated, docs updated, checks passed."
+      ],
+      "evidence": [
+        "Model default and sample config are false; docs describe omitted dry_run as real staging execution; tests/guards passed."
+      ],
+      "execution_map": [
+        "T001/R000 updated source/docs/tests and verified with release-controller tests, CI guard, repo pytest, and bash -n deploy."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Runtime API-host config is intentionally handled by P002."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Covered omitted config fallback, stale docs, and prod branch automation risk."
+      ],
+      "summary": "Source defaults and docs now make release-controller non-conservative by default."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-24T07:18:09+00:00",
+      "criteria_map": [
+        "All P002 criteria met: runtime config false, controller redeployed, omitted-dry-run trigger succeeded, staging health passes, prod has no branch auto-deploy rule."
+      ],
+      "evidence": [
+        "Runtime config dry_run_default=false; omitted-dry-run run 20260524-071356-main-312494256d5a succeeded with dry_run=false; poll run 20260524-071515-main-312494256d5a succeeded; final health checks returned 200."
+      ],
+      "execution_map": [
+        "T002/R001 performed remote config update, source commits, controller image build/deploy, omitted trigger, poll observation, and health verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Staging now really deploys on matching branch head changes; this is intended."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Checked against conservative runtime drift, omitted-dry-run fallback, polling observe-only behavior, accidental prod branch deploy, and early health false negatives."
+      ],
+      "summary": "API-host release-controller now defaults to real execution and proved omitted-dry-run plus autonomous poll releases."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C002.md",
+      "created_at": "2026-05-24T07:19:03+00:00",
+      "criteria_map": [
+        "All root criteria met: repo defaults/docs fixed, API-host config false, controller redeployed, omitted trigger non-dry-run, staging healthy, prod branch auto-deploy absent."
+      ],
+      "evidence": [
+        "Source defaults false; remote config false; controller digest sha256:078ab062... healthy; omitted-dry-run run 20260524-071356-main-312494256d5a succeeded with dry_run=false; autonomous poll run 20260524-071515-main-312494256d5a succeeded; health checks 200."
+      ],
+      "execution_map": [
+        "T000 split into P001/P002; R000 changed source/docs/tests; R001 changed runtime/deployed/verified; R002 summarized closure."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Staging now really deploys on matching branch head changes, which is intended; prod remains promotion-only."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Tested source fallback, docs drift, runtime drift, omitted-trigger dry-run fallback, polling observe-only behavior, accidental prod branch deploy, and controller health false negative."
+      ],
+      "summary": "Release-controller is now cleanly non-conservative by default."
+    }
+  },
+  "counters": {
+    "check": 3,
+    "event": 36,
+    "problem": 3,
+    "result": 3,
+    "ticket": 3
+  },
+  "created_at": "2026-05-24T07:04:26+00:00",
+  "ledger_id": "L20260524-150426",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-24T07:04:26+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The centered release-controller is deployed and proven, but it is still configured conservatively with `dry_run_default=true`. The desired operating state is clean and non-conservative: branch-triggered releases should default to real execution, not observation-only dry runs, while production remains protected by promotion-only rules.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002"
+      ],
+      "success_criteria": [
+        "Repository defaults and documentation no longer describe the controller as dry-run by default for normal operation.",
+        "Release-controller sample config uses `dry_run_default=false`.",
+        "API-host runtime config uses `dry_run_default=false`.",
+        "The running release-controller is restarted or redeployed so the runtime policy is active.",
+        "A trigger without an explicit `dry_run` field plans and executes with `dry_run=false`.",
+        "Staging release health checks pass after the default non-dry-run execution.",
+        "Production remains protected: branch rules still do not auto-deploy to `prod`.",
+        "The ledger closes with validation/render/status."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Make release-controller non-conservative by default",
+      "updated_at": "2026-05-24T07:19:03+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-24T07:05:31+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The repository still presents the release-controller as dry-run by default in sample config or documentation. This creates drift from the desired clean operating model where staging branch releases execute for real unless explicitly requested as dry-run.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`novaic-release-controller/config.sample.json` has `dry_run_default=false`.",
+        "Tests expecting the sample config are updated.",
+        "Documentation describes non-dry-run default staging execution and keeps prod promotion-only.",
+        "Relevant tests and guards pass."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Make source defaults and docs non-conservative",
+      "updated_at": "2026-05-24T07:07:54+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-24T07:05:31+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Even if repository defaults are corrected, the running API-host release-controller must use `dry_run_default=false` and prove that omitted `dry_run` means real execution.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`/opt/novaic/release-controller/config.json` on the API host has `dry_run_default=false`.",
+        "The running release-controller has been restarted or redeployed after the config change.",
+        "A `main` trigger without a `dry_run` field executes with `dry_run=false`.",
+        "The omitted-policy trigger succeeds through staging deploy and smoke, or records a precise blocker that is then closed by follow-up.",
+        "Staging API and Factory health checks return 200 after the run.",
+        "Branch rules still do not auto-deploy to `prod`."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Activate non-conservative runtime policy on API host",
+      "updated_at": "2026-05-24T07:18:09+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-release-controller/release_controller/models.py`",
+        "`novaic-release-controller/config.sample.json`",
+        "`novaic-release-controller/tests/test_config_models.py`",
+        "`docs/architecture/release-controller.md`",
+        "`docs/runbooks/deploy.md`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-24T07:07:40+00:00",
+      "done": [
+        "Changed `ControllerConfig.dry_run_default` default from `true` to `false`.",
+        "Changed `novaic-release-controller/config.sample.json` to `\"dry_run_default\": false`.",
+        "Added test coverage that missing `dry_run_default` is non-conservative.",
+        "Updated release-controller architecture docs:",
+        "current/target runtime policy now says `dry_run_default=false`.",
+        "operators use explicit `dry_run=true` only when intentionally observing/planning.",
+        "migration plan now includes real staging execution and release submodule allowlist.",
+        "Updated deploy runbook:",
+        "omitted `dry_run` means runtime default execution.",
+        "current autonomous polling state is `dry_run_default=false`.",
+        "prod guard remains promotion/rollback API only."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Runtime API-host config is handled by P002."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Updated release-controller source defaults and documentation so normal branch-triggered staging releases are non-dry-run by default, while explicit dry-run remains available for observation and prod remains promotion-only.",
+      "ticket_id": "T001",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest novaic-release-controller/tests -q`: 36 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py`: 6 passed.",
+        "`python3 -m pytest -q`: 11 passed.",
+        "`bash -n deploy`: passed.",
+        "Search found no remaining `dry_run_default=true` or stale current-limit wording in release-controller docs/config."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "API-host runtime config: `/opt/novaic/release-controller/config.json`",
+        "Release-controller image: `sha256:078ab06205b3bdc51d61d32b8e3dc8752d94fb41c516dbf90fe0229e7ce1b2dc`",
+        "Main commits: `dad56939`, `31249425`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-24T07:17:33+00:00",
+      "done": [
+        "Updated `/opt/novaic/release-controller/config.json` to `\"dry_run_default\": false`.",
+        "Restarted the running controller and verified health.",
+        "Committed and pushed source default/doc change:",
+        "`dad56939 fix: make release controller non-conservative by default`",
+        "Built and deployed release-controller image from the non-conservative source:",
+        "`127.0.0.1:5000/novaic/release-controller@sha256:18d99cad9d2a1e659255c868374f361a3d90a1b4185794f8aaef3d750983892c`",
+        "Fixed the release-controller deploy health gate to wait for readiness instead of checking too early.",
+        "Committed and pushed:",
+        "`31249425 fix: wait for release controller health during deploy`",
+        "Built and deployed latest release-controller image:",
+        "`127.0.0.1:5000/novaic/release-controller@sha256:078ab06205b3bdc51d61d32b8e3dc8752d94fb41c516dbf90fe0229e7ce1b2dc`"
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Activated `dry_run_default=false` on the API-host release-controller, deployed a new controller image, and proved both manual omitted-`dry_run` and autonomous polling execute real staging releases.",
+      "ticket_id": "T002",
+      "verification": [
+        "Runtime config inspection on API host:",
+        "`dry_run_default`: `false`",
+        "`polling_enabled`: `true`",
+        "branch rules: `main -> staging`, `preview/* -> preview-{slug}`, `release/* -> candidate_only`",
+        "Omitted-`dry_run` manual trigger:",
+        "run `20260524-071356-main-312494256d5a`",
+        "status `succeeded`",
+        "execution `dry_run=false`",
+        "all steps succeeded: fetch, checkout, submodule sync/update, verify, build, push, deploy API, deploy Factory, smoke.",
+        "Autonomous polling after policy switch:",
+        "run `20260524-071042-main-dad56939ae39` succeeded and deployed staging automatically.",
+        "run `20260524-071515-main-312494256d5a` succeeded and updated `branch_heads.main` to `312494256d5ae0d3d5642b430a3cb231230464c8`.",
+        "Final health checks:",
+        "`http://127.0.0.1:29999/api/health`: 200.",
+        "`http://127.0.0.1:29990/health`: 200.",
+        "`https://staging-api.gradievo.com/api/health`: 200.",
+        "`http://127.0.0.1:19880/health`: 200.",
+        "Final running staging images:",
+        "API backend services: `127.0.0.1:5000/novaic/api-backend:sha-312494256d5a`.",
+        "LLM Factory: `127.0.0.1:5000/novaic/llm-factory:sha-312494256d5a`."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Main commits:",
+        "`dad56939 fix: make release controller non-conservative by default`",
+        "`31249425 fix: wait for release controller health during deploy`",
+        "Runtime image:",
+        "`127.0.0.1:5000/novaic/release-controller@sha256:078ab06205b3bdc51d61d32b8e3dc8752d94fb41c516dbf90fe0229e7ce1b2dc`"
+      ],
+      "body_path": "problems/P000/results/R002.md",
+      "created_at": "2026-05-24T07:18:34+00:00",
+      "done": [
+        "P001 changed source defaults, tests, and docs:",
+        "`ControllerConfig.dry_run_default` now defaults to `False`.",
+        "`config.sample.json` uses `\"dry_run_default\": false`.",
+        "docs describe omitted `dry_run` as real staging execution and explicit `dry_run=true` as observation.",
+        "P002 activated runtime:",
+        "API-host `/opt/novaic/release-controller/config.json` has `dry_run_default=false`.",
+        "controller was restarted/redeployed.",
+        "latest controller digest deployed: `sha256:078ab06205b3bdc51d61d32b8e3dc8752d94fb41c516dbf90fe0229e7ce1b2dc`.",
+        "omitted-`dry_run` trigger succeeded with `dry_run=false`.",
+        "autonomous polling also succeeded with real staging deployment.",
+        "Prod remains promotion-only."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the policy switch from conservative dry-run default to clean real-execution default for the centered release-controller.",
+      "ticket_id": "T000",
+      "verification": [
+        "P001 check `C000` passed.",
+        "P002 check `C001` passed.",
+        "Test matrix:",
+        "release-controller tests: 36 passed.",
+        "release-controller CI guard: 6 passed.",
+        "repo pytest: 11 passed.",
+        "`bash -n deploy`: passed.",
+        "Runtime proof:",
+        "manual omitted-`dry_run` run `20260524-071356-main-312494256d5a` succeeded.",
+        "poll run `20260524-071515-main-312494256d5a` succeeded.",
+        "final staging API/Factory/public HTTPS/controller health checks returned 200."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Code/config defaults are set to non-dry-run for release-controller.",
+        "Runtime config on API host is non-dry-run by default.",
+        "Running controller uses the new runtime config.",
+        "Omitted `dry_run` trigger produces `dry_run=false` execution.",
+        "Staging API and Factory health checks pass after execution.",
+        "Prod remains promotion-only."
+      ],
+      "assumptions": [
+        "Production safety is enforced by branch rules and promotion APIs, not by global dry-run default."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "runtime policy switch affects source defaults, remote controller behavior, and live staging verification; split keeps code/default and deployment verification separately provable",
+      "created_at": "2026-05-24T07:04:42+00:00",
+      "id": "T000",
+      "problem_definition": "The release-controller currently keeps `dry_run_default=true`, which makes automatic or omitted-policy triggers conservative even after the real staging release path was proven. The platform should be clean: staging branch releases default to real execution, while production remains protected by explicit promotion-only rules.",
+      "problem_id": "P000",
+      "proposed_solution": "- Update release-controller sample configuration to `dry_run_default=false`.\n- Update architecture/runbook documentation to describe non-conservative default execution and the remaining production guard.\n- Update API-host runtime config to `dry_run_default=false`.\n- Restart or redeploy the running release-controller so it uses the new policy.\n- Verify a trigger that omits `dry_run` executes as non-dry-run and completes staging release health checks.\n- Confirm branch rules still cannot target `prod`.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "The omitted-dry-run trigger performs a real staging deployment; this is intended.",
+        "If automatic polling observes a newer main commit after the switch, it may also perform a real staging deployment; that is the requested non-conservative behavior."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Switch release-controller to real execution by default",
+      "updated_at": "2026-05-24T07:18:34+00:00",
+      "verification_plan": "- Run release-controller tests and relevant CI guards.\n- Inspect API-host `/opt/novaic/release-controller/config.json`.\n- Restart/redeploy release-controller and inspect status.\n- POST `/v1/triggers` without `dry_run` for `main`.\n- Verify the run result, command plan, staging health endpoints, and branch rules."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Source default is non-conservative.",
+        "Docs no longer frame dry-run as the normal default.",
+        "Tests and guards pass."
+      ],
+      "assumptions": [
+        "Runtime activation is handled by P002."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "narrow source default and documentation edit with direct test/guard verification",
+      "created_at": "2026-05-24T07:05:48+00:00",
+      "id": "T001",
+      "problem_definition": "The source tree still leaves release-controller sample configuration and likely documentation in conservative dry-run default mode. That contradicts the requested clean operating state.",
+      "problem_id": "P001",
+      "proposed_solution": "- Change `novaic-release-controller/config.sample.json` to `dry_run_default=false`.\n- Update tests that assert sample configuration behavior.\n- Update release-controller architecture/runbook docs to describe default real staging execution and explicit dry-run override.\n- Keep prod promotion-only language intact.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Documentation could overstate prod automation; keep prod promotion-only explicit."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Update source defaults for real staging releases",
+      "updated_at": "2026-05-24T07:07:40+00:00",
+      "verification_plan": "- Run release-controller tests.\n- Run release-controller CI guard.\n- Run project-level test command used for recent release-controller work.\n- Review focused diff."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "API-host runtime config is explicitly false.",
+        "Running controller has been restarted or redeployed after the policy change.",
+        "Omitted-`dry_run` trigger executes non-dry-run and succeeds.",
+        "Staging API and Factory return 200.",
+        "Prod remains promotion-only."
+      ],
+      "assumptions": [
+        "The current staging release path remains healthy from the previous closure work."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "single runtime policy activation with direct remote config, controller redeploy, omitted-dry-run trigger, and health verification",
+      "created_at": "2026-05-24T07:08:37+00:00",
+      "id": "T002",
+      "problem_definition": "The source default is non-conservative, but the live API-host release-controller must be switched to `dry_run_default=false`, restarted/redeployed, and verified with an omitted-`dry_run` release trigger.",
+      "problem_id": "P002",
+      "proposed_solution": "- Update `/opt/novaic/release-controller/config.json` to `dry_run_default=false`.\n- Commit and push the source default/doc changes from P001.\n- Build and deploy a new release-controller image from the latest main commit.\n- Verify runtime config and controller health.\n- Trigger `main` without a `dry_run` field and confirm the resulting execution reports `dry_run=false`.\n- Verify staging API and Factory health.\n- Confirm branch rules still do not target `prod`.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "A main branch change may be picked up by autonomous polling and deploy staging automatically; that is expected under the requested non-conservative policy."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Activate API-host non-dry-run runtime default",
+      "updated_at": "2026-05-24T07:17:33+00:00",
+      "verification_plan": "- Inspect remote config JSON.\n- Inspect running controller health/status.\n- Inspect trigger execution result.\n- Run staging health checks.\n- Review branch rules."
+    }
+  },
+  "updated_at": "2026-05-24T07:19:14+00:00"
+}
