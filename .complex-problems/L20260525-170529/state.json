@@ -1,0 +1,615 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-25T09:10:12+00:00",
+      "criteria_map": [
+        "Shared/app entity contract includes `public_title` -> proven by common contract file and common test update.",
+        "Business schema includes `public_title` -> proven by schema push definition diff.",
+        "Runtime records include `public_title` for reasoning/action/observation/summary -> proven by updated runtime projection logic and assertions in `test_pr193_activity_projection.py`.",
+        "Existing `text` behavior is preserved -> tests still assert reasoning text and shell desc text values.",
+        "Focused runtime projection tests pass -> 8 passed."
+      ],
+      "evidence": [
+        "Result R000 records completed contract/schema/runtime changes and focused test results.",
+        "`novaic-common/common/contracts/entangled_app_entities.json` declares `public_title` for `agent-activity-records`.",
+        "`novaic-business/business/schema_push.py` includes `F.text(\"public_title\", default=\"\")` for `agent_activity_records`.",
+        "`novaic-agent-runtime/task_queue/utils/activity_projection.py` writes `public_title` in `_emit_record` and maps shell read/reply commands to public monitor titles.",
+        "Runtime projection tests passed: `python3 -m pytest tests/test_pr193_activity_projection.py` -> 8 passed.",
+        "Common contract tests passed: `python3 -m pytest tests/test_pr166c_entangled_app_entities.py` -> 2 passed."
+      ],
+      "execution_map": [
+        "T001 -> R000: implemented backend contract/runtime projection and verified via focused common/runtime tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Existing deployed database schema may need schema push/migration in deployment; non-blocking for code closure because the schema definition now includes the field.",
+        "Frontend consumption remains open under P002."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: frontend still receives old rows without `public_title`. This is non-blocking for P001 because backend compatibility is additive; P002 must handle frontend fallback.",
+        "Failure mode: read/reply command labels drift. Runtime tests cover both read and reply public title projection.",
+        "Failure mode: public title replaces private reasoning content. Tests assert reasoning `text` remains unchanged."
+      ],
+      "summary": "P001 is successful. The backend contract/runtime path now carries an explicit `public_title` field, runtime projection populates it for the relevant activity record types, and focused tests prove the field exists without removing reasoning detail text."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-25T09:14:06+00:00",
+      "criteria_map": [
+        "App entity contract includes `public_title` -> proven by contract file and `entangledEntityContracts.test.ts`.",
+        "Entity/timeline types include optional `public_title` -> proven by TypeScript source and passing focused tests/lint.",
+        "Normalization carries `public_title` without spreading raw entities -> proven by `useActivityTimeline.ts` and hook test expected normalized fields.",
+        "`ActivityTimeline` prefers explicit `public_title` -> proven by source and explicit public-title test.",
+        "Reasoning text containing keywords does not synthesize titles -> proven by regression test querying absence of `正在组织回复` and `正在整理上下文`.",
+        "Focused frontend tests pass -> 27 passed."
+      ],
+      "evidence": [
+        "Result R001 records app contract/type/hook/render updates and focused test results.",
+        "`ActivityTimeline.tsx` checks `record.public_title?.trim()` before fallback logic.",
+        "`useActivityTimeline.ts` normalizes `public_title` explicitly and still avoids raw entity spreading.",
+        "`ActivityTimeline.test.tsx` covers both no inference from reasoning keywords and explicit `public_title` authority.",
+        "Focused frontend tests passed: 5 files, 27 tests.",
+        "Focused ESLint on changed frontend source files passed."
+      ],
+      "execution_map": [
+        "T002 -> R001: implemented frontend public-title consumption and verified with focused app tests/lint."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Full repository lint has known unrelated `prefer-const` failures from previous state; P003 will document final verification status."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: old rows do not have `public_title`. The fallback still handles shell read/reply and phase/status labels.",
+        "Failure mode: explicit title equals a formerly bad heuristic label. The new test proves it only appears when supplied as structured data.",
+        "Failure mode: raw debug fields leak through normalization. Existing hook tests still assert no raw debug fields are retained."
+      ],
+      "summary": "P002 is successful. The frontend now consumes explicit `public_title` as the title authority, keeps legacy structured fallbacks, and no longer infers reasoning titles from private/detail text."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-25T09:18:22+00:00",
+      "criteria_map": [
+        "Focused runtime/common/frontend tests pass -> R002 verification section lists passing test commands.",
+        "Relevant lint/checks are run -> app `npm run lint` passed; Business schema invariant tests passed.",
+        "Git status reviewed -> R002 records status review and unrelated `CLAUDE.md` exclusion.",
+        "Affected subrepos committed -> R002 lists four commit hashes and messages.",
+        "Parent commit pending -> intentionally deferred until parent ticket/result/check complete."
+      ],
+      "evidence": [
+        "Result R002 records successful runtime/common/business/frontend checks.",
+        "`novaic-app` full `npm run lint` passed after two mechanical `prefer-const` fixes.",
+        "Subrepo statuses are clean and each affected subrepo is ahead by one commit.",
+        "Parent status shows only expected submodule pointer updates, `.complex-problems` ledger updates, and unrelated untracked `CLAUDE.md` not staged."
+      ],
+      "execution_map": [
+        "T003 -> R002: verification, lint cleanup, and subrepo commits completed."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Parent repo still needs final commit after ledger closure; this is expected and handled by the parent ticket."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: unrelated root files accidentally committed. The untracked `CLAUDE.md` is explicitly identified and left unstaged.",
+        "Failure mode: code compiles but app lint fails. Full app lint now passes.",
+        "Failure mode: schema addition breaks Business invariants. Relevant Business tests passed."
+      ],
+      "summary": "P003 is successful. Relevant checks passed, minor lint blockers were resolved, modified subrepos are committed, and only the parent repo gitlink/ledger commit remains as the parent problem's finalization step."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C003.md",
+      "created_at": "2026-05-25T09:19:37+00:00",
+      "criteria_map": [
+        "Runtime activity records expose explicit structured public title field -> R000, C000, runtime tests.",
+        "Frontend renders titles from structured public fields or safe fallback -> R001, C001, ActivityTimeline source/tests.",
+        "Agent reasoning content still shown as detail -> R001 tests keep reasoning detail visible.",
+        "Existing read/reply/tool/summary behavior remains user-facing -> R000 runtime read/reply tests and R001 frontend tests.",
+        "Screenshot regression covered -> R001 test verifies reasoning text containing `回复` does not render `正在组织回复` without explicit `public_title`.",
+        "Relevant tests pass -> R002 verification evidence.",
+        "Changes committed in subrepos and parent pending final commit -> R002/R003 evidence; parent commit follows this check."
+      ],
+      "evidence": [
+        "R000 / C000: backend contract/runtime projection added and verified `public_title`.",
+        "R001 / C001: frontend consumes `public_title`, removes reasoning keyword inference, and verifies regression behavior.",
+        "R002 / C002: focused and broader verification passed; affected subrepos committed.",
+        "R003: parent result summarizes child closure and artifacts.",
+        "Subrepo commits:",
+        "`novaic-common` 0e5c117",
+        "`novaic-business` a574ea2",
+        "`novaic-agent-runtime` 5694686",
+        "`novaic-app` 0be4a1e"
+      ],
+      "execution_map": [
+        "P001 / T001 -> R000 -> C000: implemented backend contract/runtime `public_title` projection.",
+        "P002 / T002 -> R001 -> C001: implemented frontend `public_title` consumption and removed reasoning keyword title inference.",
+        "P003 / T003 -> R002 -> C002: verified checks, fixed lint blockers, and committed affected subrepos.",
+        "P000 / T000 -> R003: summarized split child results into the root delivery."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Existing persisted rows do not retroactively gain `public_title`, but frontend legacy fallback keeps them usable and does not reintroduce reasoning keyword inference.",
+        "Deployed database schema must be applied through the normal schema push path; the schema definition is now updated and verified by Business tests.",
+        "Parent repo still has unrelated untracked `CLAUDE.md`, intentionally excluded from this work."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: private thought says `我应该回复` and UI invents `正在组织回复`. Fixed because `ActivityTimeline` no longer reads reasoning text for title selection; regression test covers this exact class.",
+        "Failure mode: deployed client sees legacy rows without `public_title`. Fallback still uses structured tool/phase logic, not reasoning keyword parsing.",
+        "Failure mode: backend emits read/reply shell commands and frontend cannot label them. Runtime now emits public titles and frontend still has legacy shell fallbacks.",
+        "Failure mode: contract drift between common and app. App contract test compares against backend common contract and passes."
+      ],
+      "summary": "The original problem is solved. Agent Monitor activity titles now have a structured backend-to-frontend public field, the frontend consumes that field as title authority, and reasoning text is no longer parsed for title keywords. The screenshot failure mode cannot recur through the old heuristic path."
+    }
+  },
+  "counters": {
+    "check": 4,
+    "event": 48,
+    "problem": 4,
+    "result": 4,
+    "ticket": 4
+  },
+  "created_at": "2026-05-25T09:05:29+00:00",
+  "ledger_id": "L20260525-170529",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-25T09:05:29+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "Activity Monitor currently projects public row titles in the frontend by inspecting private reasoning text. This produced incorrect non-model-generated titles such as `正在组织回复` when the reasoning content merely contained the word `回复`. The long-term architecture should make monitor titles a structured public projection instead of UI keyword guessing, while preserving agent reasoning detail as the detailed text when available.\n\nScope includes the runtime activity projection, shared/app entity contract, frontend normalization/rendering, regression tests, and repository commit hygiene for the touched subrepos and parent gitlink.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "Runtime activity records expose an explicit structured public title field for monitor UI.",
+        "Frontend renders activity titles from structured public fields or safe phase/status fallback, not from reasoning text keywords.",
+        "Agent reasoning content can still be shown as detail text; only heuristic title generation is removed.",
+        "Existing read/reply/tool/summary monitor behavior remains user-facing and low-level shell labels remain hidden.",
+        "Tests cover the screenshot regression: reasoning text containing `回复` must not render `正在组织回复` unless that title is explicitly provided as a public title.",
+        "Relevant frontend and runtime tests pass, and unrelated lint failures are documented if they pre-exist.",
+        "Changes are committed in affected subrepos and the parent repo records updated submodule pointers."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Make Agent Monitor activity titles structured and non-heuristic",
+      "updated_at": "2026-05-25T09:19:37+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-25T09:06:25+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The runtime currently emits `agent-activity-records` with generic `title` and private/detail `text`, while the frontend invents some public titles by reading reasoning text. The durable projection contract needs an explicit public presentation field so monitor row titles are data, not UI keyword guesses.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Shared/app entity contract for `agent-activity-records` includes `public_title`.",
+        "Business schema for `agent_activity_records` includes `public_title` when schema push definitions are used.",
+        "Runtime `activity_projection` emits `public_title` for reasoning, tool calls, tool observations, and scope summaries.",
+        "Runtime projection tests verify `public_title` exists and carries expected user-facing values.",
+        "Existing runtime behavior for reasoning detail text and shell desc text remains intact."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Add structured public title to activity projection contract and runtime",
+      "updated_at": "2026-05-25T09:10:12+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-25T09:06:25+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The frontend `ActivityTimeline` currently derives public titles from `record.text` for reasoning records. This creates incorrect labels such as `正在组织回复` from private thought content. The app should consume structured `public_title` when available and use safe structured fallback for legacy records.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "TypeScript activity record type includes `public_title`.",
+        "`useActivityTimeline` normalization carries only the explicit public title field, without spreading raw entities.",
+        "`ActivityTimeline` uses `public_title` first, then existing structured tool/phase fallback.",
+        "Reasoning text is still shown as detail when safe, but is not used to infer titles.",
+        "Frontend tests cover legacy records, explicit public titles, read/reply behavior, and the screenshot regression."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Render Agent Monitor titles from public fields, not reasoning keywords",
+      "updated_at": "2026-05-25T09:14:06+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-25T09:06:25+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The cross-repo change must be proven and committed cleanly. The current working tree already contains a frontend hotfix; the final state must include runtime/frontend/contract tests, a focused diff review, and commits in affected subrepos plus the parent repo gitlink update.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Focused runtime tests pass.",
+        "Focused frontend ActivityTimeline tests pass.",
+        "Relevant lint/type checks are run; unrelated pre-existing failures are documented.",
+        "Git status is reviewed to avoid unrelated changes.",
+        "Affected subrepos are committed with clear messages.",
+        "Parent repo is committed with updated submodule pointers and ledger artifacts."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Verify, clean, and commit structured activity title change",
+      "updated_at": "2026-05-25T09:18:22+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-common/common/contracts/entangled_app_entities.json`",
+        "`novaic-common/tests/test_pr166c_entangled_app_entities.py`",
+        "`novaic-business/business/schema_push.py`",
+        "`novaic-agent-runtime/task_queue/utils/activity_projection.py`",
+        "`novaic-agent-runtime/tests/test_pr193_activity_projection.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-25T09:09:53+00:00",
+      "done": [
+        "Added `public_title` to `novaic-common` app-facing Entangled contract for `agent-activity-records`.",
+        "Added `public_title` to `novaic-business` schema push definition for `agent_activity_records`.",
+        "Updated `novaic-agent-runtime` activity projection to materialize `public_title` on every emitted record.",
+        "Added runtime mapping for shell `agentctl im read` -> `读取了你的消息` and shell `agentctl im reply` -> `已回复你`.",
+        "Preserved reasoning `text` content while setting reasoning `public_title` to structured `完成思考`.",
+        "Updated common/runtime tests to assert `public_title` exists and carries expected values."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Frontend has not yet been wired to consume `public_title`; covered by child problem P002.",
+        "Commits are intentionally deferred until verification/commit child P003."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Added explicit `public_title` support to the backend activity projection path so Agent Monitor row titles can be structured public data rather than frontend reasoning-text inference.",
+      "ticket_id": "T001",
+      "verification": [
+        "`python3 -m pytest tests/test_pr193_activity_projection.py` in `novaic-agent-runtime`: 8 passed.",
+        "`python3 -m pytest tests/test_pr166c_entangled_app_entities.py` in `novaic-common`: 2 passed."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-app/src/data/entities/entangledEntityContracts.ts`",
+        "`novaic-app/src/data/entities/agentActivity.ts`",
+        "`novaic-app/src/types/activityTimeline.ts`",
+        "`novaic-app/src/components/hooks/useActivityTimeline.ts`",
+        "`novaic-app/src/components/Visual/ActivityTimeline.tsx`",
+        "ActivityTimeline, hook, and contract tests"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-25T09:13:48+00:00",
+      "done": [
+        "Added `public_title` to app Entangled contract, activity entity type, timeline record type, and normalization allowlist.",
+        "Updated `ActivityTimeline` to prefer explicit `public_title` before all fallback title logic.",
+        "Kept legacy shell read/reply fallbacks for records without `public_title`.",
+        "Removed reasoning-text keyword title inference from the rendering path.",
+        "Added tests proving reasoning text containing `回复` does not create `正在组织回复`.",
+        "Added tests proving explicit `public_title` can render as the title authority."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "Repository-wide final verification and commits are deferred to P003."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Updated the app-side Agent Monitor path to consume `public_title` as the structured title authority, while preserving legacy structured fallbacks and reasoning detail text.",
+      "ticket_id": "T002",
+      "verification": [
+        "`npm run test:unit -- src/components/Visual/ActivityTimeline.test.tsx src/components/Visual/ActivityTimeline.acceptance.test.tsx src/components/Visual/ActivityTimeline.guard.test.ts src/components/hooks/useActivityTimeline.test.ts src/data/entities/entangledEntityContracts.test.ts`: 5 files, 27 tests passed.",
+        "`npx eslint src/components/Visual/ActivityTimeline.tsx src/components/hooks/useActivityTimeline.ts src/data/entities/agentActivity.ts src/data/entities/entangledEntityContracts.ts src/types/activityTimeline.ts --report-unused-disable-directives --max-warnings 0`: passed."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Subrepo commits: 0e5c117, a574ea2, 5694686, 0be4a1e.",
+        "Updated parent working tree submodule pointers pending parent commit."
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-25T09:18:06+00:00",
+      "done": [
+        "Re-ran runtime/common/frontend focused tests.",
+        "Re-ran full app ESLint and fixed two mechanical `prefer-const` blockers so lint now passes.",
+        "Ran relevant Business schema invariant tests for the schema field addition.",
+        "Reviewed subrepo status/diff scope before committing.",
+        "Committed modified subrepos:",
+        "`novaic-common` 0e5c117 Add public activity title contract",
+        "`novaic-business` a574ea2 Add public activity title schema field",
+        "`novaic-agent-runtime` 5694686 Emit public activity titles",
+        "`novaic-app` 0be4a1e Use structured activity titles"
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Parent repo commit is still pending until the parent split ticket and root success check are recorded.",
+        "`CLAUDE.md` is untracked in the parent repo and intentionally not staged because it is unrelated to this task."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Completed final verification for the structured activity title rollout and committed all affected subrepos. The parent repo remains to record updated submodule pointers and the completed ledger after the parent problem closes.",
+      "ticket_id": "T003",
+      "verification": [
+        "`python3 -m pytest tests/test_pr193_activity_projection.py` in `novaic-agent-runtime`: 8 passed.",
+        "`python3 -m pytest tests/test_pr166c_entangled_app_entities.py` in `novaic-common`: 2 passed.",
+        "`python3 -m pytest tests/test_pr100_app_entity_schema_contract.py tests/test_schema_invariants.py tests/test_pr193_no_activity_timeline_action.py` in `novaic-business`: 8 passed.",
+        "`npm run test:unit -- src/components/Visual/ActivityTimeline.test.tsx src/components/Visual/ActivityTimeline.acceptance.test.tsx src/components/Visual/ActivityTimeline.guard.test.ts src/components/hooks/useActivityTimeline.test.ts src/data/entities/entangledEntityContracts.test.ts` in `novaic-app`: 27 passed.",
+        "`npm run lint` in `novaic-app`: passed."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "Subrepo commits:",
+        "`novaic-common` 0e5c117 Add public activity title contract",
+        "`novaic-business` a574ea2 Add public activity title schema field",
+        "`novaic-agent-runtime` 5694686 Emit public activity titles",
+        "`novaic-app` 0be4a1e Use structured activity titles",
+        "Ledger: `.complex-problems/L20260525-170529`"
+      ],
+      "body_path": "problems/P000/results/R003.md",
+      "created_at": "2026-05-25T09:18:44+00:00",
+      "done": [
+        "P001 completed backend contract/runtime projection:",
+        "`public_title` added to common contract and Business schema.",
+        "runtime activity projection emits `public_title` for reasoning, shell read/reply actions, observations, and summaries.",
+        "P002 completed frontend consumption:",
+        "app contract/types/hook normalization carry `public_title`.",
+        "`ActivityTimeline` renders explicit `public_title` first and uses structured fallback only for legacy records.",
+        "reasoning detail text remains visible but no longer drives title generation.",
+        "P003 completed verification and subrepo commits:",
+        "focused tests, Business tests, app tests, and app lint passed.",
+        "modified subrepos committed."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "Parent repo commit still needs to record submodule pointers and this ledger after root success check.",
+        "`CLAUDE.md` remains untracked and unrelated; it should stay out of this commit unless explicitly requested."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented the long-term Agent Monitor title architecture: activity records now carry a structured `public_title` field from backend projection through app normalization, and the UI no longer derives row titles from private reasoning text.",
+      "ticket_id": "T000",
+      "verification": [
+        "P001 check C000 succeeded with result R000.",
+        "P002 check C001 succeeded with result R001.",
+        "P003 check C002 succeeded with result R002.",
+        "Test evidence from R002:",
+        "runtime projection: 8 passed.",
+        "common contract: 2 passed.",
+        "Business schema/invariant subset: 8 passed.",
+        "frontend focused ActivityTimeline/hook/contract tests: 27 passed.",
+        "app `npm run lint`: passed."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`agent-activity-records` contract/schema includes `public_title` as a public field.",
+        "Runtime `activity_projection` writes `public_title` on emitted records.",
+        "Frontend `ActivityTimelineRecord` and normalization include `public_title`.",
+        "`activityTimelinePublicTitle()` uses `public_title` first, then structured tool/phase/status fallbacks.",
+        "Reasoning text containing `回复`, `新消息`, `上下文`, or `skill_end` does not create title labels like `正在组织回复` unless that exact label is explicitly supplied as `public_title`.",
+        "Existing user-facing read/reply/summary/tool display behavior remains covered by tests.",
+        "Runtime projection tests verify `public_title` is materialized.",
+        "Frontend tests verify the screenshot regression and no keyword-title inference.",
+        "Changes are committed in affected subrepos and the parent repo records the updated gitlinks."
+      ],
+      "assumptions": [
+        "`agent-activity-records` is append/upsert tolerant to new fields after contract/schema update.",
+        "Chinese UI labels are currently acceptable as public title values because existing monitor titles are already Chinese.",
+        "The current uncommitted frontend hotfix belongs to this ticket and will be folded into the long-term implementation."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Cross-repo contract/runtime/frontend change with independent verification paths; split keeps schema, UI, tests, and commit hygiene explicit.",
+      "created_at": "2026-05-25T09:05:53+00:00",
+      "id": "T000",
+      "problem_definition": "Agent Monitor title projection currently mixes two layers: durable runtime activity records and frontend presentation inference. The frontend reads `record.text` for reasoning records and infers public titles from keywords like `回复`, `新消息`, or `上下文`. This creates incorrect UI-owned step titles that do not correspond to a real runtime event and are hard to reason about, test, or localize.\n\nThe desired long-term shape is explicit: runtime activity projection writes public presentation fields for the monitor, while private reasoning text remains detail content. The frontend should render public title fields when present and fall back only to structured phase/status labels. It must not inspect reasoning text to invent titles.",
+      "problem_id": "P000",
+      "proposed_solution": "Introduce an explicit `public_title` field on `agent-activity-records` and route monitor row titles through that field. Runtime projection will populate `public_title` for known user-facing records such as message observation, shell read/reply actions, summary/bookkeeping, and generic reasoning. The app entity contract and TypeScript normalization will carry the field. `ActivityTimeline` will prefer `public_title`, use structured fallbacks for legacy records, and remove all reasoning-text keyword title inference.\n\nThe implementation should keep reasoning `text` visible as detail text because that is useful agent thinking content, but title generation must no longer depend on that text.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Existing records without `public_title` must still render acceptably through structured fallbacks.",
+        "Overloading `public_title` with UI copy could become a localization issue later; this change still improves correctness by making the boundary explicit.",
+        "Backend contract updates may require schema sync in Business or generated contracts if the local system has multiple contract sources.",
+        "Parent repo commit must not accidentally include unrelated submodule or generated artifact churn."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Structured public activity titles for Agent Monitor",
+      "updated_at": "2026-05-25T09:18:44+00:00",
+      "verification_plan": "- Run focused runtime activity projection tests.\n- Run focused frontend ActivityTimeline tests.\n- Run ESLint or a focused lint on touched frontend files; document unrelated repo-wide lint failures if present.\n- Review diffs for contract, projection, normalization, rendering, and tests.\n- Use the ledger success check to map all acceptance criteria to evidence."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "`public_title` is declared in shared/app entity contracts and Business schema push definitions.",
+        "Runtime records include `public_title` for reasoning, action, observation, and summary records.",
+        "Existing `text` fields are preserved for reasoning detail and shell descriptions.",
+        "Focused runtime projection tests pass."
+      ],
+      "assumptions": [
+        "Adding a nullable/text field to entity contracts is backward-compatible for existing rows.",
+        "`public_title` can initially mirror `title` for records that already have a good public title."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Contract and runtime projection change is narrow, reversible, and directly verified by focused projection tests.",
+      "created_at": "2026-05-25T09:06:44+00:00",
+      "id": "T001",
+      "problem_definition": "`agent-activity-records` lacks an explicit public row title field. Runtime emits `title` and `text`, but the title is not consistently the UI title, and the frontend compensated with keyword inference from `text`. The backend contract should provide `public_title` so the UI can render structured labels without reading private/detail content.",
+      "problem_id": "P001",
+      "proposed_solution": "Add `public_title` to the shared entity contract and Business schema definition. Extend `_emit_record()` in runtime activity projection to accept and store `public_title`, defaulting to the emitted title when no override is supplied. Update projection tests to assert `public_title` exists for reasoning and tool records while preserving existing `text` behavior.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Contract definitions may have duplicate copies; missing one would cause app/runtime drift.",
+        "New field must not replace `title` immediately because older consumers may still use it."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add public_title to backend activity projection",
+      "updated_at": "2026-05-25T09:09:53+00:00",
+      "verification_plan": "- Inspect relevant schema/contract files before edits.\n- Update runtime projection and tests.\n- Run `pytest tests/test_pr193_activity_projection.py` in `novaic-agent-runtime`.\n- Review focused diff."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "App entity contract includes `public_title` for `agent-activity-records`.",
+        "`AgentActivityRecordEntity` and `ActivityTimelineRecord` include optional `public_title`.",
+        "`normalizeActivityRecord()` carries `public_title` without raw entity spreading.",
+        "`activityTimelinePublicTitle()` prefers explicit `public_title`.",
+        "Reasoning `text` containing `回复`/`上下文` no longer creates synthetic titles.",
+        "Explicit `public_title=\"正在组织回复\"` can still render that exact title, proving title authority is data, not keyword inference.",
+        "Focused frontend tests pass."
+      ],
+      "assumptions": [
+        "Existing Entangled rows may omit `public_title`; optional frontend typing and fallback are required."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Frontend consumption is narrow, already localized to ActivityTimeline contracts/hooks/tests, and directly verified by focused unit tests.",
+      "created_at": "2026-05-25T09:10:29+00:00",
+      "id": "T002",
+      "problem_definition": "The frontend must stop inventing monitor row titles from private reasoning text. It needs to consume the new explicit `public_title` field from Entangled activity records and keep only structured fallbacks for legacy records that lack the new field.",
+      "problem_id": "P002",
+      "proposed_solution": "Add `public_title` to app-side contracts, entity types, normalized timeline records, and title projection. Make `ActivityTimeline` prefer `record.public_title` when non-empty. Keep existing read/reply low-level shell fallbacks for old records, keep phase/status fallback for reasoning records, and remove all reasoning-text keyword inference. Update tests to cover explicit public titles, legacy fallback, and the screenshot regression.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Legacy records without `public_title` still need acceptable fallback.",
+        "Tests that intentionally covered old heuristic behavior must be updated carefully to preserve read/reply public behavior."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Consume public_title in ActivityTimeline",
+      "updated_at": "2026-05-25T09:13:48+00:00",
+      "verification_plan": "- Inspect frontend type/normalization/render tests.\n- Patch app contract, types, hook, ActivityTimeline, and tests.\n- Run focused ActivityTimeline/hook/contract tests.\n- Run focused ESLint on changed source file."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Focused runtime/common/frontend tests pass.",
+        "Full or relevant app lint status is known; small lint blockers may be fixed if needed for clean verification.",
+        "Git diffs are reviewed for affected repos.",
+        "`novaic-agent-runtime`, `novaic-common`, `novaic-business`, and `novaic-app` changes are committed if modified.",
+        "Parent repo records updated submodule pointers and `.complex-problems/L20260525-170529` ledger artifacts.",
+        "Ledger validate/render/status/next finalization succeeds."
+      ],
+      "assumptions": [
+        "Network access for push is not required unless explicitly requested; this ticket requires commit, not push."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Verification and commit closure is bounded, directly inspectable, and can record any residual unrelated check failures.",
+      "created_at": "2026-05-25T09:14:39+00:00",
+      "id": "T003",
+      "problem_definition": "The backend and frontend changes are implemented but not yet globally reviewed or committed. The work must be verified, cleaned, and recorded in git across affected subrepos and the parent repo without pulling in unrelated changes.",
+      "problem_id": "P003",
+      "proposed_solution": "Run focused and relevant broader checks, inspect git status/diffs, fix any small verification blockers that are necessary and low-risk, then commit affected subrepos with clear messages. Finally commit the parent repo with updated submodule pointers and the new ledger package.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Accidentally committing unrelated submodule changes.",
+        "Full lint may reveal pre-existing unrelated issues; fix only if tiny and clearly safe, otherwise document.",
+        "Parent commit must include ledger artifacts but not ignored scratch files."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify and commit structured activity title rollout",
+      "updated_at": "2026-05-25T09:18:06+00:00",
+      "verification_plan": "- Run targeted tests already used by P001/P002 plus any lightweight full lint/checks needed.\n- Run `git status` and `git diff --stat` for parent and subrepos.\n- Commit each modified subrepo, then commit parent gitlinks and ledger.\n- Run ledger validate/render/status/next."
+    }
+  },
+  "updated_at": "2026-05-25T09:19:53+00:00"
+}
