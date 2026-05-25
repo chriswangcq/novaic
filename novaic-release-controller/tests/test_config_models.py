@@ -69,6 +69,14 @@ def test_rejects_non_boolean_polling_enabled() -> None:
         ControllerConfig.from_mapping(data)
 
 
+def test_rejects_autonomous_polling_enabled() -> None:
+    data = _base_config()
+    data["polling_enabled"] = True
+
+    with pytest.raises(ValueError, match="autonomous branch polling is disabled"):
+        ControllerConfig.from_mapping(data)
+
+
 def test_quality_gate_config_round_trip() -> None:
     data = _base_config()
     data["quality_gates"] = [

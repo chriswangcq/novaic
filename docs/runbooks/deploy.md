@@ -11,14 +11,14 @@ Release Controller 是后端和 LLM Factory 的唯一发布入口。父仓库根
 - 已配置对 **`api.gradievo.com`**、**relay** 等的 SSH（脚本内写死主机别名，见 `deploy` 顶部变量）；LLM Factory 当前也在 API host Docker 上。
 - 子模块目录存在且可同步（如 `novaic-gateway`、`novaic-app`）。
 - Release Controller 是唯一后端/Factory 发布入口，当前运行在 API host 的 `127.0.0.1:19880`，不走公网 Nginx。
-- GitHub Actions 不再承担 backend/factory 构建、发布、promote 或 rollback；branch polling、trigger、promotion、rollback 都由 Release Controller 执行。
+- GitHub Actions 不再承担 backend/factory 构建、发布、promote 或 rollback；staging trigger、prod promotion、rollback 都由 Release Controller 执行。
 
 ## 常用命令
 
 | 目标 | 命令 |
 |------|------|
 | 前端 OTA | `./deploy frontend [version]`（默认版本见脚本内 `VERSION`） |
-| API 后端 / LLM Factory staging | Release Controller polling 或 `POST /v1/triggers` |
+| API 后端 / LLM Factory staging | `POST /v1/triggers`，必须显式传 branch 和 commit |
 | API 后端 / LLM Factory prod | `POST /v1/promotions/prod` |
 | API 后端 / LLM Factory rollback | `POST /v1/rollbacks/<namespace>` |
 | Release Controller（中心化 CD 控制面） | `./deploy release-controller-image <image-ref>` |
@@ -39,13 +39,12 @@ Release Controller 是后端和 LLM Factory 的唯一发布入口。父仓库根
   - 正规开发流：开发机先跑聚焦单元测试做快速反馈；push/merge 后由 Release Controller 的 `quality_gates` 做权威 staging 准入；staging deploy 后再跑 smoke/integration；prod 只 promote 已通过 staging 的不可变镜像，不从 branch 直接发布。
   - 健康检查：`curl -fsS http://127.0.0.1:19880/health`。
   - 状态检查：`curl -fsS http://127.0.0.1:19880/v1/status`。
-  - 手动 trigger：`POST /v1/triggers`；省略 `dry_run` 就是真实执行。需要只观察时显式传 `dry_run=true`。
-  - branch polling dry-run：`POST /v1/polls/once`，请求体 `{"dry_run": true}`。
-  - autonomous polling：`polling_enabled=true` 时服务启动后每 `poll_interval_seconds` 自动 poll；polling 默认真实执行，只有显式请求 `dry_run=true` 才是观察模式。
+  - staging trigger：`POST /v1/triggers`，必须显式传 `branch` 和 `commit`；省略 `dry_run` 就是真实执行。需要只观察时显式传 `dry_run=true`。
+  - branch polling 只保留为诊断 dry-run：`POST /v1/polls/once`，请求体必须是 `{"dry_run": true}`，不能真实发布。
+  - autonomous polling：不支持。`polling_enabled` 必须保持 `false`，配置成 `true` 会启动失败。
   - executor check：`docker exec novaic-release-controller-release_controller-1 docker --version`、`docker exec novaic-release-controller-release_controller-1 docker compose version`、`docker exec novaic-release-controller-release_controller-1 ssh -o BatchMode=yes root@api.gradievo.com true` 必须成功。
   - inspect：`curl -fsS http://127.0.0.1:19880/v1/status`，看 `polling.enabled`、`polling.running`、`polling.iteration_count`、`polling.last_error`、`recent_runs`。
-  - pause：把 `/opt/novaic/release-controller/config.json` 里的 `polling_enabled` 改成 `false`，再执行 `./deploy release-controller-image <当前digest>`。
-  - enable：把 `polling_enabled` 改成 `true`；如需临时观察/计划，调用 trigger/poll 时显式传 `dry_run=true`。
+  - polling guard：`/opt/novaic/release-controller/config.json` 里的 `polling_enabled` 必须是 `false`；需要观察/计划时调用 trigger 或 diagnostic poll 并显式传 `dry_run=true`。
   - quality gate rule：`quality_gates` 是 branch release 的 CI 门禁，运行在 checkout/submodule update 之后、image build 之前；失败会阻断 build/deploy，并把 run 标成 failed。
   - verify command rule：`deploy.verify_commands` 必须能在 release-controller 容器内执行；只放轻量 release preflight，例如 `bash -n deploy` 和配置/编译检查。不要把它当第二套 CI，也不要放依赖本机 venv 的整仓测试。
   - prod promotion：`POST /v1/promotions/prod`，只接收 digest 或 `sha-<hex>` tag。

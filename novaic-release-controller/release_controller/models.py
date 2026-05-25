@@ -232,6 +232,10 @@ class ControllerConfig:
         polling_enabled = data.get("polling_enabled", False)
         if not isinstance(polling_enabled, bool):
             raise ValueError("polling_enabled must be a boolean")
+        if polling_enabled:
+            raise ValueError(
+                "autonomous branch polling is disabled; use /v1/triggers with an explicit branch and commit"
+            )
         return cls(
             state_dir=state_dir,
             repo=RepoConfig.from_mapping(_required_mapping(data, "repo")),

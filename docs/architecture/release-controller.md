@@ -6,7 +6,7 @@ NovAIC release-controller is the backend and LLM Factory release control plane. 
 
 The controller owns release orchestration:
 
-- Poll git branches or accept manual trigger requests.
+- Accept explicit branch trigger requests.
 - Resolve branch rules into a target namespace.
 - Run configured CI quality gates before building images.
 - Run lightweight release preflight commands before deployment.
@@ -50,7 +50,7 @@ config: /opt/novaic/release-controller/config.json
 state: /opt/novaic/release-controller/state
 compose: /opt/novaic/docker/release-controller
 worktree: /opt/novaic/release-controller/worktree
-polling: enabled, interval=60s
+polling: disabled; staging CI/CD starts only from explicit trigger requests
 executor: Docker CLI + Docker Compose plugin + SSH/rsync inside the controller container, host Docker socket mounted, `/root/.ssh` mounted read-only
 ```
 
@@ -59,9 +59,6 @@ Health and status checks:
 ```bash
 curl -fsS http://127.0.0.1:19880/health
 curl -fsS http://127.0.0.1:19880/v1/status
-curl -fsS -X POST http://127.0.0.1:19880/v1/polls/once \
-  -H 'Content-Type: application/json' \
-  -d '{"dry_run": true}'
 ```
 
 The controller has no public Nginx route. Operators should SSH to the API host or use a controlled internal path to call it. Normal branch releases are non-dry-run by default; use an explicit `{"dry_run": true}` body only when intentionally asking for observation/planning.
@@ -79,11 +76,11 @@ git submodule update --init --recursive -- \
   novaic-sandbox-service novaic-llm-factory
 ```
 
-Autonomous polling is owned by the release-controller process. Enable or pause it by editing `/opt/novaic/release-controller/config.json`, then redeploying the same controller image digest with `./deploy release-controller-image <digest>`.
+Autonomous branch polling is not a supported release mode. The config field stays present only as a guardrail and must remain `false`; startup rejects `true`. To inspect branch-rule matching without deploying, call `/v1/polls/once` with `{"dry_run": true}`. To run staging CI/CD, call `/v1/triggers` with an explicit `branch` and `commit`.
 
 ```json
 {
-  "polling_enabled": true
+  "polling_enabled": false
 }
 ```
 
@@ -94,7 +91,7 @@ curl -fsS http://127.0.0.1:19880/v1/status
 docker logs --tail 100 novaic-release-controller-release_controller-1
 ```
 
-Prod remains promotion-only. Branch polling must never resolve to `prod`; `release/*` can create candidates, and `/v1/promotions/prod` requires immutable image refs.
+Prod remains promotion-only. Branch triggers must never resolve to `prod`; `release/*` can create candidates, and `/v1/promotions/prod` requires immutable image refs.
 
 `quality_gates` are the authoritative CI admission checks for branch releases. They run in the checked-out controller worktree after git checkout/submodule update and before image build. Developer-local unit tests are still expected for fast feedback, but they are not the staging admission authority.
 
@@ -108,13 +105,13 @@ Initial rules:
 
 | Branch pattern | Action | Namespace | Safety |
 | --- | --- | --- | --- |
-| `main` | quality gate, preflight, build, publish, deploy | `staging` | automatic |
-| `preview/*` | quality gate, preflight, build, publish, deploy | `preview-pr-<id>` or configured preview namespace | automatic after rule match |
-| `release/*` | quality gate, preflight, build, publish | none by default | produces a promotion candidate |
+| `main` | quality gate, preflight, build, publish, deploy | `staging` | explicit `/v1/triggers` call |
+| `preview/*` | quality gate, preflight, build, publish, deploy | `preview-pr-<id>` or configured preview namespace | explicit `/v1/triggers` call |
+| `release/*` | quality gate, preflight, build, publish | none by default | explicit `/v1/triggers` call produces a promotion candidate |
 | manual promote | deploy existing refs | `prod` | explicit API call only |
 | manual rollback | deploy previous refs | selected namespace | explicit API call only |
 
-Prod must not deploy directly from branch polling. Prod receives an already-built immutable release pair through a promote command.
+Prod must not deploy directly from a branch trigger. Prod receives an already-built immutable release pair through a promote command.
 
 ## CI/CD Flow
 
@@ -124,7 +121,7 @@ The canonical flow is:
 local developer machine
   -> run focused unit tests for fast feedback
   -> push/merge branch
-  -> Release Controller polling or trigger observes commit
+  -> agent/operator calls Release Controller /v1/triggers with explicit branch+commit
   -> checkout commit and allowlisted submodules
   -> run quality_gates as authoritative CI admission
   -> run release preflight commands
@@ -187,7 +184,7 @@ Run record shape:
 ```json
 {
   "run_id": "20260524-113500-main-b3b9d018",
-  "trigger": "poll",
+  "trigger": "manual",
   "branch": "main",
   "commit": "b3b9d018...",
   "namespace": "staging",
@@ -250,7 +247,7 @@ Initial HTTP API:
 | `GET` | `/v1/runs` | recent runs |
 | `GET` | `/v1/runs/{run_id}` | run details |
 | `POST` | `/v1/triggers` | manual non-prod trigger |
-| `POST` | `/v1/polls/once` | run one branch-head polling iteration |
+| `POST` | `/v1/polls/once` | diagnostic branch-head rule check; dry-run only |
 | `POST` | `/v1/promotions/prod` | promote existing immutable refs to prod |
 | `POST` | `/v1/rollbacks/{namespace}` | redeploy previous namespace refs |
 
@@ -258,7 +255,7 @@ Mutating endpoints require a bearer token from a file or environment variable. R
 
 ## Safety Rules
 
-- Branch polling may deploy only non-prod namespaces.
+- Explicit branch triggers may deploy only non-prod namespaces.
 - Prod deployment requires `POST /v1/promotions/prod` with explicit `api_image` and `factory_image`.
 - Prod image refs must be digests or accepted immutable sha tags.
 - The controller must reject `latest`, `local`, `main`, `master`, `prod`, and `staging` tags for deploy.
@@ -294,7 +291,7 @@ Bootstrap note: the first deployed image was built on the API host because the l
 - It does not replace the namespace service registry.
 - It does not route traffic; nginx remains ingress.
 - It does not own application migrations beyond running existing startup/deploy paths.
-- It does not make prod automatic from branch polling.
+- It does not run autonomous branch polling.
 - It does not use GitHub Actions for backend/factory release orchestration.
 - It does not expose a public release API.
 
@@ -303,8 +300,8 @@ Bootstrap note: the first deployed image was built on the API host because the l
 1. Implement controller with explicit request-scoped dry-run support and local state.
 2. Add Docker package and deploy command.
 3. Deploy controller to API host.
-4. Verify branch observation, explicit dry-run requests, and real staging execution.
-5. Enable `main -> staging` polling.
+4. Verify explicit dry-run requests and real staging execution through `/v1/triggers`.
+5. Keep autonomous polling disabled and verify `/v1/status` reports `polling.enabled=false`.
 6. Use manual promote for prod.
 7. Populate and manage the controller worktree with an explicit release submodule allowlist.
 8. Remove backend/factory GitHub release workflows and direct manual deploy paths.

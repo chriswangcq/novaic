@@ -74,10 +74,17 @@ def test_release_controller_quality_gate_contract_is_documented() -> None:
         ["bash", "-n", "deploy"],
         ["python3", "-m", "py_compile", "docker/api-backend/write_env.py"],
     ]
+    assert config["polling_enabled"] is False
     assert "quality_gates" in deploy_doc
     assert "权威 staging 准入" in deploy_doc
+    assert "staging trigger" in deploy_doc
+    assert "autonomous polling：不支持" in deploy_doc
+    assert "polling_enabled=true" not in deploy_doc
     assert "`quality_gates` are the authoritative CI admission checks" in release_controller_doc
     assert "Prod promotion never rebuilds" in release_controller_doc
+    assert "Autonomous branch polling is not a supported release mode" in release_controller_doc
+    assert "agent/operator calls Release Controller /v1/triggers" in release_controller_doc
+    assert "Poll git branches" not in release_controller_doc
 
 
 def test_release_controller_compose_invariants() -> None:

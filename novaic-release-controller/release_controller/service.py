@@ -111,6 +111,11 @@ def create_app(
     @app.post("/v1/polls/once")
     def poll_once(payload: dict[str, Any] | None = None) -> dict[str, Any]:
         dry_run = _optional_bool(payload or {}, "dry_run")
+        if dry_run is not True:
+            raise HTTPException(
+                status_code=400,
+                detail="branch polling is diagnostic-only; send dry_run=true or use /v1/triggers with an explicit branch and commit",
+            )
         poller = BranchPoller(
             config=config,
             state=store,

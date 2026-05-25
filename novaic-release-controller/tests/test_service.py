@@ -141,6 +141,22 @@ def test_poll_once_uses_branch_poller(tmp_path: Path) -> None:
     assert state.read_branch_heads() == {"main": "abcdef1234567890"}
 
 
+def test_poll_once_without_dry_run_is_rejected(tmp_path: Path) -> None:
+    state = ReleaseStateStore(tmp_path / "state")
+    client = _client(
+        tmp_path,
+        state=state,
+        branch_heads=(BranchHead("main", "abcdef1234567890"),),
+    )
+
+    response = client.post("/v1/polls/once", json={})
+
+    assert response.status_code == 400
+    assert "diagnostic-only" in response.json()["detail"]
+    assert state.read_branch_heads() == {}
+    assert state.list_runs() == ()
+
+
 def test_status_reports_release_pointers_and_candidates(tmp_path: Path) -> None:
     state = ReleaseStateStore(tmp_path / "state")
     state.write_branch_head("main", "abcdef1")
@@ -159,29 +175,7 @@ def test_status_reports_release_pointers_and_candidates(tmp_path: Path) -> None:
     assert body["polling"]["running"] is False
 
 
-def test_autonomous_polling_loop_runs_when_enabled(tmp_path: Path) -> None:
-    state = ReleaseStateStore(tmp_path / "state")
-    config = _config(tmp_path, polling_enabled=True)
-    app = create_app(
-        config,
-        state=state,
-        runner=_SuccessfulRunner(),
-        branch_head_provider=InMemoryBranchHeadProvider(
-            (BranchHead("main", "abcdef1234567890"),)
-        ),
-    )
-
-    with TestClient(app) as client:
-        polling = _wait_for_polling_iteration(client)
-
-    assert polling["enabled"] is True
-    assert polling["iteration_count"] >= 1
-    assert polling["last_error"] is None
-    assert polling["last_outcomes"][0]["status"] == "planned"
-    assert state.read_branch_heads() == {"main": "abcdef1234567890"}
-
-
-def test_autonomous_polling_loop_stays_idle_when_disabled(tmp_path: Path) -> None:
+def test_autonomous_polling_loop_stays_idle(tmp_path: Path) -> None:
     state = ReleaseStateStore(tmp_path / "state")
     app = create_app(
         _config(tmp_path, polling_enabled=False),
@@ -278,16 +272,6 @@ class _FailingRunner:
                 ),
             ),
         )
-
-
-def _wait_for_polling_iteration(client: TestClient) -> dict:
-    deadline = time.monotonic() + 2
-    while time.monotonic() < deadline:
-        polling = client.get("/v1/status").json()["polling"]
-        if polling["iteration_count"] >= 1:
-            return polling
-        time.sleep(0.02)
-    raise AssertionError("polling loop did not run")
 
 
 def _pointer(run_id: str, commit: str) -> ReleasePointer:
