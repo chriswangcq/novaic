@@ -1,3 +1,0 @@
-target_count=12
-command=cd novaic-agent-runtime && python -m pytest $(/bin/cat ../.complex-problems/L20260516-222011/tmp/p529/unit-tool-output-test-files.runtime-cwd.txt)
-pytest_exit=0

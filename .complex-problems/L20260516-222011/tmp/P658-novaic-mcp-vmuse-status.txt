@@ -1,3 +1,0 @@
- M src/novaic_mcp_vmuse/main.py
- M src/novaic_mcp_vmuse/tools/shell.py
- M tests/test_contract_markers.py

@@ -1,4 +1,0 @@
-docs/cortex/object-keys.md:49:但 Cortex/shell 的默认 scratch 契约是 subagent-aware 的
-docs/cortex/object-keys.md:50:`/rw/subagents/{subagent_id}/scratch/...`，不是历史 root `/rw/scratch/...`。
-docs/blob-service-architecture.md:37:- `/v1/objects/*`：内部 object-store 原语，当前只应作为
-docs/blob-service-architecture.md:38:  LogicalFS `BlobObjectStore` 这类下层适配器的持久化接口；它不是

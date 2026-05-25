@@ -1,3 +1,0 @@
-# migration-like files
-novaic-agent-runtime/.venv/lib/python3.13/site-packages/_pyinstaller_hooks_contrib/stdhooks/hook-migrate.py
-novaic-agent-runtime/.venv/lib/python3.13/site-packages/pydantic/_migration.py

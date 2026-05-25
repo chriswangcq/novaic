@@ -21,6 +21,7 @@ novaic-command-center/
 .complex-problems/dashboard.html
 .complex-problems/_drafts/
 .complex-problems/tmp/
+.complex-problems/**/tmp/
 .complex-problems/work/
 
 # Local proxy scratch files

@@ -1,4 +1,0 @@
- src/novaic_mcp_vmuse/main.py        |  6 +++---
- src/novaic_mcp_vmuse/tools/shell.py | 10 +++++-----
- tests/test_contract_markers.py      |  6 ++++++
- 3 files changed, 14 insertions(+), 8 deletions(-)

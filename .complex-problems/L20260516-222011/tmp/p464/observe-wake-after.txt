@@ -1,9 +1,0 @@
---- observe wake residue after cleanup ---
-novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:17:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
-novaic-agent-runtime/tests/test_pr251_wake_creation_outbox_cutover.py:135:        if row["effect_type"] == OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT
-novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:15:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
-novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:150:            effect_type=OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT,
-novaic-agent-runtime/tests/test_pr249_observed_wake_outbox_cleanup.py:161:    assert OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT not in (
-novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:13:OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT = "observe_create_wake_saga"
-novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:77:        if effect["effect_type"] == OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT
-novaic-agent-runtime/tests/test_pr250_observed_wake_effect_rename.py:104:        effect["effect_type"] != OLD_OBSERVE_CREATE_WAKE_SAGA_EFFECT

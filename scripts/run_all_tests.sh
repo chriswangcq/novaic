@@ -63,6 +63,7 @@ run_pytest() {
 }
 
 run_check "root-ci-guards" "$PYTHON_BIN" -m pytest -q
+run_check "complex-problem-tmp-lint" "$PYTHON_BIN" scripts/ci/lint_complex_problem_tmp.py
 run_check "runtime-worker-supervision-lint" "$PYTHON_BIN" scripts/ci/lint_runtime_worker_supervision.py
 run_check "deploy-fresh-smoke-lint" "$PYTHON_BIN" scripts/ci/lint_deploy_fresh_smoke.py
 run_check "image-namespace-deploy-lint" "$PYTHON_BIN" scripts/ci/lint_image_namespace_deploy.py

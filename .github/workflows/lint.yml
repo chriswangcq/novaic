@@ -85,6 +85,8 @@ jobs:
       run: python3 scripts/ci/lint_retired_runtime_vocabulary.py
     - name: Run start/config contract lint (PR-156)
       run: python3 scripts/ci/check_start_config_contract.py
+    - name: Run complex-problems tmp lint
+      run: python3 scripts/ci/lint_complex_problem_tmp.py
     - name: Run agent main-path acceptance lint (PR-186 / PR-187)
       run: ./scripts/ci/lint_agent_main_path_acceptance.sh
     - name: Run retired agent paths lint (PR-187)

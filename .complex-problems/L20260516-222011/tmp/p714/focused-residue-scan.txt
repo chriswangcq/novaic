@@ -1,5 +1,0 @@
-docs/architecture/service-topology.md:125:| App 通过 Gateway REST 发聊天消息 | App 通过 Entangled action `messages.send` 进入 Business |
-docs/architecture/service-topology.md:126:| Gateway 负责 entity sync/schema | Entangled 负责 sync/schema；Gateway 只做 endpoint discovery |
-docs/architecture/service-topology.md:127:| Queue DB 在 Gateway | Queue Service 拥有 `queue.db` |
-docs/architecture/service-topology.md:128:| Runtime 通过 Gateway 取业务状态 | Runtime 通过 Business/Cortex/Factory/Queue 按职责取数据 |
-docs/architecture/service-topology.md:129:| Device action hook 在 Gateway | Business 处理 devices action hook，Device 只执行硬件 |

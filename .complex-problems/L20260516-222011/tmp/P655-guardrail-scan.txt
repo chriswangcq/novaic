@@ -1,8 +1,0 @@
-novaic-common/common/contracts/blob.py:3:Blob Service owns bytes and infrastructure metadata only. Product services own
-novaic-common/common/contracts/blob.py:50:    return set(blob_contract()["does_not_own"])
-novaic-cortex/tests/test_blob_boundary_guard.py:5:from cortex_tests.blob_boundary_policy import (
-novaic-cortex/tests/test_blob_boundary_guard.py:57:def test_direct_blob_object_authority_is_confined_to_boundary() -> None:
-novaic-common/common/contracts/environment.json:12:  "does_not_own": [
-novaic-common/common/contracts/environment.py:29:    return set(environment_contract()["does_not_own"])
-novaic-common/common/contracts/blob.json:19:  "does_not_own": [
-novaic-cortex/tests/test_workspace_registry_dependencies.py:1:"""WorkspaceRegistry dependency boundaries."""

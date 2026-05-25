@@ -1,4 +1,0 @@
-source_count=85
-unit_task_queue_source_count=11
-selected_count=12
-filter_pattern=(tests/unit/task_queue/|tests/test_queue_explicit_dependencies\.py)

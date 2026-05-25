@@ -1,1 +1,0 @@
-# P421 store/writer hidden default guard

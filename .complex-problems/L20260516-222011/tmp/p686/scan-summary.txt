@@ -1,9 +1,0 @@
-candidate_files=72
-package_script_lines=40
-keyword_matches=433
-
-required_surface_presence:
-present novaic-app/scripts/start-backends.sh
-present novaic-app/src-tauri/resources/backends/start-backends.sh
-present novaic-app/src-tauri/gen/apple/assets/backends/start-backends.sh
-present scripts/start.sh

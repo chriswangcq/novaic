@@ -1,4 +1,0 @@
-docs/cortex-architecture.md:31:当前 Cortex 还提供 Workspace 语义、shell/sandbox 编排与能力 JWT；底层文件权威由 LogicalFS/Blob 承担，进程执行由 Sandboxd 承担。它不负责用户画像、业务任务系统、记忆推断、自动总结、wake summary、业务代理，也不从用户可见 reply action 或聊天文本猜长期记忆。
-docs/architecture/service-topology.md:29:| **Cortex** | `19996` | Agent scope/context/work trace、payload manifest、shell/sandbox orchestration |
-docs/architecture/service-topology.md:131:| Cortex/Sandbox/Runtime 各自提供实时 RO/RW 文件服务 | LogicalFS 是 Cortex/shell 实时 RO/RW 权威层 |
-docs/architecture/service-topology.md:132:| Sandboxd 拥有 `/ro` / `/rw` 语义 | Sandboxd 只执行进程；文件视图由 LogicalFS 提供 |

@@ -1,9 +1,0 @@
-COMMAND:
-cd novaic-agent-runtime && PYTHONPATH=.:../novaic-common pytest -q tests/test_pr238_generation_checked_attach.py tests/test_pr248_attach_outbox_cutover.py tests/test_pr254_finalize_ownership.py tests/test_scope_end_environment_notifications.py tests/test_finalize_summary_boundary.py tests/test_pr245_suspected_dead_recovery.py tests/test_pr247_recovery_outbox_cutover.py tests/test_pr252_session_state_ssot.py tests/test_pr257_remove_active_sessions_table.py tests/test_pr255_legacy_compat_cleanup.py tests/test_pr273_session_harness_final_residue_guard.py tests/test_pr315_queue_fsm_final_residue_guard.py tests/test_runtime_explicit_contracts.py tests/unit/task_queue/test_no_historical_tool_image_injection.py tests/unit/task_queue/test_shell_output_contract.py
-
-OUTPUT:
-........................................................................ [ 72%]
-............................                                             [100%]
-100 passed in 0.59s
-
-EXIT_STATUS=0
