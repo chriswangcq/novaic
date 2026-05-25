@@ -12,8 +12,21 @@ __pycache__/
 build/
 examples/tauri-ios-hello/node_modules/
 rustdesk-ref/
-thirdparty/
+thirdparty/*
+!thirdparty/openclaw
 novaic-command-center/
+
+# Complex-problems scratch inputs; durable ledgers live under .complex-problems/L*/
+.complex-problems/*.md
+.complex-problems/dashboard.html
+.complex-problems/_drafts/
+.complex-problems/tmp/
+.complex-problems/work/
+
+# Local proxy scratch files
+clash-*.yaml
+clash-*.txt
+vmess-*.txt
 
 # Claude Code
 .claude/
