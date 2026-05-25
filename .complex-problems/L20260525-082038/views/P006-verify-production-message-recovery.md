@@ -1,13 +1,13 @@
 # P006: Verify production message recovery
 
-Status: todo
+Status: followup
 Parent: P003
 Root: P000
 Source Ticket: T003 (split)
 Source Check: none
 Package: problems/P000/children/P003/children/P006
 Body: problems/P000/children/P003/children/P006/README.md
-Ticket(s): none
+Ticket(s): T006
 
 ## Problem
 After deployment, prove the production message pipeline recovered from the stuck Environment notification and no longer fails at the Entangled claim boundary.
@@ -20,16 +20,19 @@ After deployment, prove the production message pipeline recovered from the stuck
 - Any stuck notification evidence is explained: delivered, claimed, or intentionally no longer dispatchable.
 
 ## Subproblems
-- none
+- P007: Fix react_think session_generation propagation
 
 ## Results
-- none
+- R004
 
 ## Latest Check
-none
+C004
 
 ## Bodies
 - Problem: problems/P000/children/P003/children/P006/README.md
+- Ticket T006: problems/P000/children/P003/children/P006/tickets/T006.md
+- Result R004: problems/P000/children/P003/children/P006/results/R004.md
+- Check C004: problems/P000/children/P003/children/P006/checks/C004.md
 
 ## Follow-ups
-- none
+- P007: Fix react_think session_generation propagation

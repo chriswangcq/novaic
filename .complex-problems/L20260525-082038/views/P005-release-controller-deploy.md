@@ -1,13 +1,13 @@
 # P005: Release Controller deploy
 
-Status: todo
+Status: done
 Parent: P003
 Root: P000
 Source Ticket: T003 (split)
 Source Check: none
 Package: problems/P000/children/P003/children/P005
 Body: problems/P000/children/P003/children/P005/README.md
-Ticket(s): none
+Ticket(s): T005
 
 ## Problem
 Deploy the new source through the centralized Release Controller, not by manually invoking backend service deploy scripts.
@@ -22,13 +22,16 @@ Deploy the new source through the centralized Release Controller, not by manuall
 - none
 
 ## Results
-- none
+- R003
 
 ## Latest Check
-none
+C003
 
 ## Bodies
 - Problem: problems/P000/children/P003/children/P005/README.md
+- Ticket T005: problems/P000/children/P003/children/P005/tickets/T005.md
+- Result R003: problems/P000/children/P003/children/P005/results/R003.md
+- Check C003: problems/P000/children/P003/children/P005/checks/C003.md
 
 ## Follow-ups
 - none

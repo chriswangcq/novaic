@@ -43,3 +43,36 @@
 {"at": "2026-05-25T00:33:00+00:00", "id": "E042", "payload": {"classification": "one_go", "reason": "Straight-line git commit/push sequence with explicit status checks.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
 {"at": "2026-05-25T00:33:06+00:00", "id": "E043", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
 {"at": "2026-05-25T00:33:06+00:00", "id": "E044", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:34:18+00:00", "id": "E045", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:34:18+00:00", "id": "E046", "payload": {"result_id": "R002", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-25T00:34:56+00:00", "id": "E047", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:34:56+00:00", "id": "E048", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:34:56+00:00", "id": "E049", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-25T00:40:37+00:00", "id": "E050", "payload": {"problem_id": "P005", "ticket_id": "T005", "title": "Release through controller"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-25T00:40:37+00:00", "id": "E051", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:40:46+00:00", "id": "E052", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:40:46+00:00", "id": "E053", "payload": {"classification": "one_go", "reason": "Release Controller runs are complete and can be verified directly from run/status APIs.", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-25T00:40:54+00:00", "id": "E054", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:40:54+00:00", "id": "E055", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:41:55+00:00", "id": "E056", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:41:55+00:00", "id": "E057", "payload": {"result_id": "R003", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-25T00:42:23+00:00", "id": "E058", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:42:23+00:00", "id": "E059", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:42:23+00:00", "id": "E060", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-25T00:43:02+00:00", "id": "E061", "payload": {"problem_id": "P006", "ticket_id": "T006", "title": "Verify production message recovery"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-25T00:43:02+00:00", "id": "E062", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:43:14+00:00", "id": "E063", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:43:14+00:00", "id": "E064", "payload": {"classification": "one_go", "reason": "Post-deploy verification is a bounded evidence collection across logs, metrics, queue diagnostics, and health endpoints.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-25T00:43:24+00:00", "id": "E065", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:43:24+00:00", "id": "E066", "payload": {"from": "classified", "id": "T006", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:49:12+00:00", "id": "E067", "payload": {"from": "executing", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:49:12+00:00", "id": "E068", "payload": {"result_id": "R004", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-25T00:49:31+00:00", "id": "E069", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:49:31+00:00", "id": "E070", "payload": {"from": "checking", "id": "P006", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:49:31+00:00", "id": "E071", "payload": {"check_id": "C004", "followup_id": "P007", "problem_id": "P006", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-25T00:49:51+00:00", "id": "E072", "payload": {"problem_id": "P007", "ticket_id": "T007", "title": "Propagate session_generation into initial react_think"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-25T00:49:51+00:00", "id": "E073", "payload": {"from": "created", "id": "T007", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:50:00+00:00", "id": "E074", "payload": {"from": "defined", "id": "T007", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-25T00:50:00+00:00", "id": "E075", "payload": {"classification": "one_go", "reason": "Small explicit propagation fix with focused tests and direct production verification.", "ticket_id": "T007"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-25T00:50:18+00:00", "id": "E076", "payload": {"from": "followup", "id": "P007", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-25T00:50:18+00:00", "id": "E077", "payload": {"from": "classified", "id": "T007", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}

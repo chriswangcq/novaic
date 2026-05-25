@@ -904,7 +904,7 @@
       "updated_at": "2026-05-24T15:52:33+00:00"
     },
     {
-      "active_count": 5,
+      "active_count": 4,
       "blocked_count": 0,
       "ledger_id": "L20260525-082038",
       "path": "L20260525-082038",
@@ -912,8 +912,8 @@
       "schema_version": 6,
       "status": "doing",
       "title": "Message sent but no response",
-      "updated_at": "2026-05-25T00:33:06+00:00"
+      "updated_at": "2026-05-25T00:50:18+00:00"
     }
   ],
-  "updated_at": "2026-05-25T00:33:06+00:00"
+  "updated_at": "2026-05-25T00:50:18+00:00"
 }

@@ -75,14 +75,113 @@
         "Equivalent duplicate-assignment risk exists in upsert, batch, update-where, and CAS; tests cover those too."
       ],
       "summary": "P002 is solved. The actual failing boundary is Entangled's Postgres SQL mutation builder, and the fix changes that boundary directly with regression coverage."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P004/checks/C002.md",
+      "created_at": "2026-05-25T00:34:56+00:00",
+      "criteria_map": [
+        "Entangled focused commit pushed: satisfied.",
+        "Parent pointer/ledger commit pushed: satisfied for the release-source commit.",
+        "Parent points to pushed Entangled commit: satisfied.",
+        "No unrelated source changes: satisfied; only active ledger continuation remains uncommitted."
+      ],
+      "evidence": [
+        "Entangled `HEAD` equals `origin/main`: `fee4ab24e87663ad0a6ae37dc3879d7a06b1e553`.",
+        "Parent `HEAD` equals `origin/main`: `83fe6bb4bc20a0af96674fd71ea2d9b97e058059`.",
+        "Parent `git submodule status Entangled` points to `fee4ab24e87663ad0a6ae37dc3879d7a06b1e553`.",
+        "Current remaining parent modifications are ledger records created after the release-source commit, not source changes needed by the build."
+      ],
+      "execution_map": [
+        "Entangled commit first.",
+        "Entangled push second.",
+        "Parent pointer and ledger commit third.",
+        "Parent push fourth."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Final ledger closure will need a follow-up ledger-only commit after deployment verification."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Release Controller can fetch parent `main` and initialize submodules because both parent and Entangled commits are on their remotes."
+      ],
+      "summary": "P004 is solved. The Entangled fix and parent repository pointer were both committed and pushed."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P005/checks/C003.md",
+      "created_at": "2026-05-25T00:42:23+00:00",
+      "criteria_map": [
+        "Staging run succeeds: satisfied.",
+        "Prod promotion run succeeds with same images: satisfied.",
+        "Current release pointers reference the commit: satisfied.",
+        "No direct manual backend deploy: satisfied; deployment was via Release Controller run records and promotion API."
+      ],
+      "evidence": [
+        "Staging run `20260525-003420-main-83fe6bb4bc20` succeeded with `execution.succeeded=true`.",
+        "Prod promotion run `20260525-003822-promote-prod-staging-83fe6bb4bc20` succeeded with `execution.succeeded=true`.",
+        "Release Controller current pointers for staging and prod both reference commit `83fe6bb4bc20a0af96674fd71ea2d9b97e058059`.",
+        "`docker ps` shows prod and staging backend services running `127.0.0.1:5000/novaic/api-backend:sha-83fe6bb4bc20`.",
+        "Public and internal health endpoints returned healthy JSON."
+      ],
+      "execution_map": [
+        "Autonomous poll released main to staging.",
+        "Explicit Release Controller prod promotion promoted the staging images to prod.",
+        "Health and container image checks confirmed live state."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P005",
+      "residual_risk": [
+        "This check covers deployment only. Message pipeline recovery is left to P006."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Mixed-image risk was checked by listing key prod and staging containers after promotion; key services all show the new `sha-83fe6bb4bc20` image."
+      ],
+      "summary": "P005 is solved. The new immutable images were released through Release Controller to staging and prod."
+    },
+    "C004": {
+      "blocking_gaps": [
+        "`subagent_wake` launches `react_think` without `session_generation`.",
+        "`ReactThinkInput` correctly requires `session_generation`, so `cortex.prepare_llm_context` fails non-retryably.",
+        "Production verification has not yet shown a new user message passing through prepare, LLM call, response append, and session completion."
+      ],
+      "body_path": "problems/P000/children/P003/children/P006/checks/C004.md",
+      "created_at": "2026-05-25T00:49:31+00:00",
+      "criteria_map": [],
+      "evidence": [],
+      "execution_map": [],
+      "followup_problem_id": "P007",
+      "id": "C004",
+      "problem_id": "P006",
+      "residual_risk": [],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "Not successful yet. The original dispatch-stage blocker is fixed, but the user-message path still cannot produce a response because the first `react_think` saga fails before LLM context assembly."
     }
   },
   "counters": {
-    "check": 2,
-    "event": 45,
-    "problem": 7,
-    "result": 2,
-    "ticket": 5
+    "check": 5,
+    "event": 78,
+    "problem": 8,
+    "result": 5,
+    "ticket": 8
   },
   "created_at": "2026-05-25T00:20:38+00:00",
   "ledger_id": "L20260525-082038",
@@ -217,7 +316,9 @@
     },
     "P004": {
       "body_path": "problems/P000/children/P003/children/P004/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C002"
+      ],
       "created_at": "2026-05-25T00:32:36+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T003",
@@ -227,9 +328,11 @@
       "id": "P004",
       "package_path": "problems/P000/children/P003/children/P004",
       "parent_id": "P003",
-      "result_ids": [],
+      "result_ids": [
+        "R002"
+      ],
       "root_id": "P000",
-      "status": "doing",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Entangled submodule has a focused commit with the SQL fix and tests.",
@@ -241,11 +344,13 @@
         "T004"
       ],
       "title": "Commit and push release source",
-      "updated_at": "2026-05-25T00:33:06+00:00"
+      "updated_at": "2026-05-25T00:34:56+00:00"
     },
     "P005": {
       "body_path": "problems/P000/children/P003/children/P005/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C003"
+      ],
       "created_at": "2026-05-25T00:32:36+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T003",
@@ -255,9 +360,11 @@
       "id": "P005",
       "package_path": "problems/P000/children/P003/children/P005",
       "parent_id": "P003",
-      "result_ids": [],
+      "result_ids": [
+        "R003"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Release Controller is healthy and its worktree sees the pushed parent commit.",
@@ -265,26 +372,36 @@
         "The same release/image is promoted to prod through Release Controller.",
         "The deployed prod containers run the new immutable image/tag."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T005"
+      ],
       "title": "Release Controller deploy",
-      "updated_at": "2026-05-25T00:32:36+00:00"
+      "updated_at": "2026-05-25T00:42:23+00:00"
     },
     "P006": {
       "body_path": "problems/P000/children/P003/children/P006/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C004"
+      ],
       "created_at": "2026-05-25T00:32:36+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T003",
       "created_from_ticket_mode": "split",
       "description": "After deployment, prove the production message pipeline recovered from the stuck Environment notification and no longer fails at the Entangled claim boundary.",
-      "followup_ids": [],
+      "followup_ids": [
+        "P007"
+      ],
       "id": "P006",
       "package_path": "problems/P000/children/P003/children/P006",
       "parent_id": "P003",
-      "result_ids": [],
+      "result_ids": [
+        "R004"
+      ],
       "root_id": "P000",
-      "status": "todo",
-      "subproblem_ids": [],
+      "status": "followup",
+      "subproblem_ids": [
+        "P007"
+      ],
       "success_criteria": [
         "Entangled logs no longer show `multiple assignments to same column \"updated_at\"` for Environment notification claim.",
         "Subscriber metrics/logs show successful claim or delivery after deployment.",
@@ -292,9 +409,40 @@
         "Public and internal health checks remain green.",
         "Any stuck notification evidence is explained: delivered, claimed, or intentionally no longer dispatchable."
       ],
-      "ticket_ids": [],
+      "ticket_ids": [
+        "T006"
+      ],
       "title": "Verify production message recovery",
-      "updated_at": "2026-05-25T00:32:36+00:00"
+      "updated_at": "2026-05-25T00:49:31+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P003/children/P006/children/P007/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-25T00:49:31+00:00",
+      "created_from_check_id": "C004",
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The recovered production message path reaches Queue and starts `react_think`, but the initial `react_think` context created by `subagent_wake` does not include the required `session_generation`. Runtime fails at `cortex.prepare_llm_context` with `ReactThinkInput.session_generation is required`, so users still see sent messages with no response.",
+      "followup_ids": [],
+      "id": "P007",
+      "package_path": "problems/P000/children/P003/children/P006/children/P007",
+      "parent_id": "P006",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "doing",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`subagent_wake` includes a positive `session_generation` in the initial `react_think` trigger context.",
+        "Missing or invalid `session_generation` still fails fast instead of using a fallback/default.",
+        "Runtime unit tests cover the initial wake-to-think propagation.",
+        "Fixed code is committed, pushed, deployed through Release Controller to staging and prod.",
+        "Production verification shows a new user message no longer fails with `ReactThinkInput.session_generation is required` and reaches the next response stage."
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "Fix react_think session_generation propagation",
+      "updated_at": "2026-05-25T00:50:18+00:00"
     }
   },
   "results": {
@@ -364,6 +512,96 @@
         "Result: `10 passed`",
         "`python3 -m pytest packages/server-python/tests`",
         "Result: `68 passed`"
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Entangled commit `fee4ab24e87663ad0a6ae37dc3879d7a06b1e553`",
+        "Parent commit `83fe6bb4`"
+      ],
+      "body_path": "problems/P000/children/P003/children/P004/results/R002.md",
+      "created_at": "2026-05-25T00:34:18+00:00",
+      "done": [
+        "Entangled commit: `fee4ab24e87663ad0a6ae37dc3879d7a06b1e553` (`Fix explicit updated_at SQL updates`).",
+        "Parent commit: `83fe6bb4` (`Fix message dispatch updated_at release ledger`).",
+        "Pushed `Entangled/main` to `github.com:chriswangcq/Entangled.git`.",
+        "Pushed parent `main` to `github.com:chriswangcq/novaic.git`."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Ledger records created after the parent commit still need a later ledger-only commit.",
+        "Release Controller deployment has not yet run."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Committed and pushed the Entangled fix, then committed and pushed the parent repo with the updated Entangled submodule pointer and current ledger.",
+      "ticket_id": "T004",
+      "verification": [
+        "Entangled local tests before commit: `68 passed`.",
+        "Push output confirmed `14d2d0b..fee4ab2 main -> main` for Entangled.",
+        "Push output confirmed `b9763ca0..83fe6bb4 main -> main` for parent repo."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "Release Controller staging run: `20260525-003420-main-83fe6bb4bc20`",
+        "Release Controller prod promotion run: `20260525-003822-promote-prod-staging-83fe6bb4bc20`"
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/results/R003.md",
+      "created_at": "2026-05-25T00:41:55+00:00",
+      "done": [
+        "Staging run `20260525-003420-main-83fe6bb4bc20` succeeded.",
+        "Prod promotion run `20260525-003822-promote-prod-staging-83fe6bb4bc20` succeeded.",
+        "Current Release Controller pointers for both staging and prod now reference commit `83fe6bb4bc20a0af96674fd71ea2d9b97e058059`.",
+        "Both staging and prod use:",
+        "API backend: `127.0.0.1:5000/novaic/api-backend:sha-83fe6bb4bc20`",
+        "LLM Factory: `127.0.0.1:5000/novaic/llm-factory:sha-83fe6bb4bc20`"
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "Production message recovery still needs P006 verification at the subscriber/Entangled/Queue boundary.",
+        "Final ledger closure still needs a ledger-only commit after verification."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Release Controller deployed the fixed commit to staging and promoted the same immutable images to prod.",
+      "ticket_id": "T005",
+      "verification": [
+        "`/v1/runs/20260525-003420-main-83fe6bb4bc20`: `status=succeeded`, `execution.succeeded=true`.",
+        "`/v1/runs/20260525-003822-promote-prod-staging-83fe6bb4bc20`: `status=succeeded`, `execution.succeeded=true`.",
+        "`docker ps` shows prod and staging backend services running `sha-83fe6bb4bc20`.",
+        "`https://staging-api.gradievo.com/api/health`, `https://api.gradievo.com/health`, and `http://127.0.0.1:19999/api/health` returned healthy JSON."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "Prod fixed deployment: `20260525-003822-promote-prod-staging-83fe6bb4bc20`",
+        "Wake saga: `saga-0749f67fdcf5`",
+        "React think saga: `saga-e1ba06108dca`",
+        "Failed task: `task-a457547d3d47`"
+      ],
+      "body_path": "problems/P000/children/P003/children/P006/results/R004.md",
+      "created_at": "2026-05-25T00:49:12+00:00",
+      "done": [
+        "Checked Entangled logs from the new prod container start for the previous duplicate `updated_at` SQL failure.",
+        "Checked subscriber metrics after the prod Release Controller promotion.",
+        "Followed the recovered user message through Queue, saga launch, and task-worker execution.",
+        "Identified the next concrete failure at `cortex.prepare_llm_context`."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "End-to-end response is not yet restored because the first `react_think` context is missing `session_generation`.",
+        "A follow-up fix must propagate `session_generation` from `subagent_wake` into the initial `react_think` trigger, deploy it, and verify a new message passes the prepare/LLM/response stage."
+      ],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Production dispatch recovered after the Entangled `updated_at` fix, but the full user-message response path still failed in Runtime. The new blocker is an explicit contract propagation bug: `subagent_wake` launches the first `react_think` saga without `session_generation`, and `ReactThinkInput` correctly rejects that missing value.",
+      "ticket_id": "T006",
+      "verification": [
+        "Entangled post-start log check found no `multiple assignments to same column`, `SyntaxError`, traceback, or HTTP 500 for the previously stuck path.",
+        "Subscriber metrics showed `subscriber_delivered_total{trigger=\"user_message\"} 1.0` and `environment_notification_claim_batch_size_sum 1.0`.",
+        "Queue launched wake saga `saga-0749f67fdcf5`, then `react_think` saga `saga-e1ba06108dca`.",
+        "Task-worker logs showed `task-a457547d3d47` on topic `cortex.prepare_llm_context` failed with `ReactThinkInput.session_generation is required`."
       ]
     }
   },
@@ -515,16 +753,111 @@
       "problem_definition": "The fix needs to be available to Release Controller from GitHub source. Entangled is a submodule, so commit order matters.",
       "problem_id": "P004",
       "proposed_solution": "Commit the Entangled code/test changes first, push Entangled `main`, then stage the parent repo's updated submodule pointer and ledger artifacts, commit, and push parent `main`.",
-      "result_ids": [],
+      "result_ids": [
+        "R002"
+      ],
       "risks": [
         "Pushing directly to `main` assumes the current repo policy allows it."
       ],
       "root_id": "P000",
-      "status": "executing",
+      "status": "done",
       "title": "Commit and push source",
-      "updated_at": "2026-05-25T00:33:06+00:00",
+      "updated_at": "2026-05-25T00:34:18+00:00",
       "verification_plan": "Use `git status`, `git diff --cached`, `git log -1`, and `git submodule status` before and after commits."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "Staging run succeeds for `83fe6bb4bc20`.",
+        "Prod promotion run succeeds with the same `sha-83fe6bb4bc20` images.",
+        "Current release pointers for staging and prod reference `83fe6bb4bc20`.",
+        "Deployment did not use the guarded manual `deploy services-image` path directly."
+      ],
+      "assumptions": [
+        "Release Controller is healthy on API host loopback `127.0.0.1:19880`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Release Controller runs are complete and can be verified directly from run/status APIs.",
+      "created_at": "2026-05-25T00:40:37+00:00",
+      "id": "T005",
+      "problem_definition": "Ship commit `83fe6bb4bc20a0af96674fd71ea2d9b97e058059` through the central Release Controller path so staging and prod run the fixed immutable backend image.",
+      "problem_id": "P005",
+      "proposed_solution": "Use Release Controller autonomous polling or `/v1/triggers` for staging and `/v1/promotions/prod` for prod. Verify run records, current release pointers, and image tags.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "A long-running compose recreate can temporarily show mixed old/new staging services."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Release through controller",
+      "updated_at": "2026-05-25T00:41:55+00:00",
+      "verification_plan": "Inspect `/v1/runs/<run_id>`, `/v1/status`, and prod/staging container images."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "No post-deploy Entangled `multiple assignments to same column \"updated_at\"` errors.",
+        "Subscriber no longer loops on PATCH 500 for `environment-notifications/81acac494a82`.",
+        "Subscriber metrics or logs show successful claim/delivery or empty healthy polling after recovery.",
+        "Queue diagnostics are healthy with no unexpected stuck sessions or pending inputs.",
+        "Health endpoints remain green."
+      ],
+      "assumptions": [
+        "The previously stuck notification is sufficient evidence for recovery if it is no longer producing Entangled PATCH 500 loops."
+      ],
+      "body_path": "problems/P000/children/P003/children/P006/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "Post-deploy verification is a bounded evidence collection across logs, metrics, queue diagnostics, and health endpoints.",
+      "created_at": "2026-05-25T00:43:02+00:00",
+      "id": "T006",
+      "problem_definition": "The fixed prod deployment must be proven to recover the previously stuck Environment notification dispatch path and leave the message pipeline healthy.",
+      "problem_id": "P006",
+      "proposed_solution": "Inspect post-deploy Entangled logs, subscriber logs/metrics, queue diagnostics, and health endpoints. Verify the old duplicate `updated_at` error stops and the subscriber can claim or deliver notifications.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "If no new user message is sent after deploy, verification may rely on the formerly stuck notification and service metrics rather than a fresh manual chat send."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify production message recovery",
+      "updated_at": "2026-05-25T00:49:12+00:00",
+      "verification_plan": "Use `docker logs`, `/metrics`, Queue `/sessions` and `/pending`, and public/internal health endpoints after prod promotion."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "Initial `react_think` trigger context includes `session_generation`.",
+        "No fallback/default generation is introduced.",
+        "Missing or invalid generation fails fast in the payload builder.",
+        "Runtime regression tests cover the wake-to-think propagation.",
+        "Release Controller deploys the fix to staging and prod.",
+        "Production verification shows the previous `ReactThinkInput.session_generation is required` failure is gone for new messages."
+      ],
+      "assumptions": [
+        "`session_generation` is already present in the `subagent_wake` saga context at dispatch time, as proven by successful `session.init` payload construction.",
+        "Failing fast on missing generation remains the desired explicit-boundary behavior."
+      ],
+      "body_path": "problems/P000/children/P003/children/P006/children/P007/tickets/T007.md",
+      "classification": "one_go",
+      "classification_reason": "Small explicit propagation fix with focused tests and direct production verification.",
+      "created_at": "2026-05-25T00:49:51+00:00",
+      "id": "T007",
+      "problem_definition": "Production now dispatches user-message notifications into Queue, but the first `react_think` saga spawned by `subagent_wake` lacks the required `session_generation`. `ReactThinkInput.from_context` fails before context assembly, so the message pipeline stops with `ReactThinkInput.session_generation is required`.",
+      "problem_id": "P007",
+      "proposed_solution": "Update `task_queue/sagas/subagent_wake.py::_build_trigger_think_payload` to copy `session_generation` from the wake context using the existing `require_positive_session_generation` helper. Add focused unit coverage proving the initial `react_think` trigger carries the generation and still rejects missing/invalid values. Run the Runtime test slice, commit/push, deploy through Release Controller, then verify production no longer emits the `ReactThinkInput.session_generation is required` failure for a fresh message path.",
+      "result_ids": [],
+      "risks": [
+        "Existing stale failed tasks may remain in queue stats; verification must focus on post-deploy logs and new tasks.",
+        "The next stage may expose another downstream failure after `react_think` can proceed."
+      ],
+      "root_id": "P000",
+      "status": "executing",
+      "title": "Propagate session_generation into initial react_think",
+      "updated_at": "2026-05-25T00:50:18+00:00",
+      "verification_plan": "Run focused Runtime tests around `subagent_wake`, session generation contracts, and explicit Runtime contracts. After deployment, check prod task-worker logs and queue/saga state for a fresh user-message path."
     }
   },
-  "updated_at": "2026-05-25T00:33:06+00:00"
+  "updated_at": "2026-05-25T00:50:18+00:00"
 }

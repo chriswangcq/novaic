@@ -1,6 +1,6 @@
 # P004: Commit and push release source
 
-Status: doing
+Status: done
 Parent: P003
 Root: P000
 Source Ticket: T003 (split)
@@ -22,14 +22,16 @@ The Entangled fix and active ledger changes must be committed in the correct rep
 - none
 
 ## Results
-- none
+- R002
 
 ## Latest Check
-none
+C002
 
 ## Bodies
 - Problem: problems/P000/children/P003/children/P004/README.md
 - Ticket T004: problems/P000/children/P003/children/P004/tickets/T004.md
+- Result R002: problems/P000/children/P003/children/P004/results/R002.md
+- Check C002: problems/P000/children/P003/children/P004/checks/C002.md
 
 ## Follow-ups
 - none
