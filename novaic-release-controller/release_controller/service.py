@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from importlib import resources
 from typing import Any, Mapping
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 
 from release_controller.executor import execute_planned_release
 from release_controller.models import (
@@ -17,6 +19,9 @@ from release_controller.poller import BranchHeadProvider, BranchPoller, GitBranc
 from release_controller.polling import BranchPollingLoop
 from release_controller.runner import CommandRunner, PlanExecutionResult
 from release_controller.state import ReleaseStateStore
+
+
+_DASHBOARD_HTML: str | None = None
 
 
 def create_app(
@@ -59,6 +64,14 @@ def create_app(
     )
     app.extra["controller_config"] = config
     app.extra["polling_loop"] = polling_loop
+
+    @app.get("/", response_class=HTMLResponse)
+    def root_dashboard() -> str:
+        return _dashboard_html()
+
+    @app.get("/dashboard", response_class=HTMLResponse)
+    def dashboard() -> str:
+        return _dashboard_html()
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -167,6 +180,18 @@ def create_app(
         return _response(planned, final_run, execution)
 
     return app
+
+
+def _dashboard_html() -> str:
+    global _DASHBOARD_HTML
+    if _DASHBOARD_HTML is None:
+        _DASHBOARD_HTML = (
+            resources.files("release_controller")
+            .joinpath("dashboard.html")
+            .read_text(encoding="utf-8")
+        )
+    return _DASHBOARD_HTML
+
 
 def _response(
     planned: PlannedRelease,

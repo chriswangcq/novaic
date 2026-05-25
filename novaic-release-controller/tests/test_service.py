@@ -1,5 +1,6 @@
-from pathlib import Path
 import time
+from importlib import resources
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -23,6 +24,31 @@ def test_health_and_rules(tmp_path: Path) -> None:
     rules = client.get("/v1/rules").json()["rules"]
     assert rules[0]["pattern"] == "main"
     assert rules[0]["namespace"] == "staging"
+
+
+def test_dashboard_routes_are_packaged_read_only_html(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+
+    packaged = (
+        resources.files("release_controller")
+        .joinpath("dashboard.html")
+        .read_text(encoding="utf-8")
+    )
+    assert "CI/CD Dashboard" in packaged
+
+    for path in ("/", "/dashboard"):
+        response = client.get(path)
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/html")
+        assert "CI/CD Dashboard" in response.text
+        assert "/v1/status" in response.text
+        assert "/v1/runs" in response.text
+        assert "/v1/rules" in response.text
+        assert "/v1/triggers" not in response.text
+        assert "/v1/promotions" not in response.text
+        assert "/v1/rollbacks" not in response.text
+        assert "/v1/polls" not in response.text
 
 
 def test_trigger_dry_run_persists_run_without_release_pointer(tmp_path: Path) -> None:

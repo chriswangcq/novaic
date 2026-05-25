@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NovAIC CI/CD</title>
+  <style>
+    :root {
+      --bg: #f6f7f8;
+      --panel: #fff;
+      --text: #17202a;
+      --muted: #657386;
+      --line: #d9e0e7;
+      --blue: #2563eb;
+      --shadow: 0 14px 30px rgba(23,32,42,.08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--bg); color: var(--text); font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 280px minmax(0,1fr); }
+    aside { border-right: 1px solid var(--line); background: #111827; color: #f8fafc; padding: 22px 18px; }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+    .mark { width: 34px; height: 34px; border-radius: 8px; background: linear-gradient(135deg, #2563eb, #0f9f6e 52%, #f59e0b); box-shadow: 0 10px 24px rgba(37,99,235,.26); }
+    .brand-title { font-weight: 760; font-size: 17px; letter-spacing: 0; }
+    .brand-subtitle { color: #aeb8c6; font-size: 12px; margin-top: 1px; }
+    .nav-block { border-top: 1px solid rgba(255,255,255,.1); padding-top: 16px; margin-top: 16px; }
+    .nav-label { color: #95a1b2; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .nav-value { display: grid; gap: 7px; color: #e5edf7; word-break: break-word; font: 12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .content { min-width: 0; display: grid; grid-template-rows: auto 1fr; }
+    header { border-bottom: 1px solid var(--line); background: rgba(255,255,255,.9); backdrop-filter: blur(14px); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 10; }
+    h1 { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 760; letter-spacing: 0; }
+    h2 { margin: 0; font-size: 15px; font-weight: 730; letter-spacing: 0; }
+    .meta, .note, .muted { color: var(--muted); }
+    .meta { margin-top: 4px; font-size: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+    button { appearance: none; border: 1px solid var(--line); background: #fff; color: var(--text); border-radius: 8px; min-height: 34px; padding: 0 12px; font: inherit; cursor: pointer; box-shadow: 0 1px 2px rgba(23,32,42,.05); }
+    button:hover { border-color: #aeb8c6; }
+    button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    main { padding: 22px 24px 34px; display: grid; gap: 18px; min-width: 0; }
+    .summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+    .card, .detail, .table-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); min-width: 0; }
+    .card { padding: 15px; }
+    .metric-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .metric-value { font-size: 24px; line-height: 1.1; font-weight: 780; letter-spacing: 0; word-break: break-word; }
+    .metric-foot { color: var(--muted); margin-top: 8px; font-size: 12px; min-height: 17px; word-break: break-word; }
+    .section-grid { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(320px,.65fr); gap: 18px; align-items: start; }
+    section { min-width: 0; display: grid; gap: 10px; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; }
+    .note { font-size: 12px; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; min-width: 760px; }
+    th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 10px 12px; vertical-align: top; white-space: nowrap; }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: #fbfcfd; font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr[data-run-id] { cursor: pointer; }
+    tbody tr[data-run-id]:hover { background: #f7fafc; }
+    .mono { font: 12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+    .badge { display: inline-flex; align-items: center; min-height: 23px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 680; border: 1px solid transparent; white-space: nowrap; }
+    .succeeded, .healthy { color: #087554; background: #e5f7ef; border-color: #b9ead4; }
+    .failed { color: #a33224; background: #fde8e4; border-color: #f8c5bd; }
+    .running, .planning, .verifying, .building, .publishing, .deploying, .smoke_testing { color: #1d4ed8; background: #e8f0ff; border-color: #bfd1ff; }
+    .skipped, .queued { color: #815d16; background: #fff4d8; border-color: #f4daa3; }
+    .disabled { color: #5f6b7a; background: #eef2f5; border-color: #d8e0e7; }
+    .manual { color: #5b4abf; background: #eeeafe; border-color: #d7cdfb; }
+    .detail { overflow: hidden; }
+    .detail-head { padding: 14px 15px; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
+    .detail-title { font-weight: 740; min-width: 0; word-break: break-word; }
+    .detail-body { padding: 14px 15px; display: grid; gap: 14px; }
+    .kv { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 7px 10px; align-items: baseline; }
+    .kv dt { color: var(--muted); font-size: 12px; }
+    .kv dd { margin: 0; min-width: 0; word-break: break-word; }
+    .step-list { display: grid; gap: 8px; }
+    .step { border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 7px; background: #fbfcfd; }
+    .step-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    pre { margin: 0; padding: 10px; border-radius: 8px; overflow: auto; max-height: 180px; background: #101827; color: #dbeafe; font-size: 12px; line-height: 1.45; }
+    .empty { background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 20px; color: var(--muted); text-align: center; }
+    .error { border: 1px solid #f0b8ae; background: #fff0ed; color: #9f2d20; padding: 12px 14px; border-radius: 8px; display: none; }
+    @media (max-width: 1120px) { .app { grid-template-columns: 1fr; } aside { display: none; } .summary { grid-template-columns: repeat(2, minmax(0,1fr)); } .section-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { header { align-items: flex-start; flex-direction: column; padding: 14px 16px; } main { padding: 16px; } .summary { grid-template-columns: 1fr; } .kv { grid-template-columns: 1fr; } table { min-width: 680px; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand"><div class="mark" aria-hidden="true"></div><div><div class="brand-title">NovAIC CI/CD</div><div class="brand-subtitle">Release Controller</div></div></div>
+      <div class="nav-block"><div class="nav-label">Controller</div><div class="nav-value" id="side-state">Loading</div></div>
+      <div class="nav-block"><div class="nav-label">Current Release</div><div class="nav-value" id="side-release">-</div></div>
+      <div class="nav-block"><div class="nav-label">Latest Run</div><div class="nav-value" id="side-run">-</div></div>
+    </aside>
+    <div class="content">
+      <header>
+        <div><h1>CI/CD Dashboard</h1><div class="meta"><span id="last-updated">Not loaded</span><span id="api-state">/v1/status</span></div></div>
+        <button id="refresh" type="button">Refresh</button>
+      </header>
+      <main>
+        <div class="error" id="error"></div>
+        <div class="summary" id="summary"></div>
+        <div class="section-grid">
+          <section><div class="section-head"><h2>Release Pointers</h2><div class="note" id="release-count"></div></div><div class="table-wrap" id="release-table"></div></section>
+          <section><div class="section-head"><h2>Selected Run</h2><div class="note">read-only</div></div><div class="detail" id="run-detail"></div></section>
+        </div>
+        <section><div class="section-head"><h2>Run History</h2><div class="note" id="run-count"></div></div><div class="table-wrap" id="run-table"></div></section>
+        <section><div class="section-head"><h2>Branch Rules</h2><div class="note" id="rule-count"></div></div><div class="table-wrap" id="rule-table"></div></section>
+      </main>
+    </div>
+  </div>
+  <script>
+    const state = { status: null, runs: [], rules: [], selectedRunId: null };
+    const el = (id) => document.getElementById(id);
+    const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const short = (value, n = 12) => value ? String(value).slice(0, n) : '-';
+    const time = (value) => value ? new Date(value).toLocaleString() : '-';
+    const cls = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+    const badge = (value, extra = '') => `<span class="badge ${cls(value)} ${extra}">${esc(value || '-')}</span>`;
+
+    async function getJson(path) {
+      const response = await fetch(path, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+      return response.json();
+    }
+
+    async function load() {
+      el('error').style.display = 'none';
+      try {
+        const [status, runs, rules] = await Promise.all([getJson('/v1/status'), getJson('/v1/runs'), getJson('/v1/rules')]);
+        state.status = status;
+        state.runs = runs.runs || [];
+        state.rules = rules.rules || [];
+        if (!state.selectedRunId && state.runs.length) state.selectedRunId = state.runs[0].run_id;
+        render();
+      } catch (err) {
+        el('error').textContent = err.message || String(err);
+        el('error').style.display = 'block';
+      }
+    }
+
+    function render() {
+      const status = state.status || {};
+      const polling = status.polling || {};
+      const current = status.current_releases || [];
+      const previous = status.previous_releases || [];
+      const candidates = status.candidates || [];
+      const latest = state.runs[0];
+      const selected = state.runs.find((run) => run.run_id === state.selectedRunId) || latest || null;
+      const branchHeadCount = Object.keys(status.branch_heads || {}).length;
+      el('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      el('api-state').textContent = `State ${status.state_dir || '-'}`;
+      el('side-state').innerHTML = `${badge(polling.running ? 'running' : (polling.enabled ? 'enabled' : 'disabled'))}<span>${esc(status.state_dir || '-')}</span>`;
+      el('side-release').innerHTML = current.length ? current.map((r) => `<span>${esc(r.namespace)} ${short(r.commit)}</span>`).join('') : '<span>-</span>';
+      el('side-run').innerHTML = latest ? `<span>${short(latest.commit)} ${esc(latest.status)}</span><span>${esc(latest.run_id)}</span>` : '<span>-</span>';
+      el('summary').innerHTML = [
+        metric('Controller', polling.running ? 'Running' : 'Idle', polling.enabled ? 'polling enabled' : 'manual trigger mode', polling.enabled ? 'running' : 'disabled'),
+        metric('Current Releases', current.length, `${previous.length} previous pointer${previous.length === 1 ? '' : 's'}`),
+        metric('Latest Run', latest ? latest.status : '-', latest ? `${latest.trigger} ${short(latest.commit)}` : 'no runs', latest ? latest.status : ''),
+        metric('Candidates', candidates.length, `${branchHeadCount} branch head pointer${branchHeadCount === 1 ? '' : 's'}`)
+      ].join('');
+      renderReleases(current, previous, candidates);
+      renderRuns();
+      renderRules();
+      renderRunDetail(selected);
+    }
+
+    function metric(label, value, foot, statusClass = '') {
+      return `<div class="card"><div class="metric-label">${esc(label)}</div><div class="metric-value">${esc(value)}</div><div class="metric-foot">${statusClass ? badge(statusClass) + ' ' : ''}${esc(foot)}</div></div>`;
+    }
+
+    function renderReleases(current, previous, candidates) {
+      const rows = [...current.map((item) => ({...item, kind: 'current'})), ...previous.map((item) => ({...item, kind: 'previous'})), ...candidates.map((item) => ({...item, kind: 'candidate'}))];
+      el('release-count').textContent = `${rows.length} pointer${rows.length === 1 ? '' : 's'}`;
+      if (!rows.length) { el('release-table').innerHTML = '<div class="empty">No release pointers</div>'; return; }
+      el('release-table').innerHTML = `<table><thead><tr><th>Kind</th><th>Namespace</th><th>Commit</th><th>Run</th><th>Updated</th><th>Images</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${badge(r.kind)}</td><td>${esc(r.namespace)}</td><td class="mono" title="${esc(r.commit)}">${short(r.commit)}</td><td class="mono" title="${esc(r.run_id)}">${esc(r.run_id)}</td><td>${time(r.updated_at)}</td><td class="mono" title="${esc((r.api_image || '') + ' ' + (r.factory_image || ''))}">${shortImage(r.api_image)}<br>${shortImage(r.factory_image)}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    function renderRuns() {
+      const runs = state.runs;
+      el('run-count').textContent = `${runs.length} run${runs.length === 1 ? '' : 's'}`;
+      if (!runs.length) { el('run-table').innerHTML = '<div class="empty">No run history</div>'; return; }
+      el('run-table').innerHTML = `<table><thead><tr><th>Status</th><th>Trigger</th><th>Namespace</th><th>Branch</th><th>Commit</th><th>Started</th><th>Run ID</th></tr></thead><tbody>${runs.map((run) => `<tr data-run-id="${esc(run.run_id)}"><td>${badge(run.status)}</td><td>${badge(run.trigger, run.trigger === 'manual' ? 'manual' : '')}</td><td>${esc(run.namespace || '-')}</td><td>${esc(run.branch || '-')}</td><td class="mono" title="${esc(run.commit)}">${short(run.commit)}</td><td>${time(run.started_at)}</td><td class="mono" title="${esc(run.run_id)}">${esc(run.run_id)}</td></tr>`).join('')}</tbody></table>`;
+      el('run-table').querySelectorAll('tr[data-run-id]').forEach((row) => row.addEventListener('click', () => {
+        state.selectedRunId = row.dataset.runId;
+        renderRunDetail(state.runs.find((run) => run.run_id === state.selectedRunId));
+      }));
+    }
+
+    function renderRules() {
+      const rules = state.rules;
+      el('rule-count').textContent = `${rules.length} rule${rules.length === 1 ? '' : 's'}`;
+      if (!rules.length) { el('rule-table').innerHTML = '<div class="empty">No branch rules</div>'; return; }
+      el('rule-table').innerHTML = `<table><thead><tr><th>Pattern</th><th>Mode</th><th>Namespace</th><th>Template</th></tr></thead><tbody>${rules.map((rule) => `<tr><td class="mono">${esc(rule.pattern)}</td><td>${badge(rule.mode)}</td><td>${esc(rule.namespace || '-')}</td><td class="mono">${esc(rule.namespace_template || '-')}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    function renderRunDetail(run) {
+      if (!run) { el('run-detail').innerHTML = '<div class="empty">No run selected</div>'; return; }
+      const exec = run.execution_result || null;
+      const steps = exec?.results || [];
+      const planned = run.command_plan?.steps || [];
+      el('run-detail').innerHTML = `<div class="detail-head"><div class="detail-title">${esc(run.run_id)}</div><div>${badge(run.status)} ${badge(run.trigger)}</div></div><div class="detail-body"><dl class="kv"><dt>Namespace</dt><dd>${esc(run.namespace || '-')}</dd><dt>Branch</dt><dd>${esc(run.branch || '-')}</dd><dt>Commit</dt><dd class="mono" title="${esc(run.commit)}">${esc(run.commit)}</dd><dt>Started</dt><dd>${time(run.started_at)}</dd><dt>Finished</dt><dd>${time(run.finished_at)}</dd><dt>Dry Run</dt><dd>${esc(exec ? exec.dry_run : run.command_plan?.dry_run ?? '-')}</dd><dt>Failure</dt><dd>${esc(run.failure || exec?.failure || '-')}</dd></dl><div><h2>Execution</h2><div class="step-list">${steps.length ? steps.map(stepHtml).join('') : planned.map((step) => stepHtml({...step, exit_code: null, skipped: run.command_plan?.dry_run})).join('') || '<div class="empty">No steps recorded</div>'}</div></div></div>`;
+    }
+
+    function stepHtml(step) {
+      const status = step.skipped ? 'skipped' : (step.exit_code === 0 ? 'succeeded' : (step.exit_code === null ? 'queued' : 'failed'));
+      const output = [step.stdout, step.stderr].filter(Boolean).join('\n');
+      return `<div class="step"><div class="step-row"><strong>${esc(step.name)}</strong>${badge(status)}</div><div class="mono" title="${esc((step.argv || []).join(' '))}">${esc((step.argv || []).join(' '))}</div>${output ? `<pre>${esc(output)}</pre>` : ''}</div>`;
+    }
+
+    function shortImage(value) {
+      if (!value) return '-';
+      const text = String(value);
+      const digest = text.includes('@sha256:') ? `@${text.split('@sha256:')[1].slice(0, 12)}` : text.split(':').slice(-1)[0];
+      const name = text.split('/').slice(-1)[0].split('@')[0];
+      return `${esc(name)} ${esc(digest)}`;
+    }
+
+    el('refresh').addEventListener('click', load);
+    load();
+    window.setInterval(load, 20000);
+  </script>
+</body>
+</html>

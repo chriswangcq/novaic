@@ -36,6 +36,7 @@ Release Controller 是后端和 LLM Factory 的唯一发布入口。父仓库根
 - **Release Controller CI/CD**：
   - 当前控制面：API host Docker Compose project `novaic-release-controller`。
   - 本机 API：`http://127.0.0.1:19880`。
+  - 只读看板：`http://127.0.0.1:19880/dashboard`，页面只读取 `/v1/status`、`/v1/runs`、`/v1/rules`，不提供 trigger/promote/rollback/poll 操作。
   - 正规开发流：开发机先跑聚焦单元测试做快速反馈；push/merge 后由 Release Controller 的 `quality_gates` 做权威 staging 准入；staging deploy 后再跑 smoke/integration；prod 只 promote 已通过 staging 的不可变镜像，不从 branch 直接发布。
   - 健康检查：`curl -fsS http://127.0.0.1:19880/health`。
   - 状态检查：`curl -fsS http://127.0.0.1:19880/v1/status`。

@@ -19,3 +19,6 @@ python_files = ["test_*.py"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["release_controller*"]
+
+[tool.setuptools.package-data]
+release_controller = ["dashboard.html"]

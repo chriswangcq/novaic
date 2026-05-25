@@ -13,6 +13,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "novaic-release-controller"
 CONFIG_SAMPLE = PACKAGE / "config.sample.json"
+PYPROJECT = PACKAGE / "pyproject.toml"
+DASHBOARD = PACKAGE / "release_controller" / "dashboard.html"
 DOCKERFILE = ROOT / "docker" / "release-controller" / "Dockerfile"
 COMPOSE = ROOT / "docker" / "release-controller" / "compose.yaml"
 ENV_SAMPLE = ROOT / "docker" / "release-controller" / "env.sample"
@@ -61,6 +63,28 @@ def test_release_controller_dockerfile_invariants() -> None:
         'CMD ["python", "-m", "release_controller.main"]',
     ]:
         assert marker in text
+
+
+def test_release_controller_read_only_dashboard_contract() -> None:
+    service = (PACKAGE / "release_controller" / "service.py").read_text(encoding="utf-8")
+    pyproject = PYPROJECT.read_text(encoding="utf-8")
+    dashboard = DASHBOARD.read_text(encoding="utf-8")
+
+    assert 'release_controller = ["dashboard.html"]' in pyproject
+    assert '@app.get("/", response_class=HTMLResponse)' in service
+    assert '@app.get("/dashboard", response_class=HTMLResponse)' in service
+    assert "resources.files(\"release_controller\")" in service
+    for read_endpoint in ["/v1/status", "/v1/runs", "/v1/rules"]:
+        assert read_endpoint in dashboard
+    for write_endpoint in [
+        "/v1/triggers",
+        "/v1/promotions",
+        "/v1/rollbacks",
+        "/v1/polls",
+    ]:
+        assert write_endpoint not in dashboard
+    assert "CI/CD Dashboard" in dashboard
+    assert "read-only" in dashboard
 
 
 def test_release_controller_quality_gate_contract_is_documented() -> None:
