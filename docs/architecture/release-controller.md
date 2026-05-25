@@ -40,11 +40,11 @@ The release-controller should build on that substrate instead of inventing a par
 
 ## Current Deployment
 
-As of 2026-05-24, the release-controller is deployed on the API host as Docker Compose project `novaic-release-controller`.
+As of 2026-05-25, the release-controller is deployed on the API host as Docker Compose project `novaic-release-controller`.
 
 ```text
 container: novaic-release-controller-release_controller-1
-image: 127.0.0.1:5000/novaic/release-controller@sha256:42094846b4e5d034098ac00d83c87a5cfd374114be576bbc8e0503b070f947e7
+image: 127.0.0.1:5000/novaic/release-controller@sha256:2b2ebbbd46a06836acbe7bee1ff49123d155130e06b8fee8cc22101eba1c9a63
 bind: 127.0.0.1:19880 -> 19880/tcp
 config: /opt/novaic/release-controller/config.json
 state: /opt/novaic/release-controller/state
