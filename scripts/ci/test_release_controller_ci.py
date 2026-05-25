@@ -15,6 +15,7 @@ PACKAGE = ROOT / "novaic-release-controller"
 CONFIG_SAMPLE = PACKAGE / "config.sample.json"
 PYPROJECT = PACKAGE / "pyproject.toml"
 DASHBOARD = PACKAGE / "release_controller" / "dashboard.html"
+NGINX_DASHBOARD = PACKAGE / "nginx" / "cicd-dashboard-readonly.conf"
 DOCKERFILE = ROOT / "docker" / "release-controller" / "Dockerfile"
 COMPOSE = ROOT / "docker" / "release-controller" / "compose.yaml"
 ENV_SAMPLE = ROOT / "docker" / "release-controller" / "env.sample"
@@ -85,6 +86,18 @@ def test_release_controller_read_only_dashboard_contract() -> None:
         assert write_endpoint not in dashboard
     assert "CI/CD Dashboard" in dashboard
     assert "read-only" in dashboard
+
+
+def test_release_controller_public_dashboard_nginx_is_read_only() -> None:
+    nginx = NGINX_DASHBOARD.read_text(encoding="utf-8")
+
+    assert "location = /cicd/dashboard" in nginx
+    assert "location ~ ^/cicd/v1/(status|runs|rules)$" in nginx
+    assert "limit_except GET" in nginx
+    assert "proxy_pass http://127.0.0.1:19880/dashboard;" in nginx
+    assert "proxy_pass http://127.0.0.1:19880;" in nginx
+    for write_endpoint in ["triggers", "promotions", "rollbacks", "polls"]:
+        assert write_endpoint not in nginx
 
 
 def test_release_controller_quality_gate_contract_is_documented() -> None:

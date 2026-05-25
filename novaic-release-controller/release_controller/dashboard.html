@@ -104,6 +104,7 @@
   </div>
   <script>
     const state = { status: null, runs: [], rules: [], selectedRunId: null };
+    const apiBase = (window.location.pathname === '/cicd' || window.location.pathname.startsWith('/cicd/')) ? '/cicd' : '';
     const el = (id) => document.getElementById(id);
     const esc = (value) => String(value ?? '').replace(/[&<>'"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     const short = (value, n = 12) => value ? String(value).slice(0, n) : '-';
@@ -112,7 +113,7 @@
     const badge = (value, extra = '') => `<span class="badge ${cls(value)} ${extra}">${esc(value || '-')}</span>`;
 
     async function getJson(path) {
-      const response = await fetch(path, { cache: 'no-store' });
+      const response = await fetch(`${apiBase}${path}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(`${path} returned ${response.status}`);
       return response.json();
     }
@@ -142,7 +143,7 @@
       const selected = state.runs.find((run) => run.run_id === state.selectedRunId) || latest || null;
       const branchHeadCount = Object.keys(status.branch_heads || {}).length;
       el('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
-      el('api-state').textContent = `State ${status.state_dir || '-'}`;
+      el('api-state').textContent = `${apiBase || ''}/v1/status`;
       el('side-state').innerHTML = `${badge(polling.running ? 'running' : (polling.enabled ? 'enabled' : 'disabled'))}<span>${esc(status.state_dir || '-')}</span>`;
       el('side-release').innerHTML = current.length ? current.map((r) => `<span>${esc(r.namespace)} ${short(r.commit)}</span>`).join('') : '<span>-</span>';
       el('side-run').innerHTML = latest ? `<span>${short(latest.commit)} ${esc(latest.status)}</span><span>${esc(latest.run_id)}</span>` : '<span>-</span>';

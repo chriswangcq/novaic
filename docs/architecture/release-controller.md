@@ -65,11 +65,12 @@ Read-only dashboard:
 
 ```text
 http://127.0.0.1:19880/dashboard
+https://api.gradievo.com/cicd/dashboard
 ```
 
-The dashboard is packaged inside the release-controller image. It reads only `/v1/status`, `/v1/runs`, and `/v1/rules`; it must not expose trigger, promote, rollback, or polling actions.
+The dashboard is packaged inside the release-controller image. It reads only `/v1/status`, `/v1/runs`, and `/v1/rules`; it must not expose trigger, promote, rollback, or polling actions. Public ingress uses the `/cicd` prefix and Nginx only forwards the read endpoints needed by the page.
 
-The controller has no public Nginx route. Operators should SSH to the API host or use a controlled internal path to call it. Normal branch releases are non-dry-run by default; use an explicit `{"dry_run": true}` body only when intentionally asking for observation/planning.
+The controller write APIs have no public Nginx route. Operators should SSH to the API host or use a controlled internal path to trigger releases. Normal branch releases are non-dry-run by default; use an explicit `{"dry_run": true}` body only when intentionally asking for observation/planning.
 
 Worktree bootstrap on the API host:
 

@@ -10,7 +10,7 @@ Release Controller 是后端和 LLM Factory 的唯一发布入口。父仓库根
 
 - 已配置对 **`api.gradievo.com`**、**relay** 等的 SSH（脚本内写死主机别名，见 `deploy` 顶部变量）；LLM Factory 当前也在 API host Docker 上。
 - 子模块目录存在且可同步（如 `novaic-gateway`、`novaic-app`）。
-- Release Controller 是唯一后端/Factory 发布入口，当前运行在 API host 的 `127.0.0.1:19880`，不走公网 Nginx。
+- Release Controller 是唯一后端/Factory 发布入口，当前运行在 API host 的 `127.0.0.1:19880`；公网 Nginx 只暴露只读 `/cicd/dashboard` 和它需要的 read API，不暴露发布写接口。
 - GitHub Actions 不再承担 backend/factory 构建、发布、promote 或 rollback；staging trigger、prod promotion、rollback 都由 Release Controller 执行。
 
 ## 常用命令
@@ -36,7 +36,7 @@ Release Controller 是后端和 LLM Factory 的唯一发布入口。父仓库根
 - **Release Controller CI/CD**：
   - 当前控制面：API host Docker Compose project `novaic-release-controller`。
   - 本机 API：`http://127.0.0.1:19880`。
-  - 只读看板：`http://127.0.0.1:19880/dashboard`，页面只读取 `/v1/status`、`/v1/runs`、`/v1/rules`，不提供 trigger/promote/rollback/poll 操作。
+  - 只读看板：`https://api.gradievo.com/cicd/dashboard` 或 `http://127.0.0.1:19880/dashboard`，页面只读取 `/v1/status`、`/v1/runs`、`/v1/rules`，不提供 trigger/promote/rollback/poll 操作。
   - 正规开发流：开发机先跑聚焦单元测试做快速反馈；push/merge 后由 Release Controller 的 `quality_gates` 做权威 staging 准入；staging deploy 后再跑 smoke/integration；prod 只 promote 已通过 staging 的不可变镜像，不从 branch 直接发布。
   - 健康检查：`curl -fsS http://127.0.0.1:19880/health`。
   - 状态检查：`curl -fsS http://127.0.0.1:19880/v1/status`。
@@ -56,7 +56,7 @@ Release Controller 是后端和 LLM Factory 的唯一发布入口。父仓库根
 - **内部执行器 guard**：`deploy services-image <namespace> <image-ref>` 和 `deploy factory-image <namespace> <image-ref>` 只允许 Release Controller 传入 `NOVAIC_DEPLOY_CALLER=release-controller`、run id、namespace 和 commit 后执行；人工直接调用会在连接远端前失败。
 - **`deploy host-infra`**：同步 `docker/host-infra` Compose 包，构建 `novaic/quic-service:local`，迁移 Redis RDB 和 coturn 运行时配置，停止并禁用宿主机 `redis-server` / `coturn` / `novaic-quic-service`，启动 Docker Compose，验证 Redis/coturn/QUIC 端口归属 Docker 后清理 host 残留，包括旧 `/opt/novaic/start.sh`、`/opt/novaic/services` 和 API-host QUIC 目录。nginx 保留 host 管理。
 - **`deploy services-image <namespace> <image-ref>`**：Release Controller 内部执行器。同步 `docker/api-backend` Compose 包和配置快照，生成 namespace env（如 `/opt/novaic/docker/api-backend.staging.env`），执行 `docker compose pull`，先启动并等待 `service-registry` 健康，再执行全量 `docker compose up -d --no-build --remove-orphans`，最后以关键服务健康状态作为 release 收敛裁判。如果 Compose 在重建同 namespace project 时留下不一致容器状态，执行器会清理该 namespace 的 Compose project 后用同一不可变 image 重试一次；它不会清理其他 namespace。生产机不 build；`image-ref` 必须是 digest 或 sha tag，拒绝 `latest` / `local` / generic tag。
-- **`deploy release-controller-image <image-ref>`**：中心化 CD 控制面部署路径。同步 `docker/release-controller` Compose 包到 `/opt/novaic/docker/release-controller/`，使用 `/opt/novaic/release-controller/config.json`、`/opt/novaic/release-controller/state/` 和 `/opt/novaic/release-controller/worktree/`，执行 `docker compose pull` 和 `docker compose up -d --no-build release_controller`。只绑定 `127.0.0.1:19880`，不配置 Nginx public ingress；`image-ref` 必须是 digest 或 sha tag。
+- **`deploy release-controller-image <image-ref>`**：中心化 CD 控制面部署路径。同步 `docker/release-controller` Compose 包到 `/opt/novaic/docker/release-controller/`，使用 `/opt/novaic/release-controller/config.json`、`/opt/novaic/release-controller/state/` 和 `/opt/novaic/release-controller/worktree/`，执行 `docker compose pull` 和 `docker compose up -d --no-build release_controller`。容器只绑定 `127.0.0.1:19880`；公网只读看板由 Nginx `/cicd` 位置转发，发布写接口不暴露；`image-ref` 必须是 digest 或 sha tag。
 - **已关闭的后端手动路径**：`deploy services`、`deploy api-backend`、`deploy services-legacy`、legacy 单服务目标、`deploy factory`、`deploy all` 都会失败，错误会指向 Release Controller。
 - Compose 主路径目录：
   - Host infra Compose 包：**`/opt/novaic/docker/host-infra/`**
