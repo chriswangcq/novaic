@@ -144,6 +144,10 @@ def main() -> int:
         require(block, f"compose missing service block {service_name}", errors)
         for marker in ["--namespace", "--release-id", "--host-id", "--compose-project", "--environment"]:
             require(marker in block, f"{service_name} missing {marker}", errors)
+        if service_name == "sandboxd":
+            require("SYS_ADMIN" in block, "sandboxd must be allowed to create mount namespaces", errors)
+            require("seccomp:unconfined" in block, "sandboxd must not be blocked by Docker seccomp", errors)
+            require("apparmor:unconfined" in block, "sandboxd must not be blocked by AppArmor", errors)
 
     for marker in [
         'parser.add_argument("--namespace"',

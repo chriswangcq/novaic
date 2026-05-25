@@ -243,6 +243,11 @@ services:
 
   sandboxd:
     <<: *common_service
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
     depends_on:
       service-registry:
         condition: service_healthy
