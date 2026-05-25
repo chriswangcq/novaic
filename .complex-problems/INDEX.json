@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260524-225445",
+  "active_ledger_id": "L20260525-082038",
   "ledgers": [
     {
       "active_count": 0,
@@ -902,7 +902,18 @@
       "status": "done",
       "title": "Fix WebRTC black screen across different networks",
       "updated_at": "2026-05-24T15:52:33+00:00"
+    },
+    {
+      "active_count": 5,
+      "blocked_count": 0,
+      "ledger_id": "L20260525-082038",
+      "path": "L20260525-082038",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "doing",
+      "title": "Message sent but no response",
+      "updated_at": "2026-05-25T00:33:06+00:00"
     }
   ],
-  "updated_at": "2026-05-24T15:52:33+00:00"
+  "updated_at": "2026-05-25T00:33:06+00:00"
 }

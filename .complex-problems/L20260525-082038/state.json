@@ -1,0 +1,530 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-25T00:29:08+00:00",
+      "criteria_map": [
+        "Identify failing stage with evidence: satisfied by subscriber, queue, and Entangled logs.",
+        "Record relevant services/endpoints/logs/database observations: satisfied by service names, endpoints, metrics, and stack trace in R000.",
+        "Produce precise fix hypothesis: satisfied by the Entangled SQL auto timestamp rule change."
+      ],
+      "evidence": [
+        "`novaic-prod-subscriber-1` repeatedly calls `POST /v1/entities/environment-notifications/list`, `GET /v1/entities/environment-notifications/81acac494a82`, then `PATCH /v1/entities/environment-notifications/81acac494a82` with HTTP 500.",
+        "`novaic-prod-entangled-1` stack trace ends at `entangled/sql/entity_store.py::_sql_update` with `psycopg.errors.SyntaxError: multiple assignments to same column \"updated_at\"`.",
+        "`novaic-prod-queue-service-1` reports no active sessions and no pending inputs, so the failure is before Queue/Runtime execution.",
+        "Local inspection shows `business/environment.py::claim_notification_for_dispatch` includes explicit `updated_at`, while Entangled auto-appends `updated_at` for entities with that column."
+      ],
+      "execution_map": [
+        "Frontend and Business send path inspected enough to map the expected data flow.",
+        "Production process health, subscriber metrics, queue state, and logs were checked.",
+        "Entangled SQL generation logic was inspected and tied to the production stack trace."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "P001 is only the location problem. Deployment and end-to-end recovery remain open under P002/P003."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible alternate failure \"Runtime/LLM consumed the message but failed to reply\" is ruled out by empty Queue sessions and pending inputs.",
+        "Plausible alternate failure \"subscriber has no notifications to process\" is ruled out by repeated GET/PATCH attempts for the same notification."
+      ],
+      "summary": "P001 is solved. The failing stage is the Environment notification dispatch claim path: subscriber can list the pending notification, but Entangled rejects the PATCH used to claim it because the SQL update assigns `updated_at` twice."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-25T00:31:09+00:00",
+      "criteria_map": [
+        "Fix changes actual failing boundary: satisfied by changing Entangled SQL generation, where production stack trace failed.",
+        "Focused regression coverage added: satisfied by five explicit `updated_at` duplicate-assignment tests.",
+        "Relevant local tests pass: satisfied by targeted and full Entangled server Python tests.",
+        "Repository remains clean aside from intentional changes: satisfied by status showing only Entangled edits and ledger artifacts."
+      ],
+      "evidence": [
+        "Code change in `Entangled/packages/server-python/entangled/sql/entity_store.py` prevents automatic `updated_at` assignment when callers explicitly provide `updated_at`.",
+        "Regression tests in `Entangled/packages/server-python/tests/test_postgres_entity_write_queries.py` cover explicit `updated_at` for update, upsert, batch update, update-where, and CAS update.",
+        "Entangled server test suite passes: `68 passed`.",
+        "Git status contains only intentional Entangled code/test edits plus the active ledger files."
+      ],
+      "execution_map": [
+        "Implemented one local invariant instead of Business-specific fallback.",
+        "Preserved automatic `updated_at` behavior when callers omit `updated_at`.",
+        "Made explicit caller `updated_at` authoritative for all affected mutation APIs."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Deployment and production recovery remain open under P003.",
+        "Existing pending notifications may cause queued runtime work after the fix lands; this is expected and needs verification."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The exact production failure mode requires a payload with explicit `updated_at`; tests cover that shape on the direct update path used by subscriber claim.",
+        "Equivalent duplicate-assignment risk exists in upsert, batch, update-where, and CAS; tests cover those too."
+      ],
+      "summary": "P002 is solved. The actual failing boundary is Entangled's Postgres SQL mutation builder, and the fix changes that boundary directly with regression coverage."
+    }
+  },
+  "counters": {
+    "check": 2,
+    "event": 45,
+    "problem": 7,
+    "result": 2,
+    "ticket": 5
+  },
+  "created_at": "2026-05-25T00:20:38+00:00",
+  "ledger_id": "L20260525-082038",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-25T00:20:38+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The user reports that sending a message currently produces no response in the NovAIC app. Diagnose where the message path is stuck, design the smallest correct fix, implement it, verify it locally and/or against the deployed environment, deploy through the Release Controller if backend runtime changes are needed, and close the loop with evidence.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "Identify the failing stage in the message pipeline with concrete evidence.",
+        "Implement the fix in the correct service or frontend boundary without adding fallback or hidden dual paths.",
+        "Add focused regression coverage or an equivalent guard for the failure mode.",
+        "Verify the fix with relevant tests and deployed service checks.",
+        "Push the fix to GitHub and, when deployment is required, release through the Release Controller."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Message sent but no response",
+      "updated_at": "2026-05-25T00:20:38+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-25T00:21:41+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Find where the user's latest sent chat message stops moving through the production message pipeline. Inspect recent logs, service health, queue/saga state, and persistence evidence to distinguish frontend send failure, Gateway/Business action failure, Entangled persistence/sync failure, queue dispatch failure, Cortex/LLM execution failure, or reply projection failure.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify the failing stage with concrete evidence.",
+        "Record the relevant service names, endpoints, logs, or database observations.",
+        "Produce a precise hypothesis for the code/config fix."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Locate the no-response failure stage",
+      "updated_at": "2026-05-25T00:29:08+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-25T00:21:41+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "After the failure stage is known, implement the smallest correct code, configuration, or deployment-script fix. Avoid fallback or shadow paths; the message pipeline should be explicit and observable.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "The fix changes the actual failing boundary.",
+        "Focused regression coverage or an equivalent guard is added.",
+        "Relevant local tests pass.",
+        "The repository remains clean aside from intentional changes."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Implement the no-response fix",
+      "updated_at": "2026-05-25T00:31:09+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-25T00:21:41+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "If the fix affects backend or frontend runtime behavior, release it through the correct deployment path and verify that the message pipeline no longer silently stalls.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [
+        "P004",
+        "P005",
+        "P006"
+      ],
+      "success_criteria": [
+        "Backend changes, if any, are deployed through Release Controller.",
+        "Frontend changes, if any, are built and deployed through the current OTA/frontend path.",
+        "Prod/staging health checks pass.",
+        "The diagnosed failure no longer reproduces, or the system now exposes a concrete actionable error instead of silent no-response."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Deploy and verify message response recovery",
+      "updated_at": "2026-05-25T00:21:41+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P003/children/P004/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-25T00:32:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "created_from_ticket_mode": "split",
+      "description": "The Entangled fix and active ledger changes must be committed in the correct repositories and pushed so Release Controller can build from immutable source.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P003/children/P004",
+      "parent_id": "P003",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "doing",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Entangled submodule has a focused commit with the SQL fix and tests.",
+        "Parent repo has a commit updating the Entangled pointer and ledger.",
+        "Both commits are pushed to their remotes.",
+        "Local git status after commit/push contains no unintentional source edits."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Commit and push release source",
+      "updated_at": "2026-05-25T00:33:06+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P003/children/P005/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-25T00:32:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "created_from_ticket_mode": "split",
+      "description": "Deploy the new source through the centralized Release Controller, not by manually invoking backend service deploy scripts.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P003/children/P005",
+      "parent_id": "P003",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Release Controller is healthy and its worktree sees the pushed parent commit.",
+        "A staging release is triggered/executed for the new commit.",
+        "The same release/image is promoted to prod through Release Controller.",
+        "The deployed prod containers run the new immutable image/tag."
+      ],
+      "ticket_ids": [],
+      "title": "Release Controller deploy",
+      "updated_at": "2026-05-25T00:32:36+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P003/children/P006/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-25T00:32:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "created_from_ticket_mode": "split",
+      "description": "After deployment, prove the production message pipeline recovered from the stuck Environment notification and no longer fails at the Entangled claim boundary.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P003/children/P006",
+      "parent_id": "P003",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Entangled logs no longer show `multiple assignments to same column \"updated_at\"` for Environment notification claim.",
+        "Subscriber metrics/logs show successful claim or delivery after deployment.",
+        "Queue diagnostics remain healthy and do not show accumulating stuck inputs/sessions.",
+        "Public and internal health checks remain green.",
+        "Any stuck notification evidence is explained: delivered, claimed, or intentionally no longer dispatchable."
+      ],
+      "ticket_ids": [],
+      "title": "Verify production message recovery",
+      "updated_at": "2026-05-25T00:32:36+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`Entangled/packages/server-python/entangled/sql/entity_store.py`",
+        "`Entangled/packages/server-python/tests/test_postgres_entity_write_queries.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-25T00:28:25+00:00",
+      "done": [
+        "Confirmed production services are containerized and healthy at process level.",
+        "Confirmed Queue has no active sessions and no pending inbox input for the user-facing send path.",
+        "Confirmed subscriber metrics show many claim attempts but zero claimed rows.",
+        "Confirmed subscriber logs repeatedly fail while claiming the same Environment notification.",
+        "Confirmed Entangled logs provide the exact SQL-generation error.",
+        "Implemented the Entangled SQL-layer fix candidate so explicit `updated_at` wins and auto-touch only happens when `updated_at` is absent."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "The fix is implemented locally but not yet committed, image-built, deployed, or promoted through Release Controller.",
+        "The currently stuck production notification has not yet been re-claimed after deployment.",
+        "End-to-end chat response recovery has not yet been verified after deployment."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The no-response failure is before Runtime execution. Production `subscriber` repeatedly finds a pending `environment-notifications` row (`81acac494a82`) but fails to claim it because Entangled returns HTTP 500 on `PATCH /v1/entities/environment-notifications/81acac494a82`.\n\nEntangled's stack trace shows `psycopg.errors.SyntaxError: multiple assignments to same column \"updated_at\"` from `entangled/sql/entity_store.py::_sql_update`. Business Environment claim code sends an explicit `updated_at`, while Entangled's SQL update layer also appends an automatic `updated_at = now()` assignment.",
+      "ticket_id": "T001",
+      "verification": [
+        "Production evidence:",
+        "`novaic-prod-subscriber-1` `/metrics`: `environment_notification_claim_batch_size_count` increments while `_sum` remains `0`.",
+        "`novaic-prod-queue-service-1`: `/api/queue/sessions` and `/api/queue/pending` return empty arrays.",
+        "Entangled log stack: `psycopg.errors.SyntaxError: multiple assignments to same column \"updated_at\"`.",
+        "Local test evidence:",
+        "`python3 -m pytest packages/server-python/tests/test_postgres_entity_write_queries.py` in `Entangled` passed: `10 passed`."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`Entangled/packages/server-python/entangled/sql/entity_store.py`",
+        "`Entangled/packages/server-python/tests/test_postgres_entity_write_queries.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-25T00:30:31+00:00",
+      "done": [
+        "Added `SqlEntityStore._should_auto_set_updated_at`.",
+        "Applied the rule to:",
+        "`_sql_update`",
+        "`_sql_upsert`",
+        "`batch_update`",
+        "`update_where`",
+        "`cas_update`",
+        "Added Postgres SQL-generation tests for explicit `updated_at` in all affected mutation paths.",
+        "Verified existing automatic timestamp behavior still has coverage for update/upsert without explicit `updated_at`."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "The fix is not yet committed or deployed.",
+        "Production subscriber recovery and end-to-end chat response remain to be validated in P003."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Implemented a SQL-store invariant in Entangled: automatic `updated_at` assignment is appended only when the update payload does not already include `updated_at`. This removes the production Postgres error that blocked Environment notification claim.",
+      "ticket_id": "T002",
+      "verification": [
+        "`python3 -m pytest packages/server-python/tests/test_postgres_entity_write_queries.py`",
+        "Result: `10 passed`",
+        "`python3 -m pytest packages/server-python/tests`",
+        "Result: `68 passed`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The failing stage is identified with log, database, API, or queue evidence.",
+        "The fix targets the actual broken boundary and does not introduce fallback behavior.",
+        "Regression coverage or a guard proves the message path will not silently stall in the same way.",
+        "Relevant local tests pass.",
+        "If backend runtime code changes, staging and prod are released through Release Controller.",
+        "The final state is recorded in the ledger with residual risks clearly separated from solved criteria."
+      ],
+      "assumptions": [
+        "The app is pointed at the current prod backend unless evidence shows a staging/local target.",
+        "The user wants the problem fixed, not only explained.",
+        "Release Controller remains the only backend deployment path."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Message no-response spans multiple independent runtime boundaries: send persistence, dispatch, wake execution, and response projection all need separate evidence.",
+      "created_at": "2026-05-25T00:20:59+00:00",
+      "id": "T000",
+      "problem_definition": "Sending a chat message currently produces no visible assistant response. The failure may be in the app send path, Gateway action forwarding, Business message action, Entangled persistence/sync, queue dispatch, wake saga, Cortex/LLM execution, or reply projection back to the app. The diagnosis must follow the actual runtime evidence rather than assuming one layer.",
+      "problem_id": "P000",
+      "proposed_solution": "Trace the message from the app boundary through Gateway, Business, queue/saga runtime, Cortex, and Entangled sync using code inspection, prod/staging logs, and direct service checks. Once the stuck stage is known, implement the smallest correct code or deployment/config fix, add a focused regression test or guard, then deploy through Release Controller if backend behavior changes.",
+      "result_ids": [],
+      "risks": [
+        "Without the exact agent/message ID, production diagnosis must infer from recent activity.",
+        "Some LLM/runtime failures may be external provider or credential failures rather than application code.",
+        "A direct live chat test may create user-visible messages; prefer read-only evidence first."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Diagnose and repair message no-response path",
+      "updated_at": "2026-05-25T00:21:41+00:00",
+      "verification_plan": "Inspect recent production logs and data for the user's latest sent message, reproduce with a direct API or local unit path when feasible, run targeted tests for the changed module, verify deployed health/queue behavior, and confirm that the message path either produces a response or exposes a concrete error."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Recent message pipeline evidence is collected from production or directly relevant runtime logs.",
+        "The failing stage is named with evidence.",
+        "The next fix target is precise enough to implement."
+      ],
+      "assumptions": [
+        "The failure happened in prod after the latest deployment.",
+        "Recent logs still contain the failing request or downstream wake attempt."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Runtime evidence collection is a bounded read-only trace with immediate service/log verification.",
+      "created_at": "2026-05-25T00:22:01+00:00",
+      "id": "T001",
+      "problem_definition": "The current no-response report needs runtime evidence. We need to identify whether messages are failing before persistence, after persistence but before dispatch, during queue/saga execution, in Cortex/LLM execution, or during reply projection.",
+      "problem_id": "P001",
+      "proposed_solution": "Inspect the relevant code entry points, then query production service state and logs around the latest user message. Focus on Business `messages.send`, Entangled persistence, queue-service sagas/tasks, subscriber dispatch, Cortex runtime logs, and Gateway/API health.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Message content may be user data; avoid dumping full private message bodies.",
+        "Logs can be noisy after recent deployments."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Trace recent production message flow",
+      "updated_at": "2026-05-25T00:28:25+00:00",
+      "verification_plan": "Use read-only code and service inspection first; only perform minimal safe API probes if needed. Record commands and observations in the result."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Entangled no longer emits Postgres `UPDATE` or `ON CONFLICT DO UPDATE` statements that assign `updated_at` twice.",
+        "Explicit caller-provided `updated_at` remains preserved.",
+        "Calls without explicit `updated_at` still auto-touch `updated_at`.",
+        "Targeted Entangled tests pass."
+      ],
+      "assumptions": [
+        "Entangled's `auto_timestamps` contract should not produce invalid SQL when callers include a valid `updated_at` field."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Single Entangled SQL-generation invariant with focused tests; implementation already localized to one file and one test file.",
+      "created_at": "2026-05-25T00:29:33+00:00",
+      "id": "T002",
+      "problem_definition": "Production chat messages stop before Runtime because subscriber cannot claim pending Environment notifications. Entangled's Postgres update SQL assigns `updated_at` twice when callers explicitly provide `updated_at` for an entity that also has automatic timestamp tracking.",
+      "problem_id": "P002",
+      "proposed_solution": "Fix Entangled's SQL entity store so automatic `updated_at` mutation is appended only when the caller did not explicitly include `updated_at`. Apply the rule consistently to single update, upsert conflict update, batch update, update-where, and CAS update. Add Postgres SQL-generation tests for explicit `updated_at` across those paths.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Existing code may rely on automatic timestamp overriding caller timestamps; this ticket intentionally makes explicit input authoritative.",
+        "Fixing SQL generation may unblock older pending notifications that then create a burst of queue/runtime work."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Fix Entangled updated_at duplicate assignment",
+      "updated_at": "2026-05-25T00:30:31+00:00",
+      "verification_plan": "Run `python3 -m pytest packages/server-python/tests/test_postgres_entity_write_queries.py` from the `Entangled` submodule, then deploy and verify under P003 that subscriber can claim the stuck production notification."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Entangled fix and parent pointer/ledger are committed and pushed.",
+        "Release Controller runs the deployment path, not direct manual `services-image`.",
+        "Staging deploy succeeds for the commit/image.",
+        "Prod is promoted through Release Controller or, if the controller's current API requires it, the same controller-managed release pointer is used.",
+        "Production subscriber recovers from the stuck notification and no longer loops on Entangled 500.",
+        "Queue/Runtime and public health checks are green after recovery."
+      ],
+      "assumptions": [
+        "The current API host Release Controller is the authoritative CD path at `127.0.0.1:19880`."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "split",
+      "classification_reason": "Deployment and verification has separable commit, release-controller rollout, and production recovery checks.",
+      "created_at": "2026-05-25T00:31:45+00:00",
+      "id": "T003",
+      "problem_definition": "The Entangled fix must be shipped through the current Release Controller path and production must recover from the stuck Environment notification without using manual backend deploy scripts.",
+      "problem_id": "P003",
+      "proposed_solution": "Commit the Entangled fix, update the parent submodule pointer and ledger, push to GitHub, trigger Release Controller for staging, verify the immutable image release, then promote the same release to prod. After prod deploy, verify Entangled no longer emits duplicate `updated_at` errors, subscriber claims and dispatches pending notifications, Queue/Runtime consumes the message pipeline, and public health remains green.",
+      "result_ids": [],
+      "risks": [
+        "Pending notifications may produce delayed Runtime work immediately after deploy.",
+        "If Release Controller worktree lags submodule pointers, a worktree repair/update may be required before triggering."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Deploy and verify message recovery",
+      "updated_at": "2026-05-25T00:32:00+00:00",
+      "verification_plan": "Use Release Controller health/run APIs, container health, subscriber metrics/logs, Entangled logs, Queue diagnostic endpoints, and public health endpoints. If possible, trigger a minimal message-path smoke without exposing secrets or private message content."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Entangled commit exists and is pushed.",
+        "Parent commit exists and is pushed.",
+        "Parent points to the pushed Entangled commit.",
+        "No unrelated source changes are included."
+      ],
+      "assumptions": [
+        "User previously asked to work on and push `main`, and authorized autonomous execution."
+      ],
+      "body_path": "problems/P000/children/P003/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Straight-line git commit/push sequence with explicit status checks.",
+      "created_at": "2026-05-25T00:32:55+00:00",
+      "id": "T004",
+      "problem_definition": "The fix needs to be available to Release Controller from GitHub source. Entangled is a submodule, so commit order matters.",
+      "problem_id": "P004",
+      "proposed_solution": "Commit the Entangled code/test changes first, push Entangled `main`, then stage the parent repo's updated submodule pointer and ledger artifacts, commit, and push parent `main`.",
+      "result_ids": [],
+      "risks": [
+        "Pushing directly to `main` assumes the current repo policy allows it."
+      ],
+      "root_id": "P000",
+      "status": "executing",
+      "title": "Commit and push source",
+      "updated_at": "2026-05-25T00:33:06+00:00",
+      "verification_plan": "Use `git status`, `git diff --cached`, `git log -1`, and `git submodule status` before and after commits."
+    }
+  },
+  "updated_at": "2026-05-25T00:33:06+00:00"
+}
