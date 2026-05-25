@@ -12,14 +12,14 @@ from release_controller.runner import CommandRunner, PlanExecutionResult
 from release_controller.state import ReleaseStateStore
 
 
-def test_poll_changed_main_creates_poll_run_and_persists_head(tmp_path: Path) -> None:
+def test_poll_changed_main_creates_dry_run_without_persisting_head(tmp_path: Path) -> None:
     state = ReleaseStateStore(tmp_path / "state")
     poller = _poller(tmp_path, state, (BranchHead("main", "abcdef1234567890"),))
 
     outcomes = poller.poll_once(dry_run=True)
 
     assert outcomes[0].status == "planned"
-    assert state.read_branch_heads() == {"main": "abcdef1234567890"}
+    assert state.read_branch_heads() == {}
     run = state.list_runs()[0]
     assert run.trigger is TriggerKind.POLL
     assert run.namespace == "staging"
@@ -68,6 +68,7 @@ def test_poll_without_dry_run_executes_by_default(tmp_path: Path) -> None:
     assert run.command_plan.dry_run is False
     assert run.execution_result is not None
     assert run.execution_result.results[0].stdout == "executed by test runner"
+    assert state.read_branch_heads() == {"main": "abcdef1234567890"}
     assert state.get_current_release("staging").commit == "abcdef1234567890"
 
 

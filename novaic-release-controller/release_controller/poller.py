@@ -138,7 +138,8 @@ class BranchPoller:
                 )
                 continue
             if execution.execution.succeeded:
-                self.state.write_branch_head(head.branch, head.commit)
+                if not execution.execution.dry_run:
+                    self.state.write_branch_head(head.branch, head.commit)
                 outcomes.append(
                     PollOutcome(
                         branch=head.branch,

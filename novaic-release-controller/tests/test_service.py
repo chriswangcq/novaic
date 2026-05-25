@@ -138,7 +138,7 @@ def test_poll_once_uses_branch_poller(tmp_path: Path) -> None:
     body = response.json()
     assert body["outcomes"][0]["status"] == "planned"
     assert body["outcomes"][0]["branch"] == "main"
-    assert state.read_branch_heads() == {"main": "abcdef1234567890"}
+    assert state.read_branch_heads() == {}
 
 
 def test_poll_once_without_dry_run_is_rejected(tmp_path: Path) -> None:
