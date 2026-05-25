@@ -53,6 +53,7 @@ REQUIRED_ENV_KEYS = [
     "NOVAIC_IMAGE_DIGEST",
     "NOVAIC_API_BACKEND_IMAGE",
     "NOVAIC_DATA_DIR",
+    "NOVAIC_SANDBOX_SHARED_DIR",
     "NOVAIC_POSTGRES_SECRETS_DIR",
     "NOVAIC_ETC_DIR",
     "NOVAIC_SERVICE_REGISTRY_URL",
@@ -117,6 +118,7 @@ def main() -> int:
         "NOVAIC_RELEASE_ID:?NOVAIC_RELEASE_ID required",
         "NOVAIC_SERVICE_REGISTRY_URL:?NOVAIC_SERVICE_REGISTRY_URL required",
         "NOVAIC_DATA_DIR:?NOVAIC_DATA_DIR required",
+        "NOVAIC_SANDBOX_SHARED_DIR",
         "NOVAIC_REDIS_URL:?NOVAIC_REDIS_URL required",
         "NOVAIC_ENTANGLED_SERVICE_TOKEN_FILE:?NOVAIC_ENTANGLED_SERVICE_TOKEN_FILE required",
         "NOVAIC_REGISTRY_TABLE:?NOVAIC_REGISTRY_TABLE required",
@@ -149,6 +151,7 @@ def main() -> int:
         '"NOVAIC_SERVICE_REGISTRY_URL"',
         '"NOVAIC_REGISTRY_TABLE"',
         '"NOVAIC_REDIS_URL"',
+        '"NOVAIC_SANDBOX_SHARED_DIR"',
         '"NOVAIC_ENTANGLED_SERVICE_TOKEN_FILE"',
         "DEFAULT_PORT_OFFSETS",
     ]:
@@ -163,6 +166,11 @@ def main() -> int:
         require(values.get("NOVAIC_ENVIRONMENT") == label, f"{label} env environment drifted", errors)
         require(values.get("NOVAIC_DATA_DIR", "").endswith(f"/{label}"), f"{label} data dir is not namespaced", errors)
         require(
+            values.get("NOVAIC_SANDBOX_SHARED_DIR", "").endswith(f"/{label}/sandbox"),
+            f"{label} sandbox shared dir is not namespaced",
+            errors,
+        )
+        require(
             values.get("NOVAIC_POSTGRES_SECRETS_DIR", "").endswith(f"/{label}"),
             f"{label} postgres secrets dir is not namespaced",
             errors,
@@ -174,6 +182,7 @@ def main() -> int:
         "COMPOSE_PROJECT_NAME",
         "NOVAIC_NAMESPACE",
         "NOVAIC_DATA_DIR",
+        "NOVAIC_SANDBOX_SHARED_DIR",
         "NOVAIC_POSTGRES_SECRETS_DIR",
         "NOVAIC_ETC_DIR",
         "NOVAIC_SERVICE_REGISTRY_URL",
@@ -186,7 +195,7 @@ def main() -> int:
         require(staging.get(key, "").startswith("299"), f"staging {key} must use 299xx range", errors)
         require(prod.get(key) != staging.get(key), f"prod/staging must differ for {key}", errors)
 
-    for key in ["NOVAIC_DATA_DIR", "NOVAIC_POSTGRES_SECRETS_DIR", "NOVAIC_ETC_DIR", "NOVAIC_REDIS_URL"]:
+    for key in ["NOVAIC_DATA_DIR", "NOVAIC_SANDBOX_SHARED_DIR", "NOVAIC_POSTGRES_SECRETS_DIR", "NOVAIC_ETC_DIR", "NOVAIC_REDIS_URL"]:
         require("prod" not in staging.get(key, ""), f"staging {key} references prod", errors)
 
     require(

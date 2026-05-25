@@ -171,6 +171,7 @@ def main() -> int:
         raise ValueError("--namespace must not be empty")
     port_base = args.port_base or _default_port_base(namespace)
     registry_port = _env_default("NOVAIC_REGISTRY_PORT", str(port_base + DEFAULT_PORT_OFFSETS["NOVAIC_REGISTRY_PORT"]))
+    data_dir = args.data_dir or f"/opt/novaic/data/{namespace}"
 
     values = {
         "COMPOSE_PROJECT_NAME": args.compose_project or f"novaic-{namespace}",
@@ -180,7 +181,11 @@ def main() -> int:
         "NOVAIC_ENVIRONMENT": args.environment or namespace,
         "NOVAIC_IMAGE_DIGEST": args.image_digest,
         "NOVAIC_API_BACKEND_IMAGE": args.image,
-        "NOVAIC_DATA_DIR": args.data_dir or f"/opt/novaic/data/{namespace}",
+        "NOVAIC_DATA_DIR": data_dir,
+        "NOVAIC_SANDBOX_SHARED_DIR": _env_default(
+            "NOVAIC_SANDBOX_SHARED_DIR",
+            f"{data_dir}/sandbox",
+        ),
         "NOVAIC_POSTGRES_SECRETS_DIR": args.postgres_secrets_dir
         or f"/opt/novaic/postgres/secrets/{namespace}",
         "NOVAIC_ETC_DIR": args.etc_dir or f"/opt/novaic/etc/{namespace}",
