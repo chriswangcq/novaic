@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260525-082038",
+  "active_ledger_id": "L20260525-153414",
   "ledgers": [
     {
       "active_count": 0,
@@ -913,7 +913,18 @@
       "status": "doing",
       "title": "Message sent but no response",
       "updated_at": "2026-05-25T00:50:18+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260525-153414",
+      "path": "L20260525-153414",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Disable automatic Release Controller branch polling",
+      "updated_at": "2026-05-25T07:54:28+00:00"
     }
   ],
-  "updated_at": "2026-05-25T00:50:18+00:00"
+  "updated_at": "2026-05-25T07:54:28+00:00"
 }

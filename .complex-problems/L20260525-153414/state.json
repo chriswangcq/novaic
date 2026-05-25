@@ -1,0 +1,159 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-25T07:54:16+00:00",
+      "criteria_map": [
+        "Live autonomous polling disabled: satisfied by live status `polling.enabled=false` and `polling.running=false`.",
+        "Docs describe explicit trigger-based staging CI/CD: satisfied by updated architecture/runbook docs and guard assertions.",
+        "Repository guards prevent normal-path autonomous polling drift: satisfied by `scripts/ci/test_release_controller_ci.py` assertions on config/docs.",
+        "Existing focused tests pass: satisfied by pytest and lint results.",
+        "Subsequent push does not auto-start a release run: satisfied by status checks after pushing `b64652a2` and `53a901b5`, with no automatic run for the pushed commits."
+      ],
+      "evidence": [
+        "Live `/v1/status` reports `polling.enabled=false`, `polling.running=false`, and `branch_heads={}` after cleanup and diagnostic dry-run.",
+        "Live `/v1/polls/once` without `dry_run` returns HTTP 400.",
+        "Live `/v1/polls/once` with `dry_run=true` returns a planned diagnostic result but leaves `branch_heads={}`.",
+        "Live `/v1/triggers` dry-run returns `trigger=manual`, `namespace=staging`, `succeeded=true`.",
+        "The deployed Release Controller container is healthy on image digest `sha256:71638fd91a55890ad708e47cdfb5bdee96da8a110bed2164210d9e077190a604`.",
+        "Local test suites passed: 52 Release Controller tests, 9 parent CI guard tests, and immutable workflow lint."
+      ],
+      "execution_map": [
+        "Result `R000` contains implementation, deployment, live verification, and pushed commit evidence.",
+        "The work changed runtime config, application code, tests, docs, and live deployment state.",
+        "The code path that could re-enable background polling now fails config loading when `polling_enabled=true`.",
+        "The API path that could perform branch-head polling now requires `dry_run=true` and cannot execute a real release."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Internal branch rule mode name `auto_deploy` is still semantically awkward but is not an active autonomous trigger path. It is a naming cleanup candidate, not a blocker for the manual-trigger CI/CD objective."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Plausible failure mode: a future push to `main` silently triggers staging CI/CD. Tested by pushing commits while live polling was disabled; no automatic release run appeared.",
+        "Plausible failure mode: someone calls `/v1/polls/once` without dry-run. Tested live; it returns HTTP 400.",
+        "Plausible failure mode: diagnostic dry-run mutates branch-head state and hides later changes. Tested live; branch heads stayed `{}` after dry-run."
+      ],
+      "summary": "The original problem is solved: backend/factory CI/CD no longer starts from autonomous Release Controller branch polling. The live service is disabled for background polling, the new code rejects attempts to re-enable it, diagnostic polling cannot perform real releases, and explicit `/v1/triggers` remains the staging entrypoint."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-25T07:34:14+00:00",
+  "ledger_id": "L20260525-153414",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-25T07:34:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The live Release Controller currently runs autonomous branch polling, so pushes to main can trigger staging CI/CD without an explicit agent/operator release action. For the current agent-driven workflow, CI/CD should be a centralized service flow, but it should start only from explicit Release Controller API requests.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Live Release Controller has autonomous polling disabled and reports polling.enabled=false/running=false.",
+        "Repository docs describe explicit trigger-based staging CI/CD as the normal path.",
+        "Repository guards fail if sample config or docs reintroduce autonomous polling as the normal backend/factory release path.",
+        "Existing Release Controller unit/CI guard tests pass.",
+        "A subsequent push to main does not auto-start a new release run."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Disable automatic Release Controller branch polling",
+      "updated_at": "2026-05-25T07:54:16+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Code commits pushed to `origin/main`: `b64652a2fc9b987b104e848d6a41d85b8c825bd9`, `53a901b5f0c64586b0fe9b39bc086c24afac4371`.",
+        "Deployed Release Controller image digest: `127.0.0.1:5000/novaic/release-controller@sha256:71638fd91a55890ad708e47cdfb5bdee96da8a110bed2164210d9e077190a604`."
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-25T07:53:39+00:00",
+      "done": [
+        "Backed up the live API-host Release Controller config and changed `polling_enabled=false`.",
+        "Restarted Release Controller, then deployed immutable image `127.0.0.1:5000/novaic/release-controller@sha256:71638fd91a55890ad708e47cdfb5bdee96da8a110bed2164210d9e077190a604`.",
+        "Made `ControllerConfig` reject `polling_enabled=true` and made `/v1/polls/once` diagnostic dry-run only.",
+        "Changed branch poll dry-run so it no longer advances `branch-heads.json`.",
+        "Updated architecture docs, deployment runbook, and CI guards to make explicit `/v1/triggers` the normal staging entrypoint.",
+        "Backed up and reset live `branch-heads.json` to `{}` because autonomous polling is no longer supported."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "The branch rule mode value is still named `auto_deploy` internally; it now means a branch rule deploy action after an explicit trigger, not autonomous branch polling. This naming can be cleaned in a later schema migration if desired."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented and deployed the manual-trigger CI/CD cutover for Release Controller.",
+      "ticket_id": "T000",
+      "verification": [
+        "`PYTHONPATH=novaic-release-controller python3 -m pytest -q novaic-release-controller/tests` -> 52 passed.",
+        "`python3 -m pytest -q scripts/ci/test_release_controller_ci.py` -> 9 passed.",
+        "`python3 scripts/ci/lint_immutable_image_workflows.py` -> OK.",
+        "After push to `main`, live `/v1/status` stayed `polling.enabled=false`, `polling.running=false`; no automatic run was created for commit `53a901b5f0c64586b0fe9b39bc086c24afac4371`.",
+        "Live `/v1/polls/once` without `dry_run` returns HTTP 400.",
+        "Live `/v1/polls/once` with `dry_run=true` plans a diagnostic run but leaves `branch_heads={}`.",
+        "Live `/v1/triggers` dry-run for `main@53a901b5f0c64586b0fe9b39bc086c24afac4371` returned `trigger=manual`, `namespace=staging`, `succeeded=true`.",
+        "Live compose status shows the Release Controller container healthy on the new immutable image digest."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Live `/v1/status` reports polling disabled and not running.",
+        "Repository docs state staging backend/factory CI/CD starts from explicit `/v1/triggers`, not branch polling.",
+        "Sample config keeps `polling_enabled=false`.",
+        "CI guard tests cover the manual-trigger release contract.",
+        "Focused Release Controller tests pass."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded operational/docs/guard change with direct live status verification and focused tests.",
+      "created_at": "2026-05-25T07:34:54+00:00",
+      "id": "T000",
+      "problem_definition": "The Release Controller is the centralized backend/factory CI/CD service, but the live service still has autonomous branch polling enabled. In an agent-driven workflow, a push should not implicitly start staging deployment; the release action should be explicit and auditable through the controller API.",
+      "problem_id": "P000",
+      "proposed_solution": "Patch the live API-host Release Controller config to disable autonomous polling, restart the service, update architecture/runbook docs to make `/v1/triggers` the normal staging entrypoint, and add repository guards that reject docs/config drifting back to autonomous polling as the normal backend/factory path.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make Release Controller CI/CD explicitly triggered",
+      "updated_at": "2026-05-25T07:53:39+00:00",
+      "verification_plan": "Use the live status API before and after restart, run focused pytest guards/unit tests, commit and push the doc/guard changes, then verify that the push does not create a new automatic release run."
+    }
+  },
+  "updated_at": "2026-05-25T07:54:28+00:00"
+}
