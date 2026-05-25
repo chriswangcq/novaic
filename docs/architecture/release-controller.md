@@ -44,7 +44,7 @@ As of 2026-05-25, the release-controller is deployed on the API host as Docker C
 
 ```text
 container: novaic-release-controller-release_controller-1
-image: 127.0.0.1:5000/novaic/release-controller@sha256:2b2ebbbd46a06836acbe7bee1ff49123d155130e06b8fee8cc22101eba1c9a63
+image: 127.0.0.1:5000/novaic/release-controller@sha256:24add7d05aa1e49142df461b15101ae53fdc2235ecaa99c5ae7ec191014d11c6
 bind: 127.0.0.1:19880 -> 19880/tcp
 config: /opt/novaic/release-controller/config.json
 state: /opt/novaic/release-controller/state
