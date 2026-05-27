@@ -1,0 +1,889 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P005/checks/C000.md",
+      "created_at": "2026-05-27T00:31:36+00:00",
+      "criteria_map": [
+        "Config paths and values identified: satisfied.",
+        "Prod promotion automatic/manual policy identified: satisfied, prod is API promotion-only.",
+        "Dry-run/guardrails identified: satisfied, `dry_run` only when explicit; polling only diagnostic dry-run; deploy scripts guarded by controller env."
+      ],
+      "evidence": [
+        "`docs/architecture/release-controller.md` documents local API `127.0.0.1:19880`, polling disabled, explicit `/v1/triggers`, and prod promotion-only policy.",
+        "`docs/runbooks/deploy.md` says Release Controller is the only backend/Factory release entry and direct backend image deploy entries fail outside controller identity.",
+        "`config.sample.json` defines `main -> staging`, health URLs, registry image names, quality gates, and verify commands.",
+        "`service.py` exposes `/v1/triggers`, `/v1/promotions/prod`, `/v1/runs`, `/v1/status`; `planner.py` rejects branch releases to prod and plans deploy steps."
+      ],
+      "execution_map": [
+        "T002 executed read-only local contract discovery.",
+        "R000 records the local contract and gaps delegated to P006."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Live host config may differ from sample config; P006 will probe the actual controller."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Cross-checked docs against code and sample config so this is not just runbook prose."
+      ],
+      "summary": "P005 is solved by R000. Local Release Controller contract is clear enough to proceed to live probing and later trigger: `main` branch releases to `staging` through `/v1/triggers`, prod is promotion-only, and direct deploy scripts are controller internals."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P006/checks/C001.md",
+      "created_at": "2026-05-27T00:34:01+00:00",
+      "criteria_map": [
+        "Reachable base URL discovered: satisfied, public read-only `/cicd` and host-local write base via SSH.",
+        "Status/runs captured: satisfied, current staging/prod pointers and recent runs recorded.",
+        "Current latest run/pointers known before trigger: satisfied."
+      ],
+      "evidence": [
+        "Public read-only `/cicd/v1/status`, `/cicd/v1/rules`, and `/cicd/v1/runs` are reachable.",
+        "API-host local `/health` returned healthy through SSH.",
+        "Live config confirms branch rules, quality gates, verify commands, health URLs, and polling disabled.",
+        "Docker shows the release-controller container is healthy and bound to `127.0.0.1:19880`."
+      ],
+      "execution_map": [
+        "T003 executed live read-only probing and host-local health/config checks.",
+        "No release-triggering side effects were performed."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P006",
+      "residual_risk": [
+        "A future trigger can still fail in build/deploy stages; P006 only proves the controller is currently reachable and configured."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Checked both public ingress and host-local API path to distinguish dashboard access from write/control access."
+      ],
+      "summary": "P006 is solved by R001. The live controller is reachable, healthy, and has known current release pointers. Later deployment can use host-local `POST /v1/triggers` via SSH."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C002.md",
+      "created_at": "2026-05-27T00:34:30+00:00",
+      "criteria_map": [
+        "Controller config/API and branch policy known: satisfied.",
+        "Controller reachable and current status/runs reported: satisfied.",
+        "Direct deploy scripts confirmed as controller internals: satisfied by docs and planner/deploy contract.",
+        "Exact trigger commands/URLs available: satisfied, use host-local `/v1/triggers` via SSH for `main` + pushed commit."
+      ],
+      "evidence": [
+        "P005/C000 identifies API, branch rules, prod promotion policy, deploy steps, quality gates, and health URLs from docs/source/config.",
+        "P006/C001 proves live controller health, public read-only status/rules/runs, host-local write base, and current staging/prod pointers."
+      ],
+      "execution_map": [
+        "T001 split P001 into local contract inspection and live probing.",
+        "Both children closed with success checks before R002."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Build/deploy may still fail after code push; that is handled by later deployment phases."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Verified both code/docs and live controller behavior rather than trusting one source."
+      ],
+      "summary": "P001 is solved by R002. The controller contract and live status are known, including exact trigger path and current release baseline."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P007/checks/C003.md",
+      "created_at": "2026-05-27T00:37:17+00:00",
+      "criteria_map": [
+        "Factory focused tests pass: satisfied.",
+        "Runtime focused tests pass: satisfied.",
+        "App focused tests pass: satisfied.",
+        "Git status captured before commit: satisfied."
+      ],
+      "evidence": [
+        "Factory: 17 passed.",
+        "Runtime: 15 passed.",
+        "App: 29 passed across 4 files.",
+        "Git status snapshots identify intended modified/untracked files and unrelated root `CLAUDE.md`."
+      ],
+      "execution_map": [
+        "T005 ran fixed test commands and status capture.",
+        "R003 records outputs and known staging caveat."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P007",
+      "residual_risk": [
+        "Release Controller will still run its own quality gates after push."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Verification covers server-relevant repos and App source changes before pushing."
+      ],
+      "summary": "P007 is solved by R003. Fresh focused tests passed in all touched repos and dirty files are known for explicit staging."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P008/checks/C004.md",
+      "created_at": "2026-05-27T00:39:55+00:00",
+      "criteria_map": [
+        "Factory commit exists on origin/main: satisfied.",
+        "Runtime commit exists on origin/main: satisfied.",
+        "App commit exists on origin/main: satisfied.",
+        "Commit SHAs and push results recorded: satisfied."
+      ],
+      "evidence": [
+        "Factory pushed to `origin/main`: `d846b1d9bba721aa126af456cb9f7518398a8779`.",
+        "Runtime pushed to `origin/main`: `d9a7b3d8dc85f72d25aae0d176e20035f51315c6`.",
+        "App pushed to `origin/main`: `5cbfdf719cea93b8568f83aa235fd3a7caea1ee5`.",
+        "Post-push `git status --short --branch` in each touched subrepo shows `main...origin/main` and no dirty files."
+      ],
+      "execution_map": [
+        "T006 staged explicit files in each subrepo, committed, pushed, and captured SHAs."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P008",
+      "residual_risk": [
+        "Root must still commit the submodule pointers before Release Controller can deploy these SHAs."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Verified clean status after push, not just command success output."
+      ],
+      "summary": "P008 is solved by R004. All touched subrepos are committed, pushed, and clean."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 81,
+    "problem": 10,
+    "result": 5,
+    "ticket": 8
+  },
+  "created_at": "2026-05-27T00:28:39+00:00",
+  "ledger_id": "L20260527-082839",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-27T00:28:39+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "The reasoning streaming changes are implemented locally across `novaic-llm-factory`, `novaic-agent-runtime`, and `novaic-app`, but they are not yet published. The user wants the complete CI/CD deployment flow, using Release Controller rather than manual deployment scripts, until publication succeeds; at minimum the server-side release must be deployed and health-verified.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "Construction changes are committed in all touched subrepos and the root repo records the updated submodule pointers and ledger state.",
+        "Code is pushed to the canonical remote branch used by the Release Controller.",
+        "Release Controller is triggered through its supported API/control plane, not by direct manual deployment script execution.",
+        "The server-side deployment reaches a successful published state in at least staging, and prod if the configured CI/CD policy supports immediate promotion for this request.",
+        "Server-side health/smoke checks pass after deployment.",
+        "Any failures are diagnosed, fixed or retried through the controller, and recorded with evidence."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Deploy reasoning streaming through Release Controller CI/CD",
+      "updated_at": "2026-05-27T00:28:39+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-27T00:29:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Before deploying, the exact Release Controller API/config, branch policy, namespaces, health URLs, and current service status must be known so the release is triggered correctly and verified against the right endpoints.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P005",
+        "P006"
+      ],
+      "success_criteria": [
+        "Identify the controller config file, HTTP endpoint/base URL, branch trigger policy, namespace target, and health/smoke URLs.",
+        "Confirm the controller is reachable and report current status/runs.",
+        "Confirm direct deploy scripts are controller internals rather than the deployment path.",
+        "Produce exact commands/URLs to use for the release trigger."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Discover Release Controller deployment contract and current status",
+      "updated_at": "2026-05-27T00:34:30+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-27T00:29:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The implemented changes are local and span subrepos plus root ledger/submodule pointers. CI/CD cannot publish the change until the relevant commits are created and pushed to the canonical remote branch.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [
+        "P007",
+        "P008",
+        "P009"
+      ],
+      "success_criteria": [
+        "Touched subrepos have focused tests passing immediately before commit or already cited from the current construction.",
+        "`novaic-llm-factory`, `novaic-agent-runtime`, and `novaic-app` changes are committed and pushed.",
+        "Root repo records updated submodule pointers and deployment ledger state in a commit and pushes to the canonical branch.",
+        "Unrelated files such as `CLAUDE.md` are not accidentally included."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Commit and push deployable source state",
+      "updated_at": "2026-05-27T00:29:34+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-27T00:29:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "After push, Release Controller must build immutable images and deploy server-side services through its control plane. The run must be observed until terminal success or a concrete failure is diagnosed and retried through the controller.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Trigger uses Release Controller API/control plane for the pushed commit/branch.",
+        "Run ID and commit SHA are recorded.",
+        "Run reaches a terminal successful state for server-side deployment, or a failure is repaired/retried through controller.",
+        "Build/deploy/smoke plan execution result is persisted in the run record."
+      ],
+      "ticket_ids": [],
+      "title": "Trigger Release Controller server deployment and observe run completion",
+      "updated_at": "2026-05-27T00:29:34+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-27T00:29:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "A controller success is not enough without confirming the server endpoints are live after deployment. The deployment needs a final health/smoke pass and a concise evidence package.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "API/backend server health or smoke endpoints pass for the deployed namespace.",
+        "Registry/service state is consistent enough to prove server-side services came up.",
+        "Final evidence includes commit SHAs, controller run ID, namespace, health URLs, and residual risks.",
+        "Ledger validates/renders complete after closure."
+      ],
+      "ticket_ids": [],
+      "title": "Verify published server health and close deployment evidence",
+      "updated_at": "2026-05-27T00:29:34+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P001/children/P005/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-27T00:30:18+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T001",
+      "created_from_ticket_mode": "split",
+      "description": "The deployment must use the controller correctly, so local docs/config/source must reveal the expected trigger API, namespaces, deploy scripts, health checks, and branch policy.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P001/children/P005",
+      "parent_id": "P001",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify config file paths and important values for controller URL/port, branch, namespace, health URLs, and deploy script commands.",
+        "Identify whether prod promotion is automatic or manual/promotion API only.",
+        "Identify any required dry_run settings or guardrails that affect triggering."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Inspect local Release Controller contract",
+      "updated_at": "2026-05-27T00:31:36+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P001/children/P006/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-27T00:30:18+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T001",
+      "created_from_ticket_mode": "split",
+      "description": "Local config is not enough; the controller must be reachable and its current status/runs must be known before triggering a deployment.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P001/children/P006",
+      "parent_id": "P001",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Discover a reachable controller base URL from local config, process list, compose, nginx, or docs.",
+        "Call status/runs/read endpoints successfully or record the exact blocker.",
+        "Capture current latest run/pointers before triggering new release."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Probe live Release Controller status and runs",
+      "updated_at": "2026-05-27T00:34:01+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P002/children/P007/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-27T00:35:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T004",
+      "created_from_ticket_mode": "split",
+      "description": "Before committing deployable source, touched code should have fresh focused verification evidence so the pushed commit is not stale relative to local tests.",
+      "followup_ids": [],
+      "id": "P007",
+      "package_path": "problems/P000/children/P002/children/P007",
+      "parent_id": "P002",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Focused tests pass for `novaic-llm-factory` streaming route/provider behavior.",
+        "Focused tests pass for `novaic-agent-runtime` stream parsing, handler, and projection behavior.",
+        "Focused tests pass for `novaic-app` timeline/contract guard behavior or App is explicitly marked non-server-release-only.",
+        "Git status for touched repos is captured before commit."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Run final pre-push focused verification",
+      "updated_at": "2026-05-27T00:37:17+00:00"
+    },
+    "P008": {
+      "body_path": "problems/P000/children/P002/children/P008/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-27T00:35:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T004",
+      "created_from_ticket_mode": "split",
+      "description": "Submodule repositories must be committed and pushed before the root repository can point at their deployable SHAs.",
+      "followup_ids": [],
+      "id": "P008",
+      "package_path": "problems/P000/children/P002/children/P008",
+      "parent_id": "P002",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`novaic-llm-factory` commit exists on `origin/main`.",
+        "`novaic-agent-runtime` commit exists on `origin/main`.",
+        "`novaic-app` commit exists on its remote branch if source changes are retained.",
+        "Commit SHAs and push results are recorded."
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "Commit and push touched subrepos",
+      "updated_at": "2026-05-27T00:39:55+00:00"
+    },
+    "P009": {
+      "body_path": "problems/P000/children/P002/children/P009/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-27T00:35:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T004",
+      "created_from_ticket_mode": "split",
+      "description": "The Release Controller reads the root repo commit, so root must record updated submodule pointers for server-relevant repos and the deployment ledger state.",
+      "followup_ids": [],
+      "id": "P009",
+      "package_path": "problems/P000/children/P002/children/P009",
+      "parent_id": "P002",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "doing",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Root commit includes updated submodule pointers for pushed subrepo commits and `.complex-problems` deployment/reasoning ledgers.",
+        "Unrelated `CLAUDE.md` is not staged.",
+        "Root `origin/main` contains the commit to trigger.",
+        "Final root commit SHA is recorded for Release Controller trigger."
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "Commit and push root submodule pointers and deployment ledger",
+      "updated_at": "2026-05-27T00:41:12+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`docs/architecture/release-controller.md`",
+        "`docs/runbooks/deploy.md`",
+        "`novaic-release-controller/config.sample.json`",
+        "`novaic-release-controller/release_controller/service.py`",
+        "`novaic-release-controller/release_controller/planner.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P005/results/R000.md",
+      "created_at": "2026-05-27T00:31:22+00:00",
+      "done": [
+        "Identified controller local API: `http://127.0.0.1:19880` on the API host.",
+        "Identified public read-only dashboard: `https://api.gradievo.com/cicd/dashboard`; write APIs are not public through Nginx.",
+        "Identified staging trigger: `POST /v1/triggers` body `{\"branch\":\"main\",\"commit\":\"<sha>\"}`; omit `dry_run` for real release.",
+        "Identified prod promotion: `POST /v1/promotions/prod` with immutable `api_image`, `factory_image`, `commit`, and optional `promoted_from`.",
+        "Identified branch rules in `novaic-release-controller/config.sample.json`: `main -> auto_deploy staging`, `preview/* -> auto_deploy preview-{slug}`, `release/* -> candidate_only`.",
+        "Identified deploy commands planned by controller: build/push API and Factory images, then `deploy services-image <namespace> <api-image>` and `deploy factory-image <namespace> <factory-image>` with Release Controller env identity.",
+        "Identified health URLs in sample config: staging `https://staging-api.gradievo.com/api/health`, prod `https://api.gradievo.com/health`."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "This was local contract inspection only; live controller reachability and actual configured state are handled by P006."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Read local release-controller architecture, deploy runbook, source, and sample config. The deployment contract is explicit: branch releases use `/v1/triggers` with `branch` and `commit`, `main` maps to `staging`, prod is promotion-only, and `deploy services-image` / `deploy factory-image` are controller internal executor steps.",
+      "ticket_id": "T002",
+      "verification": [
+        "Read `docs/architecture/release-controller.md` and `docs/runbooks/deploy.md`.",
+        "Read `novaic-release-controller/release_controller/service.py`, `planner.py`, `models.py`, `config.py`.",
+        "Read `novaic-release-controller/config.sample.json` and `docker/release-controller/compose.yaml`."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "Live base for read: `https://api.gradievo.com/cicd`.",
+        "Live base for write via API host: `http://127.0.0.1:19880` from `root@api.gradievo.com`."
+      ],
+      "body_path": "problems/P000/children/P001/children/P006/results/R001.md",
+      "created_at": "2026-05-27T00:33:43+00:00",
+      "done": [
+        "Public read-only status/rules/runs endpoints work at `https://api.gradievo.com/cicd/v1/...`.",
+        "Host-local health works through SSH: `curl http://127.0.0.1:19880/health` returned `{\"status\":\"healthy\"}`.",
+        "Live controller container is healthy: `novaic-release-controller-release_controller-1`, image `127.0.0.1:5000/novaic/release-controller`, port `127.0.0.1:19880->19880`.",
+        "Live config confirms repo path `/opt/novaic/release-controller/worktree`, registry `127.0.0.1:5000/novaic/{api-backend,llm-factory}`, `main -> staging`, and `polling_enabled=false`.",
+        "Current releases before deployment:",
+        "staging: commit `561195e3bf429152879c6100e585adbe0a7b9577`, run `20260525-094038-main-561195e3bf42`.",
+        "prod: commit `561195e3bf429152879c6100e585adbe0a7b9577`, run `20260525-094505-promote-prod-staging-561195e3bf42`, promoted from staging."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "No write trigger was sent in this discovery leaf. Later deployment must use SSH/host-local `POST /v1/triggers` for write API access."
+      ],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "The live Release Controller is reachable and healthy. Public read-only `/cicd` APIs work, and host-local API is available through SSH on the API host. Current staging and prod both point to commit `561195e3bf429152879c6100e585adbe0a7b9577` before this deployment.",
+      "ticket_id": "T003",
+      "verification": [
+        "`curl -fsS https://api.gradievo.com/cicd/v1/status` succeeded.",
+        "`curl -fsS https://api.gradievo.com/cicd/v1/rules` showed `main -> staging`, `preview/* -> preview-{slug}`, `release/* -> candidate_only`.",
+        "`ssh root@api.gradievo.com 'curl -fsS http://127.0.0.1:19880/health'` succeeded.",
+        "`ssh root@api.gradievo.com 'cat /opt/novaic/release-controller/config.json'` was summarized for non-secret config.",
+        "`ssh root@api.gradievo.com 'docker ps --filter name=novaic-release-controller ...'` showed the controller container healthy."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "R000 / C000",
+        "R001 / C001"
+      ],
+      "body_path": "problems/P000/children/P001/results/R002.md",
+      "created_at": "2026-05-27T00:34:17+00:00",
+      "done": [
+        "P005/R000/C000: local contract inspected from docs, config sample, and source.",
+        "P006/R001/C001: live controller status, rules, config, container health, and current release pointers captured.",
+        "Exact write trigger path identified: SSH to API host and `POST http://127.0.0.1:19880/v1/triggers` with `branch=main`, `commit=<pushed-root-sha>`."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "No code was committed or deployed in this discovery phase."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Completed discovery for the controller deployment contract and live state. Release Controller is the correct path; `main` releases to `staging` through `/v1/triggers`, prod is promotion-only, and the live controller is healthy with staging/prod currently at commit `561195e3bf429152879c6100e585adbe0a7b9577`.",
+      "ticket_id": "T001",
+      "verification": [
+        "Public read-only status/rules/runs endpoints are reachable at `https://api.gradievo.com/cicd/v1/...`.",
+        "Host-local health is reachable via `root@api.gradievo.com`.",
+        "Controller container reports healthy."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "Test output summaries and git status snapshots."
+      ],
+      "body_path": "problems/P000/children/P002/children/P007/results/R003.md",
+      "created_at": "2026-05-27T00:36:58+00:00",
+      "done": [
+        "Ran Factory focused streaming tests.",
+        "Ran Runtime focused streaming/projection tests.",
+        "Ran App focused timeline/contract tests.",
+        "Captured git status for root and touched subrepos before committing."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "Root `CLAUDE.md` is untracked and unrelated; it must not be staged in later commits."
+      ],
+      "problem_id": "P007",
+      "root_id": "P000",
+      "summary": "All focused pre-push tests passed across Factory, Runtime, and App. Dirty status is known and limited to intended construction files plus unrelated root `CLAUDE.md`.",
+      "ticket_id": "T005",
+      "verification": [
+        "`cd novaic-llm-factory && python -m pytest tests/test_chat_routes.py -q` -> 17 passed.",
+        "`cd novaic-agent-runtime && python -m pytest tests/unit/task_queue/test_factory_client_streaming.py tests/unit/task_queue/test_llm_handler_streaming.py tests/test_pr193_activity_projection.py -q` -> 15 passed.",
+        "`cd novaic-app && npm run test:unit -- src/data/entities/entangledEntityContracts.test.ts src/components/Visual/ActivityTimeline.guard.test.ts src/components/Visual/ActivityTimeline.test.tsx src/components/hooks/useActivityTimeline.test.ts` -> 4 files, 29 tests passed.",
+        "Git status shows intended dirty files in `novaic-llm-factory`, `novaic-agent-runtime`, `novaic-app`, and root `.complex-problems` plus submodule pointer changes."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "Factory SHA: `d846b1d9bba721aa126af456cb9f7518398a8779`",
+        "Runtime SHA: `d9a7b3d8dc85f72d25aae0d176e20035f51315c6`",
+        "App SHA: `5cbfdf719cea93b8568f83aa235fd3a7caea1ee5`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P008/results/R004.md",
+      "created_at": "2026-05-27T00:39:39+00:00",
+      "done": [
+        "`novaic-llm-factory`: committed and pushed `d846b1d9bba721aa126af456cb9f7518398a8779` (`Add streaming chat completion support`).",
+        "`novaic-agent-runtime`: committed and pushed `d9a7b3d8dc85f72d25aae0d176e20035f51315c6` (`Stream reasoning through factory client`).",
+        "`novaic-app`: committed and pushed `5cbfdf719cea93b8568f83aa235fd3a7caea1ee5` (`Render streaming reasoning activity updates`)."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "Root repo has not yet committed the updated submodule pointers or ledger state; that is P009."
+      ],
+      "problem_id": "P008",
+      "root_id": "P000",
+      "summary": "Committed and pushed all touched subrepos to their `origin/main` branches. Server-relevant subrepos now have pushed SHAs available for the root submodule pointer update.",
+      "ticket_id": "T006",
+      "verification": [
+        "Each subrepo push completed successfully to its GitHub remote.",
+        "Each touched subrepo reports `## main...origin/main` with no dirty files after push.",
+        "Root now sees modified submodule pointers for `novaic-llm-factory`, `novaic-agent-runtime`, and `novaic-app`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The controller trigger mechanism, namespaces, branch policy, health URLs, and current runtime status are known before triggering release.",
+        "Touched code is committed and pushed in subrepos, then root submodule pointers and ledger are committed/pushed.",
+        "Release Controller receives an explicit trigger for the pushed commit/branch.",
+        "Controller run reaches success for server-side services, with run record/plan execution evidence.",
+        "Public or internal health/smoke endpoints confirm the deployed server is serving after release.",
+        "Failures are retried or repaired through the same controller path, not via direct manual deployment scripts."
+      ],
+      "assumptions": [
+        "`main` is the canonical branch for release-controller CI/CD unless the controller config says otherwise.",
+        "Server-side means API backend/Runtime/Factory stack; App desktop release is not required for the minimum success condition."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Deployment is a broad multi-phase CI/CD operation with independent discovery, commit/push, controller trigger, and live verification phases.",
+      "created_at": "2026-05-27T00:28:59+00:00",
+      "id": "T000",
+      "problem_definition": "Local reasoning streaming changes exist across subrepos and must be shipped through the centralized Release Controller CI/CD flow. The deployment must not bypass the controller by directly running manual deploy scripts.",
+      "problem_id": "P000",
+      "proposed_solution": "Split deployment into sequential, verifiable phases: discover the exact Release Controller configuration/API; prepare and push commits/submodule pointers; trigger the controller release; observe build/deploy/smoke status; and close with live service health verification and cleanup of any deployment-specific residue.",
+      "result_ids": [],
+      "risks": [
+        "Controller may reject prod automation by policy; if so, finish staging server publication and use promotion only if policy allows or the request explicitly authorizes it.",
+        "Remote host credentials or controller URL may live in local config; discover from existing repo/deploy docs rather than guessing.",
+        "Unrelated untracked files should not be swept into deployment commits."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Release Controller deployment execution plan",
+      "updated_at": "2026-05-27T00:29:34+00:00",
+      "verification_plan": "Use Release Controller docs/config/API plus git status, focused tests, controller run records, and HTTP health checks. Record exact run IDs, commit SHAs, URLs, and command outcomes."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Local docs/config identify the intended trigger endpoint, branch/namespace policy, deploy steps, and health URLs.",
+        "Live controller status/runs are reachable or the blocker is explicit.",
+        "The final discovery result gives exact trigger parameters for later deployment."
+      ],
+      "assumptions": [
+        "Release Controller code/config under `novaic-release-controller`, `docker/release-controller`, and `docs/*` is authoritative unless live status contradicts it."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "split",
+      "classification_reason": "Per the user's split-before-third-level rule, P001 is a second-level discovery phase and should split into local contract inspection and live controller probing.",
+      "created_at": "2026-05-27T00:29:57+00:00",
+      "id": "T001",
+      "problem_definition": "Release must be driven through the centralized Release Controller. We need exact local configuration and live controller status before changing remote state.",
+      "problem_id": "P001",
+      "proposed_solution": "Split discovery into local contract inspection and live controller probing. Local inspection should read docs/config/scripts to identify endpoint, trigger API, branch rules, namespaces, and health checks. Live probing should call the controller read APIs to confirm reachability and current runs.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Config may use host-only URLs or remote paths; avoid guessing and use the checked-in controller config or service unit where possible."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Discover controller contract through docs/config and live status",
+      "updated_at": "2026-05-27T00:34:17+00:00",
+      "verification_plan": "Use `sed`, `rg`, and HTTP calls against configured controller endpoints. Record file paths and API responses in child results."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Local controller contract is summarized with file evidence.",
+        "Trigger and promotion API shapes are identified.",
+        "Namespace/branch/health/deploy-script values are identified or marked absent."
+      ],
+      "assumptions": [
+        "Checked-in docs/source are trustworthy for controller behavior."
+      ],
+      "body_path": "problems/P000/children/P001/children/P005/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "P005 is a third-level leaf with bounded read-only local contract inspection and direct evidence.",
+      "created_at": "2026-05-27T00:30:35+00:00",
+      "id": "T002",
+      "problem_definition": "Deployment trigger parameters need to be derived from checked-in docs/config/source.",
+      "problem_id": "P005",
+      "proposed_solution": "Read Release Controller docs, compose/config files, service source, planner, and deployment runbooks to extract the trigger API, namespace policy, deploy commands, health URLs, dry-run behavior, and prod promotion policy.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some secrets/host URLs may be configured only on the server, so local discovery may need the live probe child for final endpoint confirmation."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Read local Release Controller docs and config",
+      "updated_at": "2026-05-27T00:31:22+00:00",
+      "verification_plan": "Use source reads and `rg` against the release-controller and deploy docs."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Live status, rules, and recent runs are captured from the actual controller.",
+        "Current staging/prod pointers are known before triggering.",
+        "Any reachability issue is explicit with command output."
+      ],
+      "assumptions": [
+        "`root@api.gradievo.com` SSH is configured if public read-only routes are insufficient."
+      ],
+      "body_path": "problems/P000/children/P001/children/P006/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "P006 is a third-level leaf with bounded live read-only probing and clear evidence.",
+      "created_at": "2026-05-27T00:32:01+00:00",
+      "id": "T003",
+      "problem_definition": "The deployment needs the live controller base URL/status/runs before triggering release state changes.",
+      "problem_id": "P006",
+      "proposed_solution": "Try public read-only `/cicd` APIs first, then SSH/API-host local curl if needed. Capture status, rules, recent runs, current releases, and controller health.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Public read-only route may not expose `/health`; use the host-local API through SSH for write-trigger confirmation."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Probe live controller read APIs",
+      "updated_at": "2026-05-27T00:33:43+00:00",
+      "verification_plan": "Use `curl -fsS` and, if needed, `ssh root@api.gradievo.com 'curl -fsS http://127.0.0.1:19880/...'`."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Final focused tests or already-current test evidence is available before commit.",
+        "Server-relevant subrepos (`novaic-llm-factory`, `novaic-agent-runtime`) are committed and pushed.",
+        "App source changes are committed and pushed as source hygiene, even though server release only consumes backend/factory/runtime submodules.",
+        "Root repo records updated submodule pointers plus deployment/reasoning-streaming ledgers and pushes to `origin/main`.",
+        "`CLAUDE.md` remains untracked and not included."
+      ],
+      "assumptions": [
+        "Current branch `main` is the intended branch in root and touched subrepos."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T004.md",
+      "classification": "split",
+      "classification_reason": "P002 is a second-level commit/push phase with independent verification, subrepo commit, and root pointer commit slices.",
+      "created_at": "2026-05-27T00:34:53+00:00",
+      "id": "T004",
+      "problem_definition": "The release-controller can only deploy pushed commits. The local implementation spans subrepos and root ledger/submodule state, so commits must be created in the right order and pushed cleanly.",
+      "problem_id": "P002",
+      "proposed_solution": "Split into final pre-push verification/status capture, subrepo commits/pushes, and root submodule/ledger commit/push. Exclude unrelated untracked files.",
+      "result_ids": [],
+      "risks": [
+        "Subrepo push ordering matters; root pointer must point at pushed subrepo commits.",
+        "Root may have unrelated dirty files; stage explicitly."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Commit and push source for Release Controller deployment",
+      "updated_at": "2026-05-27T00:35:19+00:00",
+      "verification_plan": "Use git status/log/push output and focused test commands. Verify root commit SHA after push."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "Factory focused tests pass.",
+        "Runtime focused tests pass.",
+        "App focused tests pass.",
+        "Dirty file list is known for explicit staging."
+      ],
+      "assumptions": [
+        "These focused tests are sufficient for local pre-push; Release Controller quality gates are authoritative CI after push."
+      ],
+      "body_path": "problems/P000/children/P002/children/P007/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "P007 is a third-level verification leaf with fixed test commands and explicit pass/fail evidence.",
+      "created_at": "2026-05-27T00:35:35+00:00",
+      "id": "T005",
+      "problem_definition": "The commit/push stage needs current test evidence for the touched paths.",
+      "problem_id": "P007",
+      "proposed_solution": "Run focused tests in Factory, Runtime, and App, plus capture git status summaries before commits.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "A failure here blocks committing until fixed."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Run focused pre-push checks",
+      "updated_at": "2026-05-27T00:36:58+00:00",
+      "verification_plan": "Run the exact focused test commands and `git status --short` in touched repos and root."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "Factory commit pushed to `origin/main`.",
+        "Runtime commit pushed to `origin/main`.",
+        "App commit pushed to `origin/main`.",
+        "No unrelated files are staged."
+      ],
+      "assumptions": [
+        "All touched subrepos are on `main` tracking `origin/main`."
+      ],
+      "body_path": "problems/P000/children/P002/children/P008/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "P008 is a third-level execution leaf with explicit files to stage, recent tests, and direct push verification.",
+      "created_at": "2026-05-27T00:37:37+00:00",
+      "id": "T006",
+      "problem_definition": "Subrepo commits must exist on remotes before root records submodule pointers for CI/CD.",
+      "problem_id": "P008",
+      "proposed_solution": "Explicitly stage construction-owned files in `novaic-llm-factory`, `novaic-agent-runtime`, and `novaic-app`; commit with concise messages; push each `main` branch; record SHAs.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Remote push can fail if branch moved; use non-destructive pull/rebase only if needed and inspect first."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Commit and push touched submodule repositories",
+      "updated_at": "2026-05-27T00:39:39+00:00",
+      "verification_plan": "Use `git status`, `git diff --cached`, `git commit`, `git push`, and `git rev-parse HEAD` in each subrepo."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "Root commit points `novaic-llm-factory` to `d846b1d9bba721aa126af456cb9f7518398a8779`.",
+        "Root commit points `novaic-agent-runtime` to `d9a7b3d8dc85f72d25aae0d176e20035f51315c6`.",
+        "Root commit records the App pointer and complex-problems ledgers/index.",
+        "`CLAUDE.md` is not staged.",
+        "Root commit is pushed to `origin/main`, and SHA is recorded."
+      ],
+      "assumptions": [
+        "Committing ledger state before final deployment closure is acceptable because the release images do not copy root `.complex-problems` into the API backend or Factory images."
+      ],
+      "body_path": "problems/P000/children/P002/children/P009/tickets/T007.md",
+      "classification": "one_go",
+      "classification_reason": "P009 is a third-level bounded git operation with explicit files to stage and a direct push verification.",
+      "created_at": "2026-05-27T00:40:53+00:00",
+      "id": "T007",
+      "problem_definition": "The root repository must point to the pushed subrepo commits before Release Controller can build/deploy them from a root commit.",
+      "problem_id": "P009",
+      "proposed_solution": "Stage only updated submodule pointers and `.complex-problems` ledger/index artifacts, exclude unrelated `CLAUDE.md`, commit to `main`, push to `origin/main`, and record the root commit SHA for the trigger.",
+      "result_ids": [],
+      "risks": [
+        "Additional ledger changes after this commit may remain local; the release trigger should use the pushed root SHA from this step."
+      ],
+      "root_id": "P000",
+      "status": "executing",
+      "title": "Commit root release pointer state",
+      "updated_at": "2026-05-27T00:41:13+00:00",
+      "verification_plan": "Use explicit `git add`, `git diff --cached --stat`, `git diff --cached --submodule=log`, `git status`, `git commit`, `git push`, and `git rev-parse HEAD`."
+    }
+  },
+  "updated_at": "2026-05-27T00:41:13+00:00"
+}

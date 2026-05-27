@@ -1,0 +1,81 @@
+{"at": "2026-05-27T00:28:39+00:00", "id": "E000", "payload": {"ledger_id": "L20260527-082839", "root_id": "P000", "title": "Deploy reasoning streaming through Release Controller CI/CD"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-27T00:28:59+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Release Controller deployment execution plan"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-27T00:28:59+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:29:08+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:29:08+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Deployment is a broad multi-phase CI/CD operation with independent discovery, commit/push, controller trigger, and live verification phases.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-27T00:29:34+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:29:34+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "source": "split", "title": "Discover Release Controller deployment contract and current status"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:29:34+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "source": "split", "title": "Commit and push deployable source state"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:29:34+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "source": "split", "title": "Trigger Release Controller server deployment and observe run completion"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:29:34+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "source": "split", "title": "Verify published server health and close deployment evidence"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:29:57+00:00", "id": "E010", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Discover controller contract through docs/config and live status"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-27T00:29:57+00:00", "id": "E011", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:30:06+00:00", "id": "E012", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:30:06+00:00", "id": "E013", "payload": {"classification": "split", "reason": "Per the user's split-before-third-level rule, P001 is a second-level discovery phase and should split into local contract inspection and live controller probing.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-27T00:30:18+00:00", "id": "E014", "payload": {"from": "classified", "id": "T001", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:30:18+00:00", "id": "E015", "payload": {"parent_id": "P001", "problem_id": "P005", "source": "split", "title": "Inspect local Release Controller contract"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:30:18+00:00", "id": "E016", "payload": {"parent_id": "P001", "problem_id": "P006", "source": "split", "title": "Probe live Release Controller status and runs"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:30:35+00:00", "id": "E017", "payload": {"problem_id": "P005", "ticket_id": "T002", "title": "Read local Release Controller docs and config"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-27T00:30:35+00:00", "id": "E018", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:30:44+00:00", "id": "E019", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:30:44+00:00", "id": "E020", "payload": {"classification": "one_go", "reason": "P005 is a third-level leaf with bounded read-only local contract inspection and direct evidence.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-27T00:30:50+00:00", "id": "E021", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:30:50+00:00", "id": "E022", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:31:22+00:00", "id": "E023", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:31:22+00:00", "id": "E024", "payload": {"result_id": "R000", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-27T00:31:36+00:00", "id": "E025", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:31:36+00:00", "id": "E026", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:31:36+00:00", "id": "E027", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-27T00:32:01+00:00", "id": "E028", "payload": {"problem_id": "P006", "ticket_id": "T003", "title": "Probe live controller read APIs"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-27T00:32:01+00:00", "id": "E029", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:32:14+00:00", "id": "E030", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:32:14+00:00", "id": "E031", "payload": {"classification": "one_go", "reason": "P006 is a third-level leaf with bounded live read-only probing and clear evidence.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-27T00:32:21+00:00", "id": "E032", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:32:21+00:00", "id": "E033", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:33:43+00:00", "id": "E034", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:33:43+00:00", "id": "E035", "payload": {"result_id": "R001", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-27T00:34:01+00:00", "id": "E036", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:34:01+00:00", "id": "E037", "payload": {"from": "checking", "id": "P006", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:34:01+00:00", "id": "E038", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P006", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-27T00:34:17+00:00", "id": "E039", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:34:17+00:00", "id": "E040", "payload": {"from": "splitting", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:34:17+00:00", "id": "E041", "payload": {"result_id": "R002", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-27T00:34:30+00:00", "id": "E042", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:34:30+00:00", "id": "E043", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:34:30+00:00", "id": "E044", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-27T00:34:53+00:00", "id": "E045", "payload": {"problem_id": "P002", "ticket_id": "T004", "title": "Commit and push source for Release Controller deployment"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-27T00:34:53+00:00", "id": "E046", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:35:02+00:00", "id": "E047", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:35:02+00:00", "id": "E048", "payload": {"classification": "split", "reason": "P002 is a second-level commit/push phase with independent verification, subrepo commit, and root pointer commit slices.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-27T00:35:19+00:00", "id": "E049", "payload": {"from": "classified", "id": "T004", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:35:19+00:00", "id": "E050", "payload": {"parent_id": "P002", "problem_id": "P007", "source": "split", "title": "Run final pre-push focused verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:35:19+00:00", "id": "E051", "payload": {"parent_id": "P002", "problem_id": "P008", "source": "split", "title": "Commit and push touched subrepos"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:35:19+00:00", "id": "E052", "payload": {"parent_id": "P002", "problem_id": "P009", "source": "split", "title": "Commit and push root submodule pointers and deployment ledger"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-27T00:35:35+00:00", "id": "E053", "payload": {"problem_id": "P007", "ticket_id": "T005", "title": "Run focused pre-push checks"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-27T00:35:35+00:00", "id": "E054", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:35:45+00:00", "id": "E055", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:35:45+00:00", "id": "E056", "payload": {"classification": "one_go", "reason": "P007 is a third-level verification leaf with fixed test commands and explicit pass/fail evidence.", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-27T00:35:53+00:00", "id": "E057", "payload": {"from": "todo", "id": "P007", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:35:53+00:00", "id": "E058", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:36:58+00:00", "id": "E059", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:36:58+00:00", "id": "E060", "payload": {"result_id": "R003", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-27T00:37:17+00:00", "id": "E061", "payload": {"from": "doing", "id": "P007", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:37:17+00:00", "id": "E062", "payload": {"from": "checking", "id": "P007", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:37:17+00:00", "id": "E063", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P007", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-27T00:37:37+00:00", "id": "E064", "payload": {"problem_id": "P008", "ticket_id": "T006", "title": "Commit and push touched submodule repositories"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-27T00:37:37+00:00", "id": "E065", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:37:46+00:00", "id": "E066", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:37:46+00:00", "id": "E067", "payload": {"classification": "one_go", "reason": "P008 is a third-level execution leaf with explicit files to stage, recent tests, and direct push verification.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-27T00:38:03+00:00", "id": "E068", "payload": {"from": "todo", "id": "P008", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:38:03+00:00", "id": "E069", "payload": {"from": "classified", "id": "T006", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:39:39+00:00", "id": "E070", "payload": {"from": "executing", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:39:39+00:00", "id": "E071", "payload": {"result_id": "R004", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-27T00:39:55+00:00", "id": "E072", "payload": {"from": "doing", "id": "P008", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:39:55+00:00", "id": "E073", "payload": {"from": "checking", "id": "P008", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:39:55+00:00", "id": "E074", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P008", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-27T00:40:53+00:00", "id": "E075", "payload": {"problem_id": "P009", "ticket_id": "T007", "title": "Commit root release pointer state"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-27T00:40:53+00:00", "id": "E076", "payload": {"from": "created", "id": "T007", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:41:04+00:00", "id": "E077", "payload": {"from": "defined", "id": "T007", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-27T00:41:04+00:00", "id": "E078", "payload": {"classification": "one_go", "reason": "P009 is a third-level bounded git operation with explicit files to stage and a direct push verification.", "ticket_id": "T007"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-27T00:41:12+00:00", "id": "E079", "payload": {"from": "todo", "id": "P009", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-27T00:41:13+00:00", "id": "E080", "payload": {"from": "classified", "id": "T007", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}

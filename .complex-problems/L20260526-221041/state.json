@@ -1,0 +1,2016 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P005/checks/C000.md",
+      "created_at": "2026-05-26T14:15:16+00:00",
+      "criteria_map": [
+        "Provider exposes streaming method -> `OpenAIProvider.stream_chat()` added and tested.",
+        "Handles SSE and `[DONE]` -> tests feed `data:` chunks and terminal `[DONE]`.",
+        "Extracts reasoning aliases -> `test_openai_provider_stream_chat_supports_reasoning_aliases`.",
+        "Preserves tool-call deltas -> `test_openai_provider_stream_chat_normalizes_content_reasoning_and_tools`.",
+        "Non-streaming unchanged -> existing provider/route tests passed in the same file."
+      ],
+      "evidence": [
+        "Result `R000` implemented `OpenAIProvider.stream_chat()` in `/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/factory/providers.py`.",
+        "Result `R000` added streaming tests in `/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/tests/test_chat_routes.py`.",
+        "Verification command passed: `cd novaic-llm-factory && python -m pytest tests/test_chat_routes.py -q` -> 15 passed."
+      ],
+      "execution_map": [
+        "Ticket `T002` -> Result `R000`: one bounded provider-layer implementation and focused test run."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Route-level streaming behavior is intentionally not part of this leaf and remains open in P006. No blocker for P005."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: provider sends terminal chunk with usage and no text delta. Covered by normalized terminal event with `finish_reason=stop` and usage metadata.",
+        "Failure mode: provider emits reasoning under a vendor alias. Covered by `reasoning` and `reasoning_delta` alias test in addition to `reasoning_content`.",
+        "Failure mode: non-streaming path regresses due to shared payload code. Existing non-streaming image payload and response conversion tests passed after the refactor."
+      ],
+      "summary": "P005 is solved. The Factory provider layer now has a bounded OpenAI-compatible streaming primitive and focused tests prove the parser preserves reasoning, content, tool-call deltas, terminal finish metadata, and non-streaming behavior."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P006/checks/C001.md",
+      "created_at": "2026-05-26T14:18:13+00:00",
+      "criteria_map": [
+        "`stream=true` returns SSE chunks -> `test_chat_route_returns_normalized_sse_for_streaming`.",
+        "`stream=false` remains existing complete JSON path -> existing route/provider non-stream tests passed in the same suite.",
+        "Unsupported native provider fails clearly -> `test_chat_route_rejects_streaming_for_unsupported_provider`.",
+        "Logs complete for streaming calls -> streaming route test asserts `complete_log` finish reason, tool calls, and token usage."
+      ],
+      "evidence": [
+        "Result `R001` added route streaming code in `/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/factory/routes/chat_routes.py`.",
+        "Result `R001` added route tests in `/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/tests/test_chat_routes.py`.",
+        "Verification command passed: `cd novaic-llm-factory && python -m pytest tests/test_chat_routes.py -q` -> 17 passed."
+      ],
+      "execution_map": [
+        "Ticket `T003` -> Result `R001`: route branch implementation and focused test run."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P006",
+      "residual_risk": [
+        "Runtime has not yet consumed the stream; that is outside P006 and remains open under P002. No blocker for this leaf."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: unsupported provider silently uses blocking path despite `stream=true`. Covered by explicit 400 and `unsupported_stream` log failure.",
+        "Failure mode: stream terminal metadata is lost. Covered by test asserting finish reason and total tokens from terminal chunk are logged.",
+        "Failure mode: non-streaming route regresses. The full focused route test file passed after changes."
+      ],
+      "summary": "P006 is solved. The Factory route now has a streaming response branch with normalized SSE chunks, logging completion/failure, and explicit unsupported-provider rejection while preserving non-streaming behavior."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C002.md",
+      "created_at": "2026-05-26T14:18:49+00:00",
+      "criteria_map": [
+        "Provider-level streaming contract -> P005/R000/C000.",
+        "Streaming chunks preserve reasoning/content/tool-call deltas -> P005/R000/C000.",
+        "Non-streaming compatibility -> P006/R001/C001 and full focused route test file passing.",
+        "Unsupported providers fail clearly -> P006/R001/C001."
+      ],
+      "evidence": [
+        "Result `R002` summarizes child results `R000` and `R001`.",
+        "Child check `C000` proves provider streaming normalization.",
+        "Child check `C001` proves route streaming response/logging and unsupported-provider failure.",
+        "Final focused command for Factory route/provider tests passed: `python -m pytest tests/test_chat_routes.py -q` -> 17 passed."
+      ],
+      "execution_map": [
+        "Ticket `T001` split into P005 and P006.",
+        "P005 ticket `T002` -> result `R000` -> check `C000`.",
+        "P006 ticket `T003` -> result `R001` -> check `C001`.",
+        "Parent ticket `T001` -> result `R002`."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Only OpenAI-compatible streaming is implemented. This is intentional and explicit; Runtime can request streaming only through this supported path and future native providers should get separate tickets."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: provider stream emits reasoning under different aliases. Covered by P005 alias test.",
+        "Failure mode: route returns 200 but unsupported provider never streams. Covered by P006 unsupported-provider 400 test.",
+        "Failure mode: streaming implementation breaks blocking Factory calls. Existing blocking tests pass in the same focused suite."
+      ],
+      "summary": "P001 is solved. LLM Factory now supports a clear OpenAI-compatible streaming provider contract and route response while preserving existing non-streaming behavior."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P007/checks/C003.md",
+      "created_at": "2026-05-26T14:22:26+00:00",
+      "criteria_map": [
+        "Parses `type=delta`, `type=done`, and `type=error` -> tests cover data lines, done termination, and error event raising.",
+        "Aggregates content/reasoning -> `test_factory_client_stream_chat_aggregates_final_response`.",
+        "Aggregates tool-call fragments by index -> same test stitches function arguments into final call.",
+        "Returns complete OpenAI-style response -> same test asserts `choices[0].message`, finish reason, model, id, and usage.",
+        "Blocking `chat()` remains intact -> existing multimodal Factory client test passed in same command."
+      ],
+      "evidence": [
+        "Result `R003` implemented stream parsing and aggregation in `/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/factory_client.py`.",
+        "Result `R003` added tests in `/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/tests/unit/task_queue/test_factory_client_streaming.py`.",
+        "Verification command passed: `python -m pytest tests/unit/task_queue/test_factory_client_streaming.py tests/unit/task_queue/test_factory_client_multimodal.py -q` -> 4 passed."
+      ],
+      "execution_map": [
+        "Ticket `T005` -> Result `R003`: one bounded Runtime client implementation and focused test run."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P007",
+      "residual_risk": [
+        "More exotic provider tool-call delta variants may need future parser extensions. Current Factory normalized contract is covered and sufficient for the active path."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: Factory emits keepalive/blank SSE lines. Covered by `_iter_factory_sse_events` test.",
+        "Failure mode: tool-call arguments arrive in fragments. Covered by argument stitching test.",
+        "Failure mode: Factory reports stream error as an event. Covered by error event test."
+      ],
+      "summary": "P007 is solved. Runtime now has a Factory stream parser and final response aggregator with tests covering SSE parsing, reasoning/content accumulation, tool-call fragment stitching, callback delivery, and error events."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P008/checks/C004.md",
+      "created_at": "2026-05-26T14:24:37+00:00",
+      "criteria_map": [
+        "Deterministic record id -> test asserts stream update and final assistant projection share one `record_id`.",
+        "Running update fields -> test asserts `status=running`, `public_title=正在思考`, and partial text.",
+        "Final update fields -> tests assert final text and completed status semantics.",
+        "Coalescing -> `test_reasoning_stream_projector_coalesces_small_updates_and_emits_final` suppresses a small update and emits final."
+      ],
+      "evidence": [
+        "Result `R004` implemented `project_reasoning_stream_update()` and `ReasoningStreamProjector` in `/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/utils/activity_projection.py`.",
+        "Result `R004` added tests in `/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/tests/test_pr193_activity_projection.py`.",
+        "Verification command passed: `python -m pytest tests/test_pr193_activity_projection.py -q` -> 10 passed."
+      ],
+      "execution_map": [
+        "Ticket `T006` -> Result `R004`: projection helper/coalescer implementation and focused test run."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P008",
+      "residual_risk": [
+        "Coalescing is character-threshold based, not time-threshold based. This is intentionally simple for the active path and can be refined later if production write volume demands it."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: streaming creates duplicate reasoning rows. Covered by stable ID assertions.",
+        "Failure mode: tiny token deltas write every time. Covered by coalescer test suppressing the small intermediate update.",
+        "Failure mode: final text is suppressed because it is below threshold. Covered by final emission assertion."
+      ],
+      "summary": "P008 is solved. Runtime activity projection can now update a stable running reasoning record and finalize it without duplicates, with a coalescer that bounds intermediate writes."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P009/checks/C005.md",
+      "created_at": "2026-05-26T14:28:34+00:00",
+      "criteria_map": [
+        "Handler uses streaming path -> handler test asserts fake `stream_chat` was invoked.",
+        "Reasoning deltas produce running projection -> handler test asserts running record text/status.",
+        "Final response contract preserved -> handler test asserts `success`, `scope_id`, `round_id`, and final response message.",
+        "Stream failure surfaces clearly -> handler failure test returns `success=False` and error text.",
+        "Durable context append remains downstream -> handler only returns final response; context append path unchanged."
+      ],
+      "evidence": [
+        "Result `R005` updated `/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/business/llm.py` and `/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/handlers/llm_handlers.py`.",
+        "Result `R005` added `/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/tests/unit/task_queue/test_llm_handler_streaming.py`.",
+        "Verification command passed: `python -m pytest tests/unit/task_queue/test_llm_handler_streaming.py tests/unit/task_queue/test_factory_client_streaming.py tests/test_pr193_activity_projection.py -q` -> 15 passed."
+      ],
+      "execution_map": [
+        "Ticket `T007` -> Result `R005`: LLMBusiness and handler streaming integration plus focused tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P009",
+      "residual_risk": [
+        "Runtime now expects Factory streaming support. Unsupported provider failures are explicit by design and not hidden behind fallback behavior."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: streaming updates create multiple records. Handler test asserts one stable `record_id` for running/final projection.",
+        "Failure mode: Factory stream exception is swallowed. Failure test asserts the error reaches Runtime result.",
+        "Failure mode: downstream saga sees a partial response. Success test asserts the final response contains the complete assistant message."
+      ],
+      "summary": "P009 is solved. The Runtime LLM handler now uses the streaming Factory path, emits coalesced reasoning projections, finalizes the reasoning row, and preserves the complete success response contract for downstream saga code."
+    },
+    "C006": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C006.md",
+      "created_at": "2026-05-26T14:29:16+00:00",
+      "criteria_map": [
+        "Runtime consumes Factory streaming -> P007/R003/C003.",
+        "Runtime returns complete OpenAI-style response -> P007/R003/C003 and P009/R005/C005.",
+        "Stable same-record reasoning updates -> P008/R004/C004 and P009/R005/C005.",
+        "Projection writes are coalesced/bounded -> P008/R004/C004.",
+        "Durable context append remains final-response only -> P009/R005/C005."
+      ],
+      "evidence": [
+        "Result `R006` summarizes child results `R003`, `R004`, and `R005`.",
+        "Check `C003` proves Runtime SSE parser and final response aggregation.",
+        "Check `C004` proves stable running/final activity projection and coalescing.",
+        "Check `C005` proves handler integration and failure behavior.",
+        "Focused Runtime tests passed across client, projection, and handler paths."
+      ],
+      "execution_map": [
+        "Ticket `T004` split into P007, P008, P009.",
+        "P007 ticket `T005` -> result `R003` -> check `C003`.",
+        "P008 ticket `T006` -> result `R004` -> check `C004`.",
+        "P009 ticket `T007` -> result `R005` -> check `C005`.",
+        "Parent ticket `T004` -> result `R006`."
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Unsupported providers now fail explicitly when Runtime asks for stream. This matches the no-fallback policy, but product/provider rollout should be monitored."
+      ],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: partial stream reaches saga as final answer. Handler test proves final response is returned only after stream completion.",
+        "Failure mode: per-token DB writes. Coalescer threshold suppresses tiny updates and finalizes explicitly.",
+        "Failure mode: tool-call fragments are malformed. Client test stitches fragments by index into final function call arguments.",
+        "Failure mode: stream failure is hidden. Handler failure test returns `success=False`."
+      ],
+      "summary": "P002 is solved. Runtime has a stream-capable Factory client, stable coalesced reasoning projection writes, and handler integration that preserves final response semantics."
+    },
+    "C007": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P010/checks/C007.md",
+      "created_at": "2026-05-26T14:45:13+00:00",
+      "criteria_map": [
+        "Latest record key includes streaming-changing fields: satisfied by `activityTimelineRecordUpdateKey()` using status, public title, truncation, updated timestamp, and text tail/length.",
+        "Running reasoning rows display `正在思考` and detail text: satisfied by the new running reasoning component test.",
+        "Tests cover public title/projection behavior and same-row update key behavior: existing public-title/projection tests remain, and the new update-key test verifies same-row text/status/timestamp changes."
+      ],
+      "evidence": [
+        "`activityTimelineRecordUpdateKey()` includes `status`, `public_title`, `truncated`, `updated_at`, and a text fingerprint in `novaic-app/src/components/Visual/ActivityTimeline.tsx`.",
+        "`ActivityTimeline` uses `latestRecordUpdateKey` in the follow-bottom effect dependency.",
+        "`normalizeActivityRecord()` now preserves `updated_at` into `ActivityTimelineRecord`.",
+        "Focused verification passed: `cd novaic-app && npm run test:unit -- src/components/Visual/ActivityTimeline.test.tsx src/components/hooks/useActivityTimeline.test.ts` -> 2 files, 19 tests."
+      ],
+      "execution_map": [
+        "R007 edited only the App timeline type, normalization hook, component, and focused tests.",
+        "The execution stayed on the existing Entangled activity data path and did not add a parallel transport.",
+        "No runtime child problem was needed because the work stayed small and concrete."
+      ],
+      "followup_problem_id": null,
+      "id": "C007",
+      "problem_id": "P010",
+      "residual_risk": [
+        "Full App suite and browser/Tauri rendering are deferred to the root end-to-end verification problem; this is acceptable because P010's criteria are covered by focused unit/component tests.",
+        "The text fingerprint uses length plus a 48-character tail, which is suitable for append-oriented reasoning streams and avoids carrying full long reasoning text in an effect dependency."
+      ],
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Tested a same `order/kind/title` reasoning row with changed text, changed status, and changed `updated_at`; all produce different update keys.",
+        "Tested a running reasoning row with `status=running` to ensure the public title is `正在思考`, not the completed fallback."
+      ],
+      "summary": "P010 is solved by R007. The App now has an explicit same-record update key for streaming activity row mutations, running reasoning rows render with the intended public title/detail, and focused tests cover the behavior."
+    },
+    "C008": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P011/checks/C008.md",
+      "created_at": "2026-05-26T14:47:40+00:00",
+      "criteria_map": [
+        "Activity record entity/type supports required streaming fields: satisfied by the contract/entity/type/normalizer audit and guard assertions.",
+        "No new App websocket/SSE/EventSource path is introduced for reasoning streaming: satisfied by source search and the new guard test over timeline/hook/chat sources.",
+        "Focused entity contract tests remain green: satisfied by the passing focused test command including `entangledEntityContracts.test.ts`."
+      ],
+      "evidence": [
+        "`agent-activity-records` contract contains `public_title`, `status`, `text`, `created_at`, and `updated_at`.",
+        "`AgentActivityRecordEntity` and `ActivityTimelineRecord` include the required public/update fields, and `normalizeActivityRecord()` preserves `updated_at`.",
+        "`useActivityTimeline()` calls `agentActivityRecordsStore.useStream(params)`.",
+        "Guard tests assert no `new EventSource`, `new WebSocket`, `text/event-stream`, `reasoningStream`, or `streamReasoning` in the timeline/hook/chat path.",
+        "Focused verification passed: 4 App test files, 29 tests."
+      ],
+      "execution_map": [
+        "R008 added only guard/contract test assertions; it did not add a runtime transport.",
+        "The audited App flow remains `ChatPanel` -> `useActivityTimeline` -> `agentActivityRecordsStore.useStream` -> `ActivityTimeline`."
+      ],
+      "followup_problem_id": null,
+      "id": "C008",
+      "problem_id": "P011",
+      "residual_risk": [
+        "Generic App sync infrastructure still contains SSE/WebSocket configuration, but this is pre-existing infrastructure and not a separate reasoning timeline transport. The guard intentionally scopes to the monitor/timeline path to avoid blocking unrelated sync code.",
+        "Full App suite remains deferred to P004, which is acceptable for this contract-focused leaf."
+      ],
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The guard scans the concrete files most likely to accidentally introduce a second frontend stream: `ChatPanel.tsx`, `useActivityTimeline.ts`, and `ActivityTimeline.tsx`.",
+        "The source search also covered broader App source for stream-related tokens and found no reasoning-specific parallel channel."
+      ],
+      "summary": "P011 is solved by R008. The App activity contract contains the fields needed for streaming reasoning updates, the UI path remains based on Entangled `agent-activity-records`, and guard tests now protect against introducing a parallel reasoning stream in this path."
+    },
+    "C009": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C009.md",
+      "created_at": "2026-05-26T14:48:22+00:00",
+      "criteria_map": [
+        "Running reasoning rows render with the existing public title contract: satisfied by P010 test coverage and `activityTimelinePublicTitle()` behavior.",
+        "Same-row text/status updates trigger bottom-follow behavior near the bottom: satisfied by the update key replacing the identity-only key in the follow-bottom effect dependency, with tests for text/status/update timestamp changes.",
+        "App continues to use Entangled cache/query invalidation rather than a new stream channel: satisfied by P011 audit and guard test.",
+        "Tests cover updated timeline projection/render behavior: satisfied by ActivityTimeline component tests, hook normalization tests, entity contract tests, and guard tests."
+      ],
+      "evidence": [
+        "P010/C007 proves same-row updates are fingerprinted through `activityTimelineRecordUpdateKey()` and covered by focused tests.",
+        "P010/C007 proves running reasoning rows render `正在思考`, show the `进行中` marker, and display detail text.",
+        "P011/C008 proves App monitor data remains sourced from `agentActivityRecordsStore.useStream(params)` and guard tests reject a parallel reasoning EventSource/WebSocket/SSE path in the monitor files.",
+        "Focused App test command passed with 4 files and 29 tests."
+      ],
+      "execution_map": [
+        "T008 split P003 into P010 and P011 according to the ledger.",
+        "P010 produced R007/C007 for rendering and same-row update behavior.",
+        "P011 produced R008/C008 for contract/path verification.",
+        "R009 summarizes those closed child results without adding new unverified work."
+      ],
+      "followup_problem_id": null,
+      "id": "C009",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Full App/Tauri visual validation is intentionally deferred to P004, the end-to-end verification and cleanup slice. P003's own UI data-path criteria are covered."
+      ],
+      "result_ids": [
+        "R009"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Same-row stress included no identity change: same `order/kind/title` with changed text, changed status, and changed `updated_at`.",
+        "Transport-path stress scanned likely monitor entry points (`ChatPanel`, `useActivityTimeline`, `ActivityTimeline`) for a new frontend stream path."
+      ],
+      "summary": "P003 is solved by R009, backed by the closed child checks C007 and C008. The App renders running reasoning via the public title contract, responds to same-row streaming mutations with an update key, and remains on the Entangled activity record data path."
+    },
+    "C010": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/children/P012/checks/C010.md",
+      "created_at": "2026-05-26T14:50:41+00:00",
+      "criteria_map": [
+        "`novaic-llm-factory` streaming route/provider tests pass: satisfied by the 17-passed Factory command.",
+        "`novaic-agent-runtime` stream parsing/handler/projection tests pass: satisfied by the 15-passed Runtime command.",
+        "`novaic-app` timeline/hook/contract/guard tests pass: satisfied by the 29-passed App command.",
+        "Failures recorded or fixed: no failures occurred."
+      ],
+      "evidence": [
+        "Factory focused test passed: `tests/test_chat_routes.py` -> 17 passed.",
+        "Runtime focused tests passed: stream parser, handler, and projection tests -> 15 passed.",
+        "App focused tests passed: entity contract, guard, timeline, and hook tests -> 29 passed."
+      ],
+      "execution_map": [
+        "T012 was executed as a third-layer bounded verification leaf.",
+        "R010 records exact command groups and outcomes."
+      ],
+      "followup_problem_id": null,
+      "id": "C010",
+      "problem_id": "P012",
+      "residual_risk": [
+        "Full suites remain out of scope for this leaf; the P004 parent will carry that residual risk explicitly. The touched-path evidence is strong enough for P012."
+      ],
+      "result_ids": [
+        "R010"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The commands include route-level streaming SSE behavior, Runtime aggregation/projector behavior, handler failure/success behavior, and App guard tests against an accidental parallel stream path."
+      ],
+      "summary": "P012 is solved by R010. All three touched repos have current focused test evidence for the reasoning streaming and monitor changes."
+    },
+    "C011": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/children/P013/checks/C011.md",
+      "created_at": "2026-05-26T14:53:32+00:00",
+      "criteria_map": [
+        "No long-term fallback branch for the new reasoning streaming path: satisfied by source review and the tightened no-fallback Runtime test.",
+        "Runtime returns final assistant response while projecting streaming deltas: satisfied by `FactoryStreamAccumulator.response()` and handler review.",
+        "No raw partial reasoning appended to future LLM input history: satisfied by handler review and tests showing `messages` passed to `stream_chat` remain the original prepared messages while deltas are sent to projection only.",
+        "App path has no parallel reasoning transport/stale monitor path: satisfied by App guard and source search.",
+        "Cleanup verified: the only cleanup was a test hardening edit, verified by the Runtime focused test command."
+      ],
+      "evidence": [
+        "Factory route review: `request.stream` uses `provider.stream_chat`; unsupported stream providers fail with `unsupported_stream` and HTTP 400.",
+        "Runtime handler review: `handle_llm_call` passes `stream=True`, sends `prepared.messages` unchanged, and uses `on_delta` only for activity projection.",
+        "Runtime failure test now includes a `chat()` method that raises `AssertionError` if a non-stream fallback is attempted; focused Runtime tests passed with 15 tests.",
+        "App guard review: monitor path asserts `agentActivityRecordsStore.useStream(params)` and rejects `new EventSource`, `new WebSocket`, `text/event-stream`, `reasoningStream`, and `streamReasoning` in the monitor files."
+      ],
+      "execution_map": [
+        "T013 was executed as a bounded third-layer audit/cleanup leaf.",
+        "R011 records source review, grep review, the one test hardening edit, and the verification command."
+      ],
+      "followup_problem_id": null,
+      "id": "C011",
+      "problem_id": "P013",
+      "residual_risk": [
+        "Explicit non-stream APIs remain for existing call sites. This is acceptable because the new `handle_llm_call` path has no fallback to them."
+      ],
+      "result_ids": [
+        "R011"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Simulated stream failure cannot call `chat()` without failing the test.",
+        "Token search covered fallback, stream, reasoning, history, EventSource, WebSocket, and SSE patterns across touched Factory/Runtime/App areas."
+      ],
+      "summary": "P013 is solved by R011. The new reasoning streaming path is cleanly expressed, failure does not fall back to non-streaming chat, App has no parallel reasoning stream path, and partial reasoning deltas are not added to LLM request history."
+    },
+    "C012": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/children/P014/checks/C012.md",
+      "created_at": "2026-05-26T14:55:02+00:00",
+      "criteria_map": [
+        "Ledger status identifies closed child results/checks: satisfied by ledger status and recorded result/check IDs in prior child closures.",
+        "Final status snapshot identifies touched repos, test commands, residual risks, and artifacts: satisfied by R012.",
+        "Working tree impact is inspectable and no temp files are hidden: satisfied by git status/diff summaries and temp-file scan."
+      ],
+      "evidence": [
+        "Active ledger `L20260526-221041` reported `valid=yes`.",
+        "Dashboard renderer completed and wrote `.complex-problems/dashboard.html`.",
+        "Root and subrepo git status/diff summaries were collected.",
+        "Shallow temp-file scan found no construction-owned scratch residue; only unrelated `novaic-business/.DS_Store` was found."
+      ],
+      "execution_map": [
+        "T014 was executed as a third-layer evidence packaging leaf.",
+        "R012 recorded status, dashboard, repo impact, and residual non-construction files."
+      ],
+      "followup_problem_id": null,
+      "id": "C012",
+      "problem_id": "P014",
+      "residual_risk": [
+        "`CLAUDE.md` and `novaic-business/.DS_Store` remain because they appear unrelated to this construction. They should be handled separately if desired."
+      ],
+      "result_ids": [
+        "R012"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Checked both ledger validity and git working tree impact, so closure is not relying only on narrative state.",
+        "Scanned for common scratch file names at shallow workspace depth."
+      ],
+      "summary": "P014 is solved by R012. The closure evidence package is present: ledger is valid, dashboard rendered, repo impact is inspectable, and residual non-construction files are explicitly identified."
+    },
+    "C013": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C013.md",
+      "created_at": "2026-05-26T14:55:35+00:00",
+      "criteria_map": [
+        "Focused tests pass in all touched repos: satisfied by P012/C010 and R013 verification evidence.",
+        "Cross-boundary contracts documented or represented by tests: satisfied by Factory streaming tests, Runtime stream/handler/projection tests, App contract/guard tests, and P013 source review.",
+        "Diff review shows no long-term fallback/stale path/raw partial reasoning in LLM input history: satisfied by P013/C011.",
+        "Ledger contains evidence, stress testing, residual risk, and result IDs: satisfied by P014/C012 plus this check."
+      ],
+      "evidence": [
+        "P012/C010: Factory, Runtime, and App focused tests all passed.",
+        "P013/C011: clean-path review confirmed no stream failure fallback, no App parallel reasoning stream, and no partial reasoning deltas appended into LLM request history.",
+        "P014/C012: ledger is valid, dashboard rendered, and working tree impact is inspectable.",
+        "Runtime no-fallback stress is now encoded in `test_llm_handler_surfaces_stream_failure` via a `chat()` method that raises if called."
+      ],
+      "execution_map": [
+        "T011 split P004 into P012, P013, and P014 per the user's required split-before-third-level rule.",
+        "P012 produced R010/C010 for focused verification.",
+        "P013 produced R011/C011 for contract/residue review and no-fallback hardening.",
+        "P014 produced R012/C012 for final closure evidence.",
+        "R013 summarized those closed child results."
+      ],
+      "followup_problem_id": null,
+      "id": "C013",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Full repo suites and live deployed smoke were not run in this construction. The touched-path tests are current and passing, but a later deployment pass should smoke the real Factory/Runtime/App integration if the user wants production rollout immediately.",
+        "Existing explicit non-stream APIs remain outside the new handler path."
+      ],
+      "result_ids": [
+        "R013"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Cross-repo focused tests cover server SSE normalization, Runtime stream accumulation/projection/handler behavior, and App rendering/contract/guard behavior.",
+        "Residue review searched for fallback, stream, reasoning, history, EventSource, WebSocket, and SSE patterns across touched paths.",
+        "Closure review inspected ledger validity and git status/diff summaries."
+      ],
+      "summary": "P004 is solved by R013. The final verification/cleanup pass produced focused cross-repo test evidence, contract/residue review, no-fallback hardening, and closure artifacts in the ledger."
+    },
+    "C014": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C014.md",
+      "created_at": "2026-05-26T14:56:28+00:00",
+      "criteria_map": [
+        "Factory supports streaming provider output without breaking non-streaming chat completions: satisfied by P001/C002 and Factory tests (17 passed).",
+        "Runtime consumes streaming output, aggregates final response, and emits incremental reasoning through Agent Monitor projection: satisfied by P002/C006 and Runtime tests (15 passed).",
+        "Agent Monitor uses existing Business/Entangled/App data plane with no public frontend WebSocket/SSE channel: satisfied by P003/C009 and App guard tests.",
+        "Final saga behavior remains compatible with complete OpenAI-style chat completion response: satisfied by FactoryStreamAccumulator/handler tests and P002/C006.",
+        "Streaming writes are bounded/coalesced: satisfied by `ReasoningStreamProjector` and its coalescing test.",
+        "App renders running reasoning and follows bottom on same-row updates: satisfied by P003/C009 and ActivityTimeline tests.",
+        "Tests cover Factory streaming normalization, Runtime streaming aggregation/projection, App rendering, and non-streaming regression: satisfied by C002/C006/C009/C013.",
+        "Implementation avoids long-term fallback paths, duplicate logic, and stale residue: satisfied by P004/C013, including the no-fallback failure test hardening."
+      ],
+      "evidence": [
+        "Factory supports OpenAI-compatible streaming output via `OpenAIProvider.stream_chat()` and `/v1/chat/completions` streaming SSE response; C002 verified it.",
+        "Runtime consumes Factory SSE, aggregates final response state, emits coalesced reasoning activity updates, and calls the new path with `stream=True`; C006 verified it.",
+        "App monitor uses `agent-activity-records` via Entangled and renders running/same-row updates without a new frontend stream; C009 verified it.",
+        "Final verification/cleanup ran focused tests across Factory, Runtime, and App, reviewed fallback/residue, and captured closure evidence; C013 verified it."
+      ],
+      "execution_map": [
+        "T000 split the root into P001, P002, P003, and P004 according to the user's split rule.",
+        "P001 was split into P005/P006 for Factory normalization and route wiring.",
+        "P002 was split into P007/P008/P009 for Runtime parser, projection, and handler integration.",
+        "P003 was split into P010/P011 for App rendering and Entangled contract verification.",
+        "P004 was split into P012/P013/P014 for focused verification, residue review, and closure evidence.",
+        "All child problems have success checks before R014."
+      ],
+      "followup_problem_id": null,
+      "id": "C014",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Full repo suites and live deployed smoke were not run. The focused touched-path tests are passing, but deployment should be smoked separately if this is promoted immediately.",
+        "Existing explicit non-stream APIs remain for old/non-target call sites; they are not fallback for the new handler path.",
+        "This construction does not change provider coverage beyond the current OpenAI-compatible streaming path; unsupported stream providers fail explicitly."
+      ],
+      "result_ids": [
+        "R014"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Stream parser tests cover SSE `data:` chunks and `[DONE]` handling.",
+        "Runtime tests cover content/reasoning/tool-call aggregation, stream error surfacing, coalesced projection writes, stable same-row record IDs, and no non-stream fallback on stream failure.",
+        "App tests cover running reasoning rendering, same-row key mutation, Entangled contract fields, and forbidden parallel stream tokens.",
+        "Final review searched fallback/stream/reasoning/history/EventSource/WebSocket/SSE patterns across touched paths."
+      ],
+      "summary": "P000 is solved by R014 and the closed child checks C002, C006, C009, and C013. The reasoning streaming path now uses existing NovAIC infrastructure end to end: Factory streaming, Runtime aggregation/projection, Business/Entangled sync, and App Timeline rendering."
+    }
+  },
+  "counters": {
+    "check": 15,
+    "event": 180,
+    "problem": 15,
+    "result": 15,
+    "ticket": 15
+  },
+  "created_at": "2026-05-26T14:10:41+00:00",
+  "ledger_id": "L20260526-221041",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C014"
+      ],
+      "created_at": "2026-05-26T14:10:41+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "created_from_ticket_mode": null,
+      "description": "NovAIC currently exposes Agent Monitor reasoning only after the LLM call returns a complete assistant message. The desired product behavior is to stream provider-authored reasoning into the existing Agent Monitor path while preserving the current durable final response semantics. The construction must use the existing LLM Factory, Runtime, Business/Entangled, and App sync infrastructure instead of adding a parallel frontend transport.\n\nThe work must be handled with recursive closure and the user's split rule: before depth 3, broad work must be split into child problems; from depth 3 onward, one_go is allowed only when the slice is small, concrete, and directly verifiable.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R014"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "LLM Factory supports streaming provider output for the current OpenAI-compatible path without breaking non-streaming chat completions.",
+        "Runtime can consume Factory streaming output, aggregate final response state, and emit incremental reasoning updates through the existing Agent Monitor projection path.",
+        "Agent Monitor updates use the existing Business/Entangled/App data plane; no new public WebSocket/SSE frontend channel is introduced.",
+        "Final saga behavior remains compatible: downstream decision/action code receives a complete OpenAI-style chat completion response.",
+        "Streaming writes are bounded or coalesced so the system does not write one database row per token.",
+        "App rendering can display a running reasoning row and continue following the bottom during same-row streaming updates.",
+        "Tests cover Factory streaming normalization, Runtime streaming aggregation/projection, App rendering behavior, and non-streaming regression.",
+        "The implementation avoids long-term fallback paths, ambiguous duplicate logic, and stale misleading code residue."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Implement reasoning streaming through existing NovAIC infrastructure",
+      "updated_at": "2026-05-26T14:56:28+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-26T14:11:58+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "LLM Factory currently accepts a `stream` request flag but does not implement streaming provider transport. Reasoning streaming needs Factory to expose a clear, normalized stream for supported providers while preserving the existing non-streaming response path.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P005",
+        "P006"
+      ],
+      "success_criteria": [
+        "Factory has a provider-level streaming contract for OpenAI-compatible chat completions.",
+        "Streaming chunks preserve reasoning/content/tool-call deltas in a normalized shape Runtime can consume.",
+        "Non-streaming chat completions remain compatible and covered by tests.",
+        "Unsupported providers fail clearly rather than silently pretending to stream."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Add LLM Factory streaming transport contract",
+      "updated_at": "2026-05-26T14:18:49+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C006"
+      ],
+      "created_at": "2026-05-26T14:11:58+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "Runtime currently waits for a complete Factory response, then projects reasoning once during context append. It needs to consume Factory streaming output, aggregate the final response for saga compatibility, and emit bounded running/final reasoning updates through existing Agent Monitor projection entities.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P007",
+        "P008",
+        "P009"
+      ],
+      "success_criteria": [
+        "Runtime can request and consume streaming chat completions from Factory.",
+        "Runtime returns a complete OpenAI-style response to existing saga decision code.",
+        "Runtime emits stable same-record reasoning updates with `status=running` and a final completed state.",
+        "Projection writes are coalesced/bounded and do not write one row per token.",
+        "Durable context append semantics remain final-response only."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Stream reasoning through Runtime aggregation and activity projection",
+      "updated_at": "2026-05-26T14:29:16+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C009"
+      ],
+      "created_at": "2026-05-26T14:11:58+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The App already reads `agent-activity-records` from Entangled, but timeline autoscroll and rendering were built mostly around newly appended rows. Same-row reasoning updates must feel live without introducing a new frontend transport.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R009"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P010",
+        "P011"
+      ],
+      "success_criteria": [
+        "Running reasoning rows render with the existing public title contract.",
+        "Same-row text/status updates trigger bottom-follow behavior when the user is near the bottom.",
+        "The App continues to use Entangled cache/query invalidation rather than a new stream channel.",
+        "Tests cover updated timeline projection/render behavior."
+      ],
+      "ticket_ids": [
+        "T008"
+      ],
+      "title": "Render same-row streaming reasoning updates in the App monitor",
+      "updated_at": "2026-05-26T14:48:22+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C013"
+      ],
+      "created_at": "2026-05-26T14:11:58+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "created_from_ticket_mode": "split",
+      "description": "The streaming change touches multiple repos and can regress non-streaming LLM calls, saga decisions, projection privacy, or App monitor UX. The final pass must prove the path and clean up any transitional or misleading code residue.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R013"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P012",
+        "P013",
+        "P014"
+      ],
+      "success_criteria": [
+        "Focused tests pass in all touched repos.",
+        "Cross-boundary contracts are documented or represented by tests clearly enough for future agents.",
+        "Diff review shows no long-term fallback branch, no stale misleading path, and no accidental raw partial reasoning in LLM input history.",
+        "The ledger contains evidence, stress testing, residual risk, and result IDs for closure."
+      ],
+      "ticket_ids": [
+        "T011"
+      ],
+      "title": "Verify and clean up reasoning streaming end to end",
+      "updated_at": "2026-05-26T14:55:35+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P001/children/P005/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-26T14:12:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T001",
+      "created_from_ticket_mode": "split",
+      "description": "Factory providers need a small, testable contract that turns OpenAI-compatible SSE chat completion chunks into normalized Python dictionaries preserving content, reasoning, tool-call deltas, finish reason, and usage where available.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P001/children/P005",
+      "parent_id": "P001",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`OpenAIProvider` exposes a streaming method for OpenAI-compatible chat completions.",
+        "The parser handles `data: {...}` SSE lines and `[DONE]` termination.",
+        "Reasoning deltas are extracted from common fields such as `reasoning_content`, `reasoning`, and provider-specific delta aliases.",
+        "Unit tests cover content, reasoning, tool-call delta, done, and error classification behavior."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Implement OpenAI-compatible streaming chunk normalization",
+      "updated_at": "2026-05-26T14:15:16+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P001/children/P006/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-26T14:12:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T001",
+      "created_from_ticket_mode": "split",
+      "description": "The Factory route must honor `stream=true` by returning a streaming response from supported providers and must keep `stream=false` behavior unchanged. Unsupported provider streams should fail clearly.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P001/children/P006",
+      "parent_id": "P001",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`/v1/chat/completions` returns streaming chunks when `stream=true` for OpenAI-compatible providers.",
+        "Unsupported native provider streaming returns a clear error instead of silently falling back.",
+        "Log records are completed or failed consistently for streaming calls.",
+        "Existing non-streaming route tests continue to pass."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Wire Factory chat route streaming response and logging",
+      "updated_at": "2026-05-26T14:18:13+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P002/children/P007/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-26T14:19:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T004",
+      "created_from_ticket_mode": "split",
+      "description": "Runtime Factory client must consume Factory normalized SSE chunks and aggregate them into a complete OpenAI-style chat completion response compatible with current saga code.",
+      "followup_ids": [],
+      "id": "P007",
+      "package_path": "problems/P000/children/P002/children/P007",
+      "parent_id": "P002",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runtime can parse Factory SSE `data:` lines with `type=delta`, `type=done`, and `type=error`.",
+        "Aggregator builds final assistant message fields for `content`, `reasoning_content`, `tool_calls`, `finish_reason`, `usage`, and `x_factory` where present.",
+        "Unit tests cover reasoning/content accumulation, tool-call argument fragments, terminal/error handling, and non-streaming client behavior."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Add Runtime Factory stream parser and final response aggregator",
+      "updated_at": "2026-05-26T14:22:26+00:00"
+    },
+    "P008": {
+      "body_path": "problems/P000/children/P002/children/P008/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-26T14:19:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T004",
+      "created_from_ticket_mode": "split",
+      "description": "Runtime needs a projection helper that can update one stable reasoning row during streaming and finalize it after the complete response arrives, without duplicating rows or writing every token.",
+      "followup_ids": [],
+      "id": "P008",
+      "package_path": "problems/P000/children/P002/children/P008",
+      "parent_id": "P002",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Projection helper emits a deterministic record id for the current agent/scope/round reasoning row.",
+        "Running updates set `phase=reasoning`, `public_title=正在思考`, `status=running`, and current text.",
+        "Final update sets completed status and final text/public title.",
+        "Tests cover stable IDs, running/final status, and coalescing throttle behavior."
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "Add stable running reasoning activity projection updates",
+      "updated_at": "2026-05-26T14:24:37+00:00"
+    },
+    "P009": {
+      "body_path": "problems/P000/children/P002/children/P009/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-26T14:19:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T004",
+      "created_from_ticket_mode": "split",
+      "description": "`handle_llm_call` must request streaming from Factory, feed reasoning deltas to the projection helper, and still return the same complete response shape expected by `react_think` and context append.",
+      "followup_ids": [],
+      "id": "P009",
+      "package_path": "problems/P000/children/P002/children/P009",
+      "parent_id": "P002",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Handler uses streaming client path for supported Factory calls.",
+        "Handler coalesces projection updates and finalizes reasoning when the stream completes.",
+        "Handler returns `success`, `scope_id`, `round_id`, `response`, and `model` as before.",
+        "Tests prove saga-facing response compatibility and non-streaming/failure behavior remains clear."
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "Integrate streaming LLM calls into Runtime handler",
+      "updated_at": "2026-05-26T14:28:34+00:00"
+    },
+    "P010": {
+      "body_path": "problems/P000/children/P003/children/P010/README.md",
+      "check_ids": [
+        "C007"
+      ],
+      "created_at": "2026-05-26T14:29:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T008",
+      "created_from_ticket_mode": "split",
+      "description": "`ActivityTimeline` currently follows bottom based mainly on row count/latest key. Streaming reasoning updates mutate the same row's text/status, so the component needs an explicit same-row update key and tests for running reasoning display.",
+      "followup_ids": [],
+      "id": "P010",
+      "package_path": "problems/P000/children/P003/children/P010",
+      "parent_id": "P003",
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Latest record key includes fields that change during streaming, such as text/status/updated marker.",
+        "Running reasoning rows display `正在思考` and detail text.",
+        "Tests cover public title/projection behavior and same-row update key behavior."
+      ],
+      "ticket_ids": [
+        "T009"
+      ],
+      "title": "Update ActivityTimeline for same-record streaming updates",
+      "updated_at": "2026-05-26T14:45:13+00:00"
+    },
+    "P011": {
+      "body_path": "problems/P000/children/P003/children/P011/README.md",
+      "check_ids": [
+        "C008"
+      ],
+      "created_at": "2026-05-26T14:29:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T008",
+      "created_from_ticket_mode": "split",
+      "description": "The App must keep using `agent-activity-records` from Entangled for streaming reasoning updates and should not introduce a parallel frontend stream channel.",
+      "followup_ids": [],
+      "id": "P011",
+      "package_path": "problems/P000/children/P003/children/P011",
+      "parent_id": "P003",
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Activity record entity/type supports `public_title`, `status`, `text`, and timestamps needed for streaming updates.",
+        "No new App websocket/SSE/EventSource path is introduced for reasoning streaming.",
+        "Focused entity contract tests remain green."
+      ],
+      "ticket_ids": [
+        "T010"
+      ],
+      "title": "Verify App Entangled activity contract remains the streaming data path",
+      "updated_at": "2026-05-26T14:47:40+00:00"
+    },
+    "P012": {
+      "body_path": "problems/P000/children/P004/children/P012/README.md",
+      "check_ids": [
+        "C010"
+      ],
+      "created_at": "2026-05-26T14:49:21+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T011",
+      "created_from_ticket_mode": "split",
+      "description": "The streaming path touches Factory, Runtime, and App. The final pass needs concrete test evidence across all touched repos, including Factory SSE, Runtime aggregation/projection/handler integration, and App timeline/contract behavior.",
+      "followup_ids": [],
+      "id": "P012",
+      "package_path": "problems/P000/children/P004/children/P012",
+      "parent_id": "P004",
+      "result_ids": [
+        "R010"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Focused tests pass in `novaic-llm-factory` for streaming chat route/provider behavior.",
+        "Focused tests pass in `novaic-agent-runtime` for Factory stream parsing, activity projection, and LLM handler integration.",
+        "Focused tests pass in `novaic-app` for ActivityTimeline, hook normalization, entity contract, and guard behavior.",
+        "Any failure is recorded with exact command output and either fixed or escalated as a follow-up."
+      ],
+      "ticket_ids": [
+        "T012"
+      ],
+      "title": "Run focused cross-repo reasoning streaming verification",
+      "updated_at": "2026-05-26T14:50:41+00:00"
+    },
+    "P013": {
+      "body_path": "problems/P000/children/P004/children/P013/README.md",
+      "check_ids": [
+        "C011"
+      ],
+      "created_at": "2026-05-26T14:49:21+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T011",
+      "created_from_ticket_mode": "split",
+      "description": "The code should express one clean long-term path: Factory streaming chunks, Runtime aggregation/projection, Entangled activity records, and App Timeline rendering. The diff/source must not leave long-lived fallback branches, stale misleading paths, or raw partial reasoning accidentally added into future LLM input history.",
+      "followup_ids": [],
+      "id": "P013",
+      "package_path": "problems/P000/children/P004/children/P013",
+      "parent_id": "P004",
+      "result_ids": [
+        "R011"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Source review finds no long-term fallback branch for the new reasoning streaming path.",
+        "Runtime aggregation returns a final assistant response while activity projection uses streaming deltas without injecting partial reasoning into the next LLM input history.",
+        "App path review confirms no parallel reasoning transport and no stale monitor path left by this work.",
+        "Any cleanup needed is implemented and covered by focused tests or explicit evidence."
+      ],
+      "ticket_ids": [
+        "T013"
+      ],
+      "title": "Review streaming contracts and remove misleading residue",
+      "updated_at": "2026-05-26T14:53:32+00:00"
+    },
+    "P014": {
+      "body_path": "problems/P000/children/P004/children/P014/README.md",
+      "check_ids": [
+        "C012"
+      ],
+      "created_at": "2026-05-26T14:49:21+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T011",
+      "created_from_ticket_mode": "split",
+      "description": "After tests and residue review, the work needs a concise final evidence package so future agents can understand the cross-boundary contract and the remaining residual risk without re-reading the whole diff.",
+      "followup_ids": [],
+      "id": "P014",
+      "package_path": "problems/P000/children/P004/children/P014",
+      "parent_id": "P004",
+      "result_ids": [
+        "R012"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "The ledger can cite closed child result IDs and checks for Factory, Runtime, App, and cleanup review.",
+        "A final status snapshot identifies touched repos, test commands, known residual risks, and artifacts.",
+        "The working tree impact is inspectable and does not hide unrelated cleanup or temporary files from this construction."
+      ],
+      "ticket_ids": [
+        "T014"
+      ],
+      "title": "Prepare final closure evidence for reasoning streaming construction",
+      "updated_at": "2026-05-26T14:55:02+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/factory/providers.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/tests/test_chat_routes.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P005/results/R000.md",
+      "created_at": "2026-05-26T14:14:39+00:00",
+      "done": [
+        "Added `OpenAIProvider.stream_chat()` using `httpx.Client.stream()` with `stream=true` payloads.",
+        "Added SSE parsing for `data: {...}` lines and `[DONE]` termination.",
+        "Added normalized chunk fields: `content_delta`, `reasoning_delta`, `tool_calls_delta`, `finish_reason`, `usage`, plus raw event preservation.",
+        "Added tests for content, reasoning aliases, tool-call deltas, terminal chunks, and non-streaming regression coverage through the existing suite."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Factory route still needs to consume `stream_chat()` for `stream=true`; this is covered by sibling problem P006."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Implemented the Factory provider streaming primitive for OpenAI-compatible chat completions. The provider now exposes `stream_chat()` and normalizes SSE chunks into reasoning/content/tool-call/final metadata deltas while leaving the blocking `chat()` path unchanged.",
+      "ticket_id": "T002",
+      "verification": [
+        "`cd novaic-llm-factory && python -m pytest tests/test_chat_routes.py -q` passed: 15 tests."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/factory/routes/chat_routes.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/tests/test_chat_routes.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P006/results/R001.md",
+      "created_at": "2026-05-26T14:17:58+00:00",
+      "done": [
+        "Added `StreamingResponse` route branch for streaming chat completions.",
+        "Added normalized SSE JSON envelope with `type=delta`, provider chunk fields, and terminal `type=done`.",
+        "Added streaming log completion for finish reason, tool-call names, usage, latency, and attempt count.",
+        "Added explicit unsupported-provider failure and log marking.",
+        "Added route-level tests for streaming success and unsupported provider failure."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "Runtime still needs to call `stream=true` and consume the normalized SSE stream; this is tracked under P002 descendants."
+      ],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Factory `/v1/chat/completions` now honors `stream=true` for providers with `stream_chat()`, returning normalized SSE chunks and completing/failing Factory logs consistently. Unsupported streaming providers fail with a clear HTTP 400.",
+      "ticket_id": "T003",
+      "verification": [
+        "`cd novaic-llm-factory && python -m pytest tests/test_chat_routes.py -q` passed: 17 tests."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Result `R000`",
+        "Result `R001`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/factory/providers.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/factory/routes/chat_routes.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-llm-factory/tests/test_chat_routes.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R002.md",
+      "created_at": "2026-05-26T14:18:31+00:00",
+      "done": [
+        "Child P005/R000 implemented `OpenAIProvider.stream_chat()` and normalized streaming chunk extraction.",
+        "Child P006/R001 wired `/v1/chat/completions` `stream=true` to normalized SSE output and streaming log completion/failure.",
+        "Unsupported providers now fail clearly for streaming requests.",
+        "Non-streaming Factory route/provider behavior remains covered by the focused test suite."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Runtime consumption of Factory stream remains open under P002."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Factory now has an end-to-end internal streaming contract for OpenAI-compatible providers: provider-level SSE parsing/normalization and route-level `stream=true` SSE output are both implemented and tested.",
+      "ticket_id": "T001",
+      "verification": [
+        "P005 success check C000 passed with `python -m pytest tests/test_chat_routes.py -q` at 15 tests at that stage.",
+        "P006 success check C001 passed with `python -m pytest tests/test_chat_routes.py -q` at 17 tests after route wiring."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/factory_client.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/tests/unit/task_queue/test_factory_client_streaming.py`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P007/results/R003.md",
+      "created_at": "2026-05-26T14:22:09+00:00",
+      "done": [
+        "Added Factory SSE event parsing for `data:` lines, `[DONE]`, keepalives, delta/done/error event types.",
+        "Added `FactoryStreamAccumulator` for content, reasoning, tool-call fragments, finish reason, usage, and optional Factory metadata.",
+        "Added `FactoryLLMClient.stream_chat()` with `stream=true` payloads and optional delta callback.",
+        "Added focused tests for SSE parsing, response aggregation, tool-call argument fragment stitching, callback delivery, and stream error events."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "Activity projection coalescing and handler integration are handled by sibling problems P008 and P009."
+      ],
+      "problem_id": "P007",
+      "root_id": "P000",
+      "summary": "Runtime Factory client now supports normalized Factory SSE streaming and aggregates it back into the complete OpenAI-style chat completion shape expected by existing saga code.",
+      "ticket_id": "T005",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/unit/task_queue/test_factory_client_streaming.py tests/unit/task_queue/test_factory_client_multimodal.py -q` passed: 4 tests."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/utils/activity_projection.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/tests/test_pr193_activity_projection.py`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P008/results/R004.md",
+      "created_at": "2026-05-26T14:24:21+00:00",
+      "done": [
+        "Added `project_reasoning_stream_update()` that reuses the existing `assistant:reasoning` seed for stable record IDs.",
+        "Running updates write `status=running`, `title/public_title=正在思考`, and current reasoning text.",
+        "Final updates write completed status and final reasoning text.",
+        "Added `ReasoningStreamProjector` to suppress small intermediate updates and always emit final text.",
+        "Added tests for stable record IDs, running/final state, and coalescing behavior."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "Handler wiring to feed streaming deltas into the projector is tracked by P009."
+      ],
+      "problem_id": "P008",
+      "root_id": "P000",
+      "summary": "Runtime activity projection now supports stable running/final reasoning row updates and bounded coalescing for streamed reasoning text.",
+      "ticket_id": "T006",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/test_pr193_activity_projection.py -q` passed: 10 tests."
+      ]
+    },
+    "R005": {
+      "artifacts": [
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/business/llm.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/handlers/llm_handlers.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/tests/unit/task_queue/test_llm_handler_streaming.py`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P009/results/R005.md",
+      "created_at": "2026-05-26T14:27:55+00:00",
+      "done": [
+        "Extended `LLMBusiness.call()` with `stream` and `on_delta` parameters while preserving the blocking default.",
+        "Updated `handle_llm_call` to call streaming Factory path.",
+        "Added a reasoning delta callback that feeds `ReasoningStreamProjector`.",
+        "Finalized reasoning projection from the final assistant response.",
+        "Added handler tests for streaming success and stream failure surfacing."
+      ],
+      "id": "R005",
+      "known_gaps": [
+        "App rendering still needs same-row autoscroll behavior under P003."
+      ],
+      "problem_id": "P009",
+      "root_id": "P000",
+      "summary": "`handle_llm_call` now uses the Factory streaming client, projects reasoning deltas through the coalesced Agent Monitor path, finalizes the reasoning row, and still returns the complete response shape expected by `react_think`.",
+      "ticket_id": "T007",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/unit/task_queue/test_llm_handler_streaming.py tests/unit/task_queue/test_factory_client_streaming.py tests/test_pr193_activity_projection.py -q` passed: 15 tests."
+      ]
+    },
+    "R006": {
+      "artifacts": [
+        "Result `R003`",
+        "Result `R004`",
+        "Result `R005`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/factory_client.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/utils/activity_projection.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/business/llm.py`",
+        "`/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime/task_queue/handlers/llm_handlers.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R006.md",
+      "created_at": "2026-05-26T14:28:56+00:00",
+      "done": [
+        "Child P007/R003 added Runtime Factory SSE parser and final response aggregator.",
+        "Child P008/R004 added stable running/final reasoning projection helper and coalescer.",
+        "Child P009/R005 wired `handle_llm_call` to streaming Factory calls and projection updates.",
+        "Focused tests prove parser, projection, and handler behavior."
+      ],
+      "id": "R006",
+      "known_gaps": [
+        "App same-row rendering/autoscroll remains open under P003."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Runtime now consumes Factory normalized SSE streaming, aggregates a complete final chat completion response, emits coalesced running reasoning monitor updates, and finalizes the stable reasoning row without changing saga-facing response shape.",
+      "ticket_id": "T004",
+      "verification": [
+        "P007 check C003 passed Runtime Factory client streaming tests.",
+        "P008 check C004 passed activity projection tests.",
+        "P009 check C005 passed handler/client/projection integration tests."
+      ]
+    },
+    "R007": {
+      "artifacts": [
+        "`novaic-app/src/components/Visual/ActivityTimeline.tsx`",
+        "`novaic-app/src/components/Visual/ActivityTimeline.test.tsx`",
+        "`novaic-app/src/components/hooks/useActivityTimeline.ts`",
+        "`novaic-app/src/components/hooks/useActivityTimeline.test.ts`",
+        "`novaic-app/src/types/activityTimeline.ts`"
+      ],
+      "body_path": "problems/P000/children/P003/children/P010/results/R007.md",
+      "created_at": "2026-05-26T14:44:48+00:00",
+      "done": [
+        "Added `activityTimelineRecordUpdateKey()` with status/title/truncation/update timestamp/text-tail fingerprinting.",
+        "Switched the follow-bottom effect dependency from an identity-only latest key to the update fingerprint.",
+        "Preserved `updated_at` in `ActivityTimelineRecord` and `normalizeActivityRecord()`.",
+        "Added tests for running reasoning display and same-row update key mutation behavior.",
+        "Updated hook normalization coverage for `updated_at`."
+      ],
+      "id": "R007",
+      "known_gaps": [
+        "Did not run the full App test suite or a browser/Tauri visual pass in this leaf; those belong to the broader end-to-end verification problem."
+      ],
+      "problem_id": "P010",
+      "root_id": "P000",
+      "summary": "Added an explicit same-record update fingerprint for `ActivityTimeline` so streaming reasoning mutations on an existing row can trigger follow-bottom behavior without requiring a new row. Preserved the existing Entangled activity path and kept `updated_at` from synced activity records through normalization.",
+      "ticket_id": "T009",
+      "verification": [
+        "`cd novaic-app && npm run test:unit -- src/components/Visual/ActivityTimeline.test.tsx src/components/hooks/useActivityTimeline.test.ts` passed: 2 files, 19 tests.",
+        "Reviewed the diff for the affected App files."
+      ]
+    },
+    "R008": {
+      "artifacts": [
+        "`novaic-app/src/data/entities/entangledEntityContracts.test.ts`",
+        "`novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts`"
+      ],
+      "body_path": "problems/P000/children/P003/children/P011/results/R008.md",
+      "created_at": "2026-05-26T14:47:24+00:00",
+      "done": [
+        "Audited `agent-activity-records` App contract and entity type for `public_title`, `status`, `text`, `created_at`, and `updated_at`.",
+        "Confirmed `useActivityTimeline()` sources records from `agentActivityRecordsStore.useStream(params)`.",
+        "Searched App sources for EventSource/WebSocket/SSE/reasoning-stream patterns and found only pre-existing generic sync config plus tests, not a new reasoning-specific timeline transport.",
+        "Added contract guard assertions for streaming fields in `entangledEntityContracts.test.ts`.",
+        "Added ActivityTimeline guard assertions that the timeline/hook/chat path uses Entangled records and does not create a parallel stream channel."
+      ],
+      "id": "R008",
+      "known_gaps": [
+        "Did not run the full App suite in this leaf; broader suite/e2e verification remains for P004."
+      ],
+      "problem_id": "P011",
+      "root_id": "P000",
+      "summary": "Verified and guarded that App reasoning progress remains on the existing Entangled `agent-activity-records` data path. Added focused guard coverage for required streaming fields and for avoiding a parallel reasoning EventSource/WebSocket/SSE channel in the timeline path.",
+      "ticket_id": "T010",
+      "verification": [
+        "`cd novaic-app && npm run test:unit -- src/data/entities/entangledEntityContracts.test.ts src/components/Visual/ActivityTimeline.guard.test.ts src/components/Visual/ActivityTimeline.test.tsx src/components/hooks/useActivityTimeline.test.ts` passed: 4 files, 29 tests.",
+        "`rg -n \"EventSource|WebSocket|text/event-stream|SSE|server-sent|reasoning.*stream|stream.*reasoning|llm_reasoning\" src` was inspected to distinguish generic sync infra from reasoning timeline code."
+      ]
+    },
+    "R009": {
+      "artifacts": [
+        "R007 / C007",
+        "R008 / C008",
+        "`novaic-app/src/components/Visual/ActivityTimeline.tsx`",
+        "`novaic-app/src/components/Visual/ActivityTimeline.test.tsx`",
+        "`novaic-app/src/components/Visual/ActivityTimeline.guard.test.ts`",
+        "`novaic-app/src/components/hooks/useActivityTimeline.ts`",
+        "`novaic-app/src/components/hooks/useActivityTimeline.test.ts`",
+        "`novaic-app/src/data/entities/entangledEntityContracts.test.ts`",
+        "`novaic-app/src/types/activityTimeline.ts`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R009.md",
+      "created_at": "2026-05-26T14:48:07+00:00",
+      "done": [
+        "P010/C007/R007 added the Timeline update fingerprint, preserved `updated_at`, and covered running reasoning plus same-row mutation behavior.",
+        "P011/C008/R008 verified and guarded the Entangled activity contract and the absence of a parallel reasoning stream in the monitor path.",
+        "Focused App tests covered component rendering, hook normalization, entity contracts, and guardrails."
+      ],
+      "id": "R009",
+      "known_gaps": [
+        "Full App test suite and end-to-end service/App verification are not part of this parent slice and remain for P004."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Closed the App monitor slice by combining P010 and P011. The Timeline now reacts to streaming mutations on the same activity row, running reasoning rows render through the public title contract, and the frontend remains on the Entangled `agent-activity-records` path rather than a second reasoning stream transport.",
+      "ticket_id": "T008",
+      "verification": [
+        "`cd novaic-app && npm run test:unit -- src/components/Visual/ActivityTimeline.test.tsx src/components/hooks/useActivityTimeline.test.ts` passed: 2 files, 19 tests.",
+        "`cd novaic-app && npm run test:unit -- src/data/entities/entangledEntityContracts.test.ts src/components/Visual/ActivityTimeline.guard.test.ts src/components/Visual/ActivityTimeline.test.tsx src/components/hooks/useActivityTimeline.test.ts` passed: 4 files, 29 tests.",
+        "Child success checks C007 and C008 both passed."
+      ]
+    },
+    "R010": {
+      "artifacts": [
+        "Factory test output: 17 passed.",
+        "Runtime test output: 15 passed.",
+        "App test output: 29 passed across 4 files."
+      ],
+      "body_path": "problems/P000/children/P004/children/P012/results/R010.md",
+      "created_at": "2026-05-26T14:50:27+00:00",
+      "done": [
+        "Verified Factory streaming provider and chat route behavior.",
+        "Verified Runtime Factory stream parsing, LLM handler streaming integration, and activity projection behavior.",
+        "Verified App ActivityTimeline rendering, hook normalization, Entangled entity contracts, and guardrails."
+      ],
+      "id": "R010",
+      "known_gaps": [
+        "Full repository test suites were not run; this leaf targeted touched streaming and monitor paths only."
+      ],
+      "problem_id": "P012",
+      "root_id": "P000",
+      "summary": "Ran the focused verification commands across all touched repos. Factory, Runtime, and App streaming/monitor tests all passed.",
+      "ticket_id": "T012",
+      "verification": [
+        "`cd novaic-llm-factory && python -m pytest tests/test_chat_routes.py -q` -> 17 passed.",
+        "`cd novaic-agent-runtime && python -m pytest tests/unit/task_queue/test_factory_client_streaming.py tests/unit/task_queue/test_llm_handler_streaming.py tests/test_pr193_activity_projection.py -q` -> 15 passed.",
+        "`cd novaic-app && npm run test:unit -- src/data/entities/entangledEntityContracts.test.ts src/components/Visual/ActivityTimeline.guard.test.ts src/components/Visual/ActivityTimeline.test.tsx src/components/hooks/useActivityTimeline.test.ts` -> 4 files, 29 tests passed."
+      ]
+    },
+    "R011": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/unit/task_queue/test_llm_handler_streaming.py`",
+        "Source review evidence from Factory, Runtime, and App diffs."
+      ],
+      "body_path": "problems/P000/children/P004/children/P013/results/R011.md",
+      "created_at": "2026-05-26T14:53:15+00:00",
+      "done": [
+        "Reviewed Factory streaming route/provider diff: streaming requests use `provider.stream_chat`; unsupported providers fail with `unsupported_stream` and HTTP 400 rather than falling back to non-streaming execution.",
+        "Reviewed Runtime handler path: `handle_llm_call` calls `biz.call(..., stream=True, on_delta=...)`; stream deltas are only accumulated for activity projection, and `prepared.messages` is passed unchanged into the Factory stream request.",
+        "Reviewed Runtime accumulator: final response is assembled from chunks after the stream completes; partial reasoning deltas are not appended to request messages.",
+        "Reviewed App path: Timeline continues to read `agentActivityRecordsStore.useStream(params)` through `useActivityTimeline`; guard tests reject `new EventSource`, `new WebSocket`, and `text/event-stream` in the monitor path.",
+        "Tightened `test_llm_handler_surfaces_stream_failure` so any future fallback to `chat()` raises an assertion."
+      ],
+      "id": "R011",
+      "known_gaps": [
+        "Existing `FactoryLLMClient.chat()` and `LLMBusiness.call(stream=False)` remain as explicit non-stream APIs for older/non-target call sites; they are not used as fallback in the new `handle_llm_call` reasoning path."
+      ],
+      "problem_id": "P013",
+      "root_id": "P000",
+      "summary": "Reviewed the touched Factory, Runtime, and App paths for fallback/residue and prompt-history leakage. No runtime cleanup was needed. I tightened the Runtime streaming failure test so future code cannot silently fall back from `stream_chat()` to non-streaming `chat()`.",
+      "ticket_id": "T013",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/unit/task_queue/test_llm_handler_streaming.py tests/unit/task_queue/test_factory_client_streaming.py tests/test_pr193_activity_projection.py -q` -> 15 passed.",
+        "`rg` review found the only new Factory `text/event-stream` path is the Factory server response, not an App parallel stream.",
+        "`rg` review found App monitor files only use Entangled activity stream and guard assertions for forbidden stream tokens.",
+        "Source review confirmed the handler returns stream failure as `success=False` and does not call a non-stream fallback."
+      ]
+    },
+    "R012": {
+      "artifacts": [
+        "`.complex-problems/L20260526-221041/`",
+        "`.complex-problems/dashboard.html`",
+        "Git status/diff summaries for Factory, Runtime, App, and root repo."
+      ],
+      "body_path": "problems/P000/children/P004/children/P014/results/R012.md",
+      "created_at": "2026-05-26T14:54:47+00:00",
+      "done": [
+        "Validated active ledger status: `L20260526-221041`, schema v6, valid, 15 problems, 3 active at the time of this leaf before parent closure.",
+        "Rendered the complex-problems dashboard: `.complex-problems/dashboard.html`.",
+        "Captured git status/diff summaries for `novaic-llm-factory`, `novaic-agent-runtime`, `novaic-app`, and the root repo.",
+        "Confirmed construction-owned changes are limited to the ledger plus the three touched subrepos.",
+        "Checked for obvious local temp residue (`*.tmp`, `*~`, `.DS_Store`) at shallow workspace depth; only an unrelated `novaic-business/.DS_Store` was found outside this construction."
+      ],
+      "id": "R012",
+      "known_gaps": [
+        "Root has unrelated/pre-existing `CLAUDE.md` and `novaic-business/.DS_Store`; I did not remove them because they were not created by this construction.",
+        "Parent P004 and root P000 still need their summary result/check after this leaf closes."
+      ],
+      "problem_id": "P014",
+      "root_id": "P000",
+      "summary": "Collected the final evidence snapshot for the reasoning streaming construction. The active ledger is valid, the dashboard rendered, touched repo diffs are inspectable, and no construction-owned scratch files were found outside the intended ledger/code changes.",
+      "ticket_id": "T014",
+      "verification": [
+        "`ledger.py status` -> valid=yes for `L20260526-221041`.",
+        "`node .../render-dashboard.mjs --workspace /Users/wangchaoqun/new-build-novaic` -> wrote `.complex-problems/dashboard.html`.",
+        "Root status shows `.complex-problems/INDEX.json`, the new ledger directory, subrepo modifications, and pre-existing untracked `CLAUDE.md`.",
+        "Factory diff summary: 3 files, 433 insertions, 18 deletions.",
+        "Runtime diff summary: 5 tracked files plus 2 new test files, 313 insertions, 9 deletions in tracked diff.",
+        "App diff summary: 7 files, 106 insertions, 5 deletions."
+      ]
+    },
+    "R013": {
+      "artifacts": [
+        "R010 / C010",
+        "R011 / C011",
+        "R012 / C012",
+        "`.complex-problems/L20260526-221041/`",
+        "`.complex-problems/dashboard.html`"
+      ],
+      "body_path": "problems/P000/children/P004/results/R013.md",
+      "created_at": "2026-05-26T14:55:18+00:00",
+      "done": [
+        "P012/R010/C010: focused cross-repo verification passed for all touched repos.",
+        "P013/R011/C011: source/diff review confirmed the clean long-term path and tightened the no-fallback Runtime test.",
+        "P014/R012/C012: final ledger/git/status evidence snapshot prepared and dashboard rendered.",
+        "Verified no new App reasoning-specific EventSource/WebSocket/SSE channel exists.",
+        "Verified Runtime stream failure is surfaced rather than falling back to non-streaming `chat()`."
+      ],
+      "id": "R013",
+      "known_gaps": [
+        "Full repo suites were not run; this construction relied on focused tests for the touched streaming path.",
+        "Explicit non-stream APIs remain for existing non-target call sites, but the new Runtime LLM handler path does not fall back to them.",
+        "Unrelated/pre-existing root `CLAUDE.md` and `novaic-business/.DS_Store` remain untouched."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Closed the final verification/cleanup slice. Focused tests passed across Factory, Runtime, and App; the streaming contract was reviewed for fallback/residue; and final closure evidence was captured in the ledger.",
+      "ticket_id": "T011",
+      "verification": [
+        "Factory: `python -m pytest tests/test_chat_routes.py -q` -> 17 passed.",
+        "Runtime: `python -m pytest tests/unit/task_queue/test_factory_client_streaming.py tests/unit/task_queue/test_llm_handler_streaming.py tests/test_pr193_activity_projection.py -q` -> 15 passed.",
+        "App: `npm run test:unit -- src/data/entities/entangledEntityContracts.test.ts src/components/Visual/ActivityTimeline.guard.test.ts src/components/Visual/ActivityTimeline.test.tsx src/components/hooks/useActivityTimeline.test.ts` -> 29 passed.",
+        "Ledger status valid; dashboard rendered to `.complex-problems/dashboard.html`."
+      ]
+    },
+    "R014": {
+      "artifacts": [
+        "R002 / C002",
+        "R006 / C006",
+        "R009 / C009",
+        "R013 / C013",
+        "`.complex-problems/L20260526-221041/`",
+        "`.complex-problems/dashboard.html`",
+        "Touched repos: `novaic-llm-factory`, `novaic-agent-runtime`, `novaic-app`"
+      ],
+      "body_path": "problems/P000/results/R014.md",
+      "created_at": "2026-05-26T14:56:04+00:00",
+      "done": [
+        "P001/R002/C002: Factory OpenAI-compatible streaming contract implemented and tested, with normalized `content_delta`, `reasoning_delta`, tool-call deltas, finish reason, usage, and explicit unsupported-provider failure.",
+        "P002/R006/C006: Runtime consumes Factory stream output, aggregates a final OpenAI-style response, emits bounded same-row reasoning activity updates, and preserves failure semantics without non-stream fallback.",
+        "P003/R009/C009: App Timeline renders running reasoning rows, reacts to same-row text/status updates, and remains on Entangled activity records.",
+        "P004/R013/C013: Focused cross-repo tests passed; residue/fallback review completed; final closure evidence captured."
+      ],
+      "id": "R014",
+      "known_gaps": [
+        "Full repo suites and live deployed smoke were not run in this construction.",
+        "Existing explicit non-stream APIs remain for old/non-target call sites; the new Runtime handler path does not use them as fallback.",
+        "Unrelated/pre-existing `CLAUDE.md` and `novaic-business/.DS_Store` remain untouched."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented provider-authored reasoning streaming across the existing NovAIC stack without adding a parallel frontend transport. The path is now Factory SSE streaming -> Runtime stream aggregation and coalesced activity projection -> Business/Entangled `agent-activity-records` -> App ActivityTimeline same-row rendering.",
+      "ticket_id": "T000",
+      "verification": [
+        "Factory focused tests: 17 passed.",
+        "Runtime focused tests: 15 passed.",
+        "App focused tests: 29 passed.",
+        "Ledger `L20260526-221041` remained valid and dashboard rendered.",
+        "Source/grep review confirmed no App reasoning-specific EventSource/WebSocket/SSE channel and no non-stream fallback in the new Runtime handler path."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Factory can return normalized streaming chunks and still return complete non-streaming chat completions.",
+        "Runtime can request streaming, aggregate a final chat completion response, and keep existing saga outputs compatible.",
+        "Runtime emits coalesced running/final reasoning updates through existing Business/Entangled projection writes.",
+        "App Agent Monitor follows and renders same-row reasoning text updates without a separate frontend stream.",
+        "Tests cover each service boundary and the end-to-end compatibility contract.",
+        "No long-term duplicate fallback path or misleading legacy code remains."
+      ],
+      "assumptions": [
+        "The first production path can target OpenAI-compatible streaming because current Factory already routes unknown compatible providers through `OpenAIProvider`.",
+        "Anthropic and Google streaming can remain unsupported until implemented explicitly, as long as the Runtime does not silently pretend they are streaming.",
+        "Existing Entangled delta invalidation is sufficient for App cache refresh when the same activity row is updated."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Crosses Factory, Runtime, Entangled/App, and verification boundaries; user requires split before depth 3.",
+      "created_at": "2026-05-26T14:11:09+00:00",
+      "id": "T000",
+      "problem_definition": "The current monitor shows provider reasoning only after a full LLM response is saved. Users need live reasoning progress, but the architecture should stay clear: Factory owns provider transport, Runtime owns saga semantics and projection, Business/Entangled owns the sync data plane, and App renders subscribed projection rows.",
+      "problem_id": "P000",
+      "proposed_solution": "Implement reasoning streaming as an end-to-end platform path. Add provider streaming support in LLM Factory for the OpenAI-compatible route, add a Runtime streaming client/handler that aggregates the final OpenAI-style response while coalescing reasoning deltas into the existing `agent-activity-records` projection, and adjust the App timeline to render same-row running updates smoothly. Keep non-streaming behavior intact and avoid introducing a separate frontend transport.\n\nThe ticket must be split before execution because it crosses service boundaries and has independent verification needs. The split should respect the user's rule: broad depth-1 and depth-2 work is split; depth-3 leaves may use one_go only when bounded and directly testable.",
+      "result_ids": [
+        "R014"
+      ],
+      "risks": [
+        "Provider streaming formats differ; the first implementation should explicitly scope provider support and fail clearly for unsupported providers.",
+        "Too-frequent projection updates could pressure Entangled/Postgres; Runtime must coalesce updates.",
+        "Partial streamed reasoning must not contaminate durable LLM context before the final response is accepted.",
+        "Existing tests may rely on synchronous fake clients; contracts must be adapted without weakening them."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Stream reasoning through Factory, Runtime, Entangled, and App",
+      "updated_at": "2026-05-26T14:56:04+00:00",
+      "verification_plan": "- Unit-test provider stream parsing/normalization and non-streaming regression in `novaic-llm-factory`.\n- Unit-test Runtime streaming aggregation, projection throttling/coalescing, and final response shape in `novaic-agent-runtime`.\n- Unit-test App timeline title/detail/autoscroll behavior for running same-row updates in `novaic-app`.\n- Run focused test suites for touched repos, then run repository guard checks that cover active agent path and app build/lint where practical.\n- Review diffs for fallback residue and accidental raw reasoning persistence into future LLM input."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Provider streaming leaf defines and tests normalized chunks for OpenAI-compatible SSE.",
+        "Route streaming leaf exposes an HTTP streaming response and clear unsupported-provider behavior.",
+        "Existing non-streaming chat completion tests keep passing."
+      ],
+      "assumptions": [
+        "First streaming support targets OpenAI-compatible providers only.",
+        "Native Anthropic/Google streaming can be explicit unsupported until separately implemented."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "split",
+      "classification_reason": "Factory work still has independent provider parser and route/logging surfaces; user requires split before depth 3.",
+      "created_at": "2026-05-26T14:12:13+00:00",
+      "id": "T001",
+      "problem_definition": "Factory has a `stream` request field but no implemented stream behavior. Runtime needs a normalized stream it can consume while the existing non-streaming endpoint remains compatible.",
+      "problem_id": "P001",
+      "proposed_solution": "Split Factory work into provider-level streaming normalization and route-level response/logging behavior. Implement OpenAI-compatible streaming first, explicitly reject unsupported native provider streaming, and preserve non-streaming tests.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "OpenAI-compatible vendors emit variant reasoning fields; parser must cover common keys without overfitting.",
+        "Streaming routes cannot know final token usage until terminal chunk; route must handle logging without corrupting final behavior."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Define Factory streaming provider and route behavior",
+      "updated_at": "2026-05-26T14:18:31+00:00",
+      "verification_plan": "- Add provider unit tests for SSE parsing and reasoning/content delta extraction.\n- Add route tests for `stream=true` and `stream=false` behavior.\n- Run the `novaic-llm-factory` focused test suite."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "OpenAI-compatible streaming parser handles content delta chunks.",
+        "Parser handles reasoning delta aliases.",
+        "Parser handles tool call delta chunks without dropping ids/function names/arguments.",
+        "Parser ignores `[DONE]` after yielding prior chunks.",
+        "Non-streaming `chat()` remains unchanged."
+      ],
+      "assumptions": [
+        "The streaming route can consume normalized chunks and decide wire formatting separately."
+      ],
+      "body_path": "problems/P000/children/P001/children/P005/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Third-level leaf: one provider parser/iterator with focused unit tests and low blast radius.",
+      "created_at": "2026-05-26T14:12:51+00:00",
+      "id": "T002",
+      "problem_definition": "`OpenAIProvider` only supports blocking chat completions. Factory needs a bounded streaming primitive that can parse OpenAI-compatible SSE chunks and expose normalized delta dictionaries to the route and Runtime.",
+      "problem_id": "P005",
+      "proposed_solution": "Add a `StreamEvent` contract and an `OpenAIProvider.stream_chat()` iterator that posts with `stream=true`, parses SSE `data:` lines, yields normalized chunks, extracts content/reasoning/tool-call deltas, forwards finish reason/usage when present, and raises existing `ProviderError` for transport/API errors.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Provider-specific variants may add fields later; the parser should be small and extensible."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add OpenAI streaming parser and provider iterator",
+      "updated_at": "2026-05-26T14:14:39+00:00",
+      "verification_plan": "- Add focused unit tests in `novaic-llm-factory/tests/test_chat_routes.py` or a nearby provider test.\n- Run the focused Factory tests after implementation."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`stream=true` returns SSE chunks for OpenAI-compatible providers.",
+        "`stream=false` still returns the existing complete JSON response.",
+        "Unsupported native providers return a clear 400 error for streaming.",
+        "Streaming calls update Factory logs with finish reason, token usage when present, latency, and attempt count."
+      ],
+      "assumptions": [
+        "Runtime will consume Factory SSE lines with normalized chunk JSON."
+      ],
+      "body_path": "problems/P000/children/P001/children/P006/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Third-level route leaf with one response path and focused Factory tests.",
+      "created_at": "2026-05-26T14:15:36+00:00",
+      "id": "T003",
+      "problem_definition": "The provider can now produce normalized streaming chunks, but `/v1/chat/completions` still ignores `stream=true`. The route must expose a clean streaming response and preserve logging/error behavior.",
+      "problem_id": "P006",
+      "proposed_solution": "When `request.stream` is true, route supported providers to `provider.stream_chat()` and return `StreamingResponse` with `text/event-stream` SSE lines containing normalized JSON chunks. Complete or fail Factory logs inside the generator based on streamed terminal metadata. Reject unsupported native providers clearly. Leave the existing blocking route path unchanged.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Streaming generator errors happen after response headers; test-covered provider setup errors should happen before the stream starts where possible."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Wire Factory route streaming response",
+      "updated_at": "2026-05-26T14:17:58+00:00",
+      "verification_plan": "- Add route/provider tests for streaming response behavior and unsupported providers.\n- Run focused Factory tests."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Runtime Factory client can consume Factory normalized SSE and aggregate content, reasoning, tool-call deltas, finish reason, usage, and factory metadata.",
+        "Activity projection can upsert a stable reasoning record as running and final without creating duplicate rows.",
+        "LLM handler uses streaming when possible and still returns a complete OpenAI-style response to `react_think`.",
+        "Tests cover parser, projection coalescing/final state, and handler compatibility."
+      ],
+      "assumptions": [
+        "Factory emits normalized SSE chunks from P001.",
+        "Business client entity upsert remains the correct existing data-plane write surface."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T004.md",
+      "classification": "split",
+      "classification_reason": "Runtime work has independent streaming client, projection, and handler integration surfaces; user requires split before depth 3.",
+      "created_at": "2026-05-26T14:19:09+00:00",
+      "id": "T004",
+      "problem_definition": "Runtime currently calls Factory synchronously and only projects reasoning after the final assistant message is appended. It must consume normalized Factory streaming, aggregate the final response for existing saga logic, and publish coalesced running/final reasoning updates through existing Business/Entangled projection writes.",
+      "problem_id": "P002",
+      "proposed_solution": "Split Runtime work into three third-layer leaves: a Factory client streaming parser/aggregator, activity projection support for stable running/final reasoning records, and LLM handler integration that enables streaming while preserving final response semantics.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [
+        "Tool-call delta aggregation can be tricky; implementation should support the current function call delta shape without overgeneralizing.",
+        "Partial reasoning must not be appended to durable context before final response handling.",
+        "Projection write frequency must be bounded."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Runtime streaming aggregation and projection path",
+      "updated_at": "2026-05-26T14:28:56+00:00",
+      "verification_plan": "- Add Runtime unit tests for SSE parsing and final response assembly.\n- Add Runtime unit tests for stable activity record IDs and running/final status updates.\n- Add handler tests with fake streaming client proving final `response` shape is unchanged for saga code.\n- Run focused Runtime tests for touched modules."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "Parses `data:` SSE chunks for `type=delta`, `type=done`, and `type=error`.",
+        "Aggregates content and reasoning text into final assistant message fields.",
+        "Aggregates function tool-call argument fragments by index.",
+        "Returns a final OpenAI-style response with choices/message/finish_reason/usage.",
+        "Existing blocking `chat()` behavior remains intact."
+      ],
+      "assumptions": [
+        "Factory route emits normalized SSE from P006."
+      ],
+      "body_path": "problems/P000/children/P002/children/P007/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Third-level Runtime client leaf: one parser/aggregator surface with focused unit tests.",
+      "created_at": "2026-05-26T14:20:12+00:00",
+      "id": "T005",
+      "problem_definition": "Runtime needs a Factory client method that can request `stream=true`, parse Factory normalized SSE chunks, and return a complete OpenAI-style response compatible with existing callers.",
+      "problem_id": "P007",
+      "proposed_solution": "Add stream parsing and aggregation helpers to `task_queue.factory_client`. Implement `FactoryLLMClient.stream_chat()` that sends the same payload as `chat()` plus `stream=true`, parses Factory SSE events, optionally notifies a delta callback, aggregates content/reasoning/tool-call fragments, and returns a final chat completion response.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Tool call streaming has provider-specific edge cases; cover the current normalized shape and keep the aggregator simple."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add Runtime Factory SSE aggregator",
+      "updated_at": "2026-05-26T14:22:09+00:00",
+      "verification_plan": "- Add focused unit tests under `novaic-agent-runtime/tests/unit/task_queue`.\n- Run the new test file and existing Factory client multimodal test."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "Running update writes the same record id as the final assistant reasoning projection.",
+        "Running update uses `public_title=正在思考` and `status=running`.",
+        "Final update uses `public_title=完成思考` and completed status semantics.",
+        "Coalescer suppresses tiny intermediate updates and always emits final text."
+      ],
+      "assumptions": [
+        "Existing `entity_upsert` is the correct projection write path."
+      ],
+      "body_path": "problems/P000/children/P002/children/P008/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "Third-level projection leaf: stable record helper plus coalescer with focused tests.",
+      "created_at": "2026-05-26T14:23:08+00:00",
+      "id": "T006",
+      "problem_definition": "Runtime needs to update one stable Agent Monitor reasoning row during streaming and finalize it without duplicate records or per-token writes.",
+      "problem_id": "P008",
+      "proposed_solution": "Add `project_reasoning_stream_update()` for deterministic running/final reasoning upserts and a `ReasoningStreamProjector` coalescer that emits only the first, thresholded, and final updates. Reuse the existing `assistant:reasoning` seed so final `project_assistant_message()` remains compatible.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Overwriting sort order on repeated upserts could reorder the running row; acceptable because the row represents current active thought and final append will normalize it."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add streaming reasoning activity projection helper",
+      "updated_at": "2026-05-26T14:24:21+00:00",
+      "verification_plan": "- Add tests to `test_pr193_activity_projection.py`.\n- Run the focused activity projection tests."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "Handler calls Factory streaming path for LLM calls.",
+        "Reasoning deltas produce coalesced running projection updates.",
+        "Final response still has `success`, `scope_id`, `round_id`, `response`, and `model`.",
+        "Durable context append remains downstream and final-response based.",
+        "Focused tests cover handler streaming success and stream failure."
+      ],
+      "assumptions": [
+        "Factory may fail clearly for unsupported streaming providers; Runtime should surface that failure rather than silently falling back."
+      ],
+      "body_path": "problems/P000/children/P002/children/P009/tickets/T007.md",
+      "classification": "one_go",
+      "classification_reason": "Third-level handler leaf: wire existing client/projector with focused mocks and tests.",
+      "created_at": "2026-05-26T14:25:38+00:00",
+      "id": "T007",
+      "problem_definition": "Runtime has a stream-capable Factory client and a stable reasoning projector, but `handle_llm_call` still uses the blocking path. The handler must connect these pieces without changing saga-facing result shape.",
+      "problem_id": "P009",
+      "proposed_solution": "Update `LLMBusiness.call()` to delegate to `stream_chat()` when requested. Update `handle_llm_call` to use streaming, accumulate reasoning deltas through `ReasoningStreamProjector`, finalize the reasoning row after completion, and return the same success response contract as before.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Handler tests may need to mock Business config lookup and context preparation dependencies explicitly."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Use streaming Factory calls in Runtime LLM handler",
+      "updated_at": "2026-05-26T14:27:55+00:00",
+      "verification_plan": "- Add/update handler tests with fake `LLMBusiness`/Factory client behavior.\n- Run focused handler/client/projection tests."
+    },
+    "T008": {
+      "acceptance_criteria": [
+        "Same-row reasoning text/status updates can trigger bottom-follow when near bottom.",
+        "Running reasoning row displays existing public title and detail behavior.",
+        "App continues to rely on `agent-activity-records` Entangled stream store.",
+        "Tests cover timeline projection/rendering behavior."
+      ],
+      "assumptions": [
+        "Entangled invalidation will refresh React Query data when the backend upserts the same record."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T008.md",
+      "classification": "split",
+      "classification_reason": "App work has rendering behavior and data-contract verification surfaces; user requires split before depth 3.",
+      "created_at": "2026-05-26T14:29:36+00:00",
+      "id": "T008",
+      "problem_definition": "The App already subscribes to `agent-activity-records`, but timeline scrolling/rendering was mostly keyed to newly appended rows. Streaming reasoning updates will update the same record's text/status, so the UI must continue to render and follow bottom without a new frontend channel.",
+      "problem_id": "P003",
+      "proposed_solution": "Split App work into timeline rendering/autoscroll behavior and data-contract verification. Update the timeline to treat latest same-row text/status changes as follow-bottom triggers and ensure tests cover running reasoning records. Verify existing Entangled store/type contracts remain the only data path.",
+      "result_ids": [
+        "R009"
+      ],
+      "risks": [
+        "Browser layout tests in jsdom cannot perfectly prove visual scroll, so dependency/key behavior should be unit-tested and kept simple."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "App monitor same-row streaming rendering",
+      "updated_at": "2026-05-26T14:48:07+00:00",
+      "verification_plan": "- Add/update `ActivityTimeline` tests.\n- Run focused App tests for timeline and entity contract."
+    },
+    "T009": {
+      "acceptance_criteria": [
+        "The latest-record follow-bottom dependency changes when a streaming reasoning row changes text/status/title without adding a new row.",
+        "Running reasoning rows render the public title `正在思考` and their detail text.",
+        "Tests cover same-record update key changes for streaming-style mutations.",
+        "The implementation stays inside the existing activity timeline data path and does not introduce a second activity transport."
+      ],
+      "assumptions": [
+        "Streaming reasoning text is append-oriented, so length and tail fingerprinting are enough to detect meaningful same-row progress.",
+        "`ActivityTimelineRecord` can safely carry an optional update timestamp if the hook already receives one from synced activity records."
+      ],
+      "body_path": "problems/P000/children/P003/children/P010/tickets/T009.md",
+      "classification": "one_go",
+      "classification_reason": "P010 is a third-layer leaf with one bounded UI behavior change and focused tests; no independent sub-outcomes need another split.",
+      "created_at": "2026-05-26T14:41:55+00:00",
+      "id": "T009",
+      "problem_definition": "`ActivityTimeline` can already render activity rows, but its follow-bottom trigger is keyed mostly by list growth and a latest record identity string. Streaming reasoning updates intentionally keep the same record identity while mutating text/status/title fields, so the app can miss update-driven scroll/render expectations even though Entangled delivered a changed row.",
+      "problem_id": "P010",
+      "proposed_solution": "Add a small explicit latest-record update key for `ActivityTimeline` that fingerprints the fields expected to change during streaming (`status`, titles, text/detail, truncation, and update timestamp when present). Use that key in the follow-bottom effect instead of the older identity-only key. Preserve the existing record rendering path and add focused component/unit coverage for running reasoning rows and same-record update key behavior.",
+      "result_ids": [
+        "R007"
+      ],
+      "risks": [
+        "Including the full reasoning text in a dependency key could be noisy for very long streams.",
+        "A too-small fingerprint could miss equal-length text replacements.",
+        "Existing tests may need small adjustments if they assume the old key is internal-only."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make ActivityTimeline react to same-record reasoning stream mutations",
+      "updated_at": "2026-05-26T14:44:48+00:00",
+      "verification_plan": "Run the focused app test for `ActivityTimeline` after the change, and inspect the affected files to ensure the update key uses only explicit record fields rather than hidden UI state."
+    },
+    "T010": {
+      "acceptance_criteria": [
+        "The App `agent-activity-records` entity/type/normalizer includes `public_title`, `status`, `text`, and timestamp fields needed for streaming updates.",
+        "Reasoning streaming UI continues to be sourced from `agentActivityRecordsStore.useStream` and `ActivityTimeline`, not a new reasoning WebSocket/SSE/EventSource path.",
+        "Focused contract/guard tests pass."
+      ],
+      "assumptions": [
+        "The contract-level source of truth for App activity records is under `novaic-app/src/data/entities` and `novaic-app/src/components/hooks/useActivityTimeline.ts`.",
+        "Existing generic Entangled stream infrastructure is allowed and is not considered a parallel reasoning channel."
+      ],
+      "body_path": "problems/P000/children/P003/children/P011/tickets/T010.md",
+      "classification": "one_go",
+      "classification_reason": "P011 is a third-layer verification leaf: it is a bounded App contract audit with focused guard tests and no independent implementation slices.",
+      "created_at": "2026-05-26T14:45:43+00:00",
+      "id": "T010",
+      "problem_definition": "The frontend should receive reasoning progress through the existing `agent-activity-records` Entangled entity. Adding a separate browser SSE/WebSocket stream for reasoning would create duplicate state, race conditions, and unclear ownership between App, Runtime, and Entangled.",
+      "problem_id": "P011",
+      "proposed_solution": "Audit the App entity contract, data store, hook, and ActivityTimeline usage for the streaming fields required by the runtime projection. Add or tighten focused guard coverage if any contract field is missing. Verify no App-side reasoning-specific network stream path was introduced.",
+      "result_ids": [
+        "R008"
+      ],
+      "risks": [
+        "A generic transport helper may contain SSE/EventSource code for unrelated features; the audit should distinguish existing infra from a new reasoning-specific channel.",
+        "Guard tests can become brittle if they assert too much raw source text."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify App streaming reasoning stays on Entangled activity records",
+      "updated_at": "2026-05-26T14:47:24+00:00",
+      "verification_plan": "Inspect the App data contract and search for new reasoning stream transport usage, then run the focused App activity contract/guard tests."
+    },
+    "T011": {
+      "acceptance_criteria": [
+        "Focused tests pass in every touched repo: `novaic-llm-factory`, `novaic-agent-runtime`, and `novaic-app`.",
+        "Cross-boundary streaming contracts are either tested directly or guarded clearly enough that future agents understand the path.",
+        "Diff/source review finds no long-term fallback branch, misleading stale path, or accidental raw partial reasoning being fed back into LLM input history.",
+        "Final P004 result cites child result IDs, stress evidence, residual risk, and artifacts."
+      ],
+      "assumptions": [
+        "The intended long-term path is Factory SSE chunks -> Runtime aggregation/activity projection -> Entangled activity records -> App Timeline.",
+        "Non-streaming fallbacks for the new reasoning path are not desired unless they are existing unrelated APIs kept for compatibility outside this construction."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T011.md",
+      "classification": "split",
+      "classification_reason": "P004 is a second-layer cross-repo verification and cleanup problem; per the user rule, work before the third level must split, and the criteria include independent test, residue, and closure evidence slices.",
+      "created_at": "2026-05-26T14:48:46+00:00",
+      "id": "T011",
+      "problem_definition": "The reasoning-streaming change crosses Factory, Runtime, and App. Even with leaf tests passing, final closure needs a repo-wide focused verification pass plus cleanup of any confusing fallback/residue that would make the long-term architecture ambiguous.",
+      "problem_id": "P004",
+      "proposed_solution": "Split the verification into focused child problems: one for cross-repo test/build evidence, one for contract/residue review, and one for final documentation/ledger closure. Each child should produce concrete evidence before P004 is summarized.",
+      "result_ids": [
+        "R013"
+      ],
+      "risks": [
+        "Full suites may be slow or have unrelated failures; child results must distinguish touched-path failures from pre-existing noise.",
+        "Overbroad cleanup could disturb unrelated recent user work, so cleanup must stay scoped to reasoning streaming residue."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify reasoning streaming across repos and remove transitional residue",
+      "updated_at": "2026-05-26T14:55:18+00:00",
+      "verification_plan": "Use child problems to run touched-repo tests, inspect cross-boundary source contracts, inspect diffs for residue/fallbacks, and then summarize only after all children close."
+    },
+    "T012": {
+      "acceptance_criteria": [
+        "`novaic-llm-factory` streaming route/provider tests pass.",
+        "`novaic-agent-runtime` Factory stream parsing, LLM handler streaming, and activity projection tests pass.",
+        "`novaic-app` timeline, hook, entity contract, and guard tests pass.",
+        "Commands and outcomes are recorded exactly enough for later closure checks."
+      ],
+      "assumptions": [
+        "Focused tests are the right verification level for this construction; full suites are not required unless a focused test reveals a broader regression."
+      ],
+      "body_path": "problems/P000/children/P004/children/P012/tickets/T012.md",
+      "classification": "one_go",
+      "classification_reason": "P012 is a third-layer verification leaf with fixed commands, clear pass/fail evidence, and no independent design subproblem.",
+      "created_at": "2026-05-26T14:49:36+00:00",
+      "id": "T012",
+      "problem_definition": "Factory, Runtime, and App were all changed. P012 must produce current focused test evidence for the exact streaming and monitor paths touched by this construction.",
+      "problem_id": "P012",
+      "proposed_solution": "Run the focused test commands for each touched repo, capture pass/fail outcomes, and only record the result after failures are fixed or clearly identified as outside this change.",
+      "result_ids": [
+        "R010"
+      ],
+      "risks": [
+        "Test environments may have repo-specific dependency drift; if that happens, record the exact failure and distinguish environment failure from product regression."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Run touched-repo focused verification commands",
+      "updated_at": "2026-05-26T14:50:27+00:00",
+      "verification_plan": "Run the three focused test command groups from their repo working directories and inspect failures if any appear."
+    },
+    "T013": {
+      "acceptance_criteria": [
+        "New reasoning streaming path has no long-term fallback branch that silently switches to old non-stream behavior.",
+        "Runtime streams reasoning deltas to activity projection while the final assistant response remains the only response returned to the caller.",
+        "No raw partial reasoning chunks are appended to message history for future LLM calls.",
+        "App monitor remains on Entangled activity records with no parallel reasoning stream or stale monitor path.",
+        "Any cleanup edits are verified by focused tests."
+      ],
+      "assumptions": [
+        "`FactoryLLMClient.chat()` may remain as an existing explicit non-stream API, but `handle_llm_call` should not silently fall back to it for the new reasoning path.",
+        "App generic sync infra is allowed; forbidden residue is a new reasoning-specific frontend stream outside Entangled activity records."
+      ],
+      "body_path": "problems/P000/children/P004/children/P013/tickets/T013.md",
+      "classification": "one_go",
+      "classification_reason": "P013 is a third-layer bounded audit leaf with concrete search/read criteria and scoped cleanup only if evidence reveals residue.",
+      "created_at": "2026-05-26T14:50:57+00:00",
+      "id": "T013",
+      "problem_definition": "The implementation must represent the intended architecture cleanly. A working stream is not enough if the code leaves fallback branches, duplicated frontend channels, or partial reasoning state that can leak into future prompts.",
+      "problem_id": "P013",
+      "proposed_solution": "Review the touched diffs and relevant source paths in Factory, Runtime, and App. Search for fallback/residue patterns and inspect the LLM history/response boundary. Make scoped cleanup edits only if the review finds concrete residue, then rerun the affected focused tests.",
+      "result_ids": [
+        "R011"
+      ],
+      "risks": [
+        "The codebase has existing non-streaming methods for other compatibility paths; the review must distinguish existing public APIs from forbidden fallback inside the new reasoning path.",
+        "Overzealous deletion could break existing non-stream callers outside this construction."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit streaming contract cleanliness and remove residue",
+      "updated_at": "2026-05-26T14:53:15+00:00",
+      "verification_plan": "Use `git diff`, `rg`, and focused source reads across touched repos, then rerun only tests affected by any cleanup."
+    },
+    "T014": {
+      "acceptance_criteria": [
+        "Ledger status is valid and identifies closed child results/checks for the P004 work.",
+        "Git status/diff summaries identify touched repos and construction-owned artifacts.",
+        "No construction-owned temp files or misleading scratch artifacts are left outside the ledger/code changes.",
+        "Residual risks are explicit for the parent closure."
+      ],
+      "assumptions": [
+        "`.complex-problems/L20260526-221041` is an intended construction artifact, not temp residue."
+      ],
+      "body_path": "problems/P000/children/P004/children/P014/tickets/T014.md",
+      "classification": "one_go",
+      "classification_reason": "P014 is a third-layer evidence packaging leaf with read-only status/render checks and clear pass/fail criteria.",
+      "created_at": "2026-05-26T14:53:48+00:00",
+      "id": "T014",
+      "problem_definition": "The implementation is spread across subrepos and the ledger. Before closing the parent, we need a final inspectable snapshot of test evidence, closed child results, changed files, and residual risks.",
+      "problem_id": "P014",
+      "proposed_solution": "Collect ledger status, child result/check IDs, and git status/diff summaries for the touched repos. Render or validate the ledger if available. Do not make product-code edits unless the snapshot reveals construction-owned temporary residue.",
+      "result_ids": [
+        "R012"
+      ],
+      "risks": [
+        "There may be unrelated pre-existing root files such as user notes; they should be reported, not deleted, unless clearly construction-owned."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Prepare final reasoning streaming closure evidence",
+      "updated_at": "2026-05-26T14:54:47+00:00",
+      "verification_plan": "Run ledger status/next, inspect repo statuses and diff stats, and render the ledger dashboard if the renderer is available."
+    }
+  },
+  "updated_at": "2026-05-26T14:56:39+00:00"
+}

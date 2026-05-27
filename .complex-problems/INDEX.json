@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260525-170529",
+  "active_ledger_id": "L20260527-082839",
   "ledgers": [
     {
       "active_count": 0,
@@ -935,7 +935,29 @@
       "status": "done",
       "title": "Make Agent Monitor activity titles structured and non-heuristic",
       "updated_at": "2026-05-25T09:19:53+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260526-221041",
+      "path": "L20260526-221041",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Implement reasoning streaming through existing NovAIC infrastructure",
+      "updated_at": "2026-05-26T14:56:39+00:00"
+    },
+    {
+      "active_count": 5,
+      "blocked_count": 0,
+      "ledger_id": "L20260527-082839",
+      "path": "L20260527-082839",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "doing",
+      "title": "Deploy reasoning streaming through Release Controller CI/CD",
+      "updated_at": "2026-05-27T00:41:13+00:00"
     }
   ],
-  "updated_at": "2026-05-25T09:19:53+00:00"
+  "updated_at": "2026-05-27T00:41:13+00:00"
 }
