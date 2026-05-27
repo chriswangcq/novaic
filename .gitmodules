@@ -39,7 +39,7 @@
 	url = git@github.com:chriswangcq/novaic-device.git
 [submodule "novaic-llm-factory"]
 	path = novaic-llm-factory
-	url = https://github.com/chriswangcq/novaic-llm-factory.git
+	url = git@github.com:chriswangcq/novaic-llm-factory.git
 [submodule "novaic-logicalfs"]
 	path = novaic-logicalfs
 	url = git@github.com:chriswangcq/novaic-logicalfs.git
